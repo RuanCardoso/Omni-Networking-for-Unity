@@ -1,0 +1,16 @@
+{
+    "name": "Omni.Core",
+    "rootNamespace": "",
+    "references": [
+        "GUID:5662d6c161a4f14c18e4c4db0e92654c"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,406 @@
+using System;
+using System.Buffers;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using MemoryPack;
+using Newtonsoft.Json;
+
+namespace Omni.Core
+{
+    public static partial class BufferWriterExtensions
+    {
+        /// <summary>
+        /// The default encoding used when writing strings to the network buffer.
+        /// </summary>
+        public static Encoding DefaultEncoding { get; set; } = Encoding.ASCII;
+
+        /// <summary>
+        /// Converts an object to JSON and writes it to the network buffer.<br/>
+        /// By default, Newtonsoft.Json is used for serialization.
+        /// </summary>
+        public static string ToJson<T>(
+            this NetworkBuffer buffer,
+            T value,
+            JsonSerializerSettings settings = null
+        )
+        {
+            string json = JsonConvert.SerializeObject(value, settings);
+            Write(buffer, json);
+            return json;
+        }
+
+        /// <summary>
+        /// Converts an object to binary and writes it to the network buffer.<br/>
+        /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for serialization.
+        /// </summary>
+        public static void ToBinary<T>(
+            this NetworkBuffer buffer,
+            T value,
+            MemoryPackSerializerOptions settings = null
+        )
+        {
+            IBufferWriter<byte> writer = buffer;
+            byte[] data = MemoryPackSerializer.Serialize(value, settings);
+            Write7BitEncodedInt(buffer, data.Length);
+            writer.Write(data);
+        }
+
+        /// <summary>
+        /// Writes an primitive array to the network buffer.<br/>
+        /// </summary>
+        public static void FastWrite<T>(this NetworkBuffer buffer, T[] array)
+            where T : unmanaged
+        {
+            IBufferWriter<byte> writer = buffer;
+            int size_t = Unsafe.SizeOf<T>() * array.Length;
+            Write7BitEncodedInt(buffer, size_t);
+
+            ReadOnlySpan<T> data = array.AsSpan();
+            writer.Write(MemoryMarshal.AsBytes(data));
+        }
+
+        /// <summary>
+        /// Writes a string to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// Note: May result in a StackOverflowException if the string is excessively long.
+        /// </summary>
+        public static int FastWrite(
+            this NetworkBuffer buffer,
+            ReadOnlySpan<char> input,
+            Encoding encoding = null
+        )
+        {
+            encoding ??= DefaultEncoding;
+            IBufferWriter<byte> writer = buffer;
+
+            // Write a header with the length of the string.
+            int byteCount = encoding.GetByteCount(input);
+            Write7BitEncodedInt(buffer, byteCount);
+
+            // Write the string data.
+            Span<byte> data = stackalloc byte[byteCount];
+            int encodedBytesCount = encoding.GetBytes(input, data);
+            writer.Write(data);
+            return encodedBytesCount;
+        }
+
+        /// <summary>
+        /// Writes a string to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        public static int Write(
+            this NetworkBuffer buffer,
+            ReadOnlySpan<char> input,
+            Encoding encoding = null
+        )
+        {
+            encoding ??= DefaultEncoding;
+            IBufferWriter<byte> writer = buffer;
+
+            // Write a header with the length of the string.
+            int byteCount = encoding.GetByteCount(input);
+            Write7BitEncodedInt(buffer, byteCount);
+
+            // rent an array from the pool to avoid allocations.
+            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(byteCount);
+
+            // Write the string data.
+            Span<byte> data = rentedArray;
+            int encodedBytesCount = encoding.GetBytes(input, data);
+            writer.Write(data[..encodedBytesCount]);
+
+            ArrayPool<byte>.Shared.Return(rentedArray);
+            return encodedBytesCount;
+        }
+
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// </summary>
+        public static void FastWrite<T>(this NetworkBuffer buffer, T value)
+            where T : unmanaged
+        {
+            IBufferWriter<byte> writer = buffer;
+            int size_t = Unsafe.SizeOf<T>();
+
+            Span<byte> data = stackalloc byte[size_t];
+            MemoryMarshal.Write(data, ref value);
+            writer.Write(data);
+        }
+
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        public static void Write<T>(this NetworkBuffer buffer, T value)
+            where T : unmanaged
+        {
+            IBufferWriter<byte> writer = buffer;
+            int size_t = Unsafe.SizeOf<T>();
+
+            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(size_t);
+            Span<byte> data = rentedArray;
+
+            MemoryMarshal.Write(data, ref value);
+            writer.Write(data[..size_t]); // sliced, because the length of the rented array is not equal to the size_t, it may be larger.
+
+            ArrayPool<byte>.Shared.Return(rentedArray);
+        }
+
+        /// <summary>
+        /// Writes an integer in a compact 7-bit encoded format to the network buffer.
+        /// https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/IO/BinaryWriter.cs#L473
+        /// </summary>
+        public static void Write7BitEncodedInt(this NetworkBuffer buffer, int value)
+        {
+            uint uValue = (uint)value;
+
+            // Write out an int 7 bits at a time. The high bit of the byte,
+            // when on, tells reader to continue reading more bytes.
+            //
+            // Using the constants 0x7F and ~0x7F below offers smaller
+            // codegen than using the constant 0x80.
+
+            while (uValue > 0x7Fu)
+            {
+                FastWrite(buffer, (byte)(uValue | ~0x7Fu));
+                uValue >>= 7;
+            }
+
+            FastWrite(buffer, (byte)uValue);
+        }
+
+        /// <summary>
+        /// Writes an long in a compact 7-bit encoded format to the network buffer.
+        /// https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/IO/BinaryWriter.cs#L492
+        /// </summary>
+        public static void Write7BitEncodedInt64(this NetworkBuffer buffer, long value)
+        {
+            ulong uValue = (ulong)value;
+
+            // Write out an int 7 bits at a time. The high bit of the byte,
+            // when on, tells reader to continue reading more bytes.
+            //
+            // Using the constants 0x7F and ~0x7F below offers smaller
+            // codegen than using the constant 0x80.
+
+            while (uValue > 0x7Fu)
+            {
+                FastWrite(buffer, (byte)((uint)uValue | ~0x7Fu));
+                uValue >>= 7;
+            }
+
+            FastWrite(buffer, (byte)uValue);
+        }
+    }
+
+    public static partial class BufferWriterExtensions
+    {
+        /// <summary>
+        /// Reads a JSON string from the network buffer and converts it to an object.<br/>
+        /// By default, Newtonsoft.Json is used for deserialization.
+        /// </summary>
+        public static T FromJson<T>(
+            this NetworkBuffer buffer,
+            JsonSerializerSettings settings = null
+        )
+        {
+            string json = ReadString(buffer);
+            return JsonConvert.DeserializeObject<T>(json, settings);
+        }
+
+        /// <summary>
+        /// Reads binary data from the network buffer and converts it to an object.<br/>
+        /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for deserialization.
+        /// </summary>
+        public static T FromBinary<T>(
+            this NetworkBuffer buffer,
+            MemoryPackSerializerOptions settings = null
+        )
+        {
+            int dataSize = Read7BitEncodedInt(buffer);
+            Span<byte> data = buffer.Internal_GetSpan(dataSize);
+            buffer.Advance(dataSize);
+            return MemoryPackSerializer.Deserialize<T>(data, settings);
+        }
+
+        /// <summary>
+        /// Reads a string from the network buffer.<br/>
+        /// </summary>
+        public static string FastReadString(this NetworkBuffer buffer, Encoding encoding = null)
+        {
+            encoding ??= DefaultEncoding;
+            int byteCount = Read7BitEncodedInt(buffer);
+            Span<byte> data = buffer.Internal_GetSpan(byteCount);
+            buffer.Advance(byteCount);
+            return encoding.GetString(data);
+        }
+
+        /// <summary>
+        /// Reads a string from the network buffer.<br/>
+        /// Syntactic sugar for <see cref="FastReadString(NetworkBuffer, Encoding)"/>
+        /// </summary>
+        public static string ReadString(this NetworkBuffer buffer, Encoding encoding = null)
+        {
+            return FastReadString(buffer, encoding);
+        }
+
+        /// <summary>
+        /// Reads a primitive array from the network buffer, allocating a new array each time.
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the array (must be unmanaged).</typeparam>
+        /// <param name="buffer">The network buffer to read from.</param>
+        /// <returns>A new array containing the read data.</returns>
+        public static unsafe T[] ReadArray<T>(this NetworkBuffer buffer)
+            where T : unmanaged
+        {
+            int size_t = Read7BitEncodedInt(buffer);
+            ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
+            buffer.Advance(size_t);
+
+            // Allocate a new array.
+            int elementCount = size_t / Unsafe.SizeOf<T>();
+            T[] array = new T[elementCount];
+
+            // Fastest way to cast a byte[] to a T[].
+            ReadOnlySpan<T> arraySpan = MemoryMarshal.Cast<byte, T>(data);
+            arraySpan.CopyTo(array);
+            return array;
+        }
+
+        /// <summary>
+        /// Reads a primitive array from the network buffer without allocating a new array(ArrayPool).
+        /// </summary>
+        /// <typeparam name="T">The type of elements in the array (must be unmanaged).</typeparam>
+        /// <param name="buffer">The network buffer to read from.</param>
+        /// <param name="array">The array to store the read data. It must be preallocated with the correct size.</param>
+        /// <returns>The size of the array.</returns>
+        public static unsafe int FastReadArray<T>(this NetworkBuffer buffer, T[] array)
+            where T : unmanaged
+        {
+            int size_t = Read7BitEncodedInt(buffer);
+            ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
+            buffer.Advance(size_t);
+
+            // Fastest way to cast a byte[] to a T[].
+            ReadOnlySpan<T> arraySpan = MemoryMarshal.Cast<byte, T>(data);
+            arraySpan.CopyTo(array);
+            return size_t;
+        }
+
+        /// <summary>
+        /// Reads a primitive value from the network buffer.
+        /// </summary>
+        public static T FastRead<T>(this NetworkBuffer buffer)
+            where T : unmanaged
+        {
+            int size_t = Unsafe.SizeOf<T>();
+            ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
+            buffer.Advance(size_t);
+            return MemoryMarshal.Read<T>(data);
+        }
+
+        /// <summary>
+        /// Reads a primitive value from the network buffer.
+        /// Syntactic sugar for <see cref="FastRead{T}(NetworkBuffer)"/>
+        /// </summary>
+        public static T Read<T>(this NetworkBuffer buffer)
+            where T : unmanaged
+        {
+            return FastRead<T>(buffer);
+        }
+
+        /// <summary>
+        /// Reads a 32-bit signed integer in a compressed format(7-bit encoded) from the network buffer.
+        /// </summary>
+        /// <returns>The 32-bit signed integer read from the stream.</returns>
+        public static int Read7BitEncodedInt(this NetworkBuffer buffer)
+        {
+            // Unlike writing, we can't delegate to the 64-bit read on
+            // 64-bit platforms. The reason for this is that we want to
+            // stop consuming bytes if we encounter an integer overflow.
+
+            uint result = 0;
+            byte byteReadJustNow;
+
+            // Read the integer 7 bits at a time. The high bit
+            // of the byte when on means to continue reading more bytes.
+            //
+            // There are two failure cases: we've read more than 5 bytes,
+            // or the fifth byte is about to cause integer overflow.
+            // This means that we can read the first 4 bytes without
+            // worrying about integer overflow.
+
+            const int MaxBytesWithoutOverflow = 4;
+            for (int shift = 0; shift < MaxBytesWithoutOverflow * 7; shift += 7)
+            {
+                // ReadByte handles end of stream cases for us.
+                byteReadJustNow = FastRead<byte>(buffer);
+                result |= (byteReadJustNow & 0x7Fu) << shift;
+
+                if (byteReadJustNow <= 0x7Fu)
+                {
+                    return (int)result; // early exit
+                }
+            }
+
+            // Read the 5th byte. Since we already read 28 bits,
+            // the value of this byte must fit within 4 bits (32 - 28),
+            // and it must not have the high bit set.
+
+            byteReadJustNow = FastRead<byte>(buffer);
+            if (byteReadJustNow > 0b_1111u)
+            {
+                throw new FormatException("SR.Format_Bad7BitInt");
+            }
+
+            result |= (uint)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
+            return (int)result;
+        }
+
+        /// <summary>
+        /// Reads a 64-bit signed integer in a compressed format(7-bit encoded) from the network buffer.
+        /// </summary>
+        /// <returns>The 64-bit signed integer read from the stream.</returns>
+        public static long Read7BitEncodedInt64(this NetworkBuffer buffer)
+        {
+            ulong result = 0;
+            byte byteReadJustNow;
+
+            // Read the integer 7 bits at a time. The high bit
+            // of the byte when on means to continue reading more bytes.
+            //
+            // There are two failure cases: we've read more than 10 bytes,
+            // or the tenth byte is about to cause integer overflow.
+            // This means that we can read the first 9 bytes without
+            // worrying about integer overflow.
+
+            const int MaxBytesWithoutOverflow = 9;
+            for (int shift = 0; shift < MaxBytesWithoutOverflow * 7; shift += 7)
+            {
+                // ReadByte handles end of stream cases for us.
+                byteReadJustNow = FastRead<byte>(buffer);
+                result |= (byteReadJustNow & 0x7Ful) << shift;
+
+                if (byteReadJustNow <= 0x7Fu)
+                {
+                    return (long)result; // early exit
+                }
+            }
+
+            // Read the 10th byte. Since we already read 63 bits,
+            // the value of this byte must fit within 1 bit (64 - 63),
+            // and it must not have the high bit set.
+
+            byteReadJustNow = FastRead<byte>(buffer);
+            if (byteReadJustNow > 0b_1u)
+            {
+                throw new FormatException("SR.Format_Bad7BitInt");
+            }
+
+            result |= (ulong)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
+            return (long)result;
+        }
+    }
+}
