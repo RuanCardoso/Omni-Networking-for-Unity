@@ -300,6 +300,11 @@ namespace Omni.Core
                             Manager
                         );
 
+#if OMNI_RELEASE
+                        Manager.m_AutoStartServer = true;
+                        Manager.m_AutoStartClient = true;
+#endif
+
                         if (Manager.m_AutoStartServer)
                         {
                             StartServer(Manager.m_ServerListenPort);
