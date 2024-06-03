@@ -1,111 +1,9 @@
 using System;
 using System.Collections.Generic;
-using MemoryPack;
-using Newtonsoft.Json;
-using Omni.Shared;
-using Omni.Shared.Collections;
+using System.Linq;
 
 namespace Omni.Core.Modules.Matchmaking
 {
-    [JsonObject(MemberSerialization.OptIn)]
-    [MemoryPackable]
-    public partial class NetworkGroup
-    {
-        [MemoryPackIgnore]
-        internal readonly Dictionary<int, NetworkPeer> _peersById = new();
-
-        [MemoryPackIgnore]
-        public int Id { get; }
-
-        [MemoryPackIgnore]
-        public string Name { get; }
-
-        [MemoryPackIgnore]
-        public int PeerCount => _peersById.Count;
-
-        [MemoryPackIgnore]
-        public ObservableDictionary<string, object> Data { get; } = new();
-
-        [MemoryPackIgnore, JsonProperty("Data")]
-        public ObservableDictionary<string, object> SerializedData { get; } = new();
-
-        [MemoryPackIgnore]
-        public bool DestroyWhenEmpty { get; set; } = true;
-
-        [MemoryPackIgnore]
-        public bool AllowAcrossGroupMessage { get; set; } = true;
-
-        [MemoryPackIgnore]
-        public int Depth { get; }
-
-        [MemoryPackIgnore]
-        private readonly bool __namebuilder__;
-
-        [MemoryPackConstructor]
-        internal NetworkGroup() { }
-
-        public NetworkGroup(string groupName)
-        {
-            Name = groupName;
-            Depth = groupName.Split(':').Length;
-            __namebuilder__ = true;
-        }
-
-        internal NetworkGroup(int groupId, string groupName)
-        {
-            Id = groupId;
-            Name = groupName;
-            Depth = groupName.Split(':').Length;
-        }
-
-        public Dictionary<int, NetworkPeer> GetPeers()
-        {
-            if (__namebuilder__)
-            {
-                throw new Exception("Cannot get peers from name builder.");
-            }
-
-            return _peersById;
-        }
-
-        public NetworkPeer GetPeerById(int peerId)
-        {
-            if (__namebuilder__)
-            {
-                throw new Exception("Cannot get peer from name builder.");
-            }
-
-            if (_peersById.TryGetValue(peerId, out var peer))
-            {
-                return peer;
-            }
-
-            NetworkLogger.__Log__(
-                $"Group: Peer with ID {peerId}:{Id} not found.",
-                NetworkLogger.LogType.Error
-            );
-
-            return null;
-        }
-
-        public NetworkGroup AddSubGroup(string name)
-        {
-            if (!__namebuilder__)
-            {
-                return NetworkManager.Matchmaking.Server.AddGroup($"{Name}:{name}");
-            }
-            else
-            {
-                return new NetworkGroup($"{Name}:{name}");
-            }
-        }
-
-        public override string ToString()
-        {
-            return NetworkManager.ToJson(this);
-        }
-    }
-
     public class NetworkMatchmaking
     {
         public MatchClient Client { get; private set; }
@@ -156,6 +54,18 @@ namespace Omni.Core.Modules.Matchmaking
                 remove => NetworkManager.OnPlayerLeftGroup -= value;
             }
 
+            public event Action<NetworkPeer, string> OnPlayerFailedJoinGroup
+            {
+                add => NetworkManager.OnPlayerFailedJoinGroup += value;
+                remove => NetworkManager.OnPlayerFailedJoinGroup -= value;
+            }
+
+            public event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup
+            {
+                add => NetworkManager.OnPlayerFailedLeaveGroup += value;
+                remove => NetworkManager.OnPlayerFailedLeaveGroup -= value;
+            }
+
             public Dictionary<int, NetworkGroup> Groups => NetworkManager.Server.GetGroups();
 
             public NetworkGroup AddGroup(string groupName)
@@ -181,6 +91,11 @@ namespace Omni.Core.Modules.Matchmaking
             )
             {
                 NetworkManager.Server.LeaveGroup(group.Name, reason, peer);
+            }
+
+            public NetworkGroup[] GetGroups(int depth)
+            {
+                return Groups.Values.Where(x => x.Depth == depth).ToArray();
             }
 
             public NetworkGroup GetGroup(string groupName)

@@ -46,7 +46,10 @@ namespace Omni.Core
                 );
             }
 
-            T0_action[methodId]?.Invoke();
+            if (T0_action.TryGetValue(methodId, out var action))
+            {
+                action?.Invoke();
+            }
         }
 
         internal void Invoke(int methodId, T1 arg1)
@@ -58,7 +61,10 @@ namespace Omni.Core
                 );
             }
 
-            T1_action[methodId]?.Invoke(arg1);
+            if (T1_action.TryGetValue(methodId, out var action))
+            {
+                action?.Invoke(arg1);
+            }
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2)
@@ -70,7 +76,10 @@ namespace Omni.Core
                 );
             }
 
-            T1_T2_action[methodId]?.Invoke(arg1, arg2);
+            if (T1_T2_action.TryGetValue(methodId, out var action))
+            {
+                action?.Invoke(arg1, arg2);
+            }
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3)
@@ -82,7 +91,10 @@ namespace Omni.Core
                 );
             }
 
-            T1_T2_T3_action[methodId]?.Invoke(arg1, arg2, arg3);
+            if (T1_T2_T3_action.TryGetValue(methodId, out var action))
+            {
+                action?.Invoke(arg1, arg2, arg3);
+            }
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
@@ -94,7 +106,10 @@ namespace Omni.Core
                 );
             }
 
-            T1_T2_T3_T4_action[methodId]?.Invoke(arg1, arg2, arg3, arg4);
+            if (T1_T2_T3_T4_action.TryGetValue(methodId, out var action))
+            {
+                action?.Invoke(arg1, arg2, arg3, arg4);
+            }
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
@@ -106,7 +121,10 @@ namespace Omni.Core
                 );
             }
 
-            T1_T2_T3_T4_T5_action[methodId]?.Invoke(arg1, arg2, arg3, arg4, arg5);
+            if (T1_T2_T3_T4_T5_action.TryGetValue(methodId, out var action))
+            {
+                action?.Invoke(arg1, arg2, arg3, arg4, arg5);
+            }
         }
 
         internal void FindEvents<T>(object target)
@@ -372,7 +390,8 @@ namespace Omni.Core
                 );
 
                 NetworkLogger.__Log__(
-                    $"Error: Failed to create delegate for method with event attribute. {ex.Message} -> Id: {attr.Id} | expected arguments: {expectedArguments}",
+                    $"Delegate Creation Error: Failed to create delegate for method '{func.Name}' with event attribute ID '{attr.Id}'. "
+                        + $"Exception: {ex.Message}. Expected arguments: [{expectedArguments}].",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -380,7 +399,8 @@ namespace Omni.Core
             void ThrowDuplicatedEventId(T attr)
             {
                 NetworkLogger.__Log__(
-                    $"Error: Duplicated event ID '{attr.Id}'. Ensure unique IDs for each method with the event attribute.",
+                    $"Configuration Error: Duplicated event ID '{attr.Id}'. "
+                        + $"Ensure that each method with the event attribute has a unique ID.",
                     NetworkLogger.LogType.Error
                 );
             }

@@ -1,3 +1,4 @@
+using System;
 using Omni.Core.Attributes;
 using UnityEngine;
 
@@ -45,6 +46,20 @@ namespace Omni.Core
         {
             get { return m_IsLocalPlayer; }
             internal set { m_IsLocalPlayer = value; }
+        }
+
+        public NetworkBuffer DestroyOnServer()
+        {
+            if (IsServer)
+            {
+                NetworkBuffer message = NetworkManager.Pool.Rent();
+                message.DestroyOnServer(this);
+                return message;
+            }
+            else
+            {
+                throw new Exception("Cannot destroy on client. Coming soon.");
+            }
         }
     }
 }

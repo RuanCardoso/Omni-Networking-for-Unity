@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Matchmaking;
@@ -18,6 +19,8 @@ namespace Omni.Core
             DeliveryMode deliveryMode,
             bool isServer,
             int groupId,
+            int cacheId,
+            CacheMode cacheMode,
             byte seqChannel
         )
         {
@@ -28,41 +31,57 @@ namespace Omni.Core
             }
             else
             {
-                if (peerId > 0)
+                NetworkPeer targetPeer = Server.GetPeerById(peerId);
+                if (targetPeer != null)
                 {
-                    NetworkPeer peer = Server.GetPeerById(peerId);
-                    if (peer != null)
-                    {
-                        IPEndPoint fromPeer = peer.EndPoint;
-                        SendToClient(
-                            msgId,
-                            buffer,
-                            fromPeer,
-                            target,
-                            deliveryMode,
-                            groupId,
-                            seqChannel
-                        );
-                    }
-                }
-                else
-                {
-                    throw new Exception("Server-Send: Invalid peer id! Must be greater than 0.");
+                    SendToClient(
+                        msgId,
+                        buffer,
+                        targetPeer.EndPoint,
+                        target,
+                        deliveryMode,
+                        groupId,
+                        cacheId,
+                        cacheMode,
+                        seqChannel
+                    );
                 }
             }
         }
 
         public static class Client
         {
-            // int: identifier(identity id)
-            internal static Dictionary<int, INetworkMessage> EventBehaviours { get; } = new();
-            internal static Dictionary<(int, byte), INetworkMessage> PeerEventBehaviours { get; } =
+            internal static Dictionary<int, NetworkIdentity> Identities { get; } = new();
+            internal static Dictionary<int, INetworkMessage> GlobalEventBehaviours { get; } = new(); // int: identifier(identity id)
+            internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
                 new();
 
             public static event Action<byte, NetworkBuffer, int> OnMessage
             {
                 add => OnClientCustomMessage += value;
                 remove => OnClientCustomMessage -= value;
+            }
+
+            public static Dictionary<int, NetworkIdentity> GetIdentities()
+            {
+                return Identities;
+            }
+
+            public static NetworkIdentity GetIdentity(int identityId)
+            {
+                if (Identities.TryGetValue(identityId, out NetworkIdentity identity))
+                {
+                    return identity;
+                }
+                else
+                {
+                    NetworkLogger.__Log__(
+                        $"Get Error: Identity with ID {identityId} not found.",
+                        NetworkLogger.LogType.Error
+                    );
+
+                    return null;
+                }
             }
 
             public static void SendMessage(
@@ -79,6 +98,8 @@ namespace Omni.Core
                     deliveryMode,
                     false,
                     0,
+                    0,
+                    CacheMode.None,
                     sequenceChannel
                 );
 
@@ -102,7 +123,7 @@ namespace Omni.Core
                 message.FastWrite(identityId);
                 message.FastWrite(msgId);
                 message.Write(buffer.WrittenSpan);
-                SendMessage(MessageType.Invoke, message, deliveryMode, sequenceChannel);
+                SendMessage(MessageType.GlobalInvoke, message, deliveryMode, sequenceChannel);
             }
 
             public static void Invoke(
@@ -120,7 +141,7 @@ namespace Omni.Core
                 message.FastWrite(instanceId);
                 message.FastWrite(msgId);
                 message.Write(buffer.WrittenSpan);
-                SendMessage(MessageType.InvokeByPeer, message, deliveryMode, sequenceChannel);
+                SendMessage(MessageType.LocalInvoke, message, deliveryMode, sequenceChannel);
             }
 
             internal static void JoinGroup(string groupName, NetworkBuffer buffer)
@@ -131,9 +152,9 @@ namespace Omni.Core
                     throw new Exception("Group name cannot be null or empty.");
                 }
 
-                if (groupName.Length > 100)
+                if (groupName.Length > 256)
                 {
-                    throw new Exception("Group name cannot be longer than 100 characters.");
+                    throw new Exception("Group name cannot be longer than 256 characters.");
                 }
 
                 using NetworkBuffer message = Pool.Rent();
@@ -152,9 +173,9 @@ namespace Omni.Core
                     throw new Exception("Group name cannot be null or empty.");
                 }
 
-                if (groupName.Length > 100)
+                if (groupName.Length > 256)
                 {
-                    throw new Exception("Group name cannot be longer than 100 characters.");
+                    throw new Exception("Group name cannot be longer than 256 characters.");
                 }
 
                 using NetworkBuffer message = Pool.Rent();
@@ -165,32 +186,32 @@ namespace Omni.Core
 
             internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
             {
-                // Generate a unique identityId for the INetworkMessage behaviour
-                // and add it to the EventBehaviours dictionary.
-                // If the identityId already exists in the dictionary, generate a new one
-                // and repeat the process until a unique identityId is found.
-
-                while (EventBehaviours.ContainsKey(identityId))
-                {
-                    // Generate a new identityId
-                    identityId = NetworkHelper.GenerateUniqueId();
-                }
-
-                // Add the behaviour to the EventBehaviours dictionary with the generated identityId
-                EventBehaviours.Add(identityId, behaviour);
+                GlobalEventBehaviours.Add(identityId, behaviour);
             }
         }
 
         public static class Server
         {
-            internal static Dictionary<int, INetworkMessage> EventBehaviours { get; } = new();
-            internal static Dictionary<(int, byte), INetworkMessage> PeerEventBehaviours { get; } =
+            public static NetworkPeer ServerPeer { get; } =
+                new(new IPEndPoint(IPAddress.None, 0), 0);
+
+            internal static List<NetworkCache> CACHES_APPEND_GLOBAL { get; } = new();
+            internal static Dictionary<int, NetworkCache> CACHES_OVERWRITE_GLOBAL { get; } = new();
+
+            internal static Dictionary<int, NetworkIdentity> Identities { get; } = new();
+            internal static Dictionary<int, INetworkMessage> GlobalEventBehaviours { get; } = new();
+            internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
                 new();
 
             public static event Action<byte, NetworkBuffer, NetworkPeer, int> OnMessage
             {
                 add => OnServerCustomMessage += value;
                 remove => OnServerCustomMessage -= value;
+            }
+
+            public static Dictionary<int, NetworkIdentity> GetIdentities()
+            {
+                return Identities;
             }
 
             internal static Dictionary<int, NetworkGroup> GetGroups()
@@ -203,6 +224,23 @@ namespace Omni.Core
                 return PeersById;
             }
 
+            public static NetworkIdentity GetIdentity(int identityId)
+            {
+                if (Identities.TryGetValue(identityId, out NetworkIdentity identity))
+                {
+                    return identity;
+                }
+                else
+                {
+                    NetworkLogger.__Log__(
+                        $"Get Error: Identity with ID {identityId} not found.",
+                        NetworkLogger.LogType.Error
+                    );
+
+                    return null;
+                }
+            }
+
             public static NetworkPeer GetPeerById(int peerId, int groupId = 0)
             {
                 if (groupId == 0)
@@ -210,6 +248,15 @@ namespace Omni.Core
                     if (PeersById.TryGetValue(peerId, out var peer))
                     {
                         return peer;
+                    }
+                    else
+                    {
+                        NetworkLogger.__Log__(
+                            $"Peer Retrieval Error: Peer with ID '{peerId}' not found. Please verify the peer ID and ensure the peer is properly registered(connected!).",
+                            NetworkLogger.LogType.Error
+                        );
+
+                        return null;
                     }
                 }
                 else
@@ -224,7 +271,7 @@ namespace Omni.Core
                     else
                     {
                         NetworkLogger.__Log__(
-                            $"Get: Group with ID {groupId} not found.",
+                            $"Get Error: Group with ID {groupId} not found. ensure that the group exists and that the provided groupId is correct.",
                             NetworkLogger.LogType.Error
                         );
 
@@ -233,7 +280,7 @@ namespace Omni.Core
                 }
 
                 NetworkLogger.__Log__(
-                    $"Get: Peer with ID {peerId}:{groupId} not found.",
+                    $"Peer Retrieval Error: Peer with ID '{peerId}' not found. Please verify the peer ID and ensure the peer is properly registered(connected!).",
                     NetworkLogger.LogType.Error
                 );
 
@@ -247,6 +294,8 @@ namespace Omni.Core
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
+                int cacheId = 0,
+                CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0
             ) =>
                 Internal_SendMessage(
@@ -257,6 +306,8 @@ namespace Omni.Core
                     deliveryMode,
                     true,
                     groupId,
+                    cacheId,
+                    cacheMode,
                     sequenceChannel
                 );
 
@@ -267,8 +318,21 @@ namespace Omni.Core
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
+                int cacheId = 0,
+                CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0
-            ) => SendMessage(msgId, peerId, buffer, target, deliveryMode, groupId, sequenceChannel);
+            ) =>
+                SendMessage(
+                    msgId,
+                    peerId,
+                    buffer,
+                    target,
+                    deliveryMode,
+                    groupId,
+                    cacheId,
+                    cacheMode,
+                    sequenceChannel
+                );
 
             public static void Invoke(
                 byte msgId,
@@ -278,6 +342,8 @@ namespace Omni.Core
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
+                int cacheId = 0,
+                CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0
             )
             {
@@ -287,12 +353,14 @@ namespace Omni.Core
                 message.FastWrite(msgId);
                 message.Write(buffer.WrittenSpan);
                 SendMessage(
-                    MessageType.Invoke,
+                    MessageType.GlobalInvoke,
                     peerId,
                     message,
                     target,
                     deliveryMode,
                     groupId,
+                    cacheId,
+                    cacheMode,
                     sequenceChannel
                 );
 
@@ -309,6 +377,8 @@ namespace Omni.Core
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
+                int cacheId = 0,
+                CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0
             )
             {
@@ -319,12 +389,14 @@ namespace Omni.Core
                 message.FastWrite(msgId);
                 message.Write(buffer.WrittenSpan);
                 SendMessage(
-                    MessageType.InvokeByPeer,
+                    MessageType.LocalInvoke,
                     peerId,
                     message,
                     target,
                     deliveryMode,
                     groupId,
+                    cacheId,
+                    cacheMode,
                     sequenceChannel
                 );
 
@@ -345,7 +417,7 @@ namespace Omni.Core
                 }
 
                 NetworkLogger.__Log__(
-                    $"Get: Group with ID {groupId} not found.",
+                    $"Get Error: Group with ID {groupId} not found.",
                     NetworkLogger.LogType.Error
                 );
 
@@ -390,6 +462,11 @@ namespace Omni.Core
                             NetworkLogger.LogType.Error
                         );
 
+                        OnPlayerFailedJoinGroup?.Invoke(
+                            peer,
+                            $"JoinGroup: Failed to add peer: {peer.Id} to group: {groupName} because it already exists."
+                        );
+
                         return;
                     }
 
@@ -406,6 +483,11 @@ namespace Omni.Core
                             NetworkLogger.LogType.Error
                         );
 
+                        OnPlayerFailedJoinGroup?.Invoke(
+                            peer,
+                            $"JoinGroup: Failed to add group: {groupName} because it already exists."
+                        );
+
                         return;
                     }
 
@@ -416,6 +498,11 @@ namespace Omni.Core
                 {
                     if (!peer.Groups.TryAdd(group.Id, group))
                     {
+                        OnPlayerFailedJoinGroup?.Invoke(
+                            peer,
+                            "JoinGroup: Failed to add group to peer!!!"
+                        );
+
                         NetworkLogger.__Log__("JoinGroup: Failed to add group to peer!!!");
                         return;
                     }
@@ -468,6 +555,11 @@ namespace Omni.Core
                                 "LeaveGroup: Failed to remove group from peer!!!"
                             );
 
+                            OnPlayerFailedLeaveGroup?.Invoke(
+                                peer,
+                                "LeaveGroup: Failed to remove group from peer!!!"
+                            );
+
                             return;
                         }
 
@@ -483,7 +575,19 @@ namespace Omni.Core
                                     $"LeaveGroup: Destroy was called on group: {groupName} but it does not exist.",
                                     NetworkLogger.LogType.Error
                                 );
+
+                                OnPlayerFailedLeaveGroup?.Invoke(
+                                    peer,
+                                    $"LeaveGroup: Destroy was called on group: {groupName} but it does not exist."
+                                );
+
+                                return;
                             }
+
+                            // Dereferencing to allow for GC(Garbage Collector).
+                            group.ClearPeers();
+                            group.ClearData();
+                            group.ClearCaches();
                         }
                     }
                     else
@@ -497,31 +601,445 @@ namespace Omni.Core
                 else
                 {
                     NetworkLogger.__Log__(
-                        $"LeaveGroup: {groupName} not found.",
+                        $"LeaveGroup: {groupName} not found. Please verify the group name and ensure the group is properly registered.",
                         NetworkLogger.LogType.Error
                     );
                 }
             }
 
-            internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
+            /// <summary>
+            /// Sends cached data to a specified network peer based on the provided cache mode and cache ID.
+            /// </summary>
+            /// <param name="peer">The network peer to whom the cache data will be sent.</param>
+            /// <param name="cacheId">The identifier of the cache to be sent.</param>
+            /// <param name="cacheMode">The mode of the cache, indicating whether it is global, group, new, or overwrite.</param>
+            /// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
+            /// <param name="sendMyOwnCacheToMe">A flag indicating whether to send the cache data to the originating peer (optional, default is false).</param>
+            /// <exception cref="Exception">Thrown when required cacheId and cacheMode are not set together or an unsupported cache mode is set.</exception>
+            public static void SendCache(
+                NetworkPeer peer,
+                int cacheId,
+                CacheMode cacheMode,
+                int groupId = 0,
+                bool sendMyOwnCacheToMe = false
+            )
             {
-                // Generate a unique identityId for the INetworkMessage behaviour
-                // and add it to the EventBehaviours dictionary.
-                // If the identityId already exists in the dictionary, generate a new one
-                // and repeat the process until a unique identityId is found.
-
-                while (EventBehaviours.ContainsKey(identityId))
+                if (cacheMode != CacheMode.None || cacheId != 0)
                 {
-                    // Generate a new identityId
-                    identityId = NetworkHelper.GenerateUniqueId();
-                    NetworkLogger.__Log__(
-                        $"AddEventBehaviour: Generating new unique identityId: {identityId}.",
-                        NetworkLogger.LogType.Warning
+                    if (
+                        (cacheId != 0 && cacheMode == CacheMode.None)
+                        || (cacheMode != CacheMode.None && cacheId == 0)
+                    )
+                    {
+                        throw new Exception(
+                            "Cache: Required cacheId and cacheMode must be set together."
+                        );
+                    }
+                    else
+                    {
+                        if (
+                            cacheMode == (CacheMode.Global | CacheMode.New)
+                            || cacheMode
+                                == (
+                                    CacheMode.Global | CacheMode.New | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            List<NetworkCache> caches = CACHES_APPEND_GLOBAL
+                                .Where(x => x.Mode == cacheMode && x.Id == cacheId)
+                                .ToList();
+
+                            foreach (NetworkCache cache in caches)
+                            {
+                                if (!sendMyOwnCacheToMe)
+                                {
+                                    if (cache.Peer.Id == peer.Id)
+                                    {
+                                        continue;
+                                    }
+                                }
+
+                                Connection.Server.Send(
+                                    cache.Data,
+                                    peer.EndPoint,
+                                    cache.DeliveryMode,
+                                    cache.SequenceChannel
+                                );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.New)
+                            || cacheMode
+                                == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                        )
+                        {
+                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            {
+                                List<NetworkCache> caches = group
+                                    .CACHES_APPEND.Where(x =>
+                                        x.Mode == cacheMode && x.Id == cacheId
+                                    )
+                                    .ToList();
+
+                                foreach (NetworkCache cache in caches)
+                                {
+                                    if (!sendMyOwnCacheToMe)
+                                    {
+                                        if (cache.Peer.Id == peer.Id)
+                                        {
+                                            continue;
+                                        }
+                                    }
+
+                                    Connection.Server.Send(
+                                        cache.Data,
+                                        peer.EndPoint,
+                                        cache.DeliveryMode,
+                                        cache.SequenceChannel
+                                    );
+                                }
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"Send Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Global | CacheMode.Overwrite)
+                            || cacheMode
+                                == (
+                                    CacheMode.Global
+                                    | CacheMode.Overwrite
+                                    | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            if (
+                                CACHES_OVERWRITE_GLOBAL.TryGetValue(cacheId, out NetworkCache cache)
+                            )
+                            {
+                                if (!sendMyOwnCacheToMe)
+                                {
+                                    if (cache.Peer.Id == peer.Id)
+                                    {
+                                        return;
+                                    }
+                                }
+
+                                Connection.Server.Send(
+                                    cache.Data,
+                                    peer.EndPoint,
+                                    cache.DeliveryMode,
+                                    cache.SequenceChannel
+                                );
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"Cache Error: Cache with Id: {cacheId} and search mode: [{cacheMode}] not found.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.Overwrite)
+                            || cacheMode
+                                == (
+                                    CacheMode.Group
+                                    | CacheMode.Overwrite
+                                    | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            {
+                                if (
+                                    group.CACHES_OVERWRITE.TryGetValue(
+                                        cacheId,
+                                        out NetworkCache cache
+                                    )
+                                )
+                                {
+                                    if (!sendMyOwnCacheToMe)
+                                    {
+                                        if (cache.Peer.Id == peer.Id)
+                                        {
+                                            return;
+                                        }
+                                    }
+
+                                    Connection.Server.Send(
+                                        cache.Data,
+                                        peer.EndPoint,
+                                        cache.DeliveryMode,
+                                        cache.SequenceChannel
+                                    );
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Cache Error: Cache with Id: {cacheId} and search mode: [{cacheMode}] not found.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else
+                        {
+                            NetworkLogger.__Log__(
+                                "Cache Error: Unsupported cache mode set.",
+                                NetworkLogger.LogType.Error
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    throw new Exception(
+                        "Cache: Required cacheId and cacheMode must be set together."
                     );
                 }
+            }
 
-                // Add the behaviour to the EventBehaviours dictionary with the generated identityId
-                EventBehaviours.Add(identityId, behaviour);
+            public static void DeleteCache(CacheMode cacheMode, int cacheId, int groupId = 0)
+            {
+                if (cacheMode != CacheMode.None || cacheId != 0)
+                {
+                    if (
+                        (cacheId != 0 && cacheMode == CacheMode.None)
+                        || (cacheMode != CacheMode.None && cacheId == 0)
+                    )
+                    {
+                        throw new Exception(
+                            "Delete Cache Error: Required cacheId and cacheMode must be set together."
+                        );
+                    }
+                    else
+                    {
+                        if (
+                            cacheMode == (CacheMode.Global | CacheMode.New)
+                            || cacheMode
+                                == (
+                                    CacheMode.Global | CacheMode.New | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            CACHES_APPEND_GLOBAL.RemoveAll(x =>
+                                x.Mode == cacheMode && x.Id == cacheId
+                            );
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.New)
+                            || cacheMode
+                                == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                        )
+                        {
+                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            {
+                                group.CACHES_APPEND.RemoveAll(x =>
+                                    x.Mode == cacheMode && x.Id == cacheId
+                                );
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Global | CacheMode.Overwrite)
+                            || cacheMode
+                                == (
+                                    CacheMode.Global
+                                    | CacheMode.Overwrite
+                                    | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            CACHES_OVERWRITE_GLOBAL.Remove(cacheId);
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.Overwrite)
+                            || cacheMode
+                                == (
+                                    CacheMode.Group
+                                    | CacheMode.Overwrite
+                                    | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            {
+                                group.CACHES_OVERWRITE.Remove(cacheId);
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else
+                        {
+                            NetworkLogger.__Log__(
+                                "Delete Cache Error: Unsupported cache mode set.",
+                                NetworkLogger.LogType.Error
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    throw new Exception(
+                        "Cache: Required cacheId and cacheMode must be set together."
+                    );
+                }
+            }
+
+            public static void DeleteCache(
+                CacheMode cacheMode,
+                int cacheId,
+                NetworkPeer peer,
+                int groupId = 0
+            )
+            {
+                if (cacheMode != CacheMode.None || cacheId != 0)
+                {
+                    if (
+                        (cacheId != 0 && cacheMode == CacheMode.None)
+                        || (cacheMode != CacheMode.None && cacheId == 0)
+                    )
+                    {
+                        throw new Exception(
+                            "Delete Cache Error: Required cacheId and cacheMode must be set together."
+                        );
+                    }
+                    else
+                    {
+                        if (
+                            cacheMode == (CacheMode.Global | CacheMode.New)
+                            || cacheMode
+                                == (
+                                    CacheMode.Global | CacheMode.New | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            CACHES_APPEND_GLOBAL.RemoveAll(x =>
+                                x.Mode == cacheMode && x.Id == cacheId && x.Peer.Id == peer.Id
+                            );
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.New)
+                            || cacheMode
+                                == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                        )
+                        {
+                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            {
+                                group.CACHES_APPEND.RemoveAll(x =>
+                                    x.Mode == cacheMode && x.Id == cacheId && x.Peer.Id == peer.Id
+                                );
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Global | CacheMode.Overwrite)
+                            || cacheMode
+                                == (
+                                    CacheMode.Global
+                                    | CacheMode.Overwrite
+                                    | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            CACHES_OVERWRITE_GLOBAL.Remove(cacheId);
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.Overwrite)
+                            || cacheMode
+                                == (
+                                    CacheMode.Group
+                                    | CacheMode.Overwrite
+                                    | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            {
+                                group.CACHES_OVERWRITE.Remove(cacheId);
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else
+                        {
+                            NetworkLogger.__Log__(
+                                "Delete Cache Error: Unsupported cache mode set.",
+                                NetworkLogger.LogType.Error
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    throw new Exception(
+                        "Cache: Required cacheId and cacheMode must be set together."
+                    );
+                }
+            }
+
+            public static void DestroyAllCaches(NetworkPeer peer)
+            {
+                CACHES_APPEND_GLOBAL.RemoveAll(x => x.Peer.Id == peer.Id && x.DestroyOnDisconnect);
+                var caches = CACHES_OVERWRITE_GLOBAL
+                    .Values.Where(x => x.Peer.Id == peer.Id && x.DestroyOnDisconnect)
+                    .ToList();
+
+                foreach (var cache in caches)
+                {
+                    if (!CACHES_OVERWRITE_GLOBAL.Remove(cache.Id))
+                    {
+                        NetworkLogger.__Log__(
+                            $"Destroy All Cache Error: Failed to remove cache {cache.Id} from peer {peer.Id}.",
+                            NetworkLogger.LogType.Error
+                        );
+                    }
+                }
+            }
+
+            public static void ClearCaches()
+            {
+                CACHES_APPEND_GLOBAL.Clear();
+                CACHES_OVERWRITE_GLOBAL.Clear();
+            }
+
+            internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
+            {
+                GlobalEventBehaviours.Add(identityId, behaviour);
             }
         }
     }

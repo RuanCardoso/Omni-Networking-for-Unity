@@ -8,6 +8,51 @@ using Newtonsoft.Json;
 
 namespace Omni.Core
 {
+    public static partial class NetworkBufferExtensions
+    {
+        /// <summary>
+        /// Instantiates a network identity on the server for a specific network peer and serializes its data to the network buffer.
+        /// </summary>
+        /// <param name="prefab">The prefab of the network identity to instantiate.</param>
+        /// <param name="peer">The network peer for which the identity is instantiated.</param>
+        /// <param name="buffer">The network buffer to write identity data.</param>
+        /// <returns>The instantiated network identity.</returns>
+        public static NetworkIdentity InstantiateOnServer(
+            this NetworkBuffer buffer,
+            NetworkIdentity prefab,
+            NetworkPeer peer,
+            Action<NetworkIdentity> OnBeforeStart = null
+        )
+        {
+            return prefab.InstantiateOnServer(peer, buffer, OnBeforeStart);
+        }
+
+        /// <summary>
+        /// Instantiates a network identity on the client from serialized data in the network buffer.
+        /// </summary>
+        /// <param name="prefab">The prefab of the network identity to instantiate.</param>
+        /// <param name="buffer">The network buffer containing serialized identity data.</param>
+        /// <returns>The instantiated network identity.</returns>
+        public static NetworkIdentity InstantiateOnClient(
+            this NetworkBuffer buffer,
+            NetworkIdentity prefab,
+            Action<NetworkIdentity> OnBeforeStart = null
+        )
+        {
+            return prefab.InstantiateOnClient(buffer, OnBeforeStart);
+        }
+
+        public static void DestroyOnServer(this NetworkBuffer buffer, NetworkIdentity identity)
+        {
+            identity.DestroyOnServer(buffer);
+        }
+
+        public static void DestroyOnClient(this NetworkBuffer buffer)
+        {
+            buffer.Internal_DestroyOnClient();
+        }
+    }
+
     public static partial class BufferWriterExtensions
     {
         /// <summary>
@@ -130,6 +175,17 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Writes network identity data to the network buffer, most used to instantiate network objects.
+        /// </summary>
+        /// <param name="buffer">The network buffer to write to.</param>
+        /// <param name="identity">The network identity to write.</param>
+        internal static void Write(this NetworkBuffer buffer, NetworkIdentity identity)
+        {
+            FastWrite(buffer, identity.IdentityId);
+            FastWrite(buffer, identity.Owner.Id);
+        }
+
+        /// <summary>
         /// Writes a primitive value to the network buffer.<br/>
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
@@ -207,6 +263,20 @@ namespace Omni.Core
         )
         {
             string json = ReadString(buffer);
+            return JsonConvert.DeserializeObject<T>(json, settings);
+        }
+
+        /// <summary>
+        /// Reads a JSON string from the network buffer and converts it to an object.<br/>
+        /// By default, Newtonsoft.Json is used for deserialization.
+        /// </summary>
+        public static T FromJson<T>(
+            this NetworkBuffer buffer,
+            out string json,
+            JsonSerializerSettings settings = null
+        )
+        {
+            json = ReadString(buffer);
             return JsonConvert.DeserializeObject<T>(json, settings);
         }
 
@@ -309,6 +379,16 @@ namespace Omni.Core
             where T : unmanaged
         {
             return FastRead<T>(buffer);
+        }
+
+        internal static void ReadIdentityData(
+            this NetworkBuffer buffer,
+            out int identityId,
+            out int peerId
+        )
+        {
+            identityId = FastRead<int>(buffer);
+            peerId = FastRead<int>(buffer);
         }
 
         /// <summary>

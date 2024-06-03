@@ -1,5 +1,7 @@
 using UnityEngine;
 
+#pragma warning disable
+
 namespace Omni.Core
 {
     public class NetworkHud : MonoBehaviour
@@ -22,7 +24,7 @@ namespace Omni.Core
             port = NetworkManager.ConnectPort.ToString();
         }
 
-#if OMNI_DEBUG
+#if OMNI_DEBUG || UNITY_EDITOR
         void OnGUI()
         {
             if (NetworkManager.IsLocalClientConnected || NetworkManager.IsServerActive)

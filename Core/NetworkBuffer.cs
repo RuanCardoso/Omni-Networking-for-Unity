@@ -8,6 +8,9 @@ namespace Omni.Core
     // ref: https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Buffers/ArrayBufferWriter.cs
     public class NetworkBuffer : IBufferWriter<byte>, IDisposable
     {
+        internal int _reworkStart;
+        internal int _reworkEnd;
+
         private readonly IObjectPooling<NetworkBuffer> _objectPooling;
         private readonly byte[] _buffer;
         private int _position;
@@ -193,14 +196,27 @@ namespace Omni.Core
             _position = 0;
         }
 
-        public void PrepareForReading()
+        /// <summary>
+        /// Resets the read position to the start of the data, allowing the buffer to be read from the beginning again.
+        /// </summary>
+        public void ResetReadPosition()
         {
             _position = _reworkStart;
         }
 
-        internal int _reworkStart;
-        internal int _reworkEnd;
-
+        /// <summary>
+        /// Creates a new <see cref="NetworkBuffer"/> containing the data from the underlying buffer
+        /// without including the old header. This new <see cref="NetworkBuffer"/> is suitable for re-sending
+        /// as it contains only the relevant data.
+        /// </summary>
+        /// <remarks>
+        /// Ensure that the returned <see cref="NetworkBuffer"/> is used within a <c>using</c> statement
+        /// to properly return it to the pool after use.
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="NetworkBuffer"/> instance that contains the data from the original buffer,
+        /// excluding the old header.
+        /// </returns>
         public NetworkBuffer Rework()
         {
             NetworkBuffer buffer = NetworkManager.Pool.Rent();
@@ -213,7 +229,7 @@ namespace Omni.Core
             if (sizeHint > FreeCapacity)
             {
                 throw new NotSupportedException(
-                    $"The buffer cannot be resized to accommodate the requested size ({sizeHint}) because it would exceed its capacity ({Capacity}).\nResizing the buffer is not supported due to performance considerations. Consider using a bigger initial capacity or a different data structure."
+                    $"Network Buffer: The buffer cannot be resized to accommodate the requested size ({sizeHint}) because it would exceed its capacity ({Capacity}).\nResizing the buffer is not supported due to performance considerations. Consider using a bigger initial capacity or a different data structure."
                 );
             }
         }
@@ -224,13 +240,15 @@ namespace Omni.Core
         {
             if (_disposed == true)
             {
-                throw new Exception("Buffer already disposed. Cannot dispose again.");
+                throw new Exception(
+                    "Network Buffer: Buffer already disposed. Cannot dispose again."
+                );
             }
 
             if (_objectPooling == null)
             {
                 throw new Exception(
-                    "You should not dispose a buffer that was not acquired from the buffer pool."
+                    "Network Buffer: You should not dispose a buffer that was not acquired from the buffer pool."
                 );
             }
 

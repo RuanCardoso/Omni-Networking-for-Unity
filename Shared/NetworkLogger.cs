@@ -16,9 +16,6 @@ using System;
 using System.IO;
 using System.Threading;
 using UnityEngine;
-#if OMNI_SERVER && !UNITY_EDITOR
-using System;
-#endif
 
 namespace Omni.Shared
 {
@@ -97,15 +94,9 @@ namespace Omni.Shared
             Console.WriteLine(new string('-', Console.WindowWidth - 1));
 #else
 #if OMNI_DEBUG
-            UnityEngine.Debug.LogFormat(
-                (UnityEngine.LogType)logType,
-                LogOption.None,
-                null,
-                "{0}",
-                message
-            );
+            Debug.LogFormat((UnityEngine.LogType)logType, LogOption.None, null, "{0}", message);
 #else
-            UnityEngine.Debug.LogFormat(
+            Debug.LogFormat(
                 (UnityEngine.LogType)logType,
                 LogOption.NoStacktrace,
                 null,

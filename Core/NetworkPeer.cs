@@ -28,9 +28,6 @@ namespace Omni.Core
         [MemoryPackIgnore]
         public Dictionary<int, NetworkGroup> Groups { get; } = new();
 
-        // [MemoryPackIgnore]
-        // internal Dictionary<int, INetworkMessage> EventBehaviours { get; } = new();
-
         [MemoryPackIgnore]
         public ObservableDictionary<string, object> Data { get; } = new();
 
@@ -50,6 +47,17 @@ namespace Omni.Core
             // - id: The ID of the peer used in server-side.
             EndPoint = endPoint;
             Id = id;
+        }
+
+        public void ClearGroups()
+        {
+            Groups.Clear();
+        }
+
+        public void ClearData()
+        {
+            Data.Clear();
+            SerializedData.Clear();
         }
 
         public override string ToString()

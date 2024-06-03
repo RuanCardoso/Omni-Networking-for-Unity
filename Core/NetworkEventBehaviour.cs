@@ -1,3 +1,4 @@
+using System;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Matchmaking;
 using Omni.Shared;
@@ -55,9 +56,11 @@ namespace Omni.Core
             byte msgId,
             int peerId,
             NetworkBuffer buffer = null,
-            Target target = Target.All,
+            Target target = Target.Self,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
             byte sequenceChannel = 0
         ) =>
             NetworkManager.Server.GlobalInvoke(
@@ -67,6 +70,8 @@ namespace Omni.Core
                 target,
                 deliveryMode,
                 groupId,
+                cacheId,
+                cacheMode,
                 sequenceChannel
             );
 
@@ -77,6 +82,8 @@ namespace Omni.Core
             Target target = Target.All,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
             byte sequenceChannel = 0
         )
         {
@@ -88,6 +95,8 @@ namespace Omni.Core
                 target,
                 deliveryMode,
                 groupId,
+                cacheId,
+                cacheMode,
                 sequenceChannel
             );
         }
@@ -99,9 +108,41 @@ namespace Omni.Core
         [SerializeField]
         private int m_Id;
 
+        private NbClient local;
+        private NbServer remote;
+
         public int IdentityId => m_Id;
-        public NbClient Local { get; private set; }
-        public NbServer Remote { get; private set; }
+        public NbClient Local
+        {
+            get
+            {
+                if (local == null)
+                {
+                    throw new System.NullReferenceException(
+                        "The event behaviour has not been initialized. Call Awake() first or initialize manually."
+                    );
+                }
+
+                return local;
+            }
+            private set => local = value;
+        }
+
+        public NbServer Remote
+        {
+            get
+            {
+                if (remote == null)
+                {
+                    throw new System.NullReferenceException(
+                        "The event behaviour has not been initialized. Call Awake() first or initialize manually."
+                    );
+                }
+
+                return remote;
+            }
+            private set => remote = value;
+        }
 
         private readonly EventBehaviour<NetworkBuffer, int, Null, Null, Null> clientEventBehaviour =
             new();
@@ -156,6 +197,9 @@ namespace Omni.Core
 
             NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
             NetworkManager.Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
+
+            NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
+            NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
         }
 
         #region Client
@@ -166,7 +210,7 @@ namespace Omni.Core
         protected virtual void OnClientMessage(byte msgId, NetworkBuffer buffer, int seqChannel)
         {
             TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
-            buffer.PrepareForReading();
+            buffer.ResetReadPosition();
         }
 
         private void TryClientLocate(byte msgId, NetworkBuffer buffer, int seqChannel)
@@ -216,6 +260,10 @@ namespace Omni.Core
 
         protected virtual void OnServerPeerDisconnected(NetworkPeer peer) { }
 
+        protected virtual void OnPlayerFailedLeaveGroup(NetworkPeer peer, string reason) { }
+
+        protected virtual void OnPlayerFailedJoinGroup(NetworkPeer peer, string reason) { }
+
         protected virtual void OnServerMessage(
             byte msgId,
             NetworkBuffer buffer,
@@ -224,7 +272,7 @@ namespace Omni.Core
         )
         {
             TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
-            buffer.PrepareForReading();
+            buffer.ResetReadPosition();
         }
 
         private void TryServerLocate(
@@ -302,7 +350,7 @@ namespace Omni.Core
         {
             if (m_Id == 0)
             {
-                m_Id = NetworkHelper.GenerateUniqueId();
+                m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
         }
 
@@ -310,7 +358,7 @@ namespace Omni.Core
         {
             if (m_Id == 0)
             {
-                m_Id = NetworkHelper.GenerateUniqueId();
+                m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
         }
     }
@@ -320,9 +368,24 @@ namespace Omni.Core
     {
         [SerializeField]
         private int m_Id;
+        private NbClient local;
 
         public int IdentityId => m_Id;
-        public NbClient Local { get; private set; }
+        public NbClient Local
+        {
+            get
+            {
+                if (local == null)
+                {
+                    throw new System.NullReferenceException(
+                        "The event behaviour has not been initialized. Call Awake() first or initialize manually."
+                    );
+                }
+
+                return local;
+            }
+            private set => local = value;
+        }
 
         private readonly EventBehaviour<NetworkBuffer, int, Null, Null, Null> eventBehaviour =
             new();
@@ -365,7 +428,7 @@ namespace Omni.Core
         protected virtual void OnMessage(byte msgId, NetworkBuffer buffer, int seqChannel)
         {
             TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
-            buffer.PrepareForReading();
+            buffer.ResetReadPosition();
         }
 
         private void TryClientLocate(byte msgId, NetworkBuffer buffer, int seqChannel)
@@ -415,7 +478,7 @@ namespace Omni.Core
         {
             if (m_Id == 0)
             {
-                m_Id = NetworkHelper.GenerateUniqueId();
+                m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
         }
 
@@ -423,7 +486,7 @@ namespace Omni.Core
         {
             if (m_Id == 0)
             {
-                m_Id = NetworkHelper.GenerateUniqueId();
+                m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
         }
     }
@@ -433,9 +496,24 @@ namespace Omni.Core
     {
         [SerializeField]
         private int m_Id;
+        private NbServer remote;
 
         public int IdentityId => m_Id;
-        public NbServer Remote { get; private set; }
+        public NbServer Remote
+        {
+            get
+            {
+                if (remote == null)
+                {
+                    throw new System.NullReferenceException(
+                        "The event behaviour has not been initialized. Call Awake() first or initialize manually."
+                    );
+                }
+
+                return remote;
+            }
+            private set => remote = value;
+        }
 
         private readonly EventBehaviour<
             NetworkBuffer,
@@ -475,6 +553,9 @@ namespace Omni.Core
         {
             NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
             NetworkManager.Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
+
+            NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
+            NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
         }
 
         protected virtual void OnServerInitialized() { }
@@ -482,6 +563,10 @@ namespace Omni.Core
         protected virtual void OnServerPeerConnected(NetworkPeer peer) { }
 
         protected virtual void OnServerPeerDisconnected(NetworkPeer peer) { }
+
+        protected virtual void OnPlayerFailedLeaveGroup(NetworkPeer peer, string reason) { }
+
+        protected virtual void OnPlayerFailedJoinGroup(NetworkPeer peer, string reason) { }
 
         protected virtual void OnMessage(
             byte msgId,
@@ -491,7 +576,7 @@ namespace Omni.Core
         )
         {
             TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
-            buffer.PrepareForReading();
+            buffer.ResetReadPosition();
         }
 
         private void TryServerLocate(
@@ -554,7 +639,7 @@ namespace Omni.Core
         {
             if (m_Id == 0)
             {
-                m_Id = NetworkHelper.GenerateUniqueId();
+                m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
         }
 
@@ -562,7 +647,7 @@ namespace Omni.Core
         {
             if (m_Id == 0)
             {
-                m_Id = NetworkHelper.GenerateUniqueId();
+                m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
         }
     }

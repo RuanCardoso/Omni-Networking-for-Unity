@@ -1,18 +1,34 @@
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Omni.Core
 {
     internal static class NetworkHelper
     {
+        private static int d_UniqueId = int.MinValue;
+
         // the chances of collision are low, so it's fine to use hashcode.
         // because... do you have billions of network objects in the scene?
         // scene objects are different from dynamic objects(instantiated);
-        internal static int GenerateUniqueId()
+        internal static int GenerateSceneUniqueId()
         {
-            Guid guid = Guid.NewGuid();
-            return guid.GetHashCode();
+            Guid newGuid = Guid.NewGuid();
+            return newGuid.GetHashCode();
+        }
+
+        // Used for dynamic objects (instantiated).
+        // The chances of collision is zero(0) because each ID is unique(incremental).
+        internal static int GenerateDynamicUniqueId()
+        {
+            if (d_UniqueId == 0)
+            {
+                d_UniqueId = 1;
+            }
+
+            return d_UniqueId++;
         }
 
         internal static bool IsPortAvailable(int port, ProtocolType protocolType, bool useIPv6)
@@ -72,6 +88,17 @@ namespace Omni.Core
             }
 
             return port;
+        }
+
+        [Conditional("OMNI_DEBUG")]
+        internal static void EnsureRunningOnMainThread()
+        {
+            if (NetworkManager.MainThreadId != Thread.CurrentThread.ManagedThreadId)
+            {
+                throw new Exception(
+                    "This operation must be performed on the main thread. Omni does not support multithreaded operations. Tip: Dispatch the events to the main thread."
+                );
+            }
         }
     }
 }

@@ -53,13 +53,16 @@ namespace Omni.Core
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
+                int cacheId = 0,
+                CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0
             )
             {
                 if (m_NetworkBehaviour.Identity.Owner == null)
                 {
                     NetworkLogger.__Log__(
-                        "Invoke: This property(Remote) is intended for server-side use only. It appears to be accessed from the client side."
+                        "Invocation Error: The 'Invoke' method is intended for server-side use only. It appears to be accessed from the client side. Please ensure that this method is called from the server.",
+                        NetworkLogger.LogType.Error
                     );
 
                     return;
@@ -74,6 +77,8 @@ namespace Omni.Core
                     target,
                     deliveryMode,
                     groupId,
+                    cacheId,
+                    cacheMode,
                     sequenceChannel
                 );
             }
@@ -107,6 +112,11 @@ namespace Omni.Core
 
         public NetworkIdentity Identity { get; internal set; }
         public int IdentityId => Identity.IdentityId;
+
+        public bool IsLocalPlayer => Identity.IsLocalPlayer;
+        public bool IsMine => IsLocalPlayer;
+        public bool IsServer => Identity.IsServer;
+        public bool IsClient => !IsServer;
 
         private NbClient _local;
 
@@ -166,14 +176,36 @@ namespace Omni.Core
             AddEventBehaviour();
         }
 
-        private void AddEventBehaviour()
+        internal void Unregister()
         {
-            var PeerEventBehaviours = Identity.IsServer
-                ? NetworkManager.Server.PeerEventBehaviours
-                : NetworkManager.Client.PeerEventBehaviours;
+            var eventBehaviours = Identity.IsServer
+                ? NetworkManager.Server.LocalEventBehaviours
+                : NetworkManager.Client.LocalEventBehaviours;
 
             var key = (IdentityId, m_Id);
-            PeerEventBehaviours.Add(key, this);
+            if (!eventBehaviours.Remove(key))
+            {
+                NetworkLogger.__Log__(
+                    $"Unregister Error: EventBehaviour with ID '{m_Id}' and peer ID '{IdentityId}' does not exist. Please ensure the EventBehaviour is registered before attempting to unregister.",
+                    NetworkLogger.LogType.Error
+                );
+            }
+        }
+
+        private void AddEventBehaviour()
+        {
+            var eventBehaviours = Identity.IsServer
+                ? NetworkManager.Server.LocalEventBehaviours
+                : NetworkManager.Client.LocalEventBehaviours;
+
+            var key = (IdentityId, m_Id);
+            if (!eventBehaviours.TryAdd(key, this))
+            {
+                NetworkLogger.__Log__(
+                    $"Failed to add: EventBehaviour with ID {m_Id} and peer ID {IdentityId} already exists.",
+                    NetworkLogger.LogType.Error
+                );
+            }
         }
 
         private void TryClientLocate(byte msgId, NetworkBuffer buffer, int seqChannel)

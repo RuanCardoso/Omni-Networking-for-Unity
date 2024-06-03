@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using MemoryPack;
 using Newtonsoft.Json;
 using Omni.Core.Attributes;
@@ -12,8 +13,21 @@ using Omni.Core.Modules.UConsole;
 using Omni.Shared;
 using UnityEngine;
 
+#pragma warning disable
+
 namespace Omni.Core
 {
+    [Flags]
+    public enum CacheMode
+    {
+        None = 0,
+        New = 1,
+        Overwrite = 2,
+        Global = 4,
+        Group = 8,
+        DestroyOnDisconnect = 16,
+    }
+
     public enum Module
     {
         Console,
@@ -64,8 +78,8 @@ namespace Omni.Core
     {
         internal const byte Handshake = 250;
         internal const byte GenerateUniqueId = 251;
-        internal const byte InvokeByPeer = 252;
-        internal const byte Invoke = 253;
+        internal const byte LocalInvoke = 252;
+        internal const byte GlobalInvoke = 253;
         internal const byte LeaveGroup = 254;
         internal const byte JoinGroup = 255;
     }
@@ -74,6 +88,7 @@ namespace Omni.Core
     [DisallowMultipleComponent]
     public partial class NetworkManager : MonoBehaviour, ITransporterReceive
     {
+        public static int MainThreadId { get; private set; }
         public static IObjectPooling<NetworkBuffer> Pool { get; } = new NetworkBufferPool();
 
         public static event Action OnServerInitialized;
@@ -88,8 +103,10 @@ namespace Omni.Core
 
         internal static event Action<string, NetworkBuffer> OnJoinedGroup; // for client
         internal static event Action<NetworkBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup; // for server
+        internal static event Action<NetworkPeer, string> OnPlayerFailedJoinGroup; // for server
         internal static event Action<string, string> OnLeftGroup; // for client
         internal static event Action<NetworkGroup, NetworkPeer, string> OnPlayerLeftGroup; // for server
+        internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
 
         static NetworkConsole _console;
         public static NetworkConsole Console
@@ -179,6 +196,7 @@ namespace Omni.Core
 
         public virtual void Awake()
         {
+            MainThreadId = Thread.CurrentThread.ManagedThreadId;
             if (_manager != null)
             {
                 gameObject.SetActive(false);
@@ -193,7 +211,10 @@ namespace Omni.Core
                 Application.targetFrameRate = m_MaxFpsOnClient;
             }
 #else
-            NetworkLogger.__Log__($"Server does not support target frame rate.");
+            NetworkLogger.__Log__(
+                $"MaxFpsOnClient is set to {m_MaxFpsOnClient}. This setting is ignored on server build.",
+                NetworkLogger.LogType.Warning
+            );
 #endif
 
             DisableAutoStartIfHasHud();
@@ -215,6 +236,7 @@ namespace Omni.Core
 
         public static void InitializeModule(Module module)
         {
+            NetworkHelper.EnsureRunningOnMainThread();
             switch (module)
             {
                 case Module.Console:
@@ -304,7 +326,17 @@ namespace Omni.Core
 
         public static void StartServer(int port)
         {
+#if OMNI_DEBUG
             Connection.Server.Listen(port);
+#else
+#if UNITY_EDITOR
+            Connection.Server.Listen(port);
+#elif !UNITY_SERVER
+            NetworkLogger.LogToFile("Server is not available in release mode on client build.");
+#else
+            Connection.Server.Listen(port);
+#endif
+#endif
         }
 
         public static void Connect(string address, int port)
@@ -318,7 +350,7 @@ namespace Omni.Core
             Connection.Client.Listen(listenPort);
             Connection.Client.Connect(address, port);
 #elif UNITY_SERVER && !UNITY_EDITOR
-            NetworkLogger.__Log__("Debug: Local client is not available in server build.");
+            NetworkLogger.__Log__("Debug: Local client is not available in a server build.");
 #endif
         }
 
@@ -329,6 +361,8 @@ namespace Omni.Core
             Target target,
             DeliveryMode deliveryMode,
             int groupId,
+            int cacheId,
+            CacheMode cacheMode,
             byte sequenceChannel
         )
         {
@@ -339,6 +373,8 @@ namespace Omni.Core
                 target,
                 deliveryMode,
                 groupId,
+                cacheId,
+                cacheMode,
                 sequenceChannel
             );
         }
@@ -387,12 +423,185 @@ namespace Omni.Core
             Target target,
             DeliveryMode deliveryMode,
             int groupId,
+            int cacheId,
+            CacheMode cacheMode,
             byte sequenceChannel
         )
         {
+            NetworkHelper.EnsureRunningOnMainThread();
             void Send(ReadOnlySpan<byte> message, IPEndPoint peer)
             {
                 Connection.Server.Send(message, peer, deliveryMode, sequenceChannel);
+            }
+
+            void CreateCache(ReadOnlySpan<byte> message, NetworkGroup _group)
+            {
+                if (cacheMode != CacheMode.None || cacheId != 0)
+                {
+                    if (
+                        (cacheId != 0 && cacheMode == CacheMode.None)
+                        || (cacheMode != CacheMode.None && cacheId == 0)
+                    )
+                    {
+                        throw new Exception(
+                            "Cache Error: Both cacheId and cacheMode must be set together."
+                        );
+                    }
+                    else
+                    {
+                        if (PeersByIp.TryGetValue(fromPeer, out NetworkPeer owner))
+                        {
+                            if (
+                                cacheMode == (CacheMode.Global | CacheMode.New)
+                                || cacheMode
+                                    == (
+                                        CacheMode.Global
+                                        | CacheMode.New
+                                        | CacheMode.DestroyOnDisconnect
+                                    )
+                            )
+                            {
+                                Server.CACHES_APPEND_GLOBAL.Add(
+                                    new NetworkCache(
+                                        cacheId,
+                                        cacheMode,
+                                        message.ToArray(),
+                                        owner,
+                                        deliveryMode,
+                                        target,
+                                        sequenceChannel,
+                                        destroyOnDisconnect: cacheMode.HasFlag(
+                                            CacheMode.DestroyOnDisconnect
+                                        )
+                                    )
+                                );
+                            }
+                            else if (
+                                cacheMode == (CacheMode.Group | CacheMode.New)
+                                || cacheMode
+                                    == (
+                                        CacheMode.Group
+                                        | CacheMode.New
+                                        | CacheMode.DestroyOnDisconnect
+                                    )
+                            )
+                            {
+                                if (_group != null)
+                                {
+                                    _group.CACHES_APPEND.Add(
+                                        new NetworkCache(
+                                            cacheId,
+                                            cacheMode,
+                                            message.ToArray(),
+                                            owner,
+                                            deliveryMode,
+                                            target,
+                                            sequenceChannel,
+                                            destroyOnDisconnect: cacheMode.HasFlag(
+                                                CacheMode.DestroyOnDisconnect
+                                            )
+                                        )
+                                    );
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        "Cache Error: The specified group was not found. Please verify the existence of the group and ensure the groupId is correct.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+                            }
+                            else if (
+                                cacheMode == (CacheMode.Global | CacheMode.Overwrite)
+                                || cacheMode
+                                    == (
+                                        CacheMode.Global
+                                        | CacheMode.Overwrite
+                                        | CacheMode.DestroyOnDisconnect
+                                    )
+                            )
+                            {
+                                NetworkCache newCache = new NetworkCache(
+                                    cacheId,
+                                    cacheMode,
+                                    message.ToArray(),
+                                    owner,
+                                    deliveryMode,
+                                    target,
+                                    sequenceChannel,
+                                    destroyOnDisconnect: cacheMode.HasFlag(
+                                        CacheMode.DestroyOnDisconnect
+                                    )
+                                );
+
+                                if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(cacheId))
+                                {
+                                    Server.CACHES_OVERWRITE_GLOBAL[cacheId] = newCache;
+                                }
+                                else
+                                {
+                                    Server.CACHES_OVERWRITE_GLOBAL.Add(cacheId, newCache);
+                                }
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    "Cache Error: Unsupported cache mode set.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.Overwrite)
+                            || cacheMode
+                                == (
+                                    CacheMode.Group
+                                    | CacheMode.Overwrite
+                                    | CacheMode.DestroyOnDisconnect
+                                )
+                        )
+                        {
+                            if (_group != null)
+                            {
+                                NetworkCache newCache = new NetworkCache(
+                                    cacheId,
+                                    cacheMode,
+                                    message.ToArray(),
+                                    owner,
+                                    deliveryMode,
+                                    target,
+                                    sequenceChannel,
+                                    destroyOnDisconnect: cacheMode.HasFlag(
+                                        CacheMode.DestroyOnDisconnect
+                                    )
+                                );
+
+                                if (_group.CACHES_OVERWRITE.ContainsKey(cacheId))
+                                {
+                                    _group.CACHES_OVERWRITE[cacheId] = newCache;
+                                }
+                                else
+                                {
+                                    _group.CACHES_OVERWRITE.Add(cacheId, newCache);
+                                }
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    "Cache Error: The specified group was not found. Please verify the existence of the group and ensure the groupId is correct.",
+                                    NetworkLogger.LogType.Error
+                                );
+                            }
+                        }
+                        else
+                        {
+                            NetworkLogger.__Log__(
+                                "Cache Error: Peer not found. ensure that the peer is connected.",
+                                NetworkLogger.LogType.Error
+                            );
+                        }
+                    }
+                }
             }
 
             ReadOnlySpan<byte> message = PrepareServerMessageForSending(msgType, _data);
@@ -418,16 +627,17 @@ namespace Omni.Core
                 }
 
                 var peersById = PeersById;
+                NetworkGroup _group = null;
 
                 if (groupId != 0)
                 {
-                    if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                    if (Groups.TryGetValue(groupId, out _group))
                     {
-                        if (!m_AcrossGroupMessage || !group.AllowAcrossGroupMessage)
+                        if (!m_AcrossGroupMessage || !_group.AllowAcrossGroupMessage)
                         {
                             if (PeersByIp.TryGetValue(fromPeer, out var peer))
                             {
-                                if (!group._peersById.ContainsKey(peer.Id))
+                                if (!_group._peersById.ContainsKey(peer.Id) && peer.Id != 0)
                                 {
                                     NetworkLogger.__Log__(
                                         "Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
@@ -439,12 +649,12 @@ namespace Omni.Core
                             }
                         }
 
-                        peersById = group._peersById; // filter peers by group.
+                        peersById = _group._peersById; // Filter: peers by group.
                     }
                     else
                     {
                         NetworkLogger.__Log__(
-                            $"Send: Group with id: {groupId} not found.",
+                            $"Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
                             NetworkLogger.LogType.Error
                         );
 
@@ -452,12 +662,17 @@ namespace Omni.Core
                     }
                 }
 
+                CreateCache(message, _group);
+
                 switch (target)
                 {
                     case Target.All:
                         {
                             foreach (var (_, peer) in peersById)
                             {
+                                if (peer.Id == Server.ServerPeer.Id)
+                                    continue;
+
                                 Send(message, peer.EndPoint);
                             }
                         }
@@ -466,6 +681,9 @@ namespace Omni.Core
                         {
                             foreach (var (_, peer) in peersById)
                             {
+                                if (peer.Id == Server.ServerPeer.Id)
+                                    continue;
+
                                 if (peer.EndPoint.Equals(fromPeer))
                                     continue;
 
@@ -492,6 +710,7 @@ namespace Omni.Core
             byte sequenceChannel
         )
         {
+            NetworkHelper.EnsureRunningOnMainThread();
             if (IsLocalClientConnected)
             {
                 Connection.Client.Send(
@@ -505,12 +724,18 @@ namespace Omni.Core
 
         public virtual void Internal_OnServerInitialized()
         {
+            NetworkHelper.EnsureRunningOnMainThread();
+            // Set the default peer, used when the server sends to nothing(peerId = 0).
+            PeersByIp.Add(Server.ServerPeer.EndPoint, Server.ServerPeer);
+            PeersById.Add(Server.ServerPeer.Id, Server.ServerPeer);
+
             IsServerActive = true;
             OnServerInitialized?.Invoke();
         }
 
         public virtual void Internal_OnClientConnected(IPEndPoint peer)
         {
+            NetworkHelper.EnsureRunningOnMainThread();
             LocalClientEndPoint = peer;
             IsLocalClientConnected = true;
             OnClientConnected?.Invoke();
@@ -518,6 +743,7 @@ namespace Omni.Core
 
         public virtual void Internal_OnClientDisconnected(IPEndPoint peer, string reason)
         {
+            NetworkHelper.EnsureRunningOnMainThread();
             LocalClientEndPoint = peer;
             IsLocalClientConnected = false;
             OnClientDisconnected?.Invoke(reason);
@@ -525,11 +751,12 @@ namespace Omni.Core
 
         public virtual void Internal_OnServerPeerConnected(IPEndPoint peer)
         {
-            NetworkPeer newPeer = new(peer, _serverPeerIdCount++);
+            NetworkHelper.EnsureRunningOnMainThread();
+            NetworkPeer newPeer = new(peer, p_UniqueId++);
             if (!PeersByIp.TryAdd(peer, newPeer))
             {
                 NetworkLogger.__Log__(
-                    $"Conn: Failed to add peer: {peer} because it already exists.",
+                    $"Connection Error: Failed to add peer '{peer}' because it already exists.",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -538,7 +765,7 @@ namespace Omni.Core
                 if (!PeersById.TryAdd(newPeer.Id, newPeer))
                 {
                     NetworkLogger.__Log__(
-                        $"Conn: Failed to add peer by id: {peer} because it already exists.",
+                        $"Connection Error: Failed to add peer by ID '{newPeer.Id}' because it already exists.",
                         NetworkLogger.LogType.Error
                     );
                 }
@@ -554,10 +781,15 @@ namespace Omni.Core
                         Target.Self,
                         DeliveryMode.ReliableOrdered,
                         0,
+                        0,
+                        CacheMode.None,
                         0
                     );
 
-                    NetworkLogger.__Log__($"Conn: Added peer to the server: {peer}");
+                    NetworkLogger.__Log__(
+                        $"Connection Info: Peer '{peer}' added to the server successfully."
+                    );
+
                     OnServerPeerConnected?.Invoke(newPeer);
                 }
             }
@@ -565,49 +797,64 @@ namespace Omni.Core
 
         public virtual void Internal_OnServerPeerDisconnected(IPEndPoint peer)
         {
-            if (!PeersByIp.Remove(peer, out NetworkPeer removedPeer))
+            NetworkHelper.EnsureRunningOnMainThread();
+            if (!PeersByIp.Remove(peer, out NetworkPeer currentPeer))
             {
                 NetworkLogger.__Log__(
-                    $"Disc: Failed to remove peer: {peer} from the server",
+                    $"Disconnection Error: Failed to remove peer '{peer}' from the server.",
                     NetworkLogger.LogType.Error
                 );
             }
             else
             {
-                if (!PeersById.Remove(removedPeer.Id, out NetworkPeer _))
+                if (!PeersById.Remove(currentPeer.Id, out NetworkPeer _))
                 {
                     NetworkLogger.__Log__(
-                        $"Disc: Failed to remove peer by id: {peer} from the server",
+                        $"Disconnection Error: Failed to remove peer by ID '{currentPeer.Id}' from the server.",
                         NetworkLogger.LogType.Error
                     );
                 }
                 else
                 {
-                    foreach (var (_, group) in Groups)
+                    foreach (var (_, group) in currentPeer.Groups)
                     {
-                        if (group._peersById.Remove(removedPeer.Id, out _))
+                        if (group._peersById.Remove(currentPeer.Id, out _))
                         {
                             NetworkLogger.__Log__(
-                                $"Disc: Removed peer: {peer} from group: {group.Name}"
+                                $"Disconnection Info: Peer '{peer}' removed from group '{group.Name}'."
                             );
 
                             OnPlayerLeftGroup?.Invoke(
                                 group,
-                                removedPeer,
+                                currentPeer,
                                 "Leave event called by disconnect event."
                             );
+
+                            // Dereferencing to allow for GC(Garbage Collector).
+                            // All resources should be released at this point.
+                            group.DestroyAllCaches(currentPeer);
                         }
                         else
                         {
                             NetworkLogger.__Log__(
-                                $"Disc: Failed to remove peer: {peer} from group: {group.Name}",
+                                $"Disconnection Error: Failed to remove peer '{peer}' from group '{group.Name}'.",
                                 NetworkLogger.LogType.Error
                             );
                         }
                     }
 
-                    NetworkLogger.__Log__($"Disc: Removed peer: {peer} ");
-                    OnServerPeerDisconnected?.Invoke(removedPeer);
+                    NetworkLogger.__Log__(
+                        $"Disconnection Info: Peer '{peer}' removed from the server."
+                    );
+
+                    OnServerPeerDisconnected?.Invoke(currentPeer);
+
+                    // Dereferencing to allow for GC(Garbage Collector).
+                    currentPeer.ClearGroups();
+                    currentPeer.ClearData();
+
+                    // All resources should be released at this point.
+                    Server.DestroyAllCaches(currentPeer);
                 }
             }
         }
@@ -620,6 +867,7 @@ namespace Omni.Core
             bool isServer
         )
         {
+            NetworkHelper.EnsureRunningOnMainThread();
             if (PeersByIp.TryGetValue(_peer, out NetworkPeer peer) || !isServer)
             {
                 using NetworkBuffer message = Pool.Rent();
@@ -637,20 +885,24 @@ namespace Omni.Core
                             if (!isServer)
                             {
                                 int localPeerId = message.FastRead<int>();
+                                message._reworkStart = message.WrittenCount; // Skip header
                                 LocalPeer = new NetworkPeer(LocalClientEndPoint, localPeerId);
                             }
                         }
                         break;
-                    case MessageType.InvokeByPeer:
+                    case MessageType.LocalInvoke:
                         {
                             int identityId = message.FastRead<int>();
                             byte instanceId = message.FastRead<byte>();
                             byte invokeId = message.FastRead<byte>();
 
+                            // Skip header
+                            message._reworkStart = message.WrittenCount;
+
                             var key = (identityId, instanceId);
                             var eventBehavious = isServer
-                                ? Server.PeerEventBehaviours
-                                : Client.PeerEventBehaviours;
+                                ? Server.LocalEventBehaviours
+                                : Client.LocalEventBehaviours;
 
                             if (eventBehavious.TryGetValue(key, out INetworkMessage behaviour))
                             {
@@ -665,20 +917,23 @@ namespace Omni.Core
                             else
                             {
                                 NetworkLogger.__Log__(
-                                    $"Invoke: Failed to find event behaviour with id: {identityId}",
+                                    $"Invoke Error: Failed to find event behaviour with ID: {identityId}. Register it first or ignore it.",
                                     NetworkLogger.LogType.Error
                                 );
                             }
                         }
                         break;
-                    case MessageType.Invoke:
+                    case MessageType.GlobalInvoke:
                         {
                             int identityId = message.FastRead<int>();
                             byte invokeId = message.FastRead<byte>();
 
+                            // Skip header
+                            message._reworkStart = message.WrittenCount;
+
                             var eventBehavious = isServer
-                                ? Server.EventBehaviours
-                                : Client.EventBehaviours;
+                                ? Server.GlobalEventBehaviours
+                                : Client.GlobalEventBehaviours;
 
                             if (
                                 eventBehavious.TryGetValue(
@@ -698,7 +953,7 @@ namespace Omni.Core
                             else
                             {
                                 NetworkLogger.__Log__(
-                                    $"Invoke: Failed to find event behaviour with id: {identityId}",
+                                    $"Invoke Error: Failed to find event behaviour with ID: {identityId}. Register it first or ignore it.",
                                     NetworkLogger.LogType.Error
                                 );
                             }
@@ -708,6 +963,9 @@ namespace Omni.Core
                         {
                             string groupName = message.FastReadString();
                             string reason = message.FastReadString();
+
+                            // Skip header
+                            message._reworkStart = message.WrittenCount;
 
                             if (isServer)
                             {
@@ -722,6 +980,10 @@ namespace Omni.Core
                     case MessageType.JoinGroup:
                         {
                             string groupName = message.FastReadString();
+
+                            // Skip header
+                            message._reworkStart = message.WrittenCount;
+
                             if (isServer)
                             {
                                 if (string.IsNullOrEmpty(groupName))
@@ -732,10 +994,10 @@ namespace Omni.Core
                                     );
                                 }
 
-                                if (groupName.Length > 100)
+                                if (groupName.Length > 256)
                                 {
                                     NetworkLogger.__Log__(
-                                        "JoinGroup: Group name cannot be longer than 100 characters.",
+                                        "JoinGroup: Group name cannot be longer than 256 characters.",
                                         NetworkLogger.LogType.Error
                                     );
                                 }
@@ -769,21 +1031,49 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Converts an object to JSON format.
+        /// </summary>
+        /// <typeparam name="T">The type of the object.</typeparam>
+        /// <param name="obj">The object to be converted.</param>
+        /// <param name="settings">Optional settings for JSON serialization (default is null).</param>
+        /// <returns>A string representing the JSON serialization of the object.</returns>
         public static string ToJson<T>(T obj, JsonSerializerSettings settings = null)
         {
             return JsonConvert.SerializeObject(obj, settings);
         }
 
+        /// <summary>
+        /// Converts an object to binary format using MemoryPackSerializer.
+        /// </summary>
+        /// <typeparam name="T">The type of the object.</typeparam>
+        /// <param name="obj">The object to be converted.</param>
+        /// <param name="settings">Optional settings for serialization (default is null).</param>
+        /// <returns>A byte array representing the binary serialization of the object.</returns>
         public static byte[] ToBinary<T>(T obj, MemoryPackSerializerOptions settings = null)
         {
             return MemoryPackSerializer.Serialize(obj, settings);
         }
 
+        /// <summary>
+        /// Deserializes an object from JSON format.
+        /// </summary>
+        /// <typeparam name="T">The type of the object to deserialize.</typeparam>
+        /// <param name="json">The JSON string to deserialize.</param>
+        /// <param name="settings">Optional settings for JSON deserialization (default is null).</param>
+        /// <returns>The deserialized object.</returns>
         public static T FromJson<T>(string json, JsonSerializerSettings settings = null)
         {
             return JsonConvert.DeserializeObject<T>(json, settings);
         }
 
+        /// <summary>
+        /// Deserializes an object from binary format using MemoryPackSerializer.
+        /// </summary>
+        /// <typeparam name="T">The type of the object to deserialize.</typeparam>
+        /// <param name="data">The byte array containing the binary data to deserialize.</param>
+        /// <param name="settings">Optional settings for deserialization (default is null).</param>
+        /// <returns>The deserialized object.</returns>
         public static T FromBinary<T>(byte[] data, MemoryPackSerializerOptions settings = null)
         {
             return MemoryPackSerializer.Deserialize<T>(data, settings);
@@ -792,11 +1082,11 @@ namespace Omni.Core
 
     public partial class NetworkManager
     {
-        static int _serverPeerIdCount = 1;
-        static bool _allowZeroGroupForInternalMessages = false;
+        private static int p_UniqueId = 1; // 0 - is reserved for server
+        private static bool _allowZeroGroupForInternalMessages = false;
 
-        static NetworkManager _manager;
-        static NetworkManager Manager
+        private static NetworkManager _manager;
+        private static NetworkManager Manager
         {
             get
             {
@@ -812,9 +1102,9 @@ namespace Omni.Core
             set => _manager = value;
         }
 
-        static Dictionary<int, NetworkGroup> Groups { get; } = new();
-        static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
-        static Dictionary<int, NetworkPeer> PeersById { get; } = new();
+        private static Dictionary<int, NetworkGroup> Groups { get; } = new();
+        private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
+        private static Dictionary<int, NetworkPeer> PeersById { get; } = new();
 
         [ReadOnly]
         // [SerializeField]

@@ -1,4 +1,5 @@
 using System;
+using Omni.Shared;
 #if OMNI_SERVER && !UNITY_EDITOR
 using System.Threading;
 #endif
@@ -34,11 +35,11 @@ namespace Omni.Core.Modules.UConsole
 
         private void ShowDefaultOmniLog()
         {
-            Console.WriteLine("Welcome to Omni Server Console.");
+            NetworkLogger.Log("Welcome to Omni Server Console.");
 #if OMNI_DEBUG
-            Console.WriteLine("You are in Debug Mode.");
+            NetworkLogger.Log("You are in Debug Mode.");
 #else
-            Console.WriteLine("You are in Release Mode.");
+            NetworkLogger.Log("You are in Release Mode.");
 #endif
             Console.Write("\n");
         }

@@ -16,6 +16,7 @@ namespace Omni.Core.Modules.Connection
 
             internal void StartTransporter(ITransporter ITransporter, ITransporterReceive IReceive)
             {
+                NetworkHelper.EnsureRunningOnMainThread();
                 Transporter = ITransporter;
                 Transporter.Initialize(IReceive, IsServer);
             }
@@ -27,16 +28,26 @@ namespace Omni.Core.Modules.Connection
                 byte channel
             )
             {
+                NetworkHelper.EnsureRunningOnMainThread();
+                if (target.Port == 0)
+                {
+                    throw new NotSupportedException(
+                        "Operation not supported: The server cannot send messages to itself. Please check the target configuration or specify a 'peerId' different from 0."
+                    );
+                }
+
                 Transporter.Send(data, target, deliveryMode, channel);
             }
 
             internal void Listen(int port)
             {
+                NetworkHelper.EnsureRunningOnMainThread();
                 Transporter.Listen(port);
             }
 
             internal void Stop()
             {
+                NetworkHelper.EnsureRunningOnMainThread();
                 Transporter.Stop();
             }
         }
@@ -47,11 +58,13 @@ namespace Omni.Core.Modules.Connection
 
             internal void Connect(string address, int port)
             {
+                NetworkHelper.EnsureRunningOnMainThread();
                 Transporter.Connect(address, port);
             }
 
             internal void Disconnect()
             {
+                NetworkHelper.EnsureRunningOnMainThread();
                 Transporter.Disconnect();
             }
         }
