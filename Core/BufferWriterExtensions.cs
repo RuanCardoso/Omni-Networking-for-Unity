@@ -4,7 +4,9 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using MemoryPack;
+using MemoryPack.Compression;
 using Newtonsoft.Json;
+using UnityEngine;
 
 namespace Omni.Core
 {
@@ -50,6 +52,43 @@ namespace Omni.Core
         public static void DestroyOnClient(this NetworkBuffer buffer)
         {
             buffer.Internal_DestroyOnClient();
+        }
+
+        public static NetworkBuffer ToBrotli(
+            this NetworkBuffer buffer,
+            int quality = 1,
+            int window = 22
+        )
+        {
+            try
+            {
+                using BrotliCompressor compressor = new(quality, window);
+                compressor.Write(buffer.WrittenSpan);
+
+                var compressedBuffer = NetworkManager.Pool.Rent();
+                compressor.CopyTo(compressedBuffer);
+                return compressedBuffer;
+            }
+            catch (NotSupportedException ex)
+            {
+                throw new Exception(
+                    $"{ex.Message} - There is no space available in the Network Buffer acquired from the pool. Consider increasing the initial capacity of the pool."
+                );
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
+
+        public static NetworkBuffer FromBrotli(this NetworkBuffer buffer)
+        {
+            using BrotliDecompressor decompressor = new();
+            var data = decompressor.Decompress(buffer.Rework().WrittenSpan);
+
+            var decompressedBuffer = NetworkManager.Pool.Rent();
+            data.CopyTo(decompressedBuffer.GetSpan());
+            return decompressedBuffer;
         }
     }
 

@@ -1,8 +1,7 @@
-using System;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Matchmaking;
-using Omni.Shared;
 using UnityEngine;
+using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
 {
@@ -171,8 +170,8 @@ namespace Omni.Core
             clientEventBehaviour.FindEvents<ClientAttribute>(this);
             serverEventBehaviour.FindEvents<ServerAttribute>(this);
 
-            NetworkManager.Client.AddEventBehaviour(m_Id, this);
-            NetworkManager.Server.AddEventBehaviour(m_Id, this);
+            Client.AddEventBehaviour(m_Id, this);
+            Server.AddEventBehaviour(m_Id, this);
 
             Local = new NbClient(this);
             Remote = new NbServer(this);
@@ -182,24 +181,27 @@ namespace Omni.Core
         {
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
-            NetworkManager.Client.OnMessage += OnClientMessage;
+            Client.OnMessage += OnClientMessage;
 
             NetworkManager.OnServerInitialized += OnServerInitialized;
             NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
-            NetworkManager.Server.OnMessage += OnServerMessage;
+            Server.OnMessage += OnServerMessage;
         }
 
         protected void RegisterMatchmakingEvents()
         {
-            NetworkManager.Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
-            NetworkManager.Matchmaking.Client.OnLeftGroup += OnLeftGroup;
+            if (MatchmakingModuleEnabled)
+            {
+                Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
+                Matchmaking.Client.OnLeftGroup += OnLeftGroup;
 
-            NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
-            NetworkManager.Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
+                Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
+                Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
 
-            NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
-            NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+                Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
+                Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+            }
         }
 
         #region Client
@@ -404,7 +406,7 @@ namespace Omni.Core
         protected void InitializeBehaviour()
         {
             eventBehaviour.FindEvents<ClientAttribute>(this);
-            NetworkManager.Client.AddEventBehaviour(m_Id, this);
+            Client.AddEventBehaviour(m_Id, this);
             Local = new NbClient(this);
         }
 
@@ -412,13 +414,16 @@ namespace Omni.Core
         {
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
-            NetworkManager.Client.OnMessage += OnMessage;
+            Client.OnMessage += OnMessage;
         }
 
         protected void RegisterMatchmakingEvents()
         {
-            NetworkManager.Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
-            NetworkManager.Matchmaking.Client.OnLeftGroup += OnLeftGroup;
+            if (MatchmakingModuleEnabled)
+            {
+                Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
+                Matchmaking.Client.OnLeftGroup += OnLeftGroup;
+            }
         }
 
         protected virtual void OnClientConnected() { }
@@ -537,7 +542,7 @@ namespace Omni.Core
         protected void InitializeBehaviour()
         {
             eventBehaviour.FindEvents<ServerAttribute>(this);
-            NetworkManager.Server.AddEventBehaviour(m_Id, this);
+            Server.AddEventBehaviour(m_Id, this);
             Remote = new NbServer(this);
         }
 
@@ -546,16 +551,19 @@ namespace Omni.Core
             NetworkManager.OnServerInitialized += OnServerInitialized;
             NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
-            NetworkManager.Server.OnMessage += OnMessage;
+            Server.OnMessage += OnMessage;
         }
 
         protected void RegisterMatchmakingEvents()
         {
-            NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
-            NetworkManager.Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
+            if (MatchmakingModuleEnabled)
+            {
+                Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
+                Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
 
-            NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
-            NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+                Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
+                Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+            }
         }
 
         protected virtual void OnServerInitialized() { }

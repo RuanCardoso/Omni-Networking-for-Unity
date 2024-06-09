@@ -18,30 +18,12 @@ namespace Omni.Core.Modules.UConsole
             Thread thread =
                 new(() => Read())
                 {
-                    Name = "Server Console",
+                    Name = "Omni Console",
                     Priority = System.Threading.ThreadPriority.Lowest
                 };
 
-            SkipDefaultUnityLog();
-            ShowDefaultOmniLog();
             thread.Start();
 #endif
-        }
-
-        private void SkipDefaultUnityLog()
-        {
-            Console.Clear();
-        }
-
-        private void ShowDefaultOmniLog()
-        {
-            NetworkLogger.Log("Welcome to Omni Server Console.");
-#if OMNI_DEBUG
-            NetworkLogger.Log("You are in Debug Mode.");
-#else
-            NetworkLogger.Log("You are in Release Mode.");
-#endif
-            Console.Write("\n");
         }
 
         private void Read()

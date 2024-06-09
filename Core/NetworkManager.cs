@@ -1,14 +1,19 @@
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Threading;
 using MemoryPack;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Utilities;
 using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Connection;
 using Omni.Core.Modules.Matchmaking;
+using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
 using UnityEngine;
@@ -17,6 +22,12 @@ using UnityEngine;
 
 namespace Omni.Core
 {
+    enum ScriptingBackend
+    {
+        IL2CPP,
+        Mono
+    }
+
     [Flags]
     public enum CacheMode
     {
@@ -32,7 +43,8 @@ namespace Omni.Core
     {
         Console,
         Connection,
-        Matchmaking
+        Matchmaking,
+        NtpClock,
     }
 
     public enum Target
@@ -76,6 +88,7 @@ namespace Omni.Core
 
     internal class MessageType // not a enum to avoid casting
     {
+        internal const byte NtpQuery = 249;
         internal const byte Handshake = 250;
         internal const byte GenerateUniqueId = 251;
         internal const byte LocalInvoke = 252;
@@ -88,6 +101,10 @@ namespace Omni.Core
     [DisallowMultipleComponent]
     public partial class NetworkManager : MonoBehaviour, ITransporterReceive
     {
+        private static Stopwatch _stopwatch = new Stopwatch();
+        internal static float DeltaTime => UnityEngine.Time.deltaTime;
+
+        public static double ClockTime => _stopwatch.Elapsed.TotalSeconds; // does not depend on frame rate.
         public static int MainThreadId { get; private set; }
         public static IObjectPooling<NetworkBuffer> Pool { get; } = new NetworkBufferPool();
 
@@ -97,7 +114,6 @@ namespace Omni.Core
         public static event Action OnClientConnected;
         public static event Action<string> OnClientDisconnected;
 
-        // private and internal usages, do not expose to the public.
         private static event Action<byte, NetworkBuffer, NetworkPeer, int> OnServerCustomMessage;
         private static event Action<byte, NetworkBuffer, int> OnClientCustomMessage;
 
@@ -189,20 +205,48 @@ namespace Omni.Core
             }
         }
 
-        public static NetworkPeer LocalPeer { get; private set; }
-        public static IPEndPoint LocalClientEndPoint { get; private set; }
-        public static bool IsLocalClientConnected { get; private set; }
-        public static bool IsServerActive { get; private set; }
-
-        public virtual void Awake()
+        static SimpleNtp _ntpClock;
+        public static SimpleNtp SNTP
         {
-            MainThreadId = Thread.CurrentThread.ManagedThreadId;
+            get
+            {
+                if (_ntpClock == null)
+                {
+                    throw new Exception(
+                        "NtpClock module not initialized. Please call NetworkManager.InitializeModule(Module.NtpClock) at least once before accessing the NtpClock."
+                    );
+                }
+
+                return _ntpClock;
+            }
+            set
+            {
+                if (_ntpClock != null)
+                {
+                    throw new Exception(
+                        "NtpClock module already initialized. Please call NetworkManager.InitializeModule(Module.NtpClock) only once."
+                    );
+                }
+
+                _ntpClock = value;
+            }
+        }
+
+        static NativePeer NativePeer { get; set; }
+        public static NetworkPeer Peer { get; private set; }
+        public static bool IsClientActive { get; private set; }
+        public static bool IsServerActive { get; private set; }
+        public static IPEndPoint PeerEndPoint { get; private set; }
+
+        protected virtual void Awake()
+        {
             if (_manager != null)
             {
                 gameObject.SetActive(false);
                 return;
             }
 
+            _stopwatch.Start();
             _manager = this;
 #if !UNITY_SERVER || UNITY_EDITOR
             if (m_MaxFpsOnClient > 0)
@@ -216,8 +260,14 @@ namespace Omni.Core
                 NetworkLogger.LogType.Warning
             );
 #endif
-
+            AotHelper.EnsureDictionary<string, object>();
+            MainThreadId = Thread.CurrentThread.ManagedThreadId;
             DisableAutoStartIfHasHud();
+            if (m_NtpClock)
+            {
+                InitializeModule(Module.NtpClock);
+            }
+
             if (m_Console)
             {
                 InitializeModule(Module.Console);
@@ -234,11 +284,68 @@ namespace Omni.Core
             }
         }
 
+        protected virtual void Start()
+        {
+#if OMNI_SERVER && !UNITY_EDITOR
+            SkipDefaultUnityLog();
+            ShowDefaultOmniLog();
+#endif
+        }
+
+        private void Update()
+        {
+            UpdateFrameAndCpuMetrics();
+        }
+
+        private void UpdateFrameAndCpuMetrics()
+        {
+            deltaTime += UnityEngine.Time.unscaledDeltaTime;
+            frameCount++;
+
+            float rate = 1f;
+            if (deltaTime >= rate)
+            {
+                Framerate = frameCount / deltaTime;
+                CpuTimeMs = deltaTime / frameCount * 1000f;
+
+                deltaTime -= rate;
+                frameCount = 0;
+            }
+        }
+
+        private void SkipDefaultUnityLog()
+        {
+            System.Console.Clear();
+        }
+
+        private void ShowDefaultOmniLog()
+        {
+            NetworkLogger.Log("Welcome to Omni Server Console.");
+#if OMNI_DEBUG
+            NetworkLogger.Log("You are in Debug Mode.");
+#else
+            NetworkLogger.Log("You are in Release Mode.");
+#endif
+            System.Console.Write("\n");
+        }
+
         public static void InitializeModule(Module module)
         {
             NetworkHelper.EnsureRunningOnMainThread();
             switch (module)
             {
+                case Module.NtpClock:
+                    {
+                        NetworkClock nClock = Manager.GetComponent<NetworkClock>();
+                        if (nClock != null)
+                        {
+                            Manager.m_QueryInterval = nClock.QueryInterval;
+                        }
+
+                        SNTP = new SimpleNtp();
+                        SNTP.Initialize(nClock);
+                    }
+                    break;
                 case Module.Console:
                     {
                         Console = new NetworkConsole();
@@ -303,6 +410,21 @@ namespace Omni.Core
 #if OMNI_RELEASE
                         Manager.m_AutoStartServer = true;
                         Manager.m_AutoStartClient = true;
+#else
+                        if (
+                            ConnectAddress.ToLower() != "localhost"
+                            && ConnectAddress != "127.0.0.1"
+                            && ConnectAddress != Manager.PublicIPv4
+                            && ConnectAddress != Manager.PublicIPv6
+                        )
+                        {
+                            Manager.m_AutoStartServer = false;
+                            NetworkLogger.__Log__(
+                                "Server auto-start has been disabled as the client address is not a recognized localhost or public IPv4/IPv6 address. "
+                                    + "Starting a server in this case does not make sense because the client cannot connect to it. But you can start it manually.",
+                                NetworkLogger.LogType.Warning
+                            );
+                        }
 #endif
 
                         if (Manager.m_AutoStartServer)
@@ -355,7 +477,7 @@ namespace Omni.Core
             Connection.Client.Listen(listenPort);
             Connection.Client.Connect(address, port);
 #elif UNITY_SERVER && !UNITY_EDITOR
-            NetworkLogger.__Log__("Debug: Local client is not available in a server build.");
+            NetworkLogger.__Log__("Debug: Client is not available in a server build.");
 #endif
         }
 
@@ -716,14 +838,42 @@ namespace Omni.Core
         )
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            if (IsLocalClientConnected)
+            if (IsClientActive)
             {
                 Connection.Client.Send(
                     PrepareClientMessageForSending(msgType, data),
-                    LocalClientEndPoint,
+                    PeerEndPoint,
                     deliveryMode,
                     sequenceChannel
                 );
+            }
+        }
+
+        private float m_QueryInterval = NetworkClock.DEFAULT_QUERY_INTERVAL;
+
+        private IEnumerator Query()
+        {
+            // The purpose of these calls before the while loop may be to ensure that the system clock is initially synchronized before entering the continuous query cycle.
+            // This can be helpful to prevent situations where the system clock is not immediately synchronized when the application starts.
+            //
+            // Furthermore, the introduction of these initial pauses may serve as a startup measure to allow the system time to stabilize before initiating the repetitive querying of the NTP server.
+            // This can be particularly useful if there are other startup or configuration operations that need to occur before the system is fully ready to synchronize the clock continuously.
+
+            if (IsClientActive && m_NtpClock)
+            {
+                SNTP.Client.Query();
+                yield return new WaitForSeconds(0.5f);
+                SNTP.Client.Query();
+                yield return new WaitForSeconds(0.5f);
+                SNTP.Client.Query();
+                yield return new WaitForSeconds(0.5f);
+
+                while (IsClientActive && m_NtpClock)
+                {
+                    // Continuously query the NTP server to ensure that the system clock is continuously synchronized with the NTP server.
+                    SNTP.Client.Query();
+                    yield return new WaitForSeconds(m_QueryInterval);
+                }
             }
         }
 
@@ -738,26 +888,31 @@ namespace Omni.Core
             OnServerInitialized?.Invoke();
         }
 
-        public virtual void Internal_OnClientConnected(IPEndPoint peer)
+        public virtual void Internal_OnClientConnected(IPEndPoint peer, NativePeer nativePeer)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            LocalClientEndPoint = peer;
-            IsLocalClientConnected = true;
+            PeerEndPoint = peer;
+            IsClientActive = true;
+
+            NativePeer = nativePeer;
+            StartCoroutine(Query());
             OnClientConnected?.Invoke();
         }
 
         public virtual void Internal_OnClientDisconnected(IPEndPoint peer, string reason)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            LocalClientEndPoint = peer;
-            IsLocalClientConnected = false;
+            PeerEndPoint = peer;
+            IsClientActive = false;
             OnClientDisconnected?.Invoke(reason);
         }
 
-        public virtual void Internal_OnServerPeerConnected(IPEndPoint peer)
+        public virtual void Internal_OnServerPeerConnected(IPEndPoint peer, NativePeer nativePeer)
         {
             NetworkHelper.EnsureRunningOnMainThread();
             NetworkPeer newPeer = new(peer, p_UniqueId++);
+            newPeer._nativePeer = nativePeer;
+
             if (!PeersByIp.TryAdd(peer, newPeer))
             {
                 NetworkLogger.__Log__(
@@ -800,7 +955,7 @@ namespace Omni.Core
             }
         }
 
-        public virtual void Internal_OnServerPeerDisconnected(IPEndPoint peer)
+        public virtual void Internal_OnServerPeerDisconnected(IPEndPoint peer, string reason)
         {
             NetworkHelper.EnsureRunningOnMainThread();
             if (!PeersByIp.Remove(peer, out NetworkPeer currentPeer))
@@ -826,7 +981,7 @@ namespace Omni.Core
                         if (group._peersById.Remove(currentPeer.Id, out _))
                         {
                             NetworkLogger.__Log__(
-                                $"Disconnection Info: Peer '{peer}' removed from group '{group.Name}'."
+                                $"Disconnection Info: Peer '{peer}' removed from group '{group.Identifier}'."
                             );
 
                             OnPlayerLeftGroup?.Invoke(
@@ -842,14 +997,14 @@ namespace Omni.Core
                         else
                         {
                             NetworkLogger.__Log__(
-                                $"Disconnection Error: Failed to remove peer '{peer}' from group '{group.Name}'.",
+                                $"Disconnection Error: Failed to remove peer '{peer}' from group '{group.Identifier}'.",
                                 NetworkLogger.LogType.Error
                             );
                         }
                     }
 
                     NetworkLogger.__Log__(
-                        $"Disconnection Info: Peer '{peer}' removed from the server."
+                        $"Disconnection Info: Peer '{peer}' removed from the server. Reason: {reason}."
                     );
 
                     OnServerPeerDisconnected?.Invoke(currentPeer);
@@ -885,13 +1040,33 @@ namespace Omni.Core
 
                 switch (msgType)
                 {
+                    case MessageType.NtpQuery:
+                        {
+                            if (isServer)
+                            {
+                                double time = message.FastRead<double>();
+                                float t = message.FastRead<float>();
+                                message._reworkStart = message.WrittenCount; // Skip header
+                                SNTP.Server.SendNtpResponse(time, peer, t);
+                            }
+                            else
+                            {
+                                double a = message.FastRead<double>();
+                                double x = message.FastRead<double>();
+                                double y = message.FastRead<double>();
+                                float t = message.FastRead<float>();
+                                SNTP.Client.Evaluate(a, x, y, t);
+                            }
+                        }
+                        break;
                     case MessageType.Handshake:
                         {
                             if (!isServer)
                             {
                                 int localPeerId = message.FastRead<int>();
                                 message._reworkStart = message.WrittenCount; // Skip header
-                                LocalPeer = new NetworkPeer(LocalClientEndPoint, localPeerId);
+                                Peer = new NetworkPeer(PeerEndPoint, localPeerId);
+                                Peer._nativePeer = NativePeer;
                             }
                         }
                         break;
@@ -1087,6 +1262,9 @@ namespace Omni.Core
 
     public partial class NetworkManager
     {
+        private int frameCount = 0;
+        private float deltaTime = 0f;
+
         private static int p_UniqueId = 1; // 0 - is reserved for server
         private static bool _allowZeroGroupForInternalMessages = false;
 
@@ -1111,16 +1289,46 @@ namespace Omni.Core
         private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
         private static Dictionary<int, NetworkPeer> PeersById { get; } = new();
 
+        [SerializeField]
+        [Label("Public IPv4")]
         [ReadOnly]
-        // [SerializeField]
+        private string PublicIPv4 = "127.0.0.1";
+
+        [SerializeField]
+        [Label("Public IPv6")]
+        [ReadOnly]
+        private string PublicIPv6 = "127.0.0.1";
+
+        [Header("Scripting Backend")]
+        [SerializeField]
+#if OMNI_DEBUG
+        [ReadOnly]
+#endif
+        [Label("Client Backend")]
+        private ScriptingBackend m_ClientScriptingBackend = ScriptingBackend.Mono;
+
+        [SerializeField]
+#if OMNI_DEBUG
+        [ReadOnly]
+#endif
+        [Label("Server Backend")]
+        private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
+
+        [ReadOnly]
+        [SerializeField]
         [Header("Modules")]
         private bool m_Connection = true;
 
-        // [SerializeField]
-        private bool m_Console = true;
+        [SerializeField]
+        private bool m_Matchmaking = false;
 
-        // [SerializeField]
-        private bool m_Matchmaking = true;
+        [SerializeField]
+        [Label("Server Console")]
+        private bool m_Console = false;
+
+        [SerializeField]
+        [Label("Server Clock(Ntp)")]
+        private bool m_NtpClock = false;
 
         [ReadOnly]
         [SerializeField]
@@ -1162,6 +1370,7 @@ namespace Omni.Core
         [Label("Allow Zero-Group Message")]
         private bool m_ZeroGroupMessage = true;
 
+        [Header("Misc +")]
         [SerializeField]
         private bool m_AutoStartClient = true;
 
@@ -1169,17 +1378,28 @@ namespace Omni.Core
         private bool m_AutoStartServer = true;
 
         public static string ConnectAddress => Manager.m_ConnectAddress;
+        internal static bool MatchmakingModuleEnabled => Manager.m_Matchmaking;
+
         public static int ServerListenPort => Manager.m_ServerListenPort;
         public static int ClientListenPort => Manager.m_ClientListenPort;
         public static int ConnectPort => Manager.m_ConnectPort;
 
+        public static float Framerate { get; private set; }
+        public static float CpuTimeMs { get; private set; }
+
         public virtual void Reset()
         {
+            GetExternalIp();
             DisableAutoStartIfHasHud();
+            SetScriptingBackend();
         }
 
         public virtual void OnValidate()
         {
+#if OMNI_DEBUG
+            m_ClientScriptingBackend = ScriptingBackend.Mono;
+            m_ServerScriptingBackend = ScriptingBackend.Mono;
+#endif
             m_Connection = true;
             if (!Application.isPlaying)
             {
@@ -1188,9 +1408,64 @@ namespace Omni.Core
                     m_ClientTransporter = m_ServerTransporter = null;
                     throw new Exception("Transporter cannot be set. Is automatically initialized.");
                 }
+
+                GetExternalIp();
+                SetScriptingBackend();
             }
 
+            m_ConnectAddress = m_ConnectAddress.Trim();
             DisableAutoStartIfHasHud();
+        }
+
+        [ContextMenu("Set Scripting Backend")]
+        private void SetScriptingBackend()
+        {
+            ScriptingBackend[] scriptingBackends =
+            {
+                m_ServerScriptingBackend,
+                m_ClientScriptingBackend
+            };
+
+            using StreamWriter writer = new("ScriptingBackend.txt");
+            writer.Write(ToJson(scriptingBackends));
+        }
+
+        [ContextMenu("Get External IP")]
+        private void ForceGetExternalIp()
+        {
+            PlayerPrefs.DeleteKey("IPLastReceiveDate");
+            GetExternalIp();
+        }
+
+        [Conditional("UNITY_EDITOR")]
+        private async void GetExternalIp()
+        {
+            string lastDateTime = PlayerPrefs.GetString(
+                "IPLastReceiveDate",
+                DateTime.UnixEpoch.ToString()
+            );
+
+            int minutes = 15;
+            TimeSpan timeLeft = DateTime.Now - DateTime.Parse(lastDateTime);
+            // Check if the last call was successful or if an {minutes} time has passed since the last call to avoid spamming.
+            if (timeLeft.TotalMinutes >= minutes)
+            {
+                PublicIPv4 = (await NetworkHelper.GetExternalIp(useIPv6: false)).ToString();
+                PublicIPv6 = (await NetworkHelper.GetExternalIp(useIPv6: true)).ToString();
+
+                // Update the player preference with the current timestamp.
+                PlayerPrefs.SetString("IPLastReceiveDate", DateTime.Now.ToString());
+            }
+            else
+            {
+#if OMNI_DEBUG
+                timeLeft = TimeSpan.FromMinutes(minutes) - timeLeft;
+                NetworkLogger.Log(
+                    $"You should wait {minutes} minutes before you can get the external IP again. Go to the context menu and click \"Get External IP\" to force it. Remaining time: {timeLeft.Minutes:0} minutes and {timeLeft.Seconds} seconds.",
+                    logType: NetworkLogger.LogType.Warning
+                );
+#endif
+            }
         }
 
         private bool DisableAutoStartIfHasHud()

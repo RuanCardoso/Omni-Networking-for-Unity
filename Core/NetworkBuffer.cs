@@ -59,7 +59,7 @@ namespace Omni.Core
         /// <exception cref="ArgumentException">
         /// Thrown when <paramref name="initialCapacity"/> is not positive (i.e. less than or equal to 0).
         /// </exception>
-        public NetworkBuffer(int initialCapacity = 128, IObjectPooling<NetworkBuffer> pool = null)
+        public NetworkBuffer(int initialCapacity = 1024, IObjectPooling<NetworkBuffer> pool = null)
         {
             if (initialCapacity <= 0)
             {

@@ -70,6 +70,22 @@ namespace Omni.Core.Modules.Connection
         )]
         private bool m_useSafeMtu = true;
 
+        [Header("Lag Simulator [Debug only!]")]
+        [SerializeField]
+        private bool m_SimulateLag = false;
+
+        [SerializeField]
+        [Min(0)]
+        private int m_MinLatency = 60;
+
+        [SerializeField]
+        [Min(0)]
+        private int m_MaxLatency = 60;
+
+        [SerializeField]
+        [Range(0, 100)]
+        private int m_LossPercent = 0;
+
         private ITransporterReceive IReceive;
         private NetPeer localPeer;
         private readonly Dictionary<IPEndPoint, NetPeer> _peers = new();
@@ -115,6 +131,10 @@ namespace Omni.Core.Modules.Connection
 
         public void Initialize(ITransporterReceive IReceive, bool isServer)
         {
+#if !OMNI_DEBUG
+            // Disable lag simulation in release(prod).
+            m_SimulateLag = false;
+#endif
             this.isServer = isServer;
             this.IReceive = IReceive;
 
@@ -133,7 +153,12 @@ namespace Omni.Core.Modules.Connection
                 IPv6Enabled = m_IPv6Enabled,
                 PingInterval = m_pingInterval,
                 UseNativeSockets = m_useNativeSockets, // Experimental feature mostly for servers. Only for Windows/Linux
-                UseSafeMtu = m_useSafeMtu
+                UseSafeMtu = m_useSafeMtu,
+                SimulateLatency = m_SimulateLag,
+                SimulatePacketLoss = m_SimulateLag,
+                SimulationMinLatency = m_MinLatency,
+                SimulationMaxLatency = m_MaxLatency,
+                SimulationPacketLossChance = m_LossPercent
             };
 
             if (isServer)
@@ -171,7 +196,16 @@ namespace Omni.Core.Modules.Connection
                     }
                     else
                     {
-                        IReceive.Internal_OnServerPeerConnected(peer);
+                        IReceive.Internal_OnServerPeerConnected(
+                            peer,
+                            new NativePeer(
+                                () =>
+                                    (
+                                        peer.RemoteUtcTime - new DateTime(peer.ConnectTime)
+                                    ).TotalSeconds,
+                                () => peer.Ping
+                            )
+                        );
                     }
                 };
 
@@ -186,7 +220,7 @@ namespace Omni.Core.Modules.Connection
                     }
                     else
                     {
-                        IReceive.Internal_OnServerPeerDisconnected(peer);
+                        IReceive.Internal_OnServerPeerDisconnected(peer, info.Reason.ToString());
                     }
                 };
             }
@@ -197,7 +231,16 @@ namespace Omni.Core.Modules.Connection
                     if (peer.ConnectionState == ConnectionState.Connected)
                     {
                         localPeer ??= peer;
-                        IReceive.Internal_OnClientConnected(peer);
+                        IReceive.Internal_OnClientConnected(
+                            peer,
+                            new NativePeer(
+                                () =>
+                                    (
+                                        peer.RemoteUtcTime - new DateTime(peer.ConnectTime)
+                                    ).TotalSeconds,
+                                () => peer.Ping
+                            )
+                        );
                     }
                 };
 
@@ -371,6 +414,34 @@ namespace Omni.Core.Modules.Connection
             liteTransporter.m_MaxEventsPerFrame = m_MaxEventsPerFrame;
             liteTransporter.m_useNativeSockets = m_useNativeSockets;
             liteTransporter.m_useSafeMtu = m_useSafeMtu;
+
+            // Lag properties
+            liteTransporter.m_SimulateLag = m_SimulateLag;
+            liteTransporter.m_MinLatency = m_MinLatency;
+            liteTransporter.m_MaxLatency = m_MaxLatency;
+            liteTransporter.m_LossPercent = m_LossPercent;
         }
+
+#if OMNI_DEBUG
+        private void OnValidate()
+        {
+            LiteTransporter[] liteTransporters = GetComponentsInChildren<LiteTransporter>();
+            foreach (LiteTransporter liteTransporter in liteTransporters)
+            {
+                if (liteTransporter.isRunning)
+                {
+                    liteTransporter._manager.PingInterval = m_pingInterval;
+                    liteTransporter._manager.SimulateLatency = m_SimulateLag;
+                    liteTransporter._manager.SimulatePacketLoss = m_SimulateLag;
+                    liteTransporter._manager.SimulationMinLatency = m_MinLatency;
+                    liteTransporter._manager.SimulationMaxLatency = m_MaxLatency;
+                    liteTransporter._manager.SimulationPacketLossChance = m_LossPercent;
+
+                    // Debug only! changes the max events per frame to find the best value to use in your case.
+                    liteTransporter.m_MaxEventsPerFrame = m_MaxEventsPerFrame;
+                }
+            }
+        }
+#endif
     }
 }

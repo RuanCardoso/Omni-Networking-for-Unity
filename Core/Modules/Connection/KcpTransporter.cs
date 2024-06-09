@@ -140,7 +140,16 @@ namespace Omni.Core.Modules.Connection
                         }
                         else
                         {
-                            IReceive.Internal_OnServerPeerConnected(conn.remoteEndPoint);
+                            IReceive.Internal_OnServerPeerConnected(
+                                conn.remoteEndPoint,
+                                new NativePeer(
+                                    () => conn.time,
+                                    () =>
+                                        throw new NotImplementedException(
+                                            "[KCP] Individual ping not implemented! Use SNTP clock."
+                                        )
+                                )
+                            );
                         }
                     },
                     (connId, data, channel) =>
@@ -166,13 +175,19 @@ namespace Omni.Core.Modules.Connection
                         }
                         else
                         {
-                            IReceive.Internal_OnServerPeerDisconnected(conn.remoteEndPoint);
+                            IReceive.Internal_OnServerPeerDisconnected(
+                                conn.remoteEndPoint,
+                                "[Normally Disconnected]"
+                            );
                         }
                     },
-                    (connectionId, error, reason) =>
+                    (connId, error, reason) =>
                     {
+                        var conn = kcpServer.connections[connId];
+                        IReceive.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, reason);
+
                         NetworkLogger.__Log__(
-                            $"[KCP] OnServerError({connectionId}, {error}, {reason}",
+                            $"[KCP] OnServerError({connId}, {error}, {reason}",
                             NetworkLogger.LogType.Error
                         );
                     },
@@ -182,7 +197,17 @@ namespace Omni.Core.Modules.Connection
             else
             {
                 kcpClient = new(
-                    () => IReceive.Internal_OnClientConnected(kcpClient.remoteEndPoint),
+                    () =>
+                        IReceive.Internal_OnClientConnected(
+                            kcpClient.remoteEndPoint,
+                            new NativePeer(
+                                () => kcpClient.time,
+                                () =>
+                                    throw new NotImplementedException(
+                                        "[KCP] Individual ping not implemented! Use SNTP clock."
+                                    )
+                            )
+                        ),
                     (data, channel) =>
                         IReceive.Internal_OnDataReceived(
                             data,
@@ -197,10 +222,14 @@ namespace Omni.Core.Modules.Connection
                             "Disconnected!"
                         ),
                     (error, reason) =>
+                    {
+                        IReceive.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, reason);
+
                         NetworkLogger.__Log__(
                             $"[KCP] OnServerError({error}, {reason}",
                             NetworkLogger.LogType.Error
-                        ),
+                        );
+                    },
                     config
                 );
             }

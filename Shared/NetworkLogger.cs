@@ -31,21 +31,30 @@ namespace Omni.Shared
 #pragma warning disable IDE1006
 #if OMNI_DEBUG
         /// <summary>
-        /// Logs a message to the console and to the log file.<br/>
-        /// This method is available only in Debug mode and will not be called in Release mode.
+        /// Logs a message to the console and the log file. This method is available only in debug builds.
         /// </summary>
+        /// <param name="message">The message to be logged.</param>
+        /// <param name="logType">The type of log message. Default is <see cref="LogType.Log"/>.</param>
         public static void __Log__(string message, LogType logType = LogType.Log)
         {
             Log(message, true, logType);
         }
 #else
         /// <summary>
-        /// Logs a message to the log file only in Release mode.<br/>
-        /// In Release mode, messages will not be logged to the console.
+        /// Logs a message to the console or to a file depending on the build configuration.
         /// </summary>
+        /// <remarks>
+        /// In the Unity Editor, the message is logged to the console. In other builds, the message is logged to a file.
+        /// </remarks>
+        /// <param name="message">The message to be logged.</param>
+        /// <param name="logType">The type of log message. Default is <see cref="LogType.Log"/>.</param>
         public static void __Log__(string message, LogType logType = LogType.Log)
         {
+#if UNITY_EDITOR
+            Log(message, true, logType);
+#else
             LogToFile(message, logType);
+#endif
         }
 #endif
 #pragma warning restore IDE1006

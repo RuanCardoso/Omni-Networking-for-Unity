@@ -522,7 +522,9 @@ namespace Omni.Core
                     return group;
                 }
 
-                throw new Exception($"Failed to add group: {groupName} because it already exists.");
+                throw new Exception(
+                    $"Failed to add group: [{groupName}] because it already exists."
+                );
             }
 
             internal static void LeaveGroup(string groupName, string reason, NetworkPeer peer)

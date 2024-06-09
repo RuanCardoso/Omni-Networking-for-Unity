@@ -19,6 +19,12 @@ namespace Omni.Core.Modules.Matchmaking
         public int Id { get; }
 
         [MemoryPackIgnore]
+        public string Identifier { get; }
+
+        /// <summary>
+        /// The name of the group(Beautiful identifier).
+        /// </summary>
+        [MemoryPackIgnore]
         public string Name { get; }
 
         [MemoryPackIgnore]
@@ -49,20 +55,27 @@ namespace Omni.Core.Modules.Matchmaking
         private readonly bool __namebuilder__;
 
         [MemoryPackConstructor]
+        [JsonConstructor]
         internal NetworkGroup() { }
 
         public NetworkGroup(string groupName)
         {
-            Name = groupName;
-            Depth = groupName.Split(':').Length;
+            string[] subGroups = groupName.Split("->");
+
+            Identifier = groupName;
+            Depth = subGroups.Length;
+            Name = subGroups[Depth - 1];
             __namebuilder__ = true;
         }
 
         internal NetworkGroup(int groupId, string groupName)
         {
+            string[] subGroups = groupName.Split("->");
+
             Id = groupId;
-            Name = groupName;
-            Depth = groupName.Split(':').Length;
+            Identifier = groupName;
+            Depth = subGroups.Length;
+            Name = subGroups[Depth - 1];
         }
 
         public Dictionary<int, NetworkPeer> GetPeers()
@@ -95,15 +108,16 @@ namespace Omni.Core.Modules.Matchmaking
             return null;
         }
 
-        public NetworkGroup AddSubGroup(string name)
+        public NetworkGroup AddSubGroup(string subGroupName)
         {
+            string newIdentifier = $"{Identifier}->{subGroupName}";
             if (!__namebuilder__)
             {
-                return NetworkManager.Matchmaking.Server.AddGroup($"{Name}:{name}");
+                return NetworkManager.Matchmaking.Server.AddGroup(newIdentifier);
             }
             else
             {
-                return new NetworkGroup($"{Name}:{name}");
+                return new NetworkGroup(newIdentifier);
             }
         }
 

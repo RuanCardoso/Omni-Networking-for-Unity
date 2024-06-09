@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using UnityEngine;
@@ -104,18 +105,51 @@ namespace Omni.Core
         [SerializeField]
         private byte m_Id = 0;
 
+        /// <summary>
+        /// Gets or sets the identifier of this instance.
+        /// </summary>
+        /// <value>The identifier as a byte.</value>
         public byte Id
         {
             get { return m_Id; }
             internal set { m_Id = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the <see cref="NetworkIdentity"/> associated with this instance.
+        /// </summary>
+        /// <value>The <see cref="NetworkIdentity"/> associated with this instance.</value>
         public NetworkIdentity Identity { get; internal set; }
+
+        /// <summary>
+        /// Gets the identifier of the associated <see cref="NetworkIdentity"/>.
+        /// </summary>
+        /// <value>The identifier of the associated <see cref="NetworkIdentity"/> as an integer.</value>
         public int IdentityId => Identity.IdentityId;
 
+        /// <summary>
+        /// Gets a value indicating whether this instance represents the local player.
+        /// </summary>
+        /// <value><c>true</c> if this instance represents the local player; otherwise, <c>false</c>.</value>
         public bool IsLocalPlayer => Identity.IsLocalPlayer;
+
+        /// <summary>
+        /// Gets a value indicating whether this instance represents the local player.
+        /// </summary>
+        /// <value><c>true</c> if this instance represents the local player; otherwise, <c>false</c>.</value>
+        /// <remarks>This property is an alias for <see cref="IsLocalPlayer"/>.</remarks>
         public bool IsMine => IsLocalPlayer;
+
+        /// <summary>
+        /// Gets a value indicating whether this instance is on the server.
+        /// </summary>
+        /// <value><c>true</c> if this instance is on the server; otherwise, <c>false</c>.</value>
         public bool IsServer => Identity.IsServer;
+
+        /// <summary>
+        /// Gets a value indicating whether this instance is on the client.
+        /// </summary>
+        /// <value><c>true</c> if this instance is on the client; otherwise, <c>false</c>.</value>
         public bool IsClient => !IsServer;
 
         private NbClient _local;
@@ -159,6 +193,26 @@ namespace Omni.Core
             }
             private set => _remote = value;
         }
+
+        /// <summary>
+        /// Called after the object is instantiated and registered, but before it is active.
+        /// </summary>
+        /// <remarks>
+        /// Override this method to perform any initialization that needs to happen
+        /// before the object becomes active.
+        /// </remarks>
+        /// <param name="buffer">The network buffer containing data associated with the instantiation process.</param>
+        protected internal virtual void OnAwake(NetworkBuffer buffer) { }
+
+        /// <summary>
+        /// Called after the object is instantiated and after it becomes active.
+        /// </summary>
+        /// <remarks>
+        /// Override this method to perform any initialization or setup that needs to happen
+        /// after the object has become active.
+        /// </remarks>
+        /// <param name="buffer">The network buffer containing data associated with the instantiation process.</param>
+        protected internal virtual void OnStart(NetworkBuffer buffer) { }
 
         internal void Register()
         {
@@ -283,6 +337,7 @@ namespace Omni.Core
             }
         }
 
+        [EditorBrowsable(EditorBrowsableState.Never)]
         public void Internal_OnMessage(
             byte msgId,
             NetworkBuffer buffer,

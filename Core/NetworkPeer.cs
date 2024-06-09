@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Net;
 using MemoryPack;
 using Newtonsoft.Json;
-using Omni.Core.Interfaces;
 using Omni.Core.Modules.Matchmaking;
 using Omni.Shared.Collections;
 
@@ -12,6 +11,8 @@ namespace Omni.Core
     [MemoryPackable]
     public partial class NetworkPeer
     {
+        [MemoryPackIgnore]
+        internal NativePeer _nativePeer;
 #pragma warning disable IDE0052
         [MemoryPackIgnore]
         readonly string __endpoint__;
@@ -34,7 +35,14 @@ namespace Omni.Core
         [MemoryPackIgnore, JsonProperty("Data")]
         public ObservableDictionary<string, object> SerializedData { get; } = new();
 
+        [MemoryPackIgnore]
+        public double Time => _nativePeer.Time;
+
+        [MemoryPackIgnore]
+        public double Ping => _nativePeer.Ping;
+
         [MemoryPackConstructor]
+        [JsonConstructor]
         internal NetworkPeer() { }
 
         internal NetworkPeer(IPEndPoint endPoint, int id)

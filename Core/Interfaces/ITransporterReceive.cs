@@ -14,9 +14,9 @@ namespace Omni.Core.Interfaces
         );
 
         void Internal_OnServerInitialized();
-        void Internal_OnClientConnected(IPEndPoint peer);
+        void Internal_OnClientConnected(IPEndPoint peer, NativePeer nativePeer);
         void Internal_OnClientDisconnected(IPEndPoint peer, string reason);
-        void Internal_OnServerPeerConnected(IPEndPoint peer);
-        void Internal_OnServerPeerDisconnected(IPEndPoint peer);
+        void Internal_OnServerPeerConnected(IPEndPoint peer, NativePeer nativePeer);
+        void Internal_OnServerPeerDisconnected(IPEndPoint peer, string reason);
     }
 }

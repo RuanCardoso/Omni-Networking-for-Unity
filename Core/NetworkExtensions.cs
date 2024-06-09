@@ -20,8 +20,16 @@ namespace Omni.Core
         )
         {
             buffer.ReadIdentityData(out int identityId, out int peerId);
-            bool isLocalPlayer = NetworkManager.LocalPeer.Id == peerId;
-            return Instantiate(prefab, null, identityId, false, isLocalPlayer, OnBeforeStart);
+            bool isLocalPlayer = NetworkManager.Peer.Id == peerId;
+            return Instantiate(
+                prefab,
+                null,
+                identityId,
+                false,
+                isLocalPlayer,
+                buffer,
+                OnBeforeStart
+            );
         }
 
         /// <summary>
@@ -45,6 +53,7 @@ namespace Omni.Core
                 uniqueId,
                 true,
                 false,
+                buffer,
                 OnBeforeStart
             );
 
@@ -103,9 +112,11 @@ namespace Omni.Core
             int identityId,
             bool isServer,
             bool isLocalPlayer,
+            NetworkBuffer buffer,
             Action<NetworkIdentity> OnBeforeStart
         )
         {
+            // Disable the prefab to avoid Awake and Start being called multiple times before the registration.
             prefab.gameObject.SetActive(false);
 
             NetworkIdentity identity = Object.Instantiate(prefab);
@@ -128,6 +139,7 @@ namespace Omni.Core
                 }
 
                 networkBehaviour.Register();
+                networkBehaviour.OnAwake(buffer);
             }
 
 #if UNITY_EDITOR || !UNITY_SERVER
@@ -154,9 +166,17 @@ namespace Omni.Core
                 );
             }
 
-            prefab.gameObject.SetActive(true);
             OnBeforeStart?.Invoke(identity);
-            identity.gameObject.SetActive(true);
+
+            prefab.gameObject.SetActive(true); // After registration, enable the prefab again.
+            identity.gameObject.SetActive(true); // Enable instantiated object!
+
+            // After Start
+            foreach (var behaviour in networkBehaviours)
+            {
+                behaviour.OnStart(buffer);
+            }
+
             return identity;
         }
     }

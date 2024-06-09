@@ -27,7 +27,7 @@ namespace Omni.Core
 #if OMNI_DEBUG || UNITY_EDITOR
         void OnGUI()
         {
-            if (NetworkManager.IsLocalClientConnected || NetworkManager.IsServerActive)
+            if (NetworkManager.IsClientActive || NetworkManager.IsServerActive)
                 return;
 
             var width = GUILayout.Width(m_Width);

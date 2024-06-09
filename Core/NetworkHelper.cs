@@ -1,12 +1,14 @@
 using System;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Omni.Core
 {
-    internal static class NetworkHelper
+    public static class NetworkHelper
     {
         private static int d_UniqueId = int.MinValue;
 
@@ -88,6 +90,34 @@ namespace Omni.Core
             }
 
             return port;
+        }
+
+        public static async Task<IPAddress> GetExternalIp(bool useIPv6)
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+                string externalIp = (
+                    await httpClient.GetStringAsync(
+                        useIPv6 ? "http://ipv6.icanhazip.com/" : "http://ipv4.icanhazip.com/"
+                    )
+                );
+
+                externalIp = externalIp.Replace("\\r\\n", "");
+                externalIp = externalIp.Replace("\\n", "");
+                externalIp = externalIp.Trim();
+
+                if (!IPAddress.TryParse(externalIp, out var ipAddress))
+                {
+                    return IPAddress.Loopback;
+                }
+
+                return ipAddress;
+            }
+            catch
+            {
+                return IPAddress.Loopback;
+            }
         }
 
         [Conditional("OMNI_DEBUG")]
