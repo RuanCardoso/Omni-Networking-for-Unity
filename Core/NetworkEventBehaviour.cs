@@ -1,3 +1,4 @@
+using System.Collections;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Matchmaking;
 using UnityEngine;
@@ -163,7 +164,25 @@ namespace Omni.Core
         protected virtual void Start()
         {
             RegisterMatchmakingEvents();
+            StartCoroutine(Internal_OnServerStart());
+            StartCoroutine(Internal_OnClientStart());
         }
+
+        private IEnumerator Internal_OnServerStart()
+        {
+            yield return new WaitUntil(() => IsServerActive);
+            OnServerStart();
+        }
+
+        private IEnumerator Internal_OnClientStart()
+        {
+            yield return new WaitUntil(() => IsClientActive);
+            OnClientStart();
+        }
+
+        protected virtual void OnServerStart() { }
+
+        protected virtual void OnClientStart() { }
 
         protected void InitializeBehaviour()
         {
@@ -401,7 +420,16 @@ namespace Omni.Core
         protected virtual void Start()
         {
             RegisterMatchmakingEvents();
+            StartCoroutine(Internal_OnClientStart());
         }
+
+        private IEnumerator Internal_OnClientStart()
+        {
+            yield return new WaitUntil(() => IsClientActive);
+            OnClientStart();
+        }
+
+        protected virtual void OnClientStart() { }
 
         protected void InitializeBehaviour()
         {
@@ -537,7 +565,16 @@ namespace Omni.Core
         protected virtual void Start()
         {
             RegisterMatchmakingEvents();
+            StartCoroutine(Internal_OnServerStart());
         }
+
+        private IEnumerator Internal_OnServerStart()
+        {
+            yield return new WaitUntil(() => IsServerActive);
+            OnServerStart();
+        }
+
+        protected virtual void OnServerStart() { }
 
         protected void InitializeBehaviour()
         {

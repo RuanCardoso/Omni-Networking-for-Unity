@@ -847,6 +847,13 @@ namespace Omni.Core
                     sequenceChannel
                 );
             }
+            else
+            {
+                NetworkLogger.__Log__(
+                    "Your are trying to send a message to the server while not connected. Please connect first.",
+                    NetworkLogger.LogType.Error
+                );
+            }
         }
 
         private float m_QueryInterval = NetworkClock.DEFAULT_QUERY_INTERVAL;
