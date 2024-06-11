@@ -18,10 +18,10 @@ namespace Omni.Core
         private readonly INetworkMessage m_NetworkMessage;
         private readonly NetVarBehaviour m_NetVarBehaviour;
 
-        internal NbClient(INetworkMessage networkMessage, NetVarBehaviour netVarBehaviour)
+        internal NbClient(INetworkMessage networkMessage)
         {
             m_NetworkMessage = networkMessage;
-            m_NetVarBehaviour = netVarBehaviour;
+            m_NetVarBehaviour = m_NetworkMessage as NetVarBehaviour;
         }
 
         public void ManualSync<T>(
@@ -84,10 +84,10 @@ namespace Omni.Core
         private readonly INetworkMessage m_NetworkMessage;
         private readonly NetVarBehaviour m_NetVarBehaviour;
 
-        internal NbServer(INetworkMessage networkMessage, NetVarBehaviour netVarBehaviour)
+        internal NbServer(INetworkMessage networkMessage)
         {
             m_NetworkMessage = networkMessage;
-            m_NetVarBehaviour = netVarBehaviour;
+            m_NetVarBehaviour = m_NetworkMessage as NetVarBehaviour;
         }
 
         public void ManualSync<T>(
@@ -302,8 +302,8 @@ namespace Omni.Core
             Client.AddEventBehaviour(m_Id, this);
             Server.AddEventBehaviour(m_Id, this);
 
-            Local = new NbClient(this, this);
-            Remote = new NbServer(this, this);
+            Local = new NbClient(this);
+            Remote = new NbServer(this);
         }
 
         protected void RegisterEvents()
@@ -545,7 +545,7 @@ namespace Omni.Core
         {
             eventBehaviour.FindEvents<ClientAttribute>(this);
             Client.AddEventBehaviour(m_Id, this);
-            Local = new NbClient(this, this);
+            Local = new NbClient(this);
         }
 
         protected void RegisterEvents()
@@ -690,7 +690,7 @@ namespace Omni.Core
         {
             eventBehaviour.FindEvents<ServerAttribute>(this);
             Server.AddEventBehaviour(m_Id, this);
-            Remote = new NbServer(this, this);
+            Remote = new NbServer(this);
         }
 
         protected void RegisterEvents()
