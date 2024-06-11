@@ -16,10 +16,45 @@ namespace Omni.Core
     public class NbClient
     {
         private readonly INetworkMessage m_NetworkMessage;
+        private readonly NetVarBehaviour m_NetVarBehaviour;
 
-        internal NbClient(INetworkMessage networkMessage)
+        internal NbClient(INetworkMessage networkMessage, NetVarBehaviour netVarBehaviour)
         {
             m_NetworkMessage = networkMessage;
+            m_NetVarBehaviour = netVarBehaviour;
+        }
+
+        public void ManualSync<T>(
+            T property,
+            byte propertyId,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            byte sequenceChannel = 0
+        )
+        {
+            using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
+            Invoke(255, message, deliveryMode, sequenceChannel);
+        }
+
+        public void AutoSync<T>(
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            byte sequenceChannel = 0,
+            [CallerMemberName] string callerName = ""
+        )
+        {
+            IPropertyMemberInfo propertyInfo = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(
+                callerName
+            );
+            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
+
+            if (propertyInfo != null)
+            {
+                using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(
+                    propertyInfoGeneric.GetFunc(),
+                    propertyInfo.Id
+                );
+
+                Invoke(255, message, deliveryMode, sequenceChannel);
+            }
         }
 
         public void GlobalInvoke(
@@ -47,10 +82,78 @@ namespace Omni.Core
     public class NbServer
     {
         private readonly INetworkMessage m_NetworkMessage;
+        private readonly NetVarBehaviour m_NetVarBehaviour;
 
-        internal NbServer(INetworkMessage networkMessage)
+        internal NbServer(INetworkMessage networkMessage, NetVarBehaviour netVarBehaviour)
         {
             m_NetworkMessage = networkMessage;
+            m_NetVarBehaviour = netVarBehaviour;
+        }
+
+        public void ManualSync<T>(
+            T property,
+            byte propertyId,
+            NetworkPeer peer = null,
+            Target target = Target.All,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            peer ??= Server.ServerPeer;
+            using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
+            Invoke(
+                255,
+                peer.Id,
+                message,
+                target,
+                deliveryMode,
+                groupId,
+                cacheId,
+                cacheMode,
+                sequenceChannel
+            );
+        }
+
+        public void AutoSync<T>(
+            NetworkPeer peer = null,
+            Target target = Target.All,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0,
+            [CallerMemberName] string callerName = ""
+        )
+        {
+            IPropertyMemberInfo propertyInfo = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(
+                callerName
+            );
+
+            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
+
+            if (propertyInfo != null)
+            {
+                peer ??= Server.ServerPeer;
+                using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(
+                    propertyInfoGeneric.GetFunc(),
+                    propertyInfo.Id
+                );
+
+                Invoke(
+                    255,
+                    peer.Id,
+                    message,
+                    target,
+                    deliveryMode,
+                    groupId,
+                    cacheId,
+                    cacheMode,
+                    sequenceChannel
+                );
+            }
         }
 
         public void GlobalInvoke(
@@ -199,8 +302,8 @@ namespace Omni.Core
             Client.AddEventBehaviour(m_Id, this);
             Server.AddEventBehaviour(m_Id, this);
 
-            Local = new NbClient(this);
-            Remote = new NbServer(this);
+            Local = new NbClient(this, this);
+            Remote = new NbServer(this, this);
         }
 
         protected void RegisterEvents()
@@ -227,100 +330,6 @@ namespace Omni.Core
 
                 Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
                 Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
-            }
-        }
-
-        protected void ManualSync<T>(
-            T property,
-            byte propertyId,
-            NetworkPeer peer = null,
-            Target target = Target.All,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            int cacheId = 0,
-            CacheMode cacheMode = CacheMode.None,
-            byte sequenceChannel = 0
-        )
-        {
-            peer ??= Server.ServerPeer;
-            using NetworkBuffer message = CreateHeader(property, propertyId);
-            Remote.Invoke(
-                255,
-                peer.Id,
-                message,
-                target,
-                deliveryMode,
-                groupId,
-                cacheId,
-                cacheMode,
-                sequenceChannel
-            );
-        }
-
-        protected void AutoSync<T>(
-            NetworkPeer peer = null,
-            Target target = Target.All,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            int cacheId = 0,
-            CacheMode cacheMode = CacheMode.None,
-            byte sequenceChannel = 0,
-            [CallerMemberName] string callerName = ""
-        )
-        {
-            IPropertyMemberInfo propertyInfo = GetPropertyInfoWithCallerName<T>(callerName);
-            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
-
-            if (propertyInfo != null)
-            {
-                peer ??= Server.ServerPeer;
-                using NetworkBuffer message = CreateHeader(
-                    propertyInfoGeneric.GetFunc(),
-                    propertyInfo.Id
-                );
-
-                Remote.Invoke(
-                    255,
-                    peer.Id,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    cacheId,
-                    cacheMode,
-                    sequenceChannel
-                );
-            }
-        }
-
-        protected void ManualSyncFromClient<T>(
-            T property,
-            byte propertyId,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            byte sequenceChannel = 0
-        )
-        {
-            using NetworkBuffer message = CreateHeader(property, propertyId);
-            Local.Invoke(255, message, deliveryMode, sequenceChannel);
-        }
-
-        protected void AutoSyncFromClient<T>(
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            byte sequenceChannel = 0,
-            [CallerMemberName] string callerName = ""
-        )
-        {
-            IPropertyMemberInfo propertyInfo = GetPropertyInfoWithCallerName<T>(callerName);
-            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
-
-            if (propertyInfo != null)
-            {
-                using NetworkBuffer message = CreateHeader(
-                    propertyInfoGeneric.GetFunc(),
-                    propertyInfo.Id
-                );
-
-                Local.Invoke(255, message, deliveryMode, sequenceChannel);
             }
         }
 
@@ -536,7 +545,7 @@ namespace Omni.Core
         {
             eventBehaviour.FindEvents<ClientAttribute>(this);
             Client.AddEventBehaviour(m_Id, this);
-            Local = new NbClient(this);
+            Local = new NbClient(this, this);
         }
 
         protected void RegisterEvents()
@@ -552,37 +561,6 @@ namespace Omni.Core
             {
                 Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
                 Matchmaking.Client.OnLeftGroup += OnLeftGroup;
-            }
-        }
-
-        protected void ManualSync<T>(
-            T property,
-            byte propertyId,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            byte sequenceChannel = 0
-        )
-        {
-            using NetworkBuffer message = CreateHeader(property, propertyId);
-            Local.Invoke(255, message, deliveryMode, sequenceChannel);
-        }
-
-        protected void AutoSync<T>(
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            byte sequenceChannel = 0,
-            [CallerMemberName] string callerName = ""
-        )
-        {
-            IPropertyMemberInfo propertyInfo = GetPropertyInfoWithCallerName<T>(callerName);
-            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
-
-            if (propertyInfo != null)
-            {
-                using NetworkBuffer message = CreateHeader(
-                    propertyInfoGeneric.GetFunc(),
-                    propertyInfo.Id
-                );
-
-                Local.Invoke(255, message, deliveryMode, sequenceChannel);
             }
         }
 
@@ -712,7 +690,7 @@ namespace Omni.Core
         {
             eventBehaviour.FindEvents<ServerAttribute>(this);
             Server.AddEventBehaviour(m_Id, this);
-            Remote = new NbServer(this);
+            Remote = new NbServer(this, this);
         }
 
         protected void RegisterEvents()
@@ -732,69 +710,6 @@ namespace Omni.Core
 
                 Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
                 Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
-            }
-        }
-
-        protected void ManualSync<T>(
-            T property,
-            byte propertyId,
-            NetworkPeer peer = null,
-            Target target = Target.All,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            int cacheId = 0,
-            CacheMode cacheMode = CacheMode.None,
-            byte sequenceChannel = 0
-        )
-        {
-            peer ??= Server.ServerPeer;
-            using NetworkBuffer message = CreateHeader(property, propertyId);
-            Remote.Invoke(
-                255,
-                peer.Id,
-                message,
-                target,
-                deliveryMode,
-                groupId,
-                cacheId,
-                cacheMode,
-                sequenceChannel
-            );
-        }
-
-        protected void AutoSync<T>(
-            NetworkPeer peer = null,
-            Target target = Target.All,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            int cacheId = 0,
-            CacheMode cacheMode = CacheMode.None,
-            byte sequenceChannel = 0,
-            [CallerMemberName] string callerName = ""
-        )
-        {
-            IPropertyMemberInfo propertyInfo = GetPropertyInfoWithCallerName<T>(callerName);
-            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
-
-            if (propertyInfo != null)
-            {
-                peer ??= Server.ServerPeer;
-                using NetworkBuffer message = CreateHeader(
-                    propertyInfoGeneric.GetFunc(),
-                    propertyInfo.Id
-                );
-
-                Remote.Invoke(
-                    255,
-                    peer.Id,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    cacheId,
-                    cacheMode,
-                    sequenceChannel
-                );
             }
         }
 
