@@ -1104,7 +1104,9 @@ namespace Omni.Core
                             else
                             {
                                 NetworkLogger.__Log__(
-                                    $"Invoke Error: Failed to find event behaviour with ID: {identityId}. Register it first or ignore it.",
+                                    $"Invoke Error: Failed to find global event behaviour with Id: [{identityId}] and instance Id: [{instanceId}] on the {(isServer ? "Server" : "Client")} side. "
+                                        + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
+                                        + "Ensure it is registered first or ignore it if intended.",
                                     NetworkLogger.LogType.Error
                                 );
                             }
@@ -1140,7 +1142,9 @@ namespace Omni.Core
                             else
                             {
                                 NetworkLogger.__Log__(
-                                    $"Invoke Error: Failed to find event behaviour with ID: {identityId}. Register it first or ignore it.",
+                                    $"Invoke Error: Failed to find global event behaviour with Id: [{identityId}] on the {(isServer ? "Server" : "Client")} side. "
+                                        + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
+                                        + "Ensure it is registered first or ignore it if intended.",
                                     NetworkLogger.LogType.Error
                                 );
                             }
