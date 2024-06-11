@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Linq;
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using UnityEngine;
@@ -102,6 +103,9 @@ namespace Omni.Core
             Null,
             Null
         > serverEventBehaviour = new();
+
+        [SerializeField]
+        private string m_ServiceName;
 
         [SerializeField]
         private byte m_Id = 0;
@@ -229,6 +233,7 @@ namespace Omni.Core
             }
 
             AddEventBehaviour();
+            InitializeServiceLocator();
         }
 
         internal void Unregister()
@@ -244,6 +249,19 @@ namespace Omni.Core
                     $"Unregister Error: EventBehaviour with ID '{m_Id}' and peer ID '{IdentityId}' does not exist. Please ensure the EventBehaviour is registered before attempting to unregister.",
                     NetworkLogger.LogType.Error
                 );
+            }
+        }
+
+        /// <summary>
+        /// Adds the current instance to the service locator using the provided service name.
+        /// If `dontDestroyOnLoad` is set to true, the instance will persist across scene loads.
+        /// Called automatically by <c>Awake</c>, if you override <c>Awake</c> call this method yourself.
+        /// </summary>
+        private void InitializeServiceLocator()
+        {
+            if (!string.IsNullOrEmpty(m_ServiceName))
+            {
+                Identity.Register(this, m_ServiceName);
             }
         }
 
@@ -455,6 +473,27 @@ namespace Omni.Core
             {
                 m_Id = 255;
             }
+
+            if (string.IsNullOrEmpty(m_ServiceName))
+            {
+                string serviceName = GetType().Name;
+                var services = transform.root.GetComponentsInChildren<NetworkBehaviour>(true);
+                if (services.Count(x => x.m_ServiceName == serviceName) > 1)
+                {
+                    NetworkLogger.__Log__(
+                        $"Service name '{m_ServiceName}' is not unique. Please ensure that the service name is unique."
+                    );
+                }
+                else
+                {
+                    m_ServiceName = serviceName;
+                }
+            }
+        }
+
+        protected virtual void Reset()
+        {
+            OnValidate();
         }
     }
 }

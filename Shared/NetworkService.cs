@@ -1,67 +1,58 @@
+/*===========================================================
+    Author: Ruan Cardoso
+    -
+    Country: Brazil(Brasil)
+    -
+    Contact: cardoso.ruan050322@gmail.com
+    -
+    Support: neutron050322@gmail.com
+    -
+    Unity Minor Version: 2021.3 LTS
+    -
+    License: Open Source (MIT)
+    ===========================================================*/
+
 using System;
 using System.Collections.Generic;
-using Omni.Core.Attributes;
 using UnityEngine;
 
 namespace Omni.Core
 {
-    public class NetworkIdentity : MonoBehaviour
+    /// <summary>
+    /// Service Locator is a pattern used to provide global access to a service instance.
+    /// This class provides a static methods to store and retrieve services by name.
+    /// </summary>
+    [DefaultExecutionOrder(-10500)]
+    public class NetworkService : MonoBehaviour
     {
-        private readonly Dictionary<string, object> services = new(); // Service Name
+        private static readonly Dictionary<string, object> services = new(); // Service Name
 
         [SerializeField]
-        [ReadOnly]
-        private int m_Id;
+        private string serviceName;
 
         [SerializeField]
-        [ReadOnly]
-        private bool m_IsServer;
+        private bool dontDestroyOnLoad;
 
-        [SerializeField]
-        [ReadOnly]
-        private bool m_IsLocalPlayer;
-
-        public int IdentityId
+        protected virtual void Awake()
         {
-            get { return m_Id; }
-            internal set { m_Id = value; }
+            InitializeServiceLocator();
         }
 
         /// <summary>
-        /// Owner of this object. Only available on server, returns null on client.
+        /// Adds the current instance to the service locator using the provided service name.
+        /// If `dontDestroyOnLoad` is set to true, the instance will persist across scene loads.
+        /// Called automatically by <c>Awake</c>, if you override <c>Awake</c> call this method yourself.
         /// </summary>
-        public NetworkPeer Owner { get; internal set; }
-
-        /// <summary>
-        /// Indicates whether this object is obtained from the server or checked on the client.
-        /// True if the object is obtained from the server, false if it is checked on the client.
-        /// </summary>
-        public bool IsServer
+        protected void InitializeServiceLocator()
         {
-            get { return m_IsServer; }
-            internal set { m_IsServer = value; }
-        }
-
-        /// <summary>
-        /// Indicates whether this object is owned by the local player.
-        /// </summary>
-        public bool IsLocalPlayer
-        {
-            get { return m_IsLocalPlayer; }
-            internal set { m_IsLocalPlayer = value; }
-        }
-
-        public NetworkBuffer DestroyOnServer()
-        {
-            if (IsServer)
+            if (!string.IsNullOrEmpty(serviceName))
             {
-                NetworkBuffer message = NetworkManager.Pool.Rent();
-                message.DestroyOnServer(this);
-                return message;
+                Register(this, serviceName);
             }
-            else
+
+            if (dontDestroyOnLoad)
             {
-                throw new Exception("Cannot destroy on client. Coming soon.");
+                DontDestroyOnLoad(this);
             }
         }
 
@@ -75,7 +66,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if the service is not found or cannot be cast to the specified type.
         /// </exception>
-        public T Get<T>(string serviceName)
+        public static T Get<T>(string serviceName)
             where T : class
         {
             try
@@ -110,7 +101,7 @@ namespace Omni.Core
         /// <param name="serviceName">The name of the service to retrieve.</param>
         /// <param name="service">When this method returns, contains the service instance cast to the specified type if the service is found; otherwise, the default value for the type of the service parameter.</param>
         /// <returns>True if the service is found and successfully cast to the specified type; otherwise, false.</returns>
-        public bool TryGet<T>(string serviceName, out T service)
+        public static bool TryGet<T>(string serviceName, out T service)
             where T : class
         {
             service = default;
@@ -136,7 +127,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if the service is not found or cannot be cast to the specified type.
         /// </exception>
-        public T Get<T>()
+        public static T Get<T>()
             where T : class
         {
             return Get<T>(typeof(T).Name);
@@ -148,7 +139,7 @@ namespace Omni.Core
         /// <typeparam name="T">The type of the service to retrieve.</typeparam>
         /// <param name="service">When this method returns, contains the service instance cast to the specified type if the service is found; otherwise, the default value for the type of the service parameter.</param>
         /// <returns>True if the service is found and successfully cast to the specified type; otherwise, false.</returns>
-        public bool TryGet<T>(out T service)
+        public static bool TryGet<T>(out T service)
             where T : class
         {
             service = default;
@@ -177,7 +168,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if a service with the specified name already exists.
         /// </exception>
-        public void Register<T>(T service, string serviceName)
+        public static void Register<T>(T service, string serviceName)
         {
             if (!services.TryAdd(serviceName, service))
             {
@@ -197,7 +188,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if a service with the specified name already exists.
         /// </exception>
-        public bool TryRegister<T>(T service, string serviceName)
+        public static bool TryRegister<T>(T service, string serviceName)
         {
             return services.TryAdd(serviceName, service);
         }
@@ -212,7 +203,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if a service with the specified name does not exist in the.
         /// </exception>
-        public void UpdateService<T>(T service, string serviceName)
+        public static void Update<T>(T service, string serviceName)
         {
             if (services.ContainsKey(serviceName))
             {
@@ -236,7 +227,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if a service with the specified name does not exist in the.
         /// </exception>
-        public bool TryUpdate<T>(T service, string serviceName)
+        public static bool TryUpdate<T>(T service, string serviceName)
         {
             if (services.ContainsKey(serviceName))
             {
@@ -252,9 +243,22 @@ namespace Omni.Core
         /// </summary>
         /// <param name="serviceName">The name of the service to delete.</param>
         /// <returns>True if the service was successfully removed; otherwise, false.</returns>
-        public bool Unregister(string serviceName)
+        public static bool Unregister(string serviceName)
         {
             return services.Remove(serviceName);
+        }
+
+        protected virtual void OnValidate()
+        {
+            if (string.IsNullOrEmpty(serviceName))
+            {
+                serviceName = GetType().Name;
+            }
+        }
+
+        protected virtual void Reset()
+        {
+            OnValidate();
         }
     }
 }
