@@ -26,16 +26,6 @@ namespace Omni.Core
             return message;
         }
 
-        public static NetworkBuffer InstantiateOnClient(
-            NetworkIdentity prefab,
-            Action<NetworkIdentity> OnBeforeStart = null
-        )
-        {
-            var message = Pool.Rent();
-            message.InstantiateOnClient(prefab, OnBeforeStart);
-            return message;
-        }
-
         public static NetworkBuffer FastWrite<T1>(T1 t1)
             where T1 : unmanaged
         {
