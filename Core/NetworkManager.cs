@@ -88,6 +88,8 @@ namespace Omni.Core
 
     internal class MessageType // not a enum to avoid casting
     {
+        internal const byte HttpResponse = 247;
+        internal const byte HttpFetch = 248;
         internal const byte NtpQuery = 249;
         internal const byte Handshake = 250;
         internal const byte GenerateUniqueId = 251;
@@ -106,7 +108,7 @@ namespace Omni.Core
 
         public static double ClockTime => _stopwatch.Elapsed.TotalSeconds; // does not depend on frame rate.
         public static int MainThreadId { get; private set; }
-        public static IObjectPooling<NetworkBuffer> Pool { get; } = new NetworkBufferPool();
+        public static IObjectPooling<DataBuffer> Pool { get; } = new NetworkBufferPool();
 
         public static event Action OnServerInitialized;
         public static event Action<NetworkPeer> OnServerPeerConnected;
@@ -114,11 +116,11 @@ namespace Omni.Core
         public static event Action OnClientConnected;
         public static event Action<string> OnClientDisconnected;
 
-        private static event Action<byte, NetworkBuffer, NetworkPeer, int> OnServerCustomMessage;
-        private static event Action<byte, NetworkBuffer, int> OnClientCustomMessage;
+        private static event Action<byte, DataBuffer, NetworkPeer, int> OnServerCustomMessage;
+        private static event Action<byte, DataBuffer, int> OnClientCustomMessage;
 
-        internal static event Action<string, NetworkBuffer> OnJoinedGroup; // for client
-        internal static event Action<NetworkBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup; // for server
+        internal static event Action<string, DataBuffer> OnJoinedGroup; // for client
+        internal static event Action<DataBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedJoinGroup; // for server
         internal static event Action<string, string> OnLeftGroup; // for client
         internal static event Action<NetworkGroup, NetworkPeer, string> OnPlayerLeftGroup; // for server
@@ -280,6 +282,7 @@ namespace Omni.Core
 
             if (m_Connection)
             {
+                HttpLite.Initialize();
                 InitializeModule(Module.Connection);
             }
         }
@@ -483,7 +486,7 @@ namespace Omni.Core
 
         internal static void SendToClient(
             byte msgType,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             IPEndPoint fromPeer,
             Target target,
             DeliveryMode deliveryMode,
@@ -508,7 +511,7 @@ namespace Omni.Core
 
         internal static void SendToServer(
             byte msgType,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             DeliveryMode deliveryMode,
             byte sequenceChannel
         )
@@ -526,7 +529,7 @@ namespace Omni.Core
             ReadOnlySpan<byte> message
         )
         {
-            using NetworkBuffer header = Pool.Rent();
+            using DataBuffer header = Pool.Rent();
             header.FastWrite(msgType);
             header.Write(message);
             return header.WrittenSpan;
@@ -537,7 +540,7 @@ namespace Omni.Core
             ReadOnlySpan<byte> message
         )
         {
-            using NetworkBuffer header = Pool.Rent();
+            using DataBuffer header = Pool.Rent();
             header.FastWrite(msgType);
             header.Write(message);
             return header.WrittenSpan;
@@ -939,7 +942,7 @@ namespace Omni.Core
                 else
                 {
                     // TODO: Implement handshake with AES & RSA.
-                    using NetworkBuffer message = Pool.Rent();
+                    using DataBuffer message = Pool.Rent();
                     message.FastWrite(newPeer.Id);
                     SendToClient(
                         MessageType.Handshake,
@@ -1041,13 +1044,18 @@ namespace Omni.Core
             NetworkHelper.EnsureRunningOnMainThread();
             if (PeersByIp.TryGetValue(_peer, out NetworkPeer peer) || !isServer)
             {
-                using NetworkBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent();
                 message.Write(_data);
                 message.ResetWrittenCount();
 
                 byte msgType = message.FastRead<byte>(); // Note: On Message event
                 message._reworkStart = message.WrittenCount; // Skip header
                 message._reworkEnd = _data.Length; // Slice -> [Header..Length]
+
+                void ResetReadPosition()
+                {
+                    message._reworkStart = message.WrittenCount; // Skip header
+                }
 
                 switch (msgType)
                 {
@@ -1057,7 +1065,7 @@ namespace Omni.Core
                             {
                                 double time = message.FastRead<double>();
                                 float t = message.FastRead<float>();
-                                message._reworkStart = message.WrittenCount; // Skip header
+                                ResetReadPosition();
                                 SNTP.Server.SendNtpResponse(time, peer, t);
                             }
                             else
@@ -1066,6 +1074,7 @@ namespace Omni.Core
                                 double x = message.FastRead<double>();
                                 double y = message.FastRead<double>();
                                 float t = message.FastRead<float>();
+                                ResetReadPosition();
                                 SNTP.Client.Evaluate(a, x, y, t);
                             }
                         }
@@ -1075,9 +1084,13 @@ namespace Omni.Core
                             if (!isServer)
                             {
                                 int localPeerId = message.FastRead<int>();
-                                message._reworkStart = message.WrittenCount; // Skip header
+                                ResetReadPosition();
                                 Peer = new NetworkPeer(PeerEndPoint, localPeerId);
                                 Peer._nativePeer = NativePeer;
+                            }
+                            else
+                            {
+                                ResetReadPosition();
                             }
                         }
                         break;
@@ -1087,8 +1100,7 @@ namespace Omni.Core
                             byte instanceId = message.FastRead<byte>();
                             byte invokeId = message.FastRead<byte>();
 
-                            // Skip header
-                            message._reworkStart = message.WrittenCount;
+                            ResetReadPosition();
 
                             var key = (identityId, instanceId);
                             var eventBehavious = isServer
@@ -1121,8 +1133,7 @@ namespace Omni.Core
                             int identityId = message.FastRead<int>();
                             byte invokeId = message.FastRead<byte>();
 
-                            // Skip header
-                            message._reworkStart = message.WrittenCount;
+                            ResetReadPosition();
 
                             var eventBehavious = isServer
                                 ? Server.GlobalEventBehaviours
@@ -1159,8 +1170,7 @@ namespace Omni.Core
                             string groupName = message.FastReadString();
                             string reason = message.FastReadString();
 
-                            // Skip header
-                            message._reworkStart = message.WrittenCount;
+                            ResetReadPosition();
 
                             if (isServer)
                             {
@@ -1176,8 +1186,7 @@ namespace Omni.Core
                         {
                             string groupName = message.FastReadString();
 
-                            // Skip header
-                            message._reworkStart = message.WrittenCount;
+                            ResetReadPosition();
 
                             if (isServer)
                             {
@@ -1209,6 +1218,7 @@ namespace Omni.Core
                         {
                             if (isServer)
                             {
+                                ResetReadPosition();
                                 OnServerCustomMessage?.Invoke(
                                     msgType,
                                     message,
@@ -1218,6 +1228,7 @@ namespace Omni.Core
                             }
                             else
                             {
+                                ResetReadPosition();
                                 OnClientCustomMessage?.Invoke(msgType, message, sequenceChannel);
                             }
                         }

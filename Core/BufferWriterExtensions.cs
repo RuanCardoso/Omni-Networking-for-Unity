@@ -1,8 +1,10 @@
 using System;
 using System.Buffers;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using MemoryPack;
 using MemoryPack.Compression;
 using Newtonsoft.Json;
@@ -23,7 +25,7 @@ namespace Omni.Core
         /// <param name="buffer">The network buffer to write identity data.</param>
         /// <param name="OnBeforeStart">An action to execute before the network identity starts, but after it has been registered.</param>
         /// <returns>The instantiated network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer InstantiateOnServer(
+        public static DataBuffer InstantiateOnServer(
             NetworkIdentity prefab,
             NetworkPeer peer,
             Action<NetworkIdentity> OnBeforeStart = null
@@ -39,7 +41,7 @@ namespace Omni.Core
         /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer FastWrite<T1>(T1 t1)
+        public static DataBuffer FastWrite<T1>(T1 t1)
             where T1 : unmanaged
         {
             var message = Pool.Rent();
@@ -52,7 +54,7 @@ namespace Omni.Core
         /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer FastWrite<T1, T2>(T1 t1, T2 t2)
+        public static DataBuffer FastWrite<T1, T2>(T1 t1, T2 t2)
             where T1 : unmanaged
             where T2 : unmanaged
         {
@@ -67,7 +69,7 @@ namespace Omni.Core
         /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer FastWrite<T1, T2, T3>(T1 t1, T2 t2, T3 t3)
+        public static DataBuffer FastWrite<T1, T2, T3>(T1 t1, T2 t2, T3 t3)
             where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
@@ -84,7 +86,7 @@ namespace Omni.Core
         /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer FastWrite<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4)
+        public static DataBuffer FastWrite<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4)
             where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
@@ -103,7 +105,7 @@ namespace Omni.Core
         /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer FastWrite<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5)
+        public static DataBuffer FastWrite<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5)
             where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
@@ -124,7 +126,7 @@ namespace Omni.Core
         /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer FastWrite<T1, T2, T3, T4, T5, T6>(
+        public static DataBuffer FastWrite<T1, T2, T3, T4, T5, T6>(
             T1 t1,
             T2 t2,
             T3 t3,
@@ -154,7 +156,7 @@ namespace Omni.Core
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer Write<T1>(T1 t1)
+        public static DataBuffer Write<T1>(T1 t1)
             where T1 : unmanaged
         {
             var message = Pool.Rent();
@@ -167,7 +169,7 @@ namespace Omni.Core
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer Write<T1, T2>(T1 t1, T2 t2)
+        public static DataBuffer Write<T1, T2>(T1 t1, T2 t2)
             where T1 : unmanaged
             where T2 : unmanaged
         {
@@ -182,7 +184,7 @@ namespace Omni.Core
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer Write<T1, T2, T3>(T1 t1, T2 t2, T3 t3)
+        public static DataBuffer Write<T1, T2, T3>(T1 t1, T2 t2, T3 t3)
             where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
@@ -199,7 +201,7 @@ namespace Omni.Core
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer Write<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4)
+        public static DataBuffer Write<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4)
             where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
@@ -218,7 +220,7 @@ namespace Omni.Core
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer Write<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5)
+        public static DataBuffer Write<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5)
             where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
@@ -239,7 +241,7 @@ namespace Omni.Core
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
         /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static NetworkBuffer Write<T1, T2, T3, T4, T5, T6>(
+        public static DataBuffer Write<T1, T2, T3, T4, T5, T6>(
             T1 t1,
             T2 t2,
             T3 t3,
@@ -276,7 +278,7 @@ namespace Omni.Core
         /// <param name="OnBeforeStart">An action to execute before the network identity starts, but after it has been registered.</param>
         /// <returns>The instantiated network identity.</returns>
         public static NetworkIdentity InstantiateOnServer(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             NetworkIdentity prefab,
             NetworkPeer peer,
             Action<NetworkIdentity> OnBeforeStart = null
@@ -292,7 +294,7 @@ namespace Omni.Core
         /// <param name="buffer">The network buffer containing serialized identity data.</param>
         /// <returns>The instantiated network identity.</returns>
         public static NetworkIdentity InstantiateOnClient(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             NetworkIdentity prefab,
             Action<NetworkIdentity> OnBeforeStart = null
         )
@@ -304,7 +306,7 @@ namespace Omni.Core
         /// Destroys a network identity on the server and serializes its destruction to the network buffer.
         /// </summary>
         /// <param name="identity">The network identity to destroy.</param>
-        public static void DestroyOnServer(this NetworkBuffer buffer, NetworkIdentity identity)
+        public static void DestroyOnServer(this DataBuffer buffer, NetworkIdentity identity)
         {
             identity.DestroyOnServer(buffer);
         }
@@ -312,7 +314,7 @@ namespace Omni.Core
         /// <summary>
         /// Destroys a network identity on the client from serialized data in the network buffer.
         /// </summary>
-        public static void DestroyOnClient(this NetworkBuffer buffer)
+        public static void DestroyOnClient(this DataBuffer buffer)
         {
             buffer.Internal_DestroyOnClient();
         }
@@ -328,11 +330,7 @@ namespace Omni.Core
         /// Thrown when there is no space available in the Network Buffer acquired from the pool,
         /// or if an error occurs during compression.
         /// </exception>
-        public static NetworkBuffer ToBrotli(
-            this NetworkBuffer buffer,
-            int quality = 1,
-            int window = 22
-        )
+        public static DataBuffer ToBrotli(this DataBuffer buffer, int quality = 1, int window = 22)
         {
             try
             {
@@ -363,7 +361,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if an error occurs during decompression.
         /// </exception>
-        public static NetworkBuffer FromBrotli(this NetworkBuffer buffer)
+        public static DataBuffer FromBrotli(this DataBuffer buffer)
         {
             using BrotliDecompressor decompressor = new();
             var data = decompressor.Decompress(buffer.Rework().WrittenSpan);
@@ -386,7 +384,7 @@ namespace Omni.Core
         /// By default, Newtonsoft.Json is used for serialization.
         /// </summary>
         public static string ToJson<T>(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             T value,
             JsonSerializerSettings settings = null
         )
@@ -401,7 +399,7 @@ namespace Omni.Core
         /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for serialization.
         /// </summary>
         public static void ToBinary<T>(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             T value,
             MemoryPackSerializerOptions settings = null
         )
@@ -413,9 +411,26 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Asynchronously converts an object to binary and writes it to the network buffer.<br/>
+        /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for serialization.
+        /// </summary>
+        public static async void ToBinaryAsync<T>(
+            this DataBuffer buffer,
+            T value,
+            MemoryPackSerializerOptions settings = null
+        )
+        {
+            IBufferWriter<byte> writer = buffer;
+            using MemoryStream stream = new();
+            await MemoryPackSerializer.SerializeAsync(stream, value, settings);
+            Write7BitEncodedInt(buffer, (int)stream.Length);
+            writer.Write(stream.GetBuffer().AsSpan(0, (int)stream.Length));
+        }
+
+        /// <summary>
         /// Writes an primitive array to the network buffer.<br/>
         /// </summary>
-        public static void FastWrite<T>(this NetworkBuffer buffer, T[] array)
+        public static void FastWrite<T>(this DataBuffer buffer, T[] array)
             where T : unmanaged
         {
             IBufferWriter<byte> writer = buffer;
@@ -432,7 +447,7 @@ namespace Omni.Core
         /// Note: May result in a StackOverflowException if the string is excessively long.
         /// </summary>
         public static int FastWrite(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             ReadOnlySpan<char> input,
             Encoding encoding = null
         )
@@ -456,7 +471,7 @@ namespace Omni.Core
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
         public static int Write(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             ReadOnlySpan<char> input,
             Encoding encoding = null
         )
@@ -484,7 +499,7 @@ namespace Omni.Core
         /// Writes a primitive value to the network buffer.<br/>
         /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
-        public static void FastWrite<T>(this NetworkBuffer buffer, T value)
+        public static void FastWrite<T>(this DataBuffer buffer, T value)
             where T : unmanaged
         {
             IBufferWriter<byte> writer = buffer;
@@ -500,7 +515,7 @@ namespace Omni.Core
         /// </summary>
         /// <param name="buffer">The network buffer to write to.</param>
         /// <param name="identity">The network identity to write.</param>
-        internal static void Write(this NetworkBuffer buffer, NetworkIdentity identity)
+        internal static void Write(this DataBuffer buffer, NetworkIdentity identity)
         {
             FastWrite(buffer, identity.IdentityId);
             FastWrite(buffer, identity.Owner.Id);
@@ -510,7 +525,7 @@ namespace Omni.Core
         /// Writes a primitive value to the network buffer.<br/>
         /// Allocates an array from the pool to avoid allocations.
         /// </summary>
-        public static void Write<T>(this NetworkBuffer buffer, T value)
+        public static void Write<T>(this DataBuffer buffer, T value)
             where T : unmanaged
         {
             IBufferWriter<byte> writer = buffer;
@@ -529,7 +544,7 @@ namespace Omni.Core
         /// Writes an integer in a compact 7-bit encoded format to the network buffer.
         /// https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/IO/BinaryWriter.cs#L473
         /// </summary>
-        public static void Write7BitEncodedInt(this NetworkBuffer buffer, int value)
+        public static void Write7BitEncodedInt(this DataBuffer buffer, int value)
         {
             uint uValue = (uint)value;
 
@@ -552,7 +567,7 @@ namespace Omni.Core
         /// Writes an long in a compact 7-bit encoded format to the network buffer.
         /// https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/IO/BinaryWriter.cs#L492
         /// </summary>
-        public static void Write7BitEncodedInt64(this NetworkBuffer buffer, long value)
+        public static void Write7BitEncodedInt64(this DataBuffer buffer, long value)
         {
             ulong uValue = (ulong)value;
 
@@ -578,10 +593,7 @@ namespace Omni.Core
         /// Reads a JSON string from the network buffer and converts it to an object.<br/>
         /// By default, Newtonsoft.Json is used for deserialization.
         /// </summary>
-        public static T FromJson<T>(
-            this NetworkBuffer buffer,
-            JsonSerializerSettings settings = null
-        )
+        public static T FromJson<T>(this DataBuffer buffer, JsonSerializerSettings settings = null)
         {
             string json = ReadString(buffer);
             return JsonConvert.DeserializeObject<T>(json, settings);
@@ -592,7 +604,7 @@ namespace Omni.Core
         /// By default, Newtonsoft.Json is used for deserialization.
         /// </summary>
         public static T FromJson<T>(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             out string json,
             JsonSerializerSettings settings = null
         )
@@ -606,7 +618,7 @@ namespace Omni.Core
         /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for deserialization.
         /// </summary>
         public static T FromBinary<T>(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             MemoryPackSerializerOptions settings = null
         )
         {
@@ -619,7 +631,7 @@ namespace Omni.Core
         /// <summary>
         /// Reads a string from the network buffer.<br/>
         /// </summary>
-        public static string FastReadString(this NetworkBuffer buffer, Encoding encoding = null)
+        public static string FastReadString(this DataBuffer buffer, Encoding encoding = null)
         {
             encoding ??= DefaultEncoding;
             int byteCount = Read7BitEncodedInt(buffer);
@@ -630,9 +642,9 @@ namespace Omni.Core
 
         /// <summary>
         /// Reads a string from the network buffer.<br/>
-        /// Syntactic sugar for <see cref="FastReadString(NetworkBuffer, Encoding)"/>
+        /// Syntactic sugar for <see cref="FastReadString(DataBuffer, Encoding)"/>
         /// </summary>
-        public static string ReadString(this NetworkBuffer buffer, Encoding encoding = null)
+        public static string ReadString(this DataBuffer buffer, Encoding encoding = null)
         {
             return FastReadString(buffer, encoding);
         }
@@ -643,7 +655,7 @@ namespace Omni.Core
         /// <typeparam name="T">The type of elements in the array (must be unmanaged).</typeparam>
         /// <param name="buffer">The network buffer to read from.</param>
         /// <returns>A new array containing the read data.</returns>
-        public static unsafe T[] ReadArray<T>(this NetworkBuffer buffer)
+        public static unsafe T[] ReadArray<T>(this DataBuffer buffer)
             where T : unmanaged
         {
             int size_t = Read7BitEncodedInt(buffer);
@@ -667,7 +679,7 @@ namespace Omni.Core
         /// <param name="buffer">The network buffer to read from.</param>
         /// <param name="array">The array to store the read data. It must be preallocated with the correct size.</param>
         /// <returns>The size of the array.</returns>
-        public static unsafe int FastReadArray<T>(this NetworkBuffer buffer, T[] array)
+        public static unsafe int FastReadArray<T>(this DataBuffer buffer, T[] array)
             where T : unmanaged
         {
             int size_t = Read7BitEncodedInt(buffer);
@@ -683,7 +695,7 @@ namespace Omni.Core
         /// <summary>
         /// Reads a primitive value from the network buffer.
         /// </summary>
-        public static T FastRead<T>(this NetworkBuffer buffer)
+        public static T FastRead<T>(this DataBuffer buffer)
             where T : unmanaged
         {
             int size_t = Unsafe.SizeOf<T>();
@@ -694,16 +706,16 @@ namespace Omni.Core
 
         /// <summary>
         /// Reads a primitive value from the network buffer.
-        /// Syntactic sugar for <see cref="FastRead{T}(NetworkBuffer)"/>
+        /// Syntactic sugar for <see cref="FastRead{T}(DataBuffer)"/>
         /// </summary>
-        public static T Read<T>(this NetworkBuffer buffer)
+        public static T Read<T>(this DataBuffer buffer)
             where T : unmanaged
         {
             return FastRead<T>(buffer);
         }
 
         internal static void ReadIdentityData(
-            this NetworkBuffer buffer,
+            this DataBuffer buffer,
             out int identityId,
             out int peerId
         )
@@ -716,7 +728,7 @@ namespace Omni.Core
         /// Reads a 32-bit signed integer in a compressed format(7-bit encoded) from the network buffer.
         /// </summary>
         /// <returns>The 32-bit signed integer read from the stream.</returns>
-        public static int Read7BitEncodedInt(this NetworkBuffer buffer)
+        public static int Read7BitEncodedInt(this DataBuffer buffer)
         {
             // Unlike writing, we can't delegate to the 64-bit read on
             // 64-bit platforms. The reason for this is that we want to
@@ -764,7 +776,7 @@ namespace Omni.Core
         /// Reads a 64-bit signed integer in a compressed format(7-bit encoded) from the network buffer.
         /// </summary>
         /// <returns>The 64-bit signed integer read from the stream.</returns>
-        public static long Read7BitEncodedInt64(this NetworkBuffer buffer)
+        public static long Read7BitEncodedInt64(this DataBuffer buffer)
         {
             ulong result = 0;
             byte byteReadJustNow;

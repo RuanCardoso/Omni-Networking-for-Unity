@@ -39,7 +39,7 @@ namespace Omni.Core
             byte sequenceChannel = 0
         )
         {
-            using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
+            using DataBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
             Invoke(255, message, deliveryMode, sequenceChannel);
         }
 
@@ -61,7 +61,7 @@ namespace Omni.Core
 
             if (property != null)
             {
-                using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(
+                using DataBuffer message = m_NetVarBehaviour.CreateHeader(
                     propertyGeneric.Invoke(),
                     property.Id
                 );
@@ -79,7 +79,7 @@ namespace Omni.Core
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void GlobalInvoke(
             byte msgId,
-            NetworkBuffer buffer = null,
+            DataBuffer buffer = null,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             byte sequenceChannel = 0
         ) => Client.GlobalInvoke(msgId, buffer, deliveryMode, sequenceChannel);
@@ -93,7 +93,7 @@ namespace Omni.Core
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void Invoke(
             byte msgId,
-            NetworkBuffer buffer = null,
+            DataBuffer buffer = null,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             byte sequenceChannel = 0
         ) =>
@@ -142,7 +142,7 @@ namespace Omni.Core
         )
         {
             peer ??= Server.ServerPeer;
-            using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
+            using DataBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
             Invoke(
                 255,
                 peer.Id,
@@ -184,7 +184,7 @@ namespace Omni.Core
             if (property != null)
             {
                 peer ??= Server.ServerPeer;
-                using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(
+                using DataBuffer message = m_NetVarBehaviour.CreateHeader(
                     propertyGeneric.Invoke(),
                     property.Id
                 );
@@ -217,7 +217,7 @@ namespace Omni.Core
         public void GlobalInvoke(
             byte msgId,
             int peerId,
-            NetworkBuffer buffer = null,
+            DataBuffer buffer = null,
             Target target = Target.Self,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0,
@@ -253,7 +253,7 @@ namespace Omni.Core
         public void Invoke(
             byte msgId,
             int peerId,
-            NetworkBuffer buffer = null,
+            DataBuffer buffer = null,
             Target target = Target.All,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0,
@@ -344,11 +344,11 @@ namespace Omni.Core
             private set => remote = value;
         }
 
-        private readonly EventBehaviour<NetworkBuffer, int, Null, Null, Null> clientEventBehaviour =
+        private readonly EventBehaviour<DataBuffer, int, Null, Null, Null> clientEventBehaviour =
             new();
 
         private readonly EventBehaviour<
-            NetworkBuffer,
+            DataBuffer,
             NetworkPeer,
             int,
             Null,
@@ -442,13 +442,13 @@ namespace Omni.Core
 
         protected virtual void OnClientDisconnected(string reason) { }
 
-        protected virtual void OnClientMessage(byte msgId, NetworkBuffer buffer, int seqChannel)
+        protected virtual void OnClientMessage(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
             buffer.ResetReadPosition();
+            TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
         }
 
-        private void TryClientLocate(byte msgId, NetworkBuffer buffer, int seqChannel)
+        private void TryClientLocate(byte msgId, DataBuffer buffer, int seqChannel)
         {
             if (clientEventBehaviour.TryGetLocate(msgId, out int argsCount))
             {
@@ -483,7 +483,7 @@ namespace Omni.Core
             }
         }
 
-        protected virtual void OnJoinedGroup(string groupName, NetworkBuffer buffer) { }
+        protected virtual void OnJoinedGroup(string groupName, DataBuffer buffer) { }
 
         protected virtual void OnLeftGroup(string groupName, string reason) { }
         #endregion
@@ -501,18 +501,18 @@ namespace Omni.Core
 
         protected virtual void OnServerMessage(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             int seqChannel
         )
         {
-            TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
             buffer.ResetReadPosition();
+            TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
         }
 
         private void TryServerLocate(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             int seqChannel
         )
@@ -551,7 +551,7 @@ namespace Omni.Core
         }
 
         protected virtual void OnPlayerJoinedGroup(
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkGroup group,
             NetworkPeer peer
         ) { }
@@ -565,7 +565,7 @@ namespace Omni.Core
 
         public void Internal_OnMessage(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             bool isServer,
             int seqChannel
@@ -639,8 +639,7 @@ namespace Omni.Core
             private set => local = value;
         }
 
-        private readonly EventBehaviour<NetworkBuffer, int, Null, Null, Null> eventBehaviour =
-            new();
+        private readonly EventBehaviour<DataBuffer, int, Null, Null, Null> eventBehaviour = new();
 
         protected virtual void Awake()
         {
@@ -699,13 +698,13 @@ namespace Omni.Core
 
         protected virtual void OnClientDisconnected(string reason) { }
 
-        protected virtual void OnMessage(byte msgId, NetworkBuffer buffer, int seqChannel)
+        protected virtual void OnMessage(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
             buffer.ResetReadPosition();
+            TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
         }
 
-        private void TryClientLocate(byte msgId, NetworkBuffer buffer, int seqChannel)
+        private void TryClientLocate(byte msgId, DataBuffer buffer, int seqChannel)
         {
             if (eventBehaviour.TryGetLocate(msgId, out int argsCount))
             {
@@ -733,13 +732,13 @@ namespace Omni.Core
             }
         }
 
-        protected virtual void OnJoinedGroup(string groupName, NetworkBuffer buffer) { }
+        protected virtual void OnJoinedGroup(string groupName, DataBuffer buffer) { }
 
         protected virtual void OnLeftGroup(string groupName, string reason) { }
 
         public void Internal_OnMessage(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             bool isServer,
             int seqChannel
@@ -806,13 +805,8 @@ namespace Omni.Core
             private set => remote = value;
         }
 
-        private readonly EventBehaviour<
-            NetworkBuffer,
-            NetworkPeer,
-            int,
-            Null,
-            Null
-        > eventBehaviour = new();
+        private readonly EventBehaviour<DataBuffer, NetworkPeer, int, Null, Null> eventBehaviour =
+            new();
 
         protected virtual void Awake()
         {
@@ -911,18 +905,18 @@ namespace Omni.Core
         /// <param name="seqChannel">The sequence channel through which the message was received.</param>
         protected virtual void OnMessage(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             int seqChannel
         )
         {
-            TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
             buffer.ResetReadPosition();
+            TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
         }
 
         private void TryServerLocate(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             int seqChannel
         )
@@ -960,7 +954,7 @@ namespace Omni.Core
         /// <param name="group">The network group that the player joined.</param>
         /// <param name="peer">The network peer representing the player who joined the group.</param>
         protected virtual void OnPlayerJoinedGroup(
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkGroup group,
             NetworkPeer peer
         ) { }
@@ -979,7 +973,7 @@ namespace Omni.Core
 
         public void Internal_OnMessage(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             bool isServer,
             int seqChannel

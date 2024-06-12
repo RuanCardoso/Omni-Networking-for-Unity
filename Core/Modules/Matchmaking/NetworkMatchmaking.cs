@@ -22,9 +22,9 @@ namespace Omni.Core.Modules.Matchmaking
             /// </summary>
             /// <remarks>
             /// The first parameter is the name of the group that the client has joined.
-            /// The second parameter is an optional <see cref="NetworkBuffer"/> containing additional data.
+            /// The second parameter is an optional <see cref="DataBuffer"/> containing additional data.
             /// </remarks>
-            public event Action<string, NetworkBuffer> OnJoinedGroup
+            public event Action<string, DataBuffer> OnJoinedGroup
             {
                 add => NetworkManager.OnJoinedGroup += value;
                 remove => NetworkManager.OnJoinedGroup -= value;
@@ -48,12 +48,12 @@ namespace Omni.Core.Modules.Matchmaking
             /// </summary>
             /// <param name="groupName">The name of the group to join.</param>
             /// <param name="buffer">
-            /// An optional <see cref="NetworkBuffer"/> containing data to be sent to the group upon joining.
+            /// An optional <see cref="DataBuffer"/> containing data to be sent to the group upon joining.
             /// </param>
             /// <remarks>
             /// This method allows a client to join a specified group on the server and optionally send additional data to the group.
             /// </remarks>
-            public void JoinGroup(string groupName, NetworkBuffer buffer = null)
+            public void JoinGroup(string groupName, DataBuffer buffer = null)
             {
                 NetworkManager.Client.JoinGroup(groupName, buffer);
             }
@@ -77,11 +77,11 @@ namespace Omni.Core.Modules.Matchmaking
             /// Event that is raised when a player has successfully joined a group on the server.
             /// </summary>
             /// <remarks>
-            /// The first parameter is a <see cref="NetworkBuffer"/> containing any data sent by the player upon joining.
+            /// The first parameter is a <see cref="DataBuffer"/> containing any data sent by the player upon joining.
             /// The second parameter is the <see cref="NetworkGroup"/> that the player has joined.
             /// The third parameter is the <see cref="NetworkPeer"/> object representing the player.
             /// </remarks>
-            public event Action<NetworkBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup
+            public event Action<DataBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup
             {
                 add => NetworkManager.OnPlayerJoinedGroup += value;
                 remove => NetworkManager.OnPlayerJoinedGroup -= value;
@@ -158,22 +158,22 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public void JoinGroup(NetworkGroup group, NetworkPeer peer)
             {
-                NetworkManager.Server.JoinGroup(group.Identifier, NetworkBuffer.Empty, peer, false);
+                NetworkManager.Server.JoinGroup(group.Identifier, DataBuffer.Empty, peer, false);
             }
 
             /// <summary>
             /// Joins a specified group on the server and sends additional data to the group.
             /// </summary>
             /// <param name="group">The <see cref="NetworkGroup"/> object to join.</param>
-            /// <param name="buffer">An optional <see cref="NetworkBuffer"/> containing data to be sent to the group upon joining.</param>
+            /// <param name="buffer">An optional <see cref="DataBuffer"/> containing data to be sent to the group upon joining.</param>
             /// <param name="peer">The <see cref="NetworkPeer"/> object representing the player.</param>
             /// <remarks>
             /// This method allows a player represented by a <see cref="NetworkPeer"/> object to join a specified <see cref="NetworkGroup"/> on the server,
-            /// optionally sending additional data contained in a <see cref="NetworkBuffer"/> to the group upon joining.
+            /// optionally sending additional data contained in a <see cref="DataBuffer"/> to the group upon joining.
             /// </remarks>
-            public void JoinGroup(NetworkGroup group, NetworkBuffer buffer, NetworkPeer peer)
+            public void JoinGroup(NetworkGroup group, DataBuffer buffer, NetworkPeer peer)
             {
-                buffer ??= NetworkBuffer.Empty;
+                buffer ??= DataBuffer.Empty;
                 NetworkManager.Server.JoinGroup(group.Identifier, buffer, peer, true);
             }
 

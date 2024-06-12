@@ -4,20 +4,20 @@ using Omni.Shared;
 
 namespace Omni.Core
 {
-    public class NetworkBufferPool : IObjectPooling<NetworkBuffer>
+    public class NetworkBufferPool : IObjectPooling<DataBuffer>
     {
-        private readonly Queue<NetworkBuffer> _pool;
+        private readonly Queue<DataBuffer> _pool;
 
         internal NetworkBufferPool()
         {
-            _pool = new Queue<NetworkBuffer>();
+            _pool = new Queue<DataBuffer>();
             for (int i = 0; i < 10; i++)
             {
-                _pool.Enqueue(new NetworkBuffer(pool: this));
+                _pool.Enqueue(new DataBuffer(pool: this));
             }
         }
 
-        public NetworkBuffer Rent()
+        public DataBuffer Rent()
         {
             if (_pool.Count > 0)
             {
@@ -32,11 +32,11 @@ namespace Omni.Core
                     NetworkLogger.LogType.Warning
                 );
 
-                return new NetworkBuffer(pool: this);
+                return new DataBuffer(pool: this);
             }
         }
 
-        public void Return(NetworkBuffer _buffer)
+        public void Return(DataBuffer _buffer)
         {
             _buffer.ResetWrittenCount();
             _pool.Enqueue(_buffer);

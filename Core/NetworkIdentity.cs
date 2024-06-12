@@ -51,11 +51,11 @@ namespace Omni.Core
             internal set { m_IsLocalPlayer = value; }
         }
 
-        public NetworkBuffer DestroyOnServer()
+        public DataBuffer DestroyOnServer()
         {
             if (IsServer)
             {
-                NetworkBuffer message = NetworkManager.Pool.Rent();
+                DataBuffer message = NetworkManager.Pool.Rent();
                 message.DestroyOnServer(this);
                 return message;
             }

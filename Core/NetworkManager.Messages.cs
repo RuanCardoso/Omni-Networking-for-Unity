@@ -14,7 +14,7 @@ namespace Omni.Core
         private static void Internal_SendMessage(
             byte msgId,
             int peerId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             Target target,
             DeliveryMode deliveryMode,
             bool isServer,
@@ -24,7 +24,7 @@ namespace Omni.Core
             byte seqChannel
         )
         {
-            buffer ??= NetworkBuffer.Empty;
+            buffer ??= DataBuffer.Empty;
             if (!isServer)
             {
                 SendToServer(msgId, buffer, deliveryMode, seqChannel);
@@ -56,7 +56,7 @@ namespace Omni.Core
             internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
                 new();
 
-            public static event Action<byte, NetworkBuffer, int> OnMessage
+            public static event Action<byte, DataBuffer, int> OnMessage
             {
                 add => OnClientCustomMessage += value;
                 remove => OnClientCustomMessage -= value;
@@ -86,7 +86,7 @@ namespace Omni.Core
 
             public static void SendMessage(
                 byte msgId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
             ) =>
@@ -105,7 +105,7 @@ namespace Omni.Core
 
             public static void GlobalInvoke(
                 byte msgId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
             ) => SendMessage(msgId, buffer, deliveryMode, sequenceChannel);
@@ -113,13 +113,13 @@ namespace Omni.Core
             public static void Invoke(
                 byte msgId,
                 int identityId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
             )
             {
-                buffer ??= NetworkBuffer.Empty;
-                using NetworkBuffer message = Pool.Rent();
+                buffer ??= DataBuffer.Empty;
+                using DataBuffer message = Pool.Rent();
                 message.FastWrite(identityId);
                 message.FastWrite(msgId);
                 message.Write(buffer.WrittenSpan);
@@ -130,13 +130,13 @@ namespace Omni.Core
                 byte msgId,
                 int identityId,
                 byte instanceId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
             )
             {
-                buffer ??= NetworkBuffer.Empty;
-                using NetworkBuffer message = Pool.Rent();
+                buffer ??= DataBuffer.Empty;
+                using DataBuffer message = Pool.Rent();
                 message.FastWrite(identityId);
                 message.FastWrite(instanceId);
                 message.FastWrite(msgId);
@@ -144,9 +144,9 @@ namespace Omni.Core
                 SendMessage(MessageType.LocalInvoke, message, deliveryMode, sequenceChannel);
             }
 
-            internal static void JoinGroup(string groupName, NetworkBuffer buffer)
+            internal static void JoinGroup(string groupName, DataBuffer buffer)
             {
-                buffer ??= NetworkBuffer.Empty;
+                buffer ??= DataBuffer.Empty;
                 if (string.IsNullOrEmpty(groupName))
                 {
                     throw new Exception("Group name cannot be null or empty.");
@@ -157,7 +157,7 @@ namespace Omni.Core
                     throw new Exception("Group name cannot be longer than 256 characters.");
                 }
 
-                using NetworkBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent();
                 message.FastWrite(groupName);
                 message.Write(buffer.WrittenSpan);
                 SendMessage(MessageType.JoinGroup, message, DeliveryMode.ReliableOrdered, 0);
@@ -178,7 +178,7 @@ namespace Omni.Core
                     throw new Exception("Group name cannot be longer than 256 characters.");
                 }
 
-                using NetworkBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent();
                 message.FastWrite(groupName);
                 message.FastWrite(reason);
                 SendMessage(MessageType.LeaveGroup, message, DeliveryMode.ReliableOrdered, 0);
@@ -203,7 +203,7 @@ namespace Omni.Core
             internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
                 new();
 
-            public static event Action<byte, NetworkBuffer, NetworkPeer, int> OnMessage
+            public static event Action<byte, DataBuffer, NetworkPeer, int> OnMessage
             {
                 add => OnServerCustomMessage += value;
                 remove => OnServerCustomMessage -= value;
@@ -290,7 +290,7 @@ namespace Omni.Core
             public static void SendMessage(
                 byte msgId,
                 int peerId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
@@ -314,7 +314,7 @@ namespace Omni.Core
             public static void GlobalInvoke(
                 byte msgId,
                 int peerId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
@@ -338,7 +338,7 @@ namespace Omni.Core
                 byte msgId,
                 int peerId,
                 int identityId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
@@ -347,8 +347,8 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
-                buffer ??= NetworkBuffer.Empty;
-                using NetworkBuffer message = Pool.Rent();
+                buffer ??= DataBuffer.Empty;
+                using DataBuffer message = Pool.Rent();
                 message.FastWrite(identityId);
                 message.FastWrite(msgId);
                 message.Write(buffer.WrittenSpan);
@@ -373,7 +373,7 @@ namespace Omni.Core
                 int peerId,
                 int identityId,
                 byte instanceId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
@@ -382,8 +382,8 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
-                buffer ??= NetworkBuffer.Empty;
-                using NetworkBuffer message = Pool.Rent();
+                buffer ??= DataBuffer.Empty;
+                using DataBuffer message = Pool.Rent();
                 message.FastWrite(identityId);
                 message.FastWrite(instanceId);
                 message.FastWrite(msgId);
@@ -426,14 +426,14 @@ namespace Omni.Core
 
             internal static void JoinGroup(
                 string groupName,
-                NetworkBuffer buffer,
+                DataBuffer buffer,
                 NetworkPeer peer,
                 bool writeBufferToClient
             )
             {
                 void SendResponseToClient()
                 {
-                    using NetworkBuffer message = Pool.Rent();
+                    using DataBuffer message = Pool.Rent();
                     message.FastWrite(groupName);
 
                     if (writeBufferToClient)
@@ -494,7 +494,7 @@ namespace Omni.Core
                     EnterGroup(buffer, peer, group);
                 }
 
-                void EnterGroup(NetworkBuffer buffer, NetworkPeer peer, NetworkGroup group)
+                void EnterGroup(DataBuffer buffer, NetworkPeer peer, NetworkGroup group)
                 {
                     if (!peer.Groups.TryAdd(group.Id, group))
                     {
@@ -531,7 +531,7 @@ namespace Omni.Core
             {
                 void SendResponseToClient()
                 {
-                    using NetworkBuffer message = Pool.Rent();
+                    using DataBuffer message = Pool.Rent();
                     message.FastWrite(groupName);
                     message.FastWrite(reason);
 

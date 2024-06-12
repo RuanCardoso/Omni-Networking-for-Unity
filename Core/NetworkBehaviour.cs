@@ -40,7 +40,7 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
-                using NetworkBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
+                using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
                 Invoke(255, message, deliveryMode, sequenceChannel);
             }
 
@@ -65,7 +65,7 @@ namespace Omni.Core
 
                 if (property != null)
                 {
-                    using NetworkBuffer message = m_NetworkBehaviour.CreateHeader(
+                    using DataBuffer message = m_NetworkBehaviour.CreateHeader(
                         propertyGeneric.Invoke(),
                         property.Id
                     );
@@ -83,7 +83,7 @@ namespace Omni.Core
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void Invoke(
                 byte msgId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
             ) =>
@@ -129,7 +129,7 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
-                using NetworkBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
+                using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
                 Invoke(
                     255,
                     message,
@@ -170,7 +170,7 @@ namespace Omni.Core
 
                 if (propertyInfo != null)
                 {
-                    using NetworkBuffer message = m_NetworkBehaviour.CreateHeader(
+                    using DataBuffer message = m_NetworkBehaviour.CreateHeader(
                         propertyInfoGeneric.Invoke(),
                         propertyInfo.Id
                     );
@@ -201,7 +201,7 @@ namespace Omni.Core
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void Invoke(
                 byte msgId,
-                NetworkBuffer buffer = null,
+                DataBuffer buffer = null,
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 int groupId = 0,
@@ -242,11 +242,11 @@ namespace Omni.Core
         // Avoid refactoring as these techniques are crucial for optimizing execution speed.
         // Works with il2cpp.
 
-        private readonly EventBehaviour<NetworkBuffer, int, Null, Null, Null> clientEventBehaviour =
+        private readonly EventBehaviour<DataBuffer, int, Null, Null, Null> clientEventBehaviour =
             new();
 
         private readonly EventBehaviour<
-            NetworkBuffer,
+            DataBuffer,
             NetworkPeer,
             int,
             Null,
@@ -358,7 +358,7 @@ namespace Omni.Core
         /// before the object becomes active.
         /// </remarks>
         /// <param name="buffer">The network buffer containing data associated with the instantiation process.</param>
-        protected internal virtual void OnAwake(NetworkBuffer buffer) { }
+        protected internal virtual void OnAwake(DataBuffer buffer) { }
 
         /// <summary>
         /// Called after the object is instantiated and after it becomes active.
@@ -368,7 +368,7 @@ namespace Omni.Core
         /// after the object has become active.
         /// </remarks>
         /// <param name="buffer">The network buffer containing data associated with the instantiation process.</param>
-        protected internal virtual void OnStart(NetworkBuffer buffer) { }
+        protected internal virtual void OnStart(DataBuffer buffer) { }
 
         internal void Register()
         {
@@ -424,7 +424,7 @@ namespace Omni.Core
             }
         }
 
-        private void TryClientLocate(byte msgId, NetworkBuffer buffer, int seqChannel)
+        private void TryClientLocate(byte msgId, DataBuffer buffer, int seqChannel)
         {
             if (clientEventBehaviour.TryGetLocate(msgId, out int argsCount))
             {
@@ -461,7 +461,7 @@ namespace Omni.Core
 
         private void TryServerLocate(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             int seqChannel
         )
@@ -502,7 +502,7 @@ namespace Omni.Core
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void Internal_OnMessage(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             bool _,
             int seqChannel

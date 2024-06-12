@@ -167,7 +167,7 @@ namespace Omni.Core.Modules.Ntp
                 SendWithYInstant(peer, message);
             }
 
-            private void SendWithYInstant(NetworkPeer peer, NetworkBuffer message)
+            private void SendWithYInstant(NetworkPeer peer, DataBuffer message)
             {
                 double y = int.MaxValue; // server time
                 float t = 0; // delta time

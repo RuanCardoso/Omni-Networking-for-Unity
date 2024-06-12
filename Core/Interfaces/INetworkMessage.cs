@@ -5,7 +5,7 @@ namespace Omni.Core.Interfaces
         int IdentityId { get; }
         void Internal_OnMessage(
             byte msgId,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             NetworkPeer peer,
             bool isServer,
             int seqChannel

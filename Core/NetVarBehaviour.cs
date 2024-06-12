@@ -39,9 +39,9 @@ namespace Omni.Core
     {
         private readonly Dictionary<string, IPropertyInfo> properties = new();
 
-        internal NetworkBuffer CreateHeader<T>(T @object, byte id)
+        internal DataBuffer CreateHeader<T>(T @object, byte id)
         {
-            NetworkBuffer message = NetworkManager.Pool.Rent(); // disposed by the caller
+            DataBuffer message = NetworkManager.Pool.Rent(); // disposed by the caller
             message.FastWrite(id);
             message.ToBinary(@object);
             return message;
@@ -85,7 +85,7 @@ namespace Omni.Core
 #pragma warning disable IDE1006
         // This method is intended to be overridden by the caller using source generators and reflection techniques. Magic wow!
         // https://github.com/RuanCardoso/OmniNetSourceGenerator
-        protected virtual void ___OnPropertyChanged___(NetworkBuffer buffer, NetworkPeer peer)
+        protected virtual void ___OnPropertyChanged___(DataBuffer buffer, NetworkPeer peer)
 #pragma warning restore IDE1006
         {
             // The overriden method must call base(SourceGenerator).

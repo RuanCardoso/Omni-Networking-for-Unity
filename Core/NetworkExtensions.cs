@@ -15,7 +15,7 @@ namespace Omni.Core
         /// <returns>The instantiated network identity.</returns>
         internal static NetworkIdentity InstantiateOnClient(
             this NetworkIdentity prefab,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             Action<NetworkIdentity> OnBeforeStart
         )
         {
@@ -42,7 +42,7 @@ namespace Omni.Core
         internal static NetworkIdentity InstantiateOnServer(
             this NetworkIdentity prefab,
             NetworkPeer peer,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             Action<NetworkIdentity> OnBeforeStart
         )
         {
@@ -61,7 +61,7 @@ namespace Omni.Core
             return identity;
         }
 
-        internal static void Internal_DestroyOnClient(this NetworkBuffer buffer)
+        internal static void Internal_DestroyOnClient(this DataBuffer buffer)
         {
             buffer.ReadIdentityData(out int identityId, out _);
             NetworkIdentity identity = NetworkManager.Client.GetIdentity(identityId);
@@ -73,7 +73,7 @@ namespace Omni.Core
             Destroy(identity, false);
         }
 
-        internal static void DestroyOnServer(this NetworkIdentity identity, NetworkBuffer buffer)
+        internal static void DestroyOnServer(this NetworkIdentity identity, DataBuffer buffer)
         {
             buffer.Write(identity);
             Destroy(identity, true);
@@ -112,7 +112,7 @@ namespace Omni.Core
             int identityId,
             bool isServer,
             bool isLocalPlayer,
-            NetworkBuffer buffer,
+            DataBuffer buffer,
             Action<NetworkIdentity> OnBeforeStart
         )
         {
