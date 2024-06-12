@@ -1000,6 +1000,10 @@ namespace Omni.Core
                             // Dereferencing to allow for GC(Garbage Collector).
                             // All resources should be released at this point.
                             group.DestroyAllCaches(currentPeer);
+                            if (group.DestroyWhenEmpty)
+                            {
+                                Server.DestroyGroup(group);
+                            }
                         }
                         else
                         {

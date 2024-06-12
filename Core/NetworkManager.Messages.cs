@@ -557,11 +557,6 @@ namespace Omni.Core
                                 "LeaveGroup: Failed to remove group from peer!!!"
                             );
 
-                            OnPlayerFailedLeaveGroup?.Invoke(
-                                peer,
-                                "LeaveGroup: Failed to remove group from peer!!!"
-                            );
-
                             return;
                         }
 
@@ -571,25 +566,7 @@ namespace Omni.Core
 
                         if (group.DestroyWhenEmpty)
                         {
-                            if (!Groups.Remove(groupId))
-                            {
-                                NetworkLogger.__Log__(
-                                    $"LeaveGroup: Destroy was called on group: {groupName} but it does not exist.",
-                                    NetworkLogger.LogType.Error
-                                );
-
-                                OnPlayerFailedLeaveGroup?.Invoke(
-                                    peer,
-                                    $"LeaveGroup: Destroy was called on group: {groupName} but it does not exist."
-                                );
-
-                                return;
-                            }
-
-                            // Dereferencing to allow for GC(Garbage Collector).
-                            group.ClearPeers();
-                            group.ClearData();
-                            group.ClearCaches();
+                            DestroyGroup(group);
                         }
                     }
                     else
@@ -597,6 +574,11 @@ namespace Omni.Core
                         NetworkLogger.__Log__(
                             $"LeaveGroup: Failed to remove peer: {peer.Id} from group: {groupName} because it does not exist.",
                             NetworkLogger.LogType.Error
+                        );
+
+                        OnPlayerFailedLeaveGroup?.Invoke(
+                            peer,
+                            $"LeaveGroup: Failed to remove peer: {peer.Id} from group: {groupName} because it does not exist."
                         );
                     }
                 }
@@ -606,6 +588,30 @@ namespace Omni.Core
                         $"LeaveGroup: {groupName} not found. Please verify the group name and ensure the group is properly registered.",
                         NetworkLogger.LogType.Error
                     );
+
+                    OnPlayerFailedLeaveGroup?.Invoke(
+                        peer,
+                        $"LeaveGroup: {groupName} not found. Please verify the group name and ensure the group is properly registered."
+                    );
+                }
+            }
+
+            internal static void DestroyGroup(NetworkGroup group)
+            {
+                if (group._peersById.Count == 0)
+                {
+                    if (!Groups.Remove(group.Id))
+                    {
+                        NetworkLogger.__Log__(
+                            $"LeaveGroup: Destroy was called on group: {group.Name} but it does not exist.",
+                            NetworkLogger.LogType.Error
+                        );
+                    }
+
+                    // Dereferencing to allow for GC(Garbage Collector).
+                    group.ClearPeers();
+                    group.ClearData();
+                    group.ClearCaches();
                 }
             }
 
