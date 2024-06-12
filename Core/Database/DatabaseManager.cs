@@ -14,11 +14,9 @@
 
 using System;
 using System.Data;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Omni.Shared;
-using UnityEngine;
 
 #pragma warning disable
 

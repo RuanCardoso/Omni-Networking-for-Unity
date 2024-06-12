@@ -287,6 +287,12 @@ namespace Omni.Core
     public class NetworkEventBehaviour : NetVarBehaviour, INetworkMessage
     {
         [SerializeField]
+        private string m_ServiceName;
+
+        [SerializeField]
+        private bool m_DontDestroyOnLoad;
+
+        [SerializeField]
         private int m_Id;
 
         private NbClient local;
@@ -351,6 +357,12 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
+            NetworkService.Register(this, m_ServiceName);
+            if (m_DontDestroyOnLoad)
+            {
+                DontDestroyOnLoad(this);
+            }
+
             InitializeBehaviour();
             RegisterEvents();
         }
@@ -571,10 +583,7 @@ namespace Omni.Core
 
         protected virtual void Reset()
         {
-            if (m_Id == 0)
-            {
-                m_Id = NetworkHelper.GenerateSceneUniqueId();
-            }
+            OnValidate();
         }
 
         protected virtual void OnValidate()
@@ -583,12 +592,23 @@ namespace Omni.Core
             {
                 m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
+
+            if (string.IsNullOrEmpty(m_ServiceName))
+            {
+                m_ServiceName = GetType().Name;
+            }
         }
     }
 
     [DefaultExecutionOrder(-3000)]
     public class ClientEventBehaviour : NetVarBehaviour, INetworkMessage
     {
+        [SerializeField]
+        private string m_ServiceName;
+
+        [SerializeField]
+        private bool m_DontDestroyOnLoad;
+
         [SerializeField]
         private int m_Id;
         private NbClient local;
@@ -624,6 +644,12 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
+            NetworkService.Register(this, m_ServiceName);
+            if (m_DontDestroyOnLoad)
+            {
+                DontDestroyOnLoad(this);
+            }
+
             InitializeBehaviour();
             RegisterEvents();
         }
@@ -724,10 +750,7 @@ namespace Omni.Core
 
         protected virtual void Reset()
         {
-            if (m_Id == 0)
-            {
-                m_Id = NetworkHelper.GenerateSceneUniqueId();
-            }
+            OnValidate();
         }
 
         protected virtual void OnValidate()
@@ -736,12 +759,23 @@ namespace Omni.Core
             {
                 m_Id = NetworkHelper.GenerateSceneUniqueId();
             }
+
+            if (string.IsNullOrEmpty(m_ServiceName))
+            {
+                m_ServiceName = GetType().Name;
+            }
         }
     }
 
     [DefaultExecutionOrder(-3000)]
     public class ServerEventBehaviour : NetVarBehaviour, INetworkMessage
     {
+        [SerializeField]
+        private string m_ServiceName;
+
+        [SerializeField]
+        private bool m_DontDestroyOnLoad;
+
         [SerializeField]
         private int m_Id;
         private NbServer remote;
@@ -782,6 +816,12 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
+            NetworkService.Register(this, m_ServiceName);
+            if (m_DontDestroyOnLoad)
+            {
+                DontDestroyOnLoad(this);
+            }
+
             InitializeBehaviour();
             RegisterEvents();
         }
@@ -950,10 +990,7 @@ namespace Omni.Core
 
         protected virtual void Reset()
         {
-            if (m_Id == 0)
-            {
-                m_Id = NetworkHelper.GenerateSceneUniqueId();
-            }
+            OnValidate();
         }
 
         protected virtual void OnValidate()
@@ -961,6 +998,11 @@ namespace Omni.Core
             if (m_Id == 0)
             {
                 m_Id = NetworkHelper.GenerateSceneUniqueId();
+            }
+
+            if (string.IsNullOrEmpty(m_ServiceName))
+            {
+                m_ServiceName = GetType().Name;
             }
         }
     }

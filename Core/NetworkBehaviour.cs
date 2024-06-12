@@ -405,10 +405,7 @@ namespace Omni.Core
 
         private void InitializeServiceLocator()
         {
-            if (!string.IsNullOrEmpty(m_ServiceName))
-            {
-                Identity.Register(this, m_ServiceName);
-            }
+            Identity.Register(this, m_ServiceName);
         }
 
         private void AddEventBehaviour()
@@ -534,13 +531,14 @@ namespace Omni.Core
 
             if (string.IsNullOrEmpty(m_ServiceName))
             {
+                int uniqueId = 0;
                 string serviceName = GetType().Name;
-                var services = transform.root.GetComponentsInChildren<NetworkBehaviour>(true);
-                if (services.Count(x => x.m_ServiceName == serviceName) > 1)
+                NetworkBehaviour[] services =
+                    transform.root.GetComponentsInChildren<NetworkBehaviour>(true);
+
+                if ((uniqueId = services.Count(x => x.m_ServiceName == serviceName)) >= 1)
                 {
-                    NetworkLogger.__Log__(
-                        $"Service name '{m_ServiceName}' is not unique. Please ensure that the service name is unique."
-                    );
+                    m_ServiceName = $"{serviceName}_{uniqueId}";
                 }
                 else
                 {

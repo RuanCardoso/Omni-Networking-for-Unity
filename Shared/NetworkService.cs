@@ -45,11 +45,7 @@ namespace Omni.Core
         /// </summary>
         protected void InitializeServiceLocator()
         {
-            if (!string.IsNullOrEmpty(serviceName))
-            {
-                Register(this, serviceName);
-            }
-
+            Register(this, serviceName);
             if (dontDestroyOnLoad)
             {
                 DontDestroyOnLoad(this);
