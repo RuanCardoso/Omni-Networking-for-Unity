@@ -1,24 +1,23 @@
 using System;
 using System.Buffers;
-using kcp2k;
 using Omni.Core.Interfaces;
 
 namespace Omni.Core
 {
     // ref: https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Buffers/ArrayBufferWriter.cs
-    public class NetworkBuffer : IBufferWriter<byte>, IDisposable
+    public class DataBuffer : IBufferWriter<byte>, IDisposable
     {
         internal int _reworkStart;
         internal int _reworkEnd;
 
-        private readonly IObjectPooling<NetworkBuffer> _objectPooling;
+        private readonly IObjectPooling<DataBuffer> _objectPooling;
         private readonly byte[] _buffer;
         private int _position;
 
         /// <summary>
-        /// An empty <see cref="NetworkBuffer"/> instance.
+        /// An empty <see cref="DataBuffer"/> instance.
         /// </summary>
-        public static NetworkBuffer Empty { get; } = new NetworkBuffer();
+        public static DataBuffer Empty { get; } = new DataBuffer();
 
         /// <summary>
         /// Returns the data written to the underlying buffer so far, as a <see cref="ReadOnlyMemory{T}"/>.
@@ -45,21 +44,21 @@ namespace Omni.Core
         /// </summary>
         public int FreeCapacity => _buffer.Length - _position;
 
-        private NetworkBuffer()
+        private DataBuffer()
         {
             _buffer = Array.Empty<byte>();
             _position = 0;
         }
 
         /// <summary>
-        /// Creates an instance of an <see cref="NetworkBuffer"/>, in which data can be written to,
+        /// Creates an instance of an <see cref="DataBuffer"/>, in which data can be written to,
         /// with an initial capacity specified.
         /// </summary>
         /// <param name="initialCapacity">The minimum capacity with which to initialize the underlying buffer.</param>
         /// <exception cref="ArgumentException">
         /// Thrown when <paramref name="initialCapacity"/> is not positive (i.e. less than or equal to 0).
         /// </exception>
-        public NetworkBuffer(int initialCapacity = 1024, IObjectPooling<NetworkBuffer> pool = null)
+        public DataBuffer(int initialCapacity = 1024, IObjectPooling<DataBuffer> pool = null)
         {
             if (initialCapacity <= 0)
             {
@@ -165,7 +164,7 @@ namespace Omni.Core
         /// </summary>
         /// <remarks>
         /// <para>
-        /// You must reset or clear the <see cref="NetworkBuffer"/> before trying to re-use it.
+        /// You must reset or clear the <see cref="DataBuffer"/> before trying to re-use it.
         /// </para>
         /// <para>
         /// The <see cref="ResetWrittenCount"/> method is faster since it only sets to zero the writer's index
@@ -184,7 +183,7 @@ namespace Omni.Core
         /// </summary>
         /// <remarks>
         /// <para>
-        /// You must reset or clear the <see cref="NetworkBuffer"/> before trying to re-use it.
+        /// You must reset or clear the <see cref="DataBuffer"/> before trying to re-use it.
         /// </para>
         /// <para>
         /// If you reset the writer using the <see cref="ResetWrittenCount"/> method, the underlying buffer will not be cleared.
@@ -205,21 +204,21 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Creates a new <see cref="NetworkBuffer"/> containing the data from the underlying buffer
-        /// without including the old header. This new <see cref="NetworkBuffer"/> is suitable for re-sending
+        /// Creates a new <see cref="DataBuffer"/> containing the data from the underlying buffer
+        /// without including the old header. This new <see cref="DataBuffer"/> is suitable for re-sending
         /// as it contains only the relevant data.
         /// </summary>
         /// <remarks>
-        /// Ensure that the returned <see cref="NetworkBuffer"/> is used within a <c>using</c> statement
+        /// Ensure that the returned <see cref="DataBuffer"/> is used within a <c>using</c> statement
         /// to properly return it to the pool after use.
         /// </remarks>
         /// <returns>
-        /// A <see cref="NetworkBuffer"/> instance that contains the data from the original buffer,
+        /// A <see cref="DataBuffer"/> instance that contains the data from the original buffer,
         /// excluding the old header.
         /// </returns>
-        public NetworkBuffer Rework()
+        public DataBuffer Rework()
         {
-            NetworkBuffer buffer = NetworkManager.Pool.Rent();
+            DataBuffer buffer = NetworkManager.Pool.Rent();
             buffer.Write(_buffer.AsSpan(_reworkStart, _reworkEnd));
             return buffer;
         }
