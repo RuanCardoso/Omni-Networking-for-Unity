@@ -15,6 +15,14 @@ namespace Omni.Core
     // This setup allows for easier extensions and modifications without impacting the overall network management logic.
     public partial class NetworkManager
     {
+        /// <summary>
+        /// Instantiates a network identity on the server for a specific network peer and serializes its data to the network buffer.
+        /// </summary>
+        /// <param name="prefab">The prefab of the network identity to instantiate.</param>
+        /// <param name="peer">The network peer for which the identity is instantiated.</param>
+        /// <param name="buffer">The network buffer to write identity data.</param>
+        /// <param name="OnBeforeStart">An action to execute before the network identity starts, but after it has been registered.</param>
+        /// <returns>The instantiated network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer InstantiateOnServer(
             NetworkIdentity prefab,
             NetworkPeer peer,
@@ -26,6 +34,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer FastWrite<T1>(T1 t1)
             where T1 : unmanaged
         {
@@ -34,6 +47,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer FastWrite<T1, T2>(T1 t1, T2 t2)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -44,6 +62,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer FastWrite<T1, T2, T3>(T1 t1, T2 t2, T3 t3)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -56,6 +79,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer FastWrite<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -70,6 +98,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer FastWrite<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -86,6 +119,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Utilizes stackalloc to avoid allocations, offering high performance.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer FastWrite<T1, T2, T3, T4, T5, T6>(
             T1 t1,
             T2 t2,
@@ -111,6 +149,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer Write<T1>(T1 t1)
             where T1 : unmanaged
         {
@@ -119,6 +162,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer Write<T1, T2>(T1 t1, T2 t2)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -129,6 +177,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer Write<T1, T2, T3>(T1 t1, T2 t2, T3 t3)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -141,6 +194,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer Write<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -155,6 +213,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer Write<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5)
             where T1 : unmanaged
             where T2 : unmanaged
@@ -171,6 +234,11 @@ namespace Omni.Core
             return message;
         }
 
+        /// <summary>
+        /// Writes a primitive value to the network buffer.<br/>
+        /// Allocates an array from the pool to avoid allocations.
+        /// </summary>
+        /// <returns>The network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static NetworkBuffer Write<T1, T2, T3, T4, T5, T6>(
             T1 t1,
             T2 t2,
@@ -205,6 +273,7 @@ namespace Omni.Core
         /// <param name="prefab">The prefab of the network identity to instantiate.</param>
         /// <param name="peer">The network peer for which the identity is instantiated.</param>
         /// <param name="buffer">The network buffer to write identity data.</param>
+        /// <param name="OnBeforeStart">An action to execute before the network identity starts, but after it has been registered.</param>
         /// <returns>The instantiated network identity.</returns>
         public static NetworkIdentity InstantiateOnServer(
             this NetworkBuffer buffer,
@@ -231,16 +300,34 @@ namespace Omni.Core
             return prefab.InstantiateOnClient(buffer, OnBeforeStart);
         }
 
+        /// <summary>
+        /// Destroys a network identity on the server and serializes its destruction to the network buffer.
+        /// </summary>
+        /// <param name="identity">The network identity to destroy.</param>
         public static void DestroyOnServer(this NetworkBuffer buffer, NetworkIdentity identity)
         {
             identity.DestroyOnServer(buffer);
         }
 
+        /// <summary>
+        /// Destroys a network identity on the client from serialized data in the network buffer.
+        /// </summary>
         public static void DestroyOnClient(this NetworkBuffer buffer)
         {
             buffer.Internal_DestroyOnClient();
         }
 
+        /// <summary>
+        /// Compresses the data in the network buffer using the Brotli compression algorithm.
+        /// </summary>
+        /// <param name="buffer">The network buffer containing the data to compress.</param>
+        /// <param name="quality">The compression quality, ranging from 0 (fastest) to 11 (slowest). Default is 1.</param>
+        /// <param name="window">The Brotli sliding window size, ranging from 10 to 24. Default is 22.</param>
+        /// <returns>A new network buffer containing the compressed data. The caller must ensure the buffer is disposed or used within a using statement.</returns>
+        /// <exception cref="Exception">
+        /// Thrown when there is no space available in the Network Buffer acquired from the pool,
+        /// or if an error occurs during compression.
+        /// </exception>
         public static NetworkBuffer ToBrotli(
             this NetworkBuffer buffer,
             int quality = 1,
@@ -268,6 +355,14 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Decompresses the data in the network buffer using the Brotli decompression algorithm.
+        /// </summary>
+        /// <param name="buffer">The network buffer containing the compressed data.</param>
+        /// <returns>A new network buffer containing the decompressed data. The caller must ensure the buffer is disposed or used within a using statement.</returns>
+        /// <exception cref="Exception">
+        /// Thrown if an error occurs during decompression.
+        /// </exception>
         public static NetworkBuffer FromBrotli(this NetworkBuffer buffer)
         {
             using BrotliDecompressor decompressor = new();

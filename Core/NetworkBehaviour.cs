@@ -25,6 +25,14 @@ namespace Omni.Core
                 m_NetworkBehaviour = networkBehaviour;
             }
 
+            /// <summary>
+            /// Sends a manual 'NetVar' message to the server with the specified property and property ID.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="property">The property value to synchronize.</param>
+            /// <param name="propertyId">The ID of the property being synchronized.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void ManualSync<T>(
                 T property,
                 byte propertyId,
@@ -36,27 +44,43 @@ namespace Omni.Core
                 Invoke(255, message, deliveryMode, sequenceChannel);
             }
 
+            /// <summary>
+            /// Automatically sends a 'NetVar' message to the server based on the caller member name.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <param name="callerName">The name of the calling member. This parameter is automatically supplied by the compiler.</param>
             public void AutoSync<T>(
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0,
                 [CallerMemberName] string callerName = ""
             )
             {
-                IPropertyMemberInfo propertyInfo =
-                    m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(callerName);
-                IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
+                IPropertyInfo property = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
+                    callerName
+                );
 
-                if (propertyInfo != null)
+                IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
+
+                if (property != null)
                 {
                     using NetworkBuffer message = m_NetworkBehaviour.CreateHeader(
-                        propertyInfoGeneric.GetFunc(),
-                        propertyInfo.Id
+                        propertyGeneric.Invoke(),
+                        property.Id
                     );
 
                     Invoke(255, message, deliveryMode, sequenceChannel);
                 }
             }
 
+            /// <summary>
+            /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
+            /// </summary>
+            /// <param name="msgId">The ID of the message to be invoked.</param>
+            /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void Invoke(
                 byte msgId,
                 NetworkBuffer buffer = null,
@@ -82,6 +106,18 @@ namespace Omni.Core
                 m_NetworkBehaviour = networkBehaviour;
             }
 
+            /// <summary>
+            /// Sends a manual 'NetVar' message to all(default) clients with the specified property and property ID.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="property">The property value to synchronize.</param>
+            /// <param name="propertyId">The ID of the property being synchronized.</param>
+            /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="groupId">The group ID for the message. Default is 0.</param>
+            /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+            /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void ManualSync<T>(
                 T property,
                 byte propertyId,
@@ -106,6 +142,17 @@ namespace Omni.Core
                 );
             }
 
+            /// <summary>
+            /// Automatically sends a 'NetVar' message to all(default) clients based on the caller member name.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="groupId">The group ID for the message. Default is 0.</param>
+            /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+            /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <param name="callerName">The name of the calling member. This parameter is automatically supplied by the compiler
             public void AutoSync<T>(
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -116,14 +163,15 @@ namespace Omni.Core
                 [CallerMemberName] string callerName = ""
             )
             {
-                IPropertyMemberInfo propertyInfo =
-                    m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(callerName);
-                IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
+                IPropertyInfo propertyInfo = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
+                    callerName
+                );
+                IPropertyInfo<T> propertyInfoGeneric = propertyInfo as IPropertyInfo<T>;
 
                 if (propertyInfo != null)
                 {
                     using NetworkBuffer message = m_NetworkBehaviour.CreateHeader(
-                        propertyInfoGeneric.GetFunc(),
+                        propertyInfoGeneric.Invoke(),
                         propertyInfo.Id
                     );
 
@@ -140,6 +188,17 @@ namespace Omni.Core
                 }
             }
 
+            /// <summary>
+            /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
+            /// </summary>
+            /// <param name="msgId">The ID of the message to be invoked.</param>
+            /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+            /// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="groupId">The group ID for the message. Default is 0.</param>
+            /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+            /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void Invoke(
                 byte msgId,
                 NetworkBuffer buffer = null,
@@ -344,11 +403,6 @@ namespace Omni.Core
             }
         }
 
-        /// <summary>
-        /// Adds the current instance to the service locator using the provided service name.
-        /// If `dontDestroyOnLoad` is set to true, the instance will persist across scene loads.
-        /// Called automatically by <c>Awake</c>, if you override <c>Awake</c> call this method yourself.
-        /// </summary>
         private void InitializeServiceLocator()
         {
             if (!string.IsNullOrEmpty(m_ServiceName))

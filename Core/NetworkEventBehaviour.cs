@@ -24,6 +24,14 @@ namespace Omni.Core
             m_NetVarBehaviour = m_NetworkMessage as NetVarBehaviour;
         }
 
+        /// <summary>
+        /// Sends a manual 'NetVar' message to the server with the specified property and property ID.
+        /// </summary>
+        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+        /// <param name="property">The property value to synchronize.</param>
+        /// <param name="propertyId">The ID of the property being synchronized.</param>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void ManualSync<T>(
             T property,
             byte propertyId,
@@ -35,28 +43,40 @@ namespace Omni.Core
             Invoke(255, message, deliveryMode, sequenceChannel);
         }
 
+        /// <summary>
+        /// Automatically sends a 'NetVar' message to the server based on the caller member name.
+        /// </summary>
+        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+        /// <param name="callerName">The name of the calling member. This parameter is automatically supplied by the compiler.</param>
         public void AutoSync<T>(
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             byte sequenceChannel = 0,
             [CallerMemberName] string callerName = ""
         )
         {
-            IPropertyMemberInfo propertyInfo = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(
-                callerName
-            );
-            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
+            IPropertyInfo property = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(callerName);
+            IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
 
-            if (propertyInfo != null)
+            if (property != null)
             {
                 using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(
-                    propertyInfoGeneric.GetFunc(),
-                    propertyInfo.Id
+                    propertyGeneric.Invoke(),
+                    property.Id
                 );
 
                 Invoke(255, message, deliveryMode, sequenceChannel);
             }
         }
 
+        /// <summary>
+        /// Invokes a global message on the server, similar to a Remote Procedure Call (RPC).
+        /// </summary>
+        /// <param name="msgId">The ID of the message to be invoked.</param>
+        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void GlobalInvoke(
             byte msgId,
             NetworkBuffer buffer = null,
@@ -64,6 +84,13 @@ namespace Omni.Core
             byte sequenceChannel = 0
         ) => Client.GlobalInvoke(msgId, buffer, deliveryMode, sequenceChannel);
 
+        /// <summary>
+        /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
+        /// </summary>
+        /// <param name="msgId">The ID of the message to be invoked.</param>
+        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void Invoke(
             byte msgId,
             NetworkBuffer buffer = null,
@@ -90,6 +117,18 @@ namespace Omni.Core
             m_NetVarBehaviour = m_NetworkMessage as NetVarBehaviour;
         }
 
+        /// <summary>
+        /// Sends a manual 'NetVar' message to all(default) clients with the specified property and property ID.
+        /// </summary>
+        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+        /// <param name="property">The property value to synchronize.</param>
+        /// <param name="propertyId">The ID of the property being synchronized.</param>
+        /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="groupId">The group ID for the message. Default is 0.</param>
+        /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+        /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void ManualSync<T>(
             T property,
             byte propertyId,
@@ -117,6 +156,17 @@ namespace Omni.Core
             );
         }
 
+        /// <summary>
+        /// Automatically sends a 'NetVar' message to all(default) clients based on the caller member name.
+        /// </summary>
+        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+        /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="groupId">The group ID for the message. Default is 0.</param>
+        /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+        /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+        /// <param name="callerName">The name of the calling member. This parameter is automatically supplied by the compiler
         public void AutoSync<T>(
             NetworkPeer peer = null,
             Target target = Target.All,
@@ -128,18 +178,15 @@ namespace Omni.Core
             [CallerMemberName] string callerName = ""
         )
         {
-            IPropertyMemberInfo propertyInfo = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(
-                callerName
-            );
+            IPropertyInfo property = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(callerName);
+            IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
 
-            IPropertyMemberInfo<T> propertyInfoGeneric = propertyInfo as IPropertyMemberInfo<T>;
-
-            if (propertyInfo != null)
+            if (property != null)
             {
                 peer ??= Server.ServerPeer;
                 using NetworkBuffer message = m_NetVarBehaviour.CreateHeader(
-                    propertyInfoGeneric.GetFunc(),
-                    propertyInfo.Id
+                    propertyGeneric.Invoke(),
+                    property.Id
                 );
 
                 Invoke(
@@ -156,6 +203,17 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Invokes a global message on the client, similar to a Remote Procedure Call (RPC).
+        /// </summary>
+        /// <param name="msgId">The ID of the message to be invoked.</param>
+        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="groupId">The group ID for the message. Default is 0.</param>
+        /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+        /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void GlobalInvoke(
             byte msgId,
             int peerId,
@@ -166,7 +224,8 @@ namespace Omni.Core
             int cacheId = 0,
             CacheMode cacheMode = CacheMode.None,
             byte sequenceChannel = 0
-        ) =>
+        )
+        {
             Server.GlobalInvoke(
                 msgId,
                 peerId,
@@ -178,7 +237,19 @@ namespace Omni.Core
                 cacheMode,
                 sequenceChannel
             );
+        }
 
+        /// <summary>
+        /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
+        /// </summary>
+        /// <param name="msgId">The ID of the message to be invoked.</param>
+        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
+        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+        /// <param name="groupId">The group ID for the message. Default is 0.</param>
+        /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+        /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void Invoke(
             byte msgId,
             int peerId,
@@ -221,7 +292,16 @@ namespace Omni.Core
         private NbClient local;
         private NbServer remote;
 
+        /// <summary>
+        /// Gets the identifier of the associated <see cref="INetworkMessage"/>.
+        /// </summary>
+        /// <value>The identifier of the associated <see cref="INetworkMessage"/> as an integer.</value>
         public int IdentityId => m_Id;
+
+        // public api: allow send from other object
+        /// <summary>
+        /// Gets the <see cref="NbClient"/> instance used to invoke messages on the server from the client.
+        /// </summary>
         public NbClient Local
         {
             get
@@ -238,6 +318,10 @@ namespace Omni.Core
             private set => local = value;
         }
 
+        // public api: allow send from other object
+        /// <summary>
+        /// Gets the <see cref="NbServer"/> instance used to invoke messages on the client from the server.
+        /// </summary>
         public NbServer Remote
         {
             get
@@ -290,8 +374,16 @@ namespace Omni.Core
             OnClientStart();
         }
 
+        /// <summary>
+        /// Invoked when the server becomes active. This method functions similarly to Unity's Start(),
+        /// but is specifically called when the server is up and running.
+        /// </summary>
         protected virtual void OnServerStart() { }
 
+        /// <summary>
+        /// Invoked when the client becomes active. This method functions similarly to Unity's Start(),
+        /// but is specifically called when the client is up and running.
+        /// </summary>
         protected virtual void OnClientStart() { }
 
         protected void InitializeBehaviour()
@@ -501,7 +593,16 @@ namespace Omni.Core
         private int m_Id;
         private NbClient local;
 
+        /// <summary>
+        /// Gets the identifier of the associated <see cref="INetworkMessage"/>.
+        /// </summary>
+        /// <value>The identifier of the associated <see cref="INetworkMessage"/> as an integer.</value>
         public int IdentityId => m_Id;
+
+        // public api: allow send from other object
+        /// <summary>
+        /// Gets the <see cref="NbClient"/> instance used to invoke messages on the server from the client.
+        /// </summary>
         public NbClient Local
         {
             get
@@ -539,6 +640,10 @@ namespace Omni.Core
             OnClientStart();
         }
 
+        /// <summary>
+        /// Invoked when the client becomes active. This method functions similarly to Unity's Start(),
+        /// but is specifically called when the client is up and running.
+        /// </summary>
         protected virtual void OnClientStart() { }
 
         protected void InitializeBehaviour()
@@ -641,7 +746,16 @@ namespace Omni.Core
         private int m_Id;
         private NbServer remote;
 
+        /// <summary>
+        /// Gets the identifier of the associated <see cref="INetworkMessage"/>.
+        /// </summary>
+        /// <value>The identifier of the associated <see cref="INetworkMessage"/> as an integer.</value>
         public int IdentityId => m_Id;
+
+        // public api: allow send from other object
+        /// <summary>
+        /// Gets the <see cref="NbServer"/> instance used to invoke messages on the client from the server.
+        /// </summary>
         public NbServer Remote
         {
             get
@@ -684,6 +798,10 @@ namespace Omni.Core
             OnServerStart();
         }
 
+        /// <summary>
+        /// Invoked when the server becomes active. This method functions similarly to Unity's Start(),
+        /// but is specifically called when the server is up and running.
+        /// </summary>
         protected virtual void OnServerStart() { }
 
         protected void InitializeBehaviour()
@@ -713,16 +831,44 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Called when the server has finished initialization.
+        /// </summary>
         protected virtual void OnServerInitialized() { }
 
+        /// <summary>
+        /// Called when a new peer has successfully connected to the server.
+        /// </summary>
+        /// <param name="peer">The network peer that connected.</param>
         protected virtual void OnServerPeerConnected(NetworkPeer peer) { }
 
+        /// <summary>
+        /// Called when a peer has disconnected from the server.
+        /// </summary>
+        /// <param name="peer">The network peer that disconnected.</param>
         protected virtual void OnServerPeerDisconnected(NetworkPeer peer) { }
 
+        /// <summary>
+        /// Called when a player fails to leave a group on the server.
+        /// </summary>
+        /// <param name="peer">The network peer of the player.</param>
+        /// <param name="reason">The reason for the failure to leave the group.</param>
         protected virtual void OnPlayerFailedLeaveGroup(NetworkPeer peer, string reason) { }
 
+        /// <summary>
+        /// Called when a player fails to join a group on the server.
+        /// </summary>
+        /// <param name="peer">The network peer of the player.</param>
+        /// <param name="reason">The reason for the failure to join the group.</param>
         protected virtual void OnPlayerFailedJoinGroup(NetworkPeer peer, string reason) { }
 
+        /// <summary>
+        /// Called when a custom message is received on the server.
+        /// </summary>
+        /// <param name="msgId">The ID of the received message.</param>
+        /// <param name="buffer">The network buffer containing the message data.</param>
+        /// <param name="peer">The network peer that sent the message.</param>
+        /// <param name="seqChannel">The sequence channel through which the message was received.</param>
         protected virtual void OnMessage(
             byte msgId,
             NetworkBuffer buffer,
@@ -767,12 +913,24 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Called when a player has joined a group.
+        /// </summary>
+        /// <param name="buffer">The network buffer containing additional data related to the player joining the group.</param>
+        /// <param name="group">The network group that the player joined.</param>
+        /// <param name="peer">The network peer representing the player who joined the group.</param>
         protected virtual void OnPlayerJoinedGroup(
             NetworkBuffer buffer,
             NetworkGroup group,
             NetworkPeer peer
         ) { }
 
+        /// <summary>
+        /// Called when a player has left a group.
+        /// </summary>
+        /// <param name="group">The network group that the player left.</param>
+        /// <param name="peer">The network peer representing the player who left the group.</param>
+        /// <param name="reason">The reason for the player leaving the group.</param>
         protected virtual void OnPlayerLeftGroup(
             NetworkGroup group,
             NetworkPeer peer,
