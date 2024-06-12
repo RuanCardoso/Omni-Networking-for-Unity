@@ -15,6 +15,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Omni.Shared;
@@ -267,6 +268,8 @@ namespace Omni.Core
                     #region Initialize
 
                     httpReq.Write(buffer.GetSpan()); // Copy because buffer will be disposed & not awaited
+                    httpReq.ResetWrittenCount();
+
                     httpfData.Write7BitEncodedInt(requestId);
                     httpfData.FastWrite(route);
                     if (runtime.IsAsync)
@@ -281,11 +284,21 @@ namespace Omni.Core
                     httpfData.Write(httpRes.WrittenSpan);
                     if (httpfData.WrittenCount > 0)
                     {
+                        if (httpRes.DeliveryMode == DeliveryMode.Unreliable)
+                        {
+                            throw new Exception("Maybe you're forgetting to call Send().");
+                        }
+
                         NetworkManager.Server.SendMessage(
                             MessageType.HttpResponse,
                             peer.Id,
                             httpfData,
-                            target: Target.Self
+                            Target.Self,
+                            httpRes.DeliveryMode,
+                            httpRes.GroupId,
+                            httpRes.CacheId,
+                            httpRes.CacheMode,
+                            httpRes.SequenceChannel
                         );
                     }
                     else

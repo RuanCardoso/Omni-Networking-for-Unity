@@ -5,7 +5,7 @@ using Omni.Core.Interfaces;
 namespace Omni.Core
 {
     // ref: https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Buffers/ArrayBufferWriter.cs
-    public class DataBuffer : IBufferWriter<byte>, IDisposable
+    public sealed partial class DataBuffer : IBufferWriter<byte>, IDisposable
     {
         internal int _reworkStart;
         internal int _reworkEnd;
@@ -253,6 +253,31 @@ namespace Omni.Core
 
             _objectPooling.Return(this);
             _disposed = true;
+        }
+    }
+
+    /// Used for Lite HTTP
+    public sealed partial class DataBuffer
+    {
+        internal DeliveryMode DeliveryMode { get; set; } = DeliveryMode.Unreliable;
+        internal int GroupId { get; set; }
+        internal int CacheId { get; set; }
+        internal CacheMode CacheMode { get; set; }
+        internal byte SequenceChannel { get; set; }
+
+        public void Send(
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered
+        // int groupId = 0,
+        // int cacheId = 0,
+        // CacheMode cacheMode = CacheMode.None,
+        // byte sequenceChannel = 0
+        )
+        {
+            DeliveryMode = deliveryMode;
+            // GroupId = 0;
+            // CacheId = cacheId;
+            // CacheMode = cacheMode;
+            // SequenceChannel = sequenceChannel;
         }
     }
 }
