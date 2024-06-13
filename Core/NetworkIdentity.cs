@@ -51,6 +51,9 @@ namespace Omni.Core
             internal set { m_IsLocalPlayer = value; }
         }
 
+        /// <summary>
+        /// Destroys this object on the server. The caller must ensure the buffer is disposed or used within a using statement.
+        /// </summary>
         public DataBuffer DestroyOnServer()
         {
             if (IsServer)

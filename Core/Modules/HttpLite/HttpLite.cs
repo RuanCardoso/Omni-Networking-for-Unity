@@ -33,6 +33,27 @@ namespace Omni.Core
         {
             private int routeId = int.MinValue;
             internal readonly Dictionary<int, TaskCompletionSource<DataBuffer>> asyncTasks = new();
+            internal readonly Dictionary<(string, int), Action<DataBuffer>> events = new(); // 0: Get, 1: Post
+
+            public void AddGet(string routeName, Action<DataBuffer> callback)
+            {
+                if (!events.TryAdd((routeName, 0), callback))
+                {
+                    throw new InvalidOperationException(
+                        "Route name already exists. Ensure that the route name is unique."
+                    );
+                }
+            }
+
+            public void AddPost(string routeName, Action<DataBuffer> callback)
+            {
+                if (!events.TryAdd((routeName, 1), callback))
+                {
+                    throw new InvalidOperationException(
+                        "Route name already exists. Ensure that the route name is unique."
+                    );
+                }
+            }
 
             /// <summary>
             /// Asynchronously sends an HTTP GET request to the specified route.
@@ -41,7 +62,7 @@ namespace Omni.Core
             /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
             /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server.</returns>
+            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server. The caller must ensure the buffer is disposed or used within a using statement.</returns>
             /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
             public Task<DataBuffer> GetAsync(
                 string routeName,
@@ -72,7 +93,7 @@ namespace Omni.Core
             /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
             /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server.</returns>
+            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server. The caller must ensure the buffer is disposed or used within a using statement.</returns>
             /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
             public async Task<DataBuffer> PostAsync(
                 string routeName,
@@ -106,7 +127,7 @@ namespace Omni.Core
             /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
             /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server.</returns>
+            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server. The caller must ensure the buffer is disposed or used within a using statement.</returns>
             /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
             public Task<DataBuffer> PostAsync(
                 string routeName,
@@ -385,7 +406,17 @@ namespace Omni.Core
                 }
 
                 // Send the get response
-                Server.SendMessage(msgId, peer.Id, header, Target.Self);
+                Server.SendMessage(
+                    msgId,
+                    peer.Id,
+                    header,
+                    response.Target,
+                    response.DeliveryMode,
+                    response.GroupId,
+                    response.CacheId,
+                    response.CacheMode,
+                    response.SequenceChannel
+                );
             }
         }
 
@@ -414,6 +445,25 @@ namespace Omni.Core
                     throw new Exception(
                         $"The route {routeName} has not been registered. Ensure that you register it first."
                     );
+                }
+
+                using var eventMessage = Pool.Rent();
+                eventMessage.Write(buffer.GetSpan());
+                eventMessage.ResetWrittenCount();
+
+                if (msgId == MessageType.HttpGetResponseAsync)
+                {
+                    if (Fetch.events.TryGetValue((routeName, 0), out Action<DataBuffer> callback))
+                    {
+                        callback?.Invoke(eventMessage);
+                    }
+                }
+                else if (msgId == MessageType.HttpPostResponseAsync)
+                {
+                    if (Fetch.events.TryGetValue((routeName, 1), out Action<DataBuffer> callback))
+                    {
+                        callback?.Invoke(eventMessage);
+                    }
                 }
             }
         }

@@ -210,7 +210,7 @@ namespace Omni.Core
         /// </summary>
         /// <remarks>
         /// Ensure that the returned <see cref="DataBuffer"/> is used within a <c>using</c> statement
-        /// to properly return it to the pool after use.
+        /// to properly return it to the pool after use. The caller must ensure the buffer is disposed or used within a using statement.
         /// </remarks>
         /// <returns>
         /// A <see cref="DataBuffer"/> instance that contains the data from the original buffer,
@@ -262,27 +262,30 @@ namespace Omni.Core
     /// Used for Lite HTTP
     public sealed partial class DataBuffer
     {
-        internal bool SendEnabled { get; set; }
-        internal DeliveryMode DeliveryMode { get; set; } = DeliveryMode.Unreliable;
-        internal int GroupId { get; set; }
-        internal int CacheId { get; set; }
-        internal CacheMode CacheMode { get; set; }
-        internal byte SequenceChannel { get; set; }
+        internal bool SendEnabled { get; private set; }
+        internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
+        internal Target Target { get; private set; } = Target.Self;
+        internal int GroupId { get; private set; }
+        internal int CacheId { get; private set; }
+        internal CacheMode CacheMode { get; private set; } = CacheMode.None;
+        internal byte SequenceChannel { get; private set; }
 
         public void Send(
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered
-        // int groupId = 0,
-        // int cacheId = 0,
-        // CacheMode cacheMode = CacheMode.None,
-        // byte sequenceChannel = 0
+            Target target = Target.Self,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
         )
         {
             SendEnabled = true;
+            Target = target;
             DeliveryMode = deliveryMode;
-            // GroupId = 0;
-            // CacheId = cacheId;
-            // CacheMode = cacheMode;
-            // SequenceChannel = sequenceChannel;
+            GroupId = groupId;
+            CacheId = cacheId;
+            CacheMode = cacheMode;
+            SequenceChannel = sequenceChannel;
         }
     }
 }
