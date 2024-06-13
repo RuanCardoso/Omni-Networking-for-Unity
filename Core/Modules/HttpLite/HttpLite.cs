@@ -15,234 +15,253 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Omni.Shared;
+using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
 {
+    /// <summary>
+    /// The HttpLite class serves as a container for HTTP simulation functionalities.
+    /// It provides an inner implementation, which is responsible for simulating
+    /// HTTP GET and POST requests similar to Express.js through the transporter(Sockets).
+    /// </summary>
     public static class HttpLite
     {
-        public static HttpServer Http { get; } = new HttpServer();
-        public static HttpClient Fetch { get; } = new HttpClient();
-
-        internal class RuntimeHttpServer
+        public class HttpFetch
         {
-            internal RuntimeHttpServer(
-                Action<DataBuffer, DataBuffer, NetworkPeer> func,
-                Func<DataBuffer, DataBuffer, NetworkPeer, Task> funcAsync,
-                bool isAsync
-            )
-            {
-                Func = func;
-                FuncAsync = funcAsync;
-                IsAsync = isAsync;
-            }
+            private int routeId = int.MinValue;
+            internal readonly Dictionary<int, TaskCompletionSource<DataBuffer>> asyncTasks = new();
 
-            internal bool IsAsync { get; }
-            internal Action<DataBuffer, DataBuffer, NetworkPeer> Func { get; }
-            internal Func<DataBuffer, DataBuffer, NetworkPeer, Task> FuncAsync { get; }
-        }
-
-        public class HttpServer
-        {
-            internal Dictionary<string, RuntimeHttpServer> m_Routes = new();
-
-            public void Post(string route, Action<DataBuffer, DataBuffer, NetworkPeer> res)
-            {
-                if (res == null)
-                {
-                    throw new ArgumentNullException(
-                        nameof(res),
-                        "The request or response is null. Please ensure valid instances of request and response are provided."
-                    );
-                }
-
-                if (!m_Routes.TryAdd(route, new RuntimeHttpServer(res, default, false)))
-                {
-                    throw new NotSupportedException(
-                        $"The route '{route}' is global and must be unique. Please make sure to provide a unique route name."
-                    );
-                }
-            }
-
-            public void Get(string route, Action<DataBuffer, DataBuffer, NetworkPeer> res)
-            {
-                Post(route, res);
-            }
-
-            public void PostAsync(string route, Func<DataBuffer, DataBuffer, NetworkPeer, Task> res)
-            {
-                if (res == null)
-                {
-                    throw new ArgumentNullException(
-                        nameof(res),
-                        "The request or response is null. Please ensure valid instances of request and response are provided."
-                    );
-                }
-
-                if (!m_Routes.TryAdd(route, new RuntimeHttpServer(default, res, true)))
-                {
-                    throw new NotSupportedException(
-                        $"The route '{route}' is global and must be unique. Please make sure to provide a unique route name."
-                    );
-                }
-            }
-
-            public void GetAsync(
-                string route,
-                Func<DataBuffer, DataBuffer, NetworkPeer, Task> resAsync
-            )
-            {
-                PostAsync(route, resAsync);
-            }
-        }
-
-        public class HttpClient
-        {
-            internal int m_RequestId = int.MinValue;
-            internal Dictionary<int, Action<DataBuffer>> m_Results = new();
-
-            public void Post(
-                string route,
-                Action<DataBuffer> req,
-                Action<DataBuffer> res,
+            /// <summary>
+            /// Asynchronously sends an HTTP GET request to the specified route.
+            /// </summary>
+            /// <param name="routeName">The name of the route to which the GET request is sent.</param>
+            /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
+            /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server.</returns>
+            /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
+            public Task<DataBuffer> GetAsync(
+                string routeName,
+                int timeout = 5000,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
             )
             {
-                if (req == null || res == null)
-                {
-                    throw new ArgumentNullException(
-                        nameof(res),
-                        "The request or response is null. Please ensure valid instances of request and response are provided."
-                    );
-                }
+                int lastId = routeId;
+                using DataBuffer message = DefaultHeader(routeName, lastId);
+                routeId++;
 
-                if (deliveryMode == DeliveryMode.Unreliable)
-                {
-                    throw new NotSupportedException(
-                        "The 'Unreliable' data delivery mode is not supported for GET and POST requests, as reliability must be guaranteed. Please choose a supported delivery mode."
-                    );
-                }
-
-                int requestId = m_RequestId;
-                if (m_Results.TryAdd(requestId, res))
-                {
-                    using var message = NetworkManager.Pool.Rent();
-                    message.Write7BitEncodedInt(requestId);
-                    message.FastWrite(route);
-                    req(message);
-
-                    // Send the fetch request to the server
-                    NetworkManager.Client.SendMessage(
-                        MessageType.HttpFetch,
-                        message,
-                        deliveryMode,
-                        sequenceChannel
-                    );
-
-                    m_RequestId++;
-                }
-                else
-                {
-                    throw new NotSupportedException(
-                        $"The request ID '{requestId}' is already in use."
-                    );
-                }
-            }
-
-            public void Get(
-                string route,
-                Action<DataBuffer> response,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
-            {
-                Post(route, (_) => { }, response, deliveryMode, sequenceChannel);
-            }
-
-            public Task<DataBuffer> PostAsync(
-                string route,
-                Action<DataBuffer> request,
-                int timeout = 3000,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
-            {
-                TaskCompletionSource<DataBuffer> tcs = new();
-                CancellationTokenSource cts = new();
-
-                Fetch.Post(
-                    route,
-                    request,
-                    (res) =>
-                    {
-                        if (cts != null && !cts.IsCancellationRequested)
-                        {
-                            cts.Cancel();
-                            tcs.SetResult(res);
-                            cts.Dispose();
-                        }
-                    },
+                return Send(
+                    MessageType.HttpGetFetchAsync,
+                    message,
+                    timeout,
                     deliveryMode,
+                    lastId,
                     sequenceChannel
                 );
-
-                Task.Run(
-                    async () =>
-                    {
-                        await Task.Delay(timeout, cts.Token);
-                        if (cts != null && !cts.IsCancellationRequested)
-                        {
-                            cts.Cancel();
-                            tcs.SetException(new TimeoutException("The request timed out."));
-                            cts.Dispose();
-                        }
-                    },
-                    cts.Token
-                );
-                return tcs.Task;
             }
 
-            public Task<DataBuffer> GetAsync(
-                string route,
-                int timeout = 3000,
+            /// <summary>
+            /// Asynchronously sends an HTTP POST request to the specified route.
+            /// </summary>
+            /// <param name="routeName">The name of the route to which the POST request is sent.</param>
+            /// <param name="callback">A callback function that processes(writes) the DataBuffer before sending the request.</param>
+            /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
+            /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server.</returns>
+            /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
+            public async Task<DataBuffer> PostAsync(
+                string routeName,
+                Func<DataBuffer, Task> callback,
+                int timeout = 5000,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
             )
             {
-                return PostAsync(route, (_) => { }, timeout, deliveryMode, sequenceChannel);
+                int lastId = routeId;
+                using DataBuffer message = DefaultHeader(routeName, lastId);
+                routeId++;
+
+                // Await written the data before sending!
+                await callback(message);
+                return await Send(
+                    MessageType.HttpPostFetchAsync,
+                    message,
+                    timeout,
+                    deliveryMode,
+                    lastId,
+                    sequenceChannel
+                );
+            }
+
+            /// <summary>
+            /// Asynchronously sends an HTTP POST request to the specified route.
+            /// </summary>
+            /// <param name="routeName">The name of the route to which the POST request is sent.</param>
+            /// <param name="callback">A callback function that processes(writes) the DataBuffer before sending the request.</param>
+            /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
+            /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server.</returns>
+            /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
+            public Task<DataBuffer> PostAsync(
+                string routeName,
+                Action<DataBuffer> callback,
+                int timeout = 5000,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+                byte sequenceChannel = 0
+            )
+            {
+                int lastId = routeId;
+                using DataBuffer message = DefaultHeader(routeName, lastId);
+                routeId++;
+
+                callback(message);
+                return Send(
+                    MessageType.HttpPostFetchAsync,
+                    message,
+                    timeout,
+                    deliveryMode,
+                    lastId,
+                    sequenceChannel
+                );
+            }
+
+            private Task<DataBuffer> Send(
+                byte msgId,
+                DataBuffer message,
+                int timeout,
+                DeliveryMode deliveryMode,
+                int lastId,
+                byte sequenceChannel
+            )
+            {
+                Client.SendMessage(msgId, message, deliveryMode, sequenceChannel);
+
+                // Timeout system
+                TaskCompletionSource<DataBuffer> source = new();
+                CancellationTokenSource cts = new(timeout);
+                cts.Token.Register(() =>
+                {
+                    if (!source.Task.IsCompletedSuccessfully)
+                    {
+                        NetworkLogger.__Log__(
+                            $"The request has timed out. Ensure that the route exists and that the server is running or the request will fail.",
+                            NetworkLogger.LogType.Error
+                        );
+
+                        cts.Cancel();
+                        cts.Dispose();
+                        source.TrySetCanceled();
+                    }
+                    else
+                    {
+                        cts.Cancel();
+                        cts.Dispose();
+                    }
+                });
+
+                asyncTasks.Add(lastId, source);
+                return source.Task;
+            }
+
+            private DataBuffer DefaultHeader(string routeName, int lastId)
+            {
+                var message = Pool.Rent(); // disposed by the caller
+                message.FastWrite(routeName);
+                message.FastWrite(lastId);
+                return message;
             }
         }
+
+        public class HttpExpress
+        {
+            internal readonly Dictionary<
+                string,
+                Func<DataBuffer, NetworkPeer, Task>
+            > asyncGetTasks = new();
+
+            internal readonly Dictionary<
+                string,
+                Func<DataBuffer, DataBuffer, NetworkPeer, Task>
+            > asyncPostTasks = new();
+
+            internal readonly Dictionary<string, Action<DataBuffer, NetworkPeer>> getTasks = new();
+
+            internal readonly Dictionary<
+                string,
+                Action<DataBuffer, DataBuffer, NetworkPeer>
+            > postTasks = new();
+
+            /// <summary>
+            /// Registers an asynchronous GET route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the GET request is received.</param>
+            public void GetAsync(string routeName, Func<DataBuffer, NetworkPeer, Task> callback)
+            {
+                asyncGetTasks.Add(routeName, callback);
+            }
+
+            /// <summary>
+            /// Registers an asynchronous GET route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the GET request is received.</param>
+            public void GetAsync(string routeName, Action<DataBuffer, NetworkPeer> callback)
+            {
+                getTasks.Add(routeName, callback);
+            }
+
+            /// <summary>
+            /// Registers an asynchronous POST route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the POST request is received.</param>
+            public void PostAsync(
+                string routeName,
+                Func<DataBuffer, DataBuffer, NetworkPeer, Task> callback
+            )
+            {
+                asyncPostTasks.Add(routeName, callback);
+            }
+
+            /// <summary>
+            /// Registers an asynchronous POST route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the POST request is received.</param>
+            public void PostAsync(
+                string routeName,
+                Action<DataBuffer, DataBuffer, NetworkPeer> callback
+            )
+            {
+                postTasks.Add(routeName, callback);
+            }
+        }
+
+        /// <summary>
+        /// Provides methods to simulate HTTP GET and POST requests.
+        /// </summary>
+        public static HttpFetch Fetch { get; } = new();
+
+        /// <summary>
+        /// Handles asynchronous GET and POST requests by maintaining lists of routes
+        /// and their associated callback functions, simulating an Express.js-like behavior.
+        /// </summary>
+        public static HttpExpress Http { get; } = new();
 
         internal static void Initialize()
         {
-            NetworkManager.Server.OnMessage += OnServerRoute;
-            NetworkManager.Client.OnMessage += OnClientRoute;
+            Client.OnMessage += OnClientMessage;
+            Server.OnMessage += OnServerMessage;
         }
 
-        private static void OnClientRoute(byte msgId, DataBuffer buffer, int sequenceChannel)
-        {
-            buffer.ResetReadPosition();
-            if (msgId == MessageType.HttpResponse)
-            {
-                int requestId = buffer.Read7BitEncodedInt();
-                string route = buffer.ReadString();
-
-                if (Fetch.m_Results.Remove(requestId, out var func))
-                {
-                    func(buffer);
-                }
-                else
-                {
-                    throw new Exception($"Request ID '{requestId}' does not exist.");
-                }
-            }
-        }
-
-        private static async void OnServerRoute(
+        private static async void OnServerMessage(
             byte msgId,
             DataBuffer buffer,
             NetworkPeer peer,
@@ -250,73 +269,113 @@ namespace Omni.Core
         )
         {
             buffer.ResetReadPosition();
-            if (msgId == MessageType.HttpFetch)
+            string routeName = buffer.ReadString();
+            int routeId = buffer.Read<int>();
+            if (msgId == MessageType.HttpGetFetchAsync)
             {
-                int requestId = buffer.Read7BitEncodedInt();
-                string route = buffer.ReadString();
-
-                if (Http.m_Routes.TryGetValue(route, out RuntimeHttpServer runtime))
+                if (
+                    Http.asyncGetTasks.TryGetValue(
+                        routeName,
+                        out Func<DataBuffer, NetworkPeer, Task> asyncCallback
+                    )
+                )
                 {
-                    #region Resources
-
-                    using DataBuffer httpReq = NetworkManager.Pool.Rent();
-                    using DataBuffer httpRes = NetworkManager.Pool.Rent();
-                    using DataBuffer httpfData = NetworkManager.Pool.Rent();
-
-                    #endregion
-
-                    #region Initialize
-
-                    httpReq.Write(buffer.GetSpan()); // Copy because buffer will be disposed & not awaited
-                    httpReq.ResetWrittenCount();
-
-                    httpfData.Write7BitEncodedInt(requestId);
-                    httpfData.FastWrite(route);
-                    if (runtime.IsAsync)
-                    {
-                        await runtime.FuncAsync(httpReq, httpRes, peer);
-                    }
-                    else
-                    {
-                        runtime.Func(httpReq, httpRes, peer);
-                    }
-
-                    httpfData.Write(httpRes.WrittenSpan);
-                    if (httpfData.WrittenCount > 0)
-                    {
-                        if (httpRes.DeliveryMode == DeliveryMode.Unreliable)
-                        {
-                            throw new Exception("Maybe you're forgetting to call Send().");
-                        }
-
-                        NetworkManager.Server.SendMessage(
-                            MessageType.HttpResponse,
-                            peer.Id,
-                            httpfData,
-                            Target.Self,
-                            httpRes.DeliveryMode,
-                            httpRes.GroupId,
-                            httpRes.CacheId,
-                            httpRes.CacheMode,
-                            httpRes.SequenceChannel
-                        );
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            $"The server successfully received the requested route ({route}), but the response returned empty.",
-                            NetworkLogger.LogType.Error
-                        );
-                    }
-
-                    #endregion
+                    using var response = Pool.Rent();
+                    await asyncCallback(response, peer);
+                    Send(MessageType.HttpGetResponseAsync, response);
                 }
-                else
+                else if (
+                    Http.getTasks.TryGetValue(
+                        routeName,
+                        out Action<DataBuffer, NetworkPeer> callback
+                    )
+                )
                 {
-                    NetworkLogger.__Log__(
-                        $"The route {route} does not exists. Ensure that the route exists.",
-                        NetworkLogger.LogType.Error
+                    using var response = Pool.Rent();
+                    callback(response, peer);
+                    Send(MessageType.HttpGetResponseAsync, response);
+                }
+            }
+            else if (msgId == MessageType.HttpPostFetchAsync)
+            {
+                if (
+                    Http.asyncPostTasks.TryGetValue(
+                        routeName,
+                        out Func<DataBuffer, DataBuffer, NetworkPeer, Task> asyncCallback
+                    )
+                )
+                {
+                    using var request = Pool.Rent();
+                    request.Write(buffer.GetSpan());
+                    request.ResetWrittenCount();
+
+                    using var response = Pool.Rent();
+                    await asyncCallback(request, response, peer);
+                    Send(MessageType.HttpPostResponseAsync, response);
+                }
+                else if (
+                    Http.postTasks.TryGetValue(
+                        routeName,
+                        out Action<DataBuffer, DataBuffer, NetworkPeer> callback
+                    )
+                )
+                {
+                    using var request = Pool.Rent();
+                    request.Write(buffer.GetSpan());
+                    request.ResetWrittenCount();
+
+                    using var response = Pool.Rent();
+                    callback(request, response, peer);
+                    Send(MessageType.HttpPostResponseAsync, response);
+                }
+            }
+
+            void Send(byte msgId, DataBuffer response)
+            {
+                using var header = Pool.Rent();
+                header.FastWrite(routeName);
+                header.FastWrite(routeId);
+                header.Write(response.WrittenSpan);
+
+                if (!response.SendEnabled)
+                {
+                    throw new Exception("Maybe you're forgetting to call Send().");
+                }
+
+                if (
+                    response.DeliveryMode == DeliveryMode.Unreliable
+                    || response.DeliveryMode == DeliveryMode.Sequenced
+                )
+                {
+                    throw new NotImplementedException(
+                        "HTTP Lite: Unreliable and sequenced delivery modes are not supported yet."
                     );
+                }
+
+                // Send the get response
+                Server.SendMessage(msgId, peer.Id, header, Target.Self);
+            }
+        }
+
+        private static void OnClientMessage(byte msgId, DataBuffer buffer, int sequenceChannel)
+        {
+            buffer.ResetReadPosition();
+            if (
+                msgId == MessageType.HttpGetResponseAsync
+                || msgId == MessageType.HttpPostResponseAsync
+            )
+            {
+                string routeName = buffer.ReadString();
+                int routeId = buffer.Read<int>();
+
+                if (Fetch.asyncTasks.Remove(routeId, out TaskCompletionSource<DataBuffer> source))
+                {
+                    var message = Pool.Rent(); // Disposed by the caller!
+                    message.Write(buffer.GetSpan());
+                    message.ResetWrittenCount();
+
+                    // Set task as completed
+                    source.TrySetResult(message);
                 }
             }
         }

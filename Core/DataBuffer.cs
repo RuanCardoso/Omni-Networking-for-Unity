@@ -253,12 +253,16 @@ namespace Omni.Core
 
             _objectPooling.Return(this);
             _disposed = true;
+
+            /// Used for Lite HTTP
+            SendEnabled = false;
         }
     }
 
     /// Used for Lite HTTP
     public sealed partial class DataBuffer
     {
+        internal bool SendEnabled { get; set; }
         internal DeliveryMode DeliveryMode { get; set; } = DeliveryMode.Unreliable;
         internal int GroupId { get; set; }
         internal int CacheId { get; set; }
@@ -273,6 +277,7 @@ namespace Omni.Core
         // byte sequenceChannel = 0
         )
         {
+            SendEnabled = true;
             DeliveryMode = deliveryMode;
             // GroupId = 0;
             // CacheId = cacheId;

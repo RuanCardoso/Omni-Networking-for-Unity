@@ -11,7 +11,7 @@ namespace Omni.Core
         internal NetworkBufferPool()
         {
             _pool = new Queue<DataBuffer>();
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 35; i++)
             {
                 _pool.Enqueue(new DataBuffer(pool: this));
             }

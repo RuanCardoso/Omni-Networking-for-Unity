@@ -88,11 +88,14 @@ namespace Omni.Core
 
     internal class MessageType // not a enum to avoid casting
     {
-        internal const byte HttpResponse = 247;
-        internal const byte HttpFetch = 248;
+        internal const byte HttpPostResponseAsync = 245;
+        internal const byte HttpPostFetchAsync = 246;
+        internal const byte HttpGetResponseAsync = 247;
+        internal const byte HttpGetFetchAsync = 248;
         internal const byte NtpQuery = 249;
         internal const byte Handshake = 250;
-        internal const byte GenerateUniqueId = 251;
+
+        // internal const byte GenerateUniqueId = 251;
         internal const byte LocalInvoke = 252;
         internal const byte GlobalInvoke = 253;
         internal const byte LeaveGroup = 254;
