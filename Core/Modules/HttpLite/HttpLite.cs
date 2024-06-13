@@ -204,7 +204,12 @@ namespace Omni.Core
             /// <param name="callback">The callback function to be executed when the GET request is received.</param>
             public void GetAsync(string routeName, Func<DataBuffer, NetworkPeer, Task> callback)
             {
-                asyncGetTasks.Add(routeName, callback);
+                if (!asyncGetTasks.TryAdd(routeName, callback) || getTasks.ContainsKey(routeName))
+                {
+                    throw new InvalidOperationException(
+                        "Route name already exists. Ensure that the route name is unique."
+                    );
+                }
             }
 
             /// <summary>
@@ -214,7 +219,12 @@ namespace Omni.Core
             /// <param name="callback">The callback function to be executed when the GET request is received.</param>
             public void GetAsync(string routeName, Action<DataBuffer, NetworkPeer> callback)
             {
-                getTasks.Add(routeName, callback);
+                if (!getTasks.TryAdd(routeName, callback) || asyncGetTasks.ContainsKey(routeName))
+                {
+                    throw new InvalidOperationException(
+                        "Route name already exists. Ensure that the route name is unique."
+                    );
+                }
             }
 
             /// <summary>
@@ -227,7 +237,12 @@ namespace Omni.Core
                 Func<DataBuffer, DataBuffer, NetworkPeer, Task> callback
             )
             {
-                asyncPostTasks.Add(routeName, callback);
+                if (!asyncPostTasks.TryAdd(routeName, callback) || postTasks.ContainsKey(routeName))
+                {
+                    throw new InvalidOperationException(
+                        "Route name already exists. Ensure that the route name is unique."
+                    );
+                }
             }
 
             /// <summary>
@@ -240,7 +255,12 @@ namespace Omni.Core
                 Action<DataBuffer, DataBuffer, NetworkPeer> callback
             )
             {
-                postTasks.Add(routeName, callback);
+                if (!postTasks.TryAdd(routeName, callback) || asyncPostTasks.ContainsKey(routeName))
+                {
+                    throw new InvalidOperationException(
+                        "Route name already exists. Ensure that the route name is unique."
+                    );
+                }
             }
         }
 
@@ -295,6 +315,12 @@ namespace Omni.Core
                     callback(response, peer);
                     Send(MessageType.HttpGetResponseAsync, response);
                 }
+                else
+                {
+                    throw new Exception(
+                        $"The route {routeName} has not been registered. Ensure that you register it first."
+                    );
+                }
             }
             else if (msgId == MessageType.HttpPostFetchAsync)
             {
@@ -327,6 +353,12 @@ namespace Omni.Core
                     using var response = Pool.Rent();
                     callback(request, response, peer);
                     Send(MessageType.HttpPostResponseAsync, response);
+                }
+                else
+                {
+                    throw new Exception(
+                        $"The route {routeName} has not been registered. Ensure that you register it first."
+                    );
                 }
             }
 
@@ -376,6 +408,12 @@ namespace Omni.Core
 
                     // Set task as completed
                     source.TrySetResult(message);
+                }
+                else
+                {
+                    throw new Exception(
+                        $"The route {routeName} has not been registered. Ensure that you register it first."
+                    );
                 }
             }
         }
