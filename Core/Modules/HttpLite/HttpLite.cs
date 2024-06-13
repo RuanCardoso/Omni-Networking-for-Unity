@@ -35,7 +35,20 @@ namespace Omni.Core
             internal readonly Dictionary<int, TaskCompletionSource<DataBuffer>> asyncTasks = new();
             internal readonly Dictionary<(string, int), Action<DataBuffer>> events = new(); // 0: Get, 1: Post
 
-            public void AddGet(string routeName, Action<DataBuffer> callback)
+            /// <summary>
+            /// Registers a GET route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the GET request is received.
+            /// Note: The registered callback function is invoked by the system when a GET request matching
+            /// this route is received from other clients, not directly from the client making the request.
+            /// </param>
+            /// <remarks>
+            /// This method registers the specified callback function to be executed by the system when a GET request
+            /// matching the provided route name is received from clients other than the one making the request.
+            /// It does not trigger the callback directly upon registration.
+            /// </remarks>
+            public void AddGetHandler(string routeName, Action<DataBuffer> callback)
             {
                 if (!events.TryAdd((routeName, 0), callback))
                 {
@@ -45,7 +58,20 @@ namespace Omni.Core
                 }
             }
 
-            public void AddPost(string routeName, Action<DataBuffer> callback)
+            /// <summary>
+            /// Registers a POST route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the POST request is received.
+            /// Note: The registered callback function is invoked by the system when a POST request matching
+            /// this route is received from other clients, not directly from the client making the request.
+            /// </param>
+            /// <remarks>
+            /// This method registers the specified callback function to be executed by the system when a POST request
+            /// matching the provided route name is received from clients other than the one making the request.
+            /// It does not trigger the callback directly upon registration.
+            /// </remarks>
+            public void AddPostHandler(string routeName, Action<DataBuffer> callback)
             {
                 if (!events.TryAdd((routeName, 1), callback))
                 {
@@ -286,12 +312,12 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Provides methods to simulate HTTP GET and POST requests.
+        /// Provides methods to simulate HTTP GET and POST requests on the client side.
         /// </summary>
         public static HttpFetch Fetch { get; } = new();
 
         /// <summary>
-        /// Handles asynchronous GET and POST requests by maintaining lists of routes
+        /// Handles asynchronous GET and POST requests by maintaining lists of routes on the server side.
         /// and their associated callback functions, simulating an Express.js-like behavior.
         /// </summary>
         public static HttpExpress Http { get; } = new();
@@ -442,27 +468,39 @@ namespace Omni.Core
                 }
                 else
                 {
-                    throw new Exception(
-                        $"The route {routeName} has not been registered. Ensure that you register it first."
-                    );
-                }
+                    using var eventMessage = Pool.Rent();
+                    eventMessage.Write(buffer.GetSpan());
+                    eventMessage.ResetWrittenCount();
 
-                using var eventMessage = Pool.Rent();
-                eventMessage.Write(buffer.GetSpan());
-                eventMessage.ResetWrittenCount();
-
-                if (msgId == MessageType.HttpGetResponseAsync)
-                {
-                    if (Fetch.events.TryGetValue((routeName, 0), out Action<DataBuffer> callback))
+                    if (msgId == MessageType.HttpGetResponseAsync)
                     {
-                        callback?.Invoke(eventMessage);
+                        if (
+                            Fetch.events.TryGetValue(
+                                (routeName, 0),
+                                out Action<DataBuffer> callback
+                            )
+                        )
+                        {
+                            callback?.Invoke(eventMessage);
+                        }
                     }
-                }
-                else if (msgId == MessageType.HttpPostResponseAsync)
-                {
-                    if (Fetch.events.TryGetValue((routeName, 1), out Action<DataBuffer> callback))
+                    else if (msgId == MessageType.HttpPostResponseAsync)
                     {
-                        callback?.Invoke(eventMessage);
+                        if (
+                            Fetch.events.TryGetValue(
+                                (routeName, 1),
+                                out Action<DataBuffer> callback
+                            )
+                        )
+                        {
+                            callback?.Invoke(eventMessage);
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception(
+                            $"The route {routeName} has not been registered. Ensure that you register it first."
+                        );
                     }
                 }
             }

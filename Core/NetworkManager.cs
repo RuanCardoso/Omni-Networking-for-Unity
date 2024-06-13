@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using MemoryPack;
@@ -47,15 +48,44 @@ namespace Omni.Core
         NtpClock,
     }
 
+    /// <summary>
+    /// Specifies the target recipients for a network message.
+    /// </summary>
     public enum Target
     {
+        /// <summary>
+        /// Sends the message to the current client itself. If the peer ID is 0 (server), the message is not executed.
+        /// </summary>
         Self,
+
+        /// <summary>
+        /// Broadcasts the message to all connected players.
+        /// </summary>
         All,
+
+        /// <summary>
+        /// Sends the message to all players except the sender.
+        /// </summary>
         AllExceptSelf,
+
+        /// <summary>
+        /// Sends the message to all players who are members of the same groups as the sender.
+        /// </summary>
+        GroupMembers,
+
+        /// <summary>
+        /// Sends the message to all players(except the sender) who are members of the same groups as the sender.
+        /// </summary>
+        GroupMembersExceptSelf,
+
+        /// <summary>
+        /// Sends the message to all players who are not members of any groups.
+        /// </summary>
+        NonGroupMembers
     }
 
     /// <summary>
-    /// Sending method type
+    /// Specifies the delivery mode for network packets within a communication protocol.
     /// </summary>
     public enum DeliveryMode : byte
     {
@@ -799,6 +829,60 @@ namespace Omni.Core
 
                 switch (target)
                 {
+                    case Target.NonGroupMembers:
+                        {
+                            var peers = peersById.Values.Where(p => p.Groups.Count == 0);
+                            foreach (var peer in peers)
+                            {
+                                if (peer.Id == Server.ServerPeer.Id)
+                                    continue;
+
+                                Send(message, peer.EndPoint);
+                            }
+                        }
+                        break;
+                    case Target.GroupMembersExceptSelf:
+                    case Target.GroupMembers:
+                        {
+                            if (groupId != 0)
+                            {
+                                NetworkLogger.__Log__(
+                                    "Send: Target.GroupMembers cannot be used with specified groups(groupId is not 0). Note that this is not a limitation, it just doesn't make sense.",
+                                    NetworkLogger.LogType.Warning
+                                );
+                            }
+
+                            if (PeersByIp.TryGetValue(fromPeer, out var sender))
+                            {
+                                if (Peer.Groups.Count == 0)
+                                {
+                                    NetworkLogger.__Log__(
+                                        "Send: You are not in any groups. Please join a group first.",
+                                        NetworkLogger.LogType.Error
+                                    );
+
+                                    return;
+                                }
+
+                                foreach (var (_, group) in sender.Groups)
+                                {
+                                    foreach (var (_, peer) in group._peersById)
+                                    {
+                                        if (peer.Id == Server.ServerPeer.Id)
+                                            continue;
+
+                                        if (
+                                            peer.EndPoint.Equals(fromPeer)
+                                            && target == Target.GroupMembersExceptSelf
+                                        )
+                                            continue;
+
+                                        Send(message, peer.EndPoint);
+                                    }
+                                }
+                            }
+                        }
+                        break;
                     case Target.All:
                         {
                             foreach (var (_, peer) in peersById)
