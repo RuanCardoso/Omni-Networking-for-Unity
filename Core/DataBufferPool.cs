@@ -4,11 +4,11 @@ using Omni.Shared;
 
 namespace Omni.Core
 {
-    public class NetworkBufferPool : IObjectPooling<DataBuffer>
+    public class DataBufferPool : IObjectPooling<DataBuffer>
     {
         private readonly Queue<DataBuffer> _pool;
 
-        internal NetworkBufferPool()
+        internal DataBufferPool()
         {
             _pool = new Queue<DataBuffer>();
             for (int i = 0; i < 35; i++)

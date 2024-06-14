@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using Omni.Core.Cryptography;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Matchmaking;
 using Omni.Shared;
@@ -51,6 +52,13 @@ namespace Omni.Core
 
         public static class Client
         {
+            /// <summary>
+            /// Gets the server RSA public key .
+            /// This property stores the public key used in RSA cryptographic operations.
+            /// The public key is utilized to encrypt data, ensuring that only the holder of the corresponding private key can decrypt it.
+            /// </summary>
+            internal static string RsaServerPublicKey { get; set; }
+
             internal static Dictionary<int, NetworkIdentity> Identities { get; } = new();
             internal static Dictionary<int, INetworkMessage> GlobalEventBehaviours { get; } = new(); // int: identifier(identity id)
             internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
@@ -195,6 +203,21 @@ namespace Omni.Core
             public static NetworkPeer ServerPeer { get; } =
                 new(new IPEndPoint(IPAddress.None, 0), 0);
 
+            /// <summary>
+            /// Gets the RSA public key.
+            /// This property stores the public key used in RSA cryptographic operations.
+            /// The public key is utilized to encrypt data, ensuring that only the holder of the corresponding private key can decrypt it.
+            /// </summary>
+            internal static string RsaPublicKey { get; private set; }
+
+            /// <summary>
+            /// Gets the RSA private key.
+            /// This property stores the private key used in RSA cryptographic operations.
+            /// The private key is crucial for decrypting data that has been encrypted with the corresponding public key.
+            /// It is also used to sign data, ensuring the authenticity and integrity of the message.
+            /// </summary>
+            internal static string RsaPrivateKey { get; private set; }
+
             internal static List<NetworkCache> CACHES_APPEND_GLOBAL { get; } = new();
             internal static Dictionary<int, NetworkCache> CACHES_OVERWRITE_GLOBAL { get; } = new();
 
@@ -207,6 +230,13 @@ namespace Omni.Core
             {
                 add => OnServerCustomMessage += value;
                 remove => OnServerCustomMessage -= value;
+            }
+
+            internal static void GenerateRsaKeys()
+            {
+                RsaCryptography.GetRsaKeys(out var rsaPrivateKey, out var rsaPublicKey);
+                RsaPrivateKey = rsaPrivateKey;
+                RsaPublicKey = rsaPublicKey;
             }
 
             public static Dictionary<int, NetworkIdentity> GetIdentities()

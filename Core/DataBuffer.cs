@@ -54,19 +54,19 @@ namespace Omni.Core
         /// Creates an instance of an <see cref="DataBuffer"/>, in which data can be written to,
         /// with an initial capacity specified.
         /// </summary>
-        /// <param name="initialCapacity">The minimum capacity with which to initialize the underlying buffer.</param>
+        /// <param name="capacity">The minimum capacity with which to initialize the underlying buffer.</param>
         /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="initialCapacity"/> is not positive (i.e. less than or equal to 0).
+        /// Thrown when <paramref name="capacity"/> is not positive (i.e. less than or equal to 0).
         /// </exception>
-        public DataBuffer(int initialCapacity = 1024, IObjectPooling<DataBuffer> pool = null)
+        public DataBuffer(int capacity = 1024, IObjectPooling<DataBuffer> pool = null)
         {
-            if (initialCapacity <= 0)
+            if (capacity <= 0)
             {
-                throw new ArgumentException(null, nameof(initialCapacity));
+                throw new ArgumentException(null, nameof(capacity));
             }
 
             _objectPooling = pool;
-            _buffer = new byte[initialCapacity];
+            _buffer = new byte[capacity];
             _position = 0;
         }
 
@@ -91,6 +91,16 @@ namespace Omni.Core
                 throw new ArgumentException(null, nameof(count));
 
             _position += count;
+        }
+
+        /// <summary>
+        /// Converts the written data to a byte array.
+        /// </summary>
+        /// <returns>A byte array containing the written data.</returns>
+        public byte[] ToArray()
+        {
+            // Convert the written data to a byte array.
+            return WrittenSpan.ToArray();
         }
 
         /// <summary>

@@ -12,7 +12,11 @@ namespace Omni.Core
     public partial class NetworkPeer
     {
         [MemoryPackIgnore]
+        internal byte[] AesKey { get; set; }
+
+        [MemoryPackIgnore]
         internal NativePeer _nativePeer;
+
 #pragma warning disable IDE0052
         [MemoryPackIgnore]
         readonly string __endpoint__;
@@ -24,7 +28,10 @@ namespace Omni.Core
         public int Id { get; }
 
         [MemoryPackIgnore]
-        public bool IsConnected => EndPoint != null;
+        public bool IsConnected { get; internal set; }
+
+        [MemoryPackIgnore]
+        public bool IsAuthenticated { get; internal set; }
 
         [MemoryPackIgnore]
         public Dictionary<int, NetworkGroup> Groups { get; } = new();

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using MemoryPack;
 using MemoryPack.Compression;
 using Newtonsoft.Json;
+using Omni.Core.Cryptography;
 
 namespace Omni.Core
 {
@@ -369,6 +370,53 @@ namespace Omni.Core
             var decompressedBuffer = NetworkManager.Pool.Rent();
             data.CopyTo(decompressedBuffer.GetSpan());
             return decompressedBuffer;
+        }
+
+        /// <summary>
+        /// Encrypts the data buffer using AES encryption.
+        /// </summary>
+        /// <param name="buffer">The data buffer to encrypt.</param>
+        /// <param name="peer">The network peer used for encryption.</param>
+        /// <returns>A new encrypted data buffer.</returns>
+        public static DataBuffer Encrypt(this DataBuffer buffer, NetworkPeer peer)
+        {
+            byte[] data = buffer.ToArray();
+            byte[] encryptedData = AesCryptography.Encrypt(
+                data,
+                0,
+                data.Length,
+                peer.AesKey,
+                out byte[] Iv
+            );
+
+            var encryptedBuffer = NetworkManager.Pool.Rent();
+            encryptedBuffer.ToBinary(Iv);
+            encryptedBuffer.ToBinary(encryptedData);
+            return encryptedBuffer;
+        }
+
+        /// <summary>
+        /// Decrypts the data buffer using AES decryption.
+        /// </summary>
+        /// <param name="buffer">The data buffer to decrypt.</param>
+        /// <param name="peer">The network peer used for decryption.</param>
+        /// <returns>A new decrypted data buffer.</returns>
+        public static DataBuffer Decrypt(this DataBuffer buffer, NetworkPeer peer)
+        {
+            byte[] iv = buffer.FromBinary<byte[]>();
+            byte[] encryptedData = buffer.FromBinary<byte[]>();
+            byte[] decryptedData = AesCryptography.Decrypt(
+                encryptedData,
+                0,
+                encryptedData.Length,
+                peer.AesKey,
+                iv
+            );
+
+            var decryptedBuffer = NetworkManager.Pool.Rent();
+            decryptedBuffer.Write(decryptedData);
+            decryptedBuffer.ResetWrittenCount();
+            return decryptedBuffer;
         }
     }
 

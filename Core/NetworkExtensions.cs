@@ -20,7 +20,7 @@ namespace Omni.Core
         )
         {
             buffer.ReadIdentityData(out int identityId, out int peerId);
-            bool isLocalPlayer = NetworkManager.Peer.Id == peerId;
+            bool isLocalPlayer = NetworkManager.LocalPeer.Id == peerId;
             return Instantiate(
                 prefab,
                 null,

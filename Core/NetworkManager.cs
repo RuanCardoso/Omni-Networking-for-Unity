@@ -7,16 +7,19 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using System.Threading.Tasks;
 using MemoryPack;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Utilities;
 using Omni.Core.Attributes;
+using Omni.Core.Cryptography;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Connection;
 using Omni.Core.Modules.Matchmaking;
 using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
+using UnityEditor;
 using UnityEngine;
 
 #pragma warning disable
@@ -123,9 +126,8 @@ namespace Omni.Core
         internal const byte HttpGetResponseAsync = 247;
         internal const byte HttpGetFetchAsync = 248;
         internal const byte NtpQuery = 249;
-        internal const byte Handshake = 250;
-
-        // internal const byte GenerateUniqueId = 251;
+        internal const byte BeginHandshake = 250;
+        internal const byte EndHandshake = 251;
         internal const byte LocalInvoke = 252;
         internal const byte GlobalInvoke = 253;
         internal const byte LeaveGroup = 254;
@@ -141,7 +143,7 @@ namespace Omni.Core
 
         public static double ClockTime => _stopwatch.Elapsed.TotalSeconds; // does not depend on frame rate.
         public static int MainThreadId { get; private set; }
-        public static IObjectPooling<DataBuffer> Pool { get; } = new NetworkBufferPool();
+        public static IObjectPooling<DataBuffer> Pool { get; } = new DataBufferPool();
 
         public static event Action OnServerInitialized;
         public static event Action<NetworkPeer> OnServerPeerConnected;
@@ -267,11 +269,39 @@ namespace Omni.Core
             }
         }
 
-        static NativePeer NativePeer { get; set; }
-        public static NetworkPeer Peer { get; private set; }
+        /// <summary>
+        /// Gets or sets the native peer.
+        /// This property stores an instance of the NativePeer class, which represents a low-level peer in the network.
+        /// It is used to manage native networking operations and interactions.
+        /// </summary>
+        static NativePeer LocalNativePeer { get; set; }
+
+        /// <summary>
+        /// Gets the local network peer.
+        /// This property stores an instance of the NetworkPeer class, representing the local peer in the network.
+        /// </summary>
+        public static NetworkPeer LocalPeer { get; private set; }
+
+        /// <summary>
+        /// Gets the local endpoint.
+        /// This property stores an instance of the IPEndPoint class, representing the local network endpoint.
+        /// It is used to specify the IP address and port number of the local peer.
+        /// </summary>
+        public static IPEndPoint LocalEndPoint { get; private set; }
+
+        /// <summary>
+        /// Gets a value indicating whether the client is active.
+        /// This property returns true if the client is currently active, authenticated and connected; otherwise, false.
+        /// It is used to determine the client's connection status in the network.
+        /// </summary>
         public static bool IsClientActive { get; private set; }
+
+        /// <summary>
+        /// Gets a value indicating whether the server is active.
+        /// This property returns true if the server is currently active and accepting connections; otherwise, false.
+        /// It is used to determine the server's status in the network.
+        /// </summary>
         public static bool IsServerActive { get; private set; }
-        public static IPEndPoint PeerEndPoint { get; private set; }
 
         protected virtual void Awake()
         {
@@ -490,13 +520,16 @@ namespace Omni.Core
         public static void StartServer(int port)
         {
 #if OMNI_DEBUG
+            Server.GenerateRsaKeys();
             Connection.Server.Listen(port);
 #else
 #if UNITY_EDITOR
+            Server.GenerateRsaKeys();
             Connection.Server.Listen(port);
 #elif !UNITY_SERVER
             NetworkLogger.LogToFile("Server is not available in release mode on client build.");
 #else
+            Server.GenerateRsaKeys();
             Connection.Server.Listen(port);
 #endif
 #endif
@@ -854,7 +887,7 @@ namespace Omni.Core
 
                             if (PeersByIp.TryGetValue(fromPeer, out var sender))
                             {
-                                if (Peer.Groups.Count == 0)
+                                if (LocalPeer.Groups.Count == 0)
                                 {
                                     NetworkLogger.__Log__(
                                         "Send: You are not in any groups. Please join a group first.",
@@ -932,7 +965,7 @@ namespace Omni.Core
             {
                 Connection.Client.Send(
                     PrepareClientMessageForSending(msgType, data),
-                    PeerEndPoint,
+                    LocalEndPoint,
                     deliveryMode,
                     sequenceChannel
                 );
@@ -948,7 +981,7 @@ namespace Omni.Core
 
         private float m_QueryInterval = NetworkClock.DEFAULT_QUERY_INTERVAL;
 
-        private IEnumerator Query()
+        private IEnumerator QueryNtp()
         {
             // The purpose of these calls before the while loop may be to ensure that the system clock is initially synchronized before entering the continuous query cycle.
             // This can be helpful to prevent situations where the system clock is not immediately synchronized when the application starts.
@@ -988,23 +1021,21 @@ namespace Omni.Core
         public virtual void Internal_OnClientConnected(IPEndPoint peer, NativePeer nativePeer)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            PeerEndPoint = peer;
-            IsClientActive = true;
-
-            NativePeer = nativePeer;
-            StartCoroutine(Query());
-            OnClientConnected?.Invoke();
+            LocalEndPoint = peer;
+            LocalNativePeer = nativePeer;
         }
 
         public virtual void Internal_OnClientDisconnected(IPEndPoint peer, string reason)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            PeerEndPoint = peer;
             IsClientActive = false;
             OnClientDisconnected?.Invoke(reason);
         }
 
-        public virtual void Internal_OnServerPeerConnected(IPEndPoint peer, NativePeer nativePeer)
+        public virtual async void Internal_OnServerPeerConnected(
+            IPEndPoint peer,
+            NativePeer nativePeer
+        )
         {
             NetworkHelper.EnsureRunningOnMainThread();
             NetworkPeer newPeer = new(peer, p_UniqueId++);
@@ -1028,11 +1059,14 @@ namespace Omni.Core
                 }
                 else
                 {
-                    // TODO: Implement handshake with AES & RSA.
-                    using DataBuffer message = Pool.Rent();
+                    newPeer.IsConnected = true;
+                    using var message = Pool.Rent();
                     message.FastWrite(newPeer.Id);
+                    // Write the server's RSA public key to the buffer
+                    message.Write(Server.RsaPublicKey);
+
                     SendToClient(
-                        MessageType.Handshake,
+                        MessageType.BeginHandshake,
                         message,
                         peer,
                         Target.Self,
@@ -1116,6 +1150,7 @@ namespace Omni.Core
 
                     // All resources should be released at this point.
                     Server.DestroyAllCaches(currentPeer);
+                    currentPeer.IsConnected = false;
                 }
             }
         }
@@ -1138,6 +1173,22 @@ namespace Omni.Core
                 byte msgType = message.FastRead<byte>(); // Note: On Message event
                 message._reworkStart = message.WrittenCount; // Skip header
                 message._reworkEnd = _data.Length; // Slice -> [Header..Length]
+
+                if (!isServer)
+                {
+                    if (
+                        msgType != MessageType.BeginHandshake
+                        && msgType != MessageType.EndHandshake
+                    )
+                    {
+                        if (!IsClientActive)
+                        {
+                            throw new Exception(
+                                "The client received a message while not yet authenticated. Wait until the handshake is completed."
+                            );
+                        }
+                    }
+                }
 
                 void ResetReadPosition()
                 {
@@ -1166,19 +1217,76 @@ namespace Omni.Core
                             }
                         }
                         break;
-                    case MessageType.Handshake:
+                    case MessageType.BeginHandshake:
                         {
                             if (!isServer)
                             {
+                                // Client side!
+
                                 int localPeerId = message.FastRead<int>();
+                                string rsaServerPublicKey = message.ReadString();
                                 ResetReadPosition();
-                                Peer = new NetworkPeer(PeerEndPoint, localPeerId);
-                                Peer._nativePeer = NativePeer;
+
+                                // Initialize the local peer
+                                LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId);
+                                LocalPeer._nativePeer = LocalNativePeer;
+                                IsClientActive = true; // true: to allow send the aes key to the server.
+
+                                // Generate AES Key and send it to the server(Encrypted by RSA public key).
+                                Client.RsaServerPublicKey = rsaServerPublicKey;
+                                byte[] aesKey = AesCryptography.GenerateKey();
+                                LocalPeer.AesKey = aesKey;
+
+                                // Crypt the AES Key with the server's RSA public key
+                                byte[] cryptedAesKey = RsaCryptography.Encrypt(
+                                    aesKey,
+                                    Client.RsaServerPublicKey
+                                );
+
+                                // Send the AES Key to the server
+                                using DataBuffer authMessage = Pool.Rent();
+                                authMessage.ToBinary(cryptedAesKey);
+                                SendToServer(
+                                    MessageType.BeginHandshake,
+                                    authMessage,
+                                    DeliveryMode.ReliableOrdered,
+                                    0
+                                );
+
+                                IsClientActive = false; // Waiting for server's authorization response.
                             }
                             else
                             {
+                                // Server side!
+
+                                byte[] aesKey = message.FromBinary<byte[]>();
                                 ResetReadPosition();
+
+                                // Decrypt the AES Key with the server's RSA private key
+                                peer.AesKey = RsaCryptography.Decrypt(aesKey, Server.RsaPrivateKey);
+
+                                // Send Ok to the client!
+                                SendToClient(
+                                    MessageType.EndHandshake,
+                                    DataBuffer.Empty,
+                                    _peer,
+                                    Target.Self,
+                                    DeliveryMode.ReliableOrdered,
+                                    0,
+                                    0,
+                                    CacheMode.None,
+                                    0
+                                );
                             }
+                        }
+                        break;
+                    case MessageType.EndHandshake:
+                        {
+                            // Connection end & authorized.
+                            LocalPeer.IsConnected = true;
+                            IsClientActive = true;
+                            StartCoroutine(QueryNtp());
+                            OnClientConnected?.Invoke();
                         }
                         break;
                     case MessageType.LocalInvoke:
@@ -1371,6 +1479,35 @@ namespace Omni.Core
         {
             return MemoryPackSerializer.Deserialize<T>(data, settings);
         }
+
+        public static List<byte[]> Split(ReadOnlySpan<byte> data, int blockSize = 128)
+        {
+            if (data.Length <= blockSize)
+            {
+                throw new Exception("The specified data must be longer than block size");
+            }
+
+            int x = blockSize;
+            if (!((x != 0) && ((x & (x - 1)) == 0)))
+            {
+                throw new Exception("Block size must be a power of 2.");
+            }
+
+            int offset = 0;
+            List<byte[]> blocks = new();
+            while (offset < data.Length)
+            {
+                int end = Math.Min(data.Length - offset, blockSize);
+                ReadOnlySpan<byte> block = data.Slice(offset, end);
+                offset += block.Length;
+
+                // Add the block to the final result list.
+                blocks.Add(block.ToArray());
+            }
+
+            // Return the splitted data in order.
+            return blocks;
+        }
     }
 
     public partial class NetworkManager
@@ -1490,6 +1627,9 @@ namespace Omni.Core
         [SerializeField]
         private bool m_AutoStartServer = true;
 
+        [SerializeField]
+        private bool m_RunInBackground = true;
+
         public static string ConnectAddress => Manager.m_ConnectAddress;
         internal static bool MatchmakingModuleEnabled => Manager.m_Matchmaking;
 
@@ -1526,6 +1666,7 @@ namespace Omni.Core
                 SetScriptingBackend();
             }
 
+            Application.runInBackground = m_RunInBackground;
             m_ConnectAddress = m_ConnectAddress.Trim();
             DisableAutoStartIfHasHud();
         }

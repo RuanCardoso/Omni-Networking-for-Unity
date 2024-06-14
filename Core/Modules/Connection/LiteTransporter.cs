@@ -68,7 +68,7 @@ namespace Omni.Core.Modules.Connection
         [Tooltip(
             "Specifies whether to use a safe MTU (Maximum Transmission Unit) size for networking operations. Using a safe MTU can reduce the risk of packet loss and ensure smoother data transmission."
         )]
-        private bool m_useSafeMtu = true;
+        private bool m_useSafeMtu = false;
 
         [Header("Lag Simulator [Debug only!]")]
         [SerializeField]
