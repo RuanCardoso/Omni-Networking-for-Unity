@@ -78,7 +78,7 @@ namespace Omni.Core
             /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
             /// </summary>
             /// <param name="msgId">The ID of the message to be invoked.</param>
-            /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+            /// <param name="buffer">The buffer containing the message data. Default is null.</param>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void Invoke(
@@ -192,7 +192,7 @@ namespace Omni.Core
             /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
             /// </summary>
             /// <param name="msgId">The ID of the message to be invoked.</param>
-            /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+            /// <param name="buffer">The buffer containing the message data. Default is null.</param>
             /// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="groupId">The group ID for the message. Default is 0.</param>
@@ -357,7 +357,7 @@ namespace Omni.Core
         /// Override this method to perform any initialization that needs to happen
         /// before the object becomes active.
         /// </remarks>
-        /// <param name="buffer">The network buffer containing data associated with the instantiation process.</param>
+        /// <param name="buffer">The buffer containing data associated with the instantiation process.</param>
         protected internal virtual void OnAwake(DataBuffer buffer) { }
 
         /// <summary>
@@ -367,7 +367,7 @@ namespace Omni.Core
         /// Override this method to perform any initialization or setup that needs to happen
         /// after the object has become active.
         /// </remarks>
-        /// <param name="buffer">The network buffer containing data associated with the instantiation process.</param>
+        /// <param name="buffer">The buffer containing data associated with the instantiation process.</param>
         protected internal virtual void OnStart(DataBuffer buffer) { }
 
         internal void Register()

@@ -28,7 +28,7 @@ namespace Omni.Core
             else
             {
                 NetworkLogger.__Log__(
-                    "Pool: A new network buffer was created. Consider increasing the initial capacity of the pool, recommended to reduce pressure on the garbage collector.",
+                    "Pool: A new buffer was created. Consider increasing the initial capacity of the pool, recommended to reduce pressure on the garbage collector.",
                     NetworkLogger.LogType.Warning
                 );
 

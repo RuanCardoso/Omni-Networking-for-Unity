@@ -112,6 +112,60 @@ namespace Omni.Core
             }
 
             /// <summary>
+            /// Sends an HTTP POST request to the specified route.
+            /// </summary>
+            /// <param name="routeName">The name of the route to which the POST request is sent.</param>
+            /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
+            /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
+            public async void Post(
+                string routeName,
+                Action<DataBuffer> req,
+                Action<DataBuffer> res,
+                int timeout = 5000,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+                byte sequenceChannel = 0
+            )
+            {
+                using var buffer = await PostAsync(
+                    routeName,
+                    req,
+                    timeout,
+                    deliveryMode,
+                    sequenceChannel
+                );
+
+                res(buffer);
+            }
+
+            /// <summary>
+            /// Asynchronously sends an HTTP GET request to the specified route.
+            /// </summary>
+            /// <param name="routeName">The name of the route to which the GET request is sent.</param>
+            /// <param name="timeout">The maximum time to wait for a response, in milliseconds. Default is 5000ms.</param>
+            /// <param name="deliveryMode">The mode of delivery for the message. Default is ReliableOrdered.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
+            public async void Get(
+                string routeName,
+                Action<DataBuffer> res,
+                int timeout = 5000,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+                byte sequenceChannel = 0
+            )
+            {
+                using var buffer = await GetAsync(
+                    routeName,
+                    timeout,
+                    deliveryMode,
+                    sequenceChannel
+                );
+
+                res(buffer);
+            }
+
+            /// <summary>
             /// Asynchronously sends an HTTP POST request to the specified route.
             /// </summary>
             /// <param name="routeName">The name of the route to which the POST request is sent.</param>
@@ -129,15 +183,20 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
+                // Await written the data before sending!
+                using var message = Pool.Rent();
+                await callback(message);
+
                 int lastId = routeId;
-                using DataBuffer message = DefaultHeader(routeName, lastId);
+                using DataBuffer header = DefaultHeader(routeName, lastId);
+                header.Write(message.WrittenSpan);
+
+                // Next request id
                 routeId++;
 
-                // Await written the data before sending!
-                await callback(message);
                 return await Send(
                     MessageType.HttpPostFetchAsync,
-                    message,
+                    header,
                     timeout,
                     deliveryMode,
                     lastId,
@@ -163,14 +222,19 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
+                using var message = Pool.Rent();
+                callback(message);
+
                 int lastId = routeId;
-                using DataBuffer message = DefaultHeader(routeName, lastId);
+                using var header = DefaultHeader(routeName, lastId);
+                header.Write(message.WrittenSpan);
+
+                // Next request id
                 routeId++;
 
-                callback(message);
                 return Send(
                     MessageType.HttpPostFetchAsync,
-                    message,
+                    header,
                     timeout,
                     deliveryMode,
                     lastId,
@@ -243,6 +307,26 @@ namespace Omni.Core
                 string,
                 Action<DataBuffer, DataBuffer, NetworkPeer>
             > postTasks = new();
+
+            /// <summary>
+            /// Registers an POST route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the POST request is received.</param>
+            public void Post(string route, Action<DataBuffer, DataBuffer, NetworkPeer> res)
+            {
+                PostAsync(route, res);
+            }
+
+            /// <summary>
+            /// Registers an GET route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the GET request is received.</param>
+            public void Get(string route, Action<DataBuffer, NetworkPeer> res)
+            {
+                GetAsync(route, res);
+            }
 
             /// <summary>
             /// Registers an asynchronous GET route and its associated callback function.

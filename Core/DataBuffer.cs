@@ -12,6 +12,8 @@ namespace Omni.Core
 
         private readonly IObjectPooling<DataBuffer> _objectPooling;
         private readonly byte[] _buffer;
+
+        private int _lastPosition;
         private int _position;
 
         /// <summary>
@@ -33,6 +35,11 @@ namespace Omni.Core
         /// Returns the amount of data written to the underlying buffer so far.
         /// </summary>
         public int WrittenCount => _position;
+
+        /// <summary>
+        /// Returns the last amount of data written to the underlying buffer so far.
+        /// </summary>
+        public int LastWrittenCount => _lastPosition;
 
         /// <summary>
         /// Returns the total amount of space within the underlying buffer.
@@ -135,21 +142,12 @@ namespace Omni.Core
 
         /// <summary>
         /// Returns a <see cref="Span{T}"/> to write to that is at least the requested length (specified by <paramref name="sizeHint"/>).
-        /// If no <paramref name="sizeHint"/> is provided (or it's equal to <code>0</code>), some non-empty buffer is returned.
+        /// If no <paramref name="sizeHint"/> is provided (or it's equal to <c>0</c>), some non-empty buffer is returned.
         /// </summary>
         /// <exception cref="ArgumentException">
         /// Thrown when <paramref name="sizeHint"/> is negative.
         /// </exception>
         /// <remarks>
-        /// <para>
-        /// This will never return an empty <see cref="Span{T}"/>.
-        /// </para>
-        /// <para>
-        /// There is no guarantee that successive calls will return the same buffer or the same-sized buffer.
-        /// </para>
-        /// <para>
-        /// You must request a new buffer after calling Advance to continue writing more data and cannot write to a previously acquired buffer.
-        /// </para>
         /// <para>
         /// If you reset the writer using the <see cref="ResetWrittenCount"/> method, this method may return a non-cleared <see cref="Span{T}"/>.
         /// </para>
@@ -163,10 +161,10 @@ namespace Omni.Core
             return _buffer.AsSpan(_position);
         }
 
-        internal Span<byte> Internal_GetSpan(int sizeHint = 0)
+        internal Span<byte> Internal_GetSpan(int length)
         {
-            CheckAndResizeBuffer(sizeHint);
-            return _buffer.AsSpan(_position, sizeHint);
+            CheckAndResizeBuffer(length);
+            return _buffer.AsSpan(_position, length);
         }
 
         /// <summary>
@@ -185,6 +183,7 @@ namespace Omni.Core
         public void Clear()
         {
             _buffer.AsSpan(0, _position).Clear();
+            _lastPosition = _position;
             _position = 0;
         }
 
@@ -202,7 +201,13 @@ namespace Omni.Core
         /// <seealso cref="Clear"/>
         public void ResetWrittenCount()
         {
+            _lastPosition = _position;
             _position = 0;
+        }
+
+        public void SetWrittenCount(int pos)
+        {
+            _position = pos;
         }
 
         /// <summary>
@@ -210,7 +215,13 @@ namespace Omni.Core
         /// </summary>
         public void ResetReadPosition()
         {
+            _lastPosition = _position;
             _position = _reworkStart;
+        }
+
+        internal void SetLastWrittenCount(int pos)
+        {
+            _lastPosition = pos;
         }
 
         /// <summary>
@@ -228,7 +239,7 @@ namespace Omni.Core
         /// </returns>
         public DataBuffer Rework()
         {
-            DataBuffer buffer = NetworkManager.Pool.Rent();
+            var buffer = NetworkManager.Pool.Rent();
             buffer.Write(_buffer.AsSpan(_reworkStart, _reworkEnd));
             return buffer;
         }
@@ -238,7 +249,7 @@ namespace Omni.Core
             if (sizeHint > FreeCapacity)
             {
                 throw new NotSupportedException(
-                    $"Network Buffer: The buffer cannot be resized to accommodate the requested size ({sizeHint}) because it would exceed its capacity ({Capacity}).\nResizing the buffer is not supported due to performance considerations. Consider using a bigger initial capacity or a different data structure."
+                    $"buffer: The buffer cannot be resized to accommodate the requested size ({sizeHint}) because it would exceed its capacity ({Capacity}).\nResizing the buffer is not supported due to performance considerations. Consider using a bigger initial capacity or a different data structure."
                 );
             }
         }
@@ -250,14 +261,14 @@ namespace Omni.Core
             if (_disposed == true)
             {
                 throw new Exception(
-                    "Network Buffer: Buffer already disposed. Cannot dispose again."
+                    "buffer: Buffer already disposed. Cannot dispose again."
                 );
             }
 
             if (_objectPooling == null)
             {
                 throw new Exception(
-                    "Network Buffer: You should not dispose a buffer that was not acquired from the buffer pool."
+                    "buffer: You should not dispose a buffer that was not acquired from the buffer pool."
                 );
             }
 

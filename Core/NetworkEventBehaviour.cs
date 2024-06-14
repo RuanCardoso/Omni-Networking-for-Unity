@@ -74,7 +74,7 @@ namespace Omni.Core
         /// Invokes a global message on the server, similar to a Remote Procedure Call (RPC).
         /// </summary>
         /// <param name="msgId">The ID of the message to be invoked.</param>
-        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="buffer">The buffer containing the message data. Default is null.</param>
         /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void GlobalInvoke(
@@ -88,7 +88,7 @@ namespace Omni.Core
         /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
         /// </summary>
         /// <param name="msgId">The ID of the message to be invoked.</param>
-        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="buffer">The buffer containing the message data. Default is null.</param>
         /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void Invoke(
@@ -207,7 +207,7 @@ namespace Omni.Core
         /// Invokes a global message on the client, similar to a Remote Procedure Call (RPC).
         /// </summary>
         /// <param name="msgId">The ID of the message to be invoked.</param>
-        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="buffer">The buffer containing the message data. Default is null.</param>
         /// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
         /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
         /// <param name="groupId">The group ID for the message. Default is 0.</param>
@@ -243,7 +243,7 @@ namespace Omni.Core
         /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
         /// </summary>
         /// <param name="msgId">The ID of the message to be invoked.</param>
-        /// <param name="buffer">The network buffer containing the message data. Default is null.</param>
+        /// <param name="buffer">The buffer containing the message data. Default is null.</param>
         /// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
         /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
         /// <param name="groupId">The group ID for the message. Default is 0.</param>
@@ -900,7 +900,7 @@ namespace Omni.Core
         /// Called when a custom message is received on the server.
         /// </summary>
         /// <param name="msgId">The ID of the received message.</param>
-        /// <param name="buffer">The network buffer containing the message data.</param>
+        /// <param name="buffer">The buffer containing the message data.</param>
         /// <param name="peer">The network peer that sent the message.</param>
         /// <param name="seqChannel">The sequence channel through which the message was received.</param>
         protected virtual void OnMessage(
@@ -950,7 +950,7 @@ namespace Omni.Core
         /// <summary>
         /// Called when a player has joined a group.
         /// </summary>
-        /// <param name="buffer">The network buffer containing additional data related to the player joining the group.</param>
+        /// <param name="buffer">The buffer containing additional data related to the player joining the group.</param>
         /// <param name="group">The network group that the player joined.</param>
         /// <param name="peer">The network peer representing the player who joined the group.</param>
         protected virtual void OnPlayerJoinedGroup(

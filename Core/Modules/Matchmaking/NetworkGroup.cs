@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 using Omni.Shared;
 using Omni.Shared.Collections;
 
-namespace Omni.Core.Modules.Matchmaking
+namespace Omni.Core
 {
     [JsonObject(MemberSerialization.OptIn)]
     [MemoryPackable]

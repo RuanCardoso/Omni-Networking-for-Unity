@@ -801,6 +801,7 @@ namespace Omni.Core
             }
 
             ReadOnlySpan<byte> message = PrepareServerMessageForSending(msgType, _data);
+            bool cacheIsEnabled = cacheMode != CacheMode.None || cacheId != 0;
 
             if (IsServerActive)
             {
@@ -814,7 +815,7 @@ namespace Omni.Core
                     return;
                 }
 
-                if (target == Target.Self && groupId != 0)
+                if (target == Target.Self && groupId != 0 && !cacheIsEnabled)
                 {
                     NetworkLogger.__Log__(
                         "Target.Self cannot be used with groups. Note that this is not a limitation, it just doesn't make sense.",
@@ -877,7 +878,7 @@ namespace Omni.Core
                     case Target.GroupMembersExceptSelf:
                     case Target.GroupMembers:
                         {
-                            if (groupId != 0)
+                            if (groupId != 0 && !cacheIsEnabled)
                             {
                                 NetworkLogger.__Log__(
                                     "Send: Target.GroupMembers cannot be used with specified groups(groupId is not 0). Note that this is not a limitation, it just doesn't make sense.",
@@ -887,7 +888,7 @@ namespace Omni.Core
 
                             if (PeersByIp.TryGetValue(fromPeer, out var sender))
                             {
-                                if (LocalPeer.Groups.Count == 0)
+                                if (sender.Groups.Count == 0)
                                 {
                                     NetworkLogger.__Log__(
                                         "Send: You are not in any groups. Please join a group first.",

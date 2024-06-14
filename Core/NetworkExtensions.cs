@@ -8,10 +8,10 @@ namespace Omni.Core
     public static class NetworkExtensions
     {
         /// <summary>
-        /// Instantiates a network identity on the client from serialized data in the network buffer.
+        /// Instantiates a network identity on the client from serialized data in the buffer.
         /// </summary>
         /// <param name="prefab">The prefab of the network identity to instantiate.</param>
-        /// <param name="buffer">The network buffer containing serialized identity data.</param>
+        /// <param name="buffer">The buffer containing serialized identity data.</param>
         /// <returns>The instantiated network identity.</returns>
         internal static NetworkIdentity InstantiateOnClient(
             this NetworkIdentity prefab,
@@ -33,11 +33,11 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Instantiates a network identity on the server for a specific network peer and serializes its data to the network buffer.
+        /// Instantiates a network identity on the server for a specific network peer and serializes its data to the buffer.
         /// </summary>
         /// <param name="prefab">The prefab of the network identity to instantiate.</param>
         /// <param name="peer">The network peer for which the identity is instantiated.</param>
-        /// <param name="buffer">The network buffer to write identity data.</param>
+        /// <param name="buffer">The buffer to write identity data.</param>
         /// <returns>The instantiated network identity.</returns>
         internal static NetworkIdentity InstantiateOnServer(
             this NetworkIdentity prefab,
