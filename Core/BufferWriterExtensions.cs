@@ -253,6 +253,22 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Writes a response to the buffer, used to response any request with status code, message and data(optional).
+        /// </summary>
+        public static string ToResponse(this DataBuffer buffer, Response response)
+        {
+            return ToJson(buffer, response);
+        }
+
+        /// <summary>
+        /// Writes a generic response to the buffer, used to response any request with status code, message and data(optional).
+        /// </summary>
+        public static string ToResponse<T>(this DataBuffer buffer, Response<T> response)
+        {
+            return ToJson(buffer, response);
+        }
+
+        /// <summary>
         /// Writes the raw bytes to the buffer.
         /// </summary>
         /// <param name="buffer">The buffer to write to.</param>
@@ -424,6 +440,32 @@ namespace Omni.Core
 
     public static partial class BufferWriterExtensions
     {
+        /// <summary>
+        /// Reads a response to the buffer, used to response any request with status code, message and data(optional). The position is set to <c>0</c>
+        /// </summary>
+        public static Response FromResponse(this DataBuffer buffer, bool seekToBegin = false)
+        {
+            if (seekToBegin)
+            {
+                buffer.ResetReadPosition();
+            }
+
+            return FromJson<Response>(buffer);
+        }
+
+        /// <summary>
+        /// Reads a generic response to the buffer, used to response any request with status code, message and data(optional). The position is set to <c>0</c>
+        /// </summary>
+        public static T FromResponse<T>(this DataBuffer buffer, bool seekToBegin = false)
+        {
+            if (seekToBegin)
+            {
+                buffer.ResetReadPosition();
+            }
+
+            return FromJson<T>(buffer);
+        }
+
         /// <summary>
         /// Reads a JSON string from the buffer and converts it to an object.<br/>
         /// By default, Newtonsoft.Json is used for deserialization.
