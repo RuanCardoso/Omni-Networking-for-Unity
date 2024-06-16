@@ -30,6 +30,7 @@ namespace Omni.Core
     {
         private static readonly Dictionary<string, object> services = new(); // Service Name
 
+        [Header("Service Settings")]
         [SerializeField]
         private string serviceName;
 
