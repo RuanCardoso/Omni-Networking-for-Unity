@@ -91,6 +91,14 @@ namespace Omni.Core
         /// <returns>A task representing the asynchronous operation. The task result contains the initialized database instance.</returns>
         protected Task<DatabaseConnection> GetConnectionAsync(CancellationToken token = default)
         {
+#if OMNI_DEBUG
+            if (Credentials == null)
+            {
+                throw new NullReferenceException(
+                    "Credentials is null. Did you forget to call SetDatabase()?"
+                );
+            }
+#endif
             var db = DatabaseConnection.New();
             return db.InitializeAsync(
                 Credentials.Type,
@@ -108,6 +116,14 @@ namespace Omni.Core
         /// <returns>A task representing the asynchronous operation. The task result contains the initialized database instance.</returns>
         protected DatabaseConnection GetConnection()
         {
+#if OMNI_DEBUG
+            if (Credentials == null)
+            {
+                throw new NullReferenceException(
+                    "Credentials is null. Did you forget to call SetDatabase()?"
+                );
+            }
+#endif
             var db = DatabaseConnection.New();
             db.Initialize(
                 Credentials.Type,
