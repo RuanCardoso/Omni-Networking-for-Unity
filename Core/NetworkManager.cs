@@ -1867,25 +1867,29 @@ namespace Omni.Core
         [ContextMenu("Strip Components")]
         private void StripComponents()
         {
-            // Strip the components.
-            var serverObject = transform.GetChild(0);
-            var clientObject = transform.GetChild(1);
+            try
+            {
+                // Strip the components.
+                var serverObject = transform.GetChild(0);
+                var clientObject = transform.GetChild(1);
 
 #if OMNI_RELEASE
-            UnityEngine.Debug.Log("Stripping components... Ready to build!");
-            name = "Network Manager";
+                UnityEngine.Debug.Log("Stripping components... Ready to build!");
+                name = "Network Manager";
 
 #if UNITY_SERVER
-            SetTag(clientObject, "EditorOnly");
-            SetTag(serverObject, "Untagged");
+                SetTag(clientObject, "EditorOnly");
+                SetTag(serverObject, "Untagged");
 #else
-            SetTag(serverObject, "EditorOnly");
-            SetTag(clientObject, "Untagged");
+                SetTag(serverObject, "EditorOnly");
+                SetTag(clientObject, "Untagged");
 #endif
 #elif OMNI_DEBUG
-            SetTag(clientObject, "Untagged");
-            SetTag(serverObject, "Untagged");
+                SetTag(clientObject, "Untagged");
+                SetTag(serverObject, "Untagged");
 #endif
+            }
+            catch { }
         }
 
         private void SetTag(Transform gameObject, string tagName)
