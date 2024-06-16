@@ -11,7 +11,7 @@ namespace Omni.Core
         internal DeliveryMode DeliveryMode { get; }
         internal Target Target { get; }
         internal byte SequenceChannel { get; }
-        internal bool DestroyOnDisconnect { get; }
+        internal bool AutoDestroyCache { get; }
 
         internal NetworkCache(
             int id,
@@ -31,7 +31,7 @@ namespace Omni.Core
             DeliveryMode = deliveryMode;
             Target = target;
             SequenceChannel = sequenceChannel;
-            DestroyOnDisconnect = destroyOnDisconnect;
+            AutoDestroyCache = destroyOnDisconnect;
         }
     }
 }

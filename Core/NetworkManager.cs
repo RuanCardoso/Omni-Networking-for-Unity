@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
 using MemoryPack;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Utilities;
@@ -19,7 +18,6 @@ using Omni.Core.Modules.Matchmaking;
 using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
-using UnityEditor;
 using UnityEngine;
 
 #pragma warning disable
@@ -32,6 +30,27 @@ namespace Omni.Core
         Mono
     }
 
+    public enum Status
+    {
+        /// <summary>
+        /// Indicates the initial phase of an event.
+        /// Typically used to signal the start of a process.
+        /// </summary>
+        Begin,
+
+        /// <summary>
+        /// Represents the intermediate phase of an event.
+        /// This status is used when the main actions or operations are being performed.
+        /// </summary>
+        Normal,
+
+        /// <summary>
+        /// Marks the final phase of an event.
+        /// It signifies the completion and cleanup of the process.
+        /// </summary>
+        End
+    }
+
     [Flags]
     public enum CacheMode
     {
@@ -40,7 +59,7 @@ namespace Omni.Core
         Overwrite = 2,
         Global = 4,
         Group = 8,
-        DestroyOnDisconnect = 16,
+        AutoDestroy = 16,
     }
 
     public enum Module
@@ -49,6 +68,7 @@ namespace Omni.Core
         Connection,
         Matchmaking,
         NtpClock,
+        TickSystem
     }
 
     /// <summary>
@@ -139,15 +159,19 @@ namespace Omni.Core
     public partial class NetworkManager : MonoBehaviour, ITransporterReceive
     {
         private static Stopwatch _stopwatch = new Stopwatch();
-        internal static float DeltaTime => UnityEngine.Time.deltaTime;
+        public static bool UseTickTiming { get; private set; } = false;
+        internal static float DeltaTime =>
+            UseTickTiming ? (float)TickSystem.DeltaTick : UnityEngine.Time.deltaTime;
 
-        public static double ClockTime => _stopwatch.Elapsed.TotalSeconds; // does not depend on frame rate.
+        public static double ClockTime =>
+            UseTickTiming ? TickSystem.ElapsedTicks : _stopwatch.Elapsed.TotalSeconds; // does not depend on frame rate.
+
         public static int MainThreadId { get; private set; }
         public static IObjectPooling<DataBuffer> Pool { get; } = new DataBufferPool();
 
         public static event Action OnServerInitialized;
-        public static event Action<NetworkPeer> OnServerPeerConnected;
-        public static event Action<NetworkPeer> OnServerPeerDisconnected;
+        public static event Action<NetworkPeer, Status> OnServerPeerConnected;
+        public static event Action<NetworkPeer, Status> OnServerPeerDisconnected;
         public static event Action OnClientConnected;
         public static event Action<string> OnClientDisconnected;
 
@@ -158,7 +182,7 @@ namespace Omni.Core
         internal static event Action<DataBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedJoinGroup; // for server
         internal static event Action<string, string> OnLeftGroup; // for client
-        internal static event Action<NetworkGroup, NetworkPeer, string> OnPlayerLeftGroup; // for server
+        internal static event Action<NetworkGroup, NetworkPeer, Status, string> OnPlayerLeftGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
 
         static NetworkConsole _console;
@@ -269,18 +293,56 @@ namespace Omni.Core
             }
         }
 
+        static NetworkTickSystem _tickSystem;
+        public static NetworkTickSystem TickSystem
+        {
+            get
+            {
+                if (_tickSystem == null)
+                {
+                    throw new Exception(
+                        "TickSystem module not initialized. Please call NetworkManager.InitializeModule(Module.TickSystem) at least once before accessing the TickSystem."
+                    );
+                }
+
+                return _tickSystem;
+            }
+            set
+            {
+                if (_tickSystem != null)
+                {
+                    throw new Exception(
+                        "TickSystem module already initialized. Please call NetworkManager.InitializeModule(Module.TickSystem) only once."
+                    );
+                }
+
+                _tickSystem = value;
+            }
+        }
+
         /// <summary>
         /// Gets or sets the native peer.
         /// This property stores an instance of the NativePeer class, which represents a low-level peer in the network.
         /// It is used to manage native networking operations and interactions.
         /// </summary>
         static NativePeer LocalNativePeer { get; set; }
+        static NetworkPeer _localPeer;
 
         /// <summary>
         /// Gets the local network peer.
         /// This property stores an instance of the NetworkPeer class, representing the local peer in the network.
         /// </summary>
-        public static NetworkPeer LocalPeer { get; private set; }
+        public static NetworkPeer LocalPeer
+        {
+            get
+            {
+                return _localPeer
+                    ?? throw new Exception(
+                        "Client(LocalPeer) is neither active, nor authenticated. Please verify using NetworkManager.IsClientActive."
+                    );
+            }
+            private set => _localPeer = value;
+        }
 
         /// <summary>
         /// Gets the local endpoint.
@@ -311,7 +373,11 @@ namespace Omni.Core
                 return;
             }
 
-            _stopwatch.Start();
+            if (!UseTickTiming)
+            {
+                _stopwatch.Start();
+            }
+
             _manager = this;
 #if !UNITY_SERVER || UNITY_EDITOR
             if (m_MaxFpsOnClient > 0)
@@ -331,6 +397,11 @@ namespace Omni.Core
             if (m_NtpClock)
             {
                 InitializeModule(Module.NtpClock);
+            }
+
+            if (m_TickSystem)
+            {
+                InitializeModule(Module.TickSystem);
             }
 
             if (m_Console)
@@ -360,6 +431,11 @@ namespace Omni.Core
 
         private void Update()
         {
+            if (m_TickSystem)
+            {
+                TickSystem.OnTick();
+            }
+
             UpdateFrameAndCpuMetrics();
         }
 
@@ -400,12 +476,19 @@ namespace Omni.Core
             NetworkHelper.EnsureRunningOnMainThread();
             switch (module)
             {
+                case Module.TickSystem:
+                    {
+                        TickSystem = new NetworkTickSystem();
+                        TickSystem.Initialize(Manager.m_TickRate);
+                    }
+                    break;
                 case Module.NtpClock:
                     {
                         NetworkClock nClock = Manager.GetComponent<NetworkClock>();
                         if (nClock != null)
                         {
                             Manager.m_QueryInterval = nClock.QueryInterval;
+                            UseTickTiming = nClock.UseTickTiming;
                         }
 
                         SNTP = new SimpleNtp();
@@ -650,11 +733,7 @@ namespace Omni.Core
                             if (
                                 cacheMode == (CacheMode.Global | CacheMode.New)
                                 || cacheMode
-                                    == (
-                                        CacheMode.Global
-                                        | CacheMode.New
-                                        | CacheMode.DestroyOnDisconnect
-                                    )
+                                    == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
                             )
                             {
                                 Server.CACHES_APPEND_GLOBAL.Add(
@@ -667,7 +746,7 @@ namespace Omni.Core
                                         target,
                                         sequenceChannel,
                                         destroyOnDisconnect: cacheMode.HasFlag(
-                                            CacheMode.DestroyOnDisconnect
+                                            CacheMode.AutoDestroy
                                         )
                                     )
                                 );
@@ -675,11 +754,7 @@ namespace Omni.Core
                             else if (
                                 cacheMode == (CacheMode.Group | CacheMode.New)
                                 || cacheMode
-                                    == (
-                                        CacheMode.Group
-                                        | CacheMode.New
-                                        | CacheMode.DestroyOnDisconnect
-                                    )
+                                    == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
                             )
                             {
                                 if (_group != null)
@@ -694,7 +769,7 @@ namespace Omni.Core
                                             target,
                                             sequenceChannel,
                                             destroyOnDisconnect: cacheMode.HasFlag(
-                                                CacheMode.DestroyOnDisconnect
+                                                CacheMode.AutoDestroy
                                             )
                                         )
                                     );
@@ -713,7 +788,7 @@ namespace Omni.Core
                                     == (
                                         CacheMode.Global
                                         | CacheMode.Overwrite
-                                        | CacheMode.DestroyOnDisconnect
+                                        | CacheMode.AutoDestroy
                                     )
                             )
                             {
@@ -725,9 +800,7 @@ namespace Omni.Core
                                     deliveryMode,
                                     target,
                                     sequenceChannel,
-                                    destroyOnDisconnect: cacheMode.HasFlag(
-                                        CacheMode.DestroyOnDisconnect
-                                    )
+                                    destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
                                 );
 
                                 if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(cacheId))
@@ -750,11 +823,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.Overwrite)
                             || cacheMode
-                                == (
-                                    CacheMode.Group
-                                    | CacheMode.Overwrite
-                                    | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
                             if (_group != null)
@@ -767,9 +836,7 @@ namespace Omni.Core
                                     deliveryMode,
                                     target,
                                     sequenceChannel,
-                                    destroyOnDisconnect: cacheMode.HasFlag(
-                                        CacheMode.DestroyOnDisconnect
-                                    )
+                                    destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
                                 );
 
                                 if (_group.CACHES_OVERWRITE.ContainsKey(cacheId))
@@ -1082,7 +1149,7 @@ namespace Omni.Core
                         $"Connection Info: Peer '{peer}' added to the server successfully."
                     );
 
-                    OnServerPeerConnected?.Invoke(newPeer);
+                    OnServerPeerConnected?.Invoke(newPeer, Status.Begin);
                 }
             }
         }
@@ -1090,6 +1157,7 @@ namespace Omni.Core
         public virtual void Internal_OnServerPeerDisconnected(IPEndPoint peer, string reason)
         {
             NetworkHelper.EnsureRunningOnMainThread();
+            OnServerPeerDisconnected?.Invoke(PeersByIp[peer], Status.Begin);
             if (!PeersByIp.Remove(peer, out NetworkPeer currentPeer))
             {
                 NetworkLogger.__Log__(
@@ -1116,15 +1184,17 @@ namespace Omni.Core
                                 $"Disconnection Info: Peer '{peer}' removed from group '{group.Identifier}'."
                             );
 
-                            OnPlayerLeftGroup?.Invoke(
-                                group,
-                                currentPeer,
-                                "Leave event called by disconnect event."
-                            );
-
                             // Dereferencing to allow for GC(Garbage Collector).
                             // All resources should be released at this point.
                             group.DestroyAllCaches(currentPeer);
+
+                            OnPlayerLeftGroup?.Invoke(
+                                group,
+                                currentPeer,
+                                Status.End,
+                                "Leave event called by disconnect event."
+                            );
+
                             if (group.DestroyWhenEmpty)
                             {
                                 Server.DestroyGroup(group);
@@ -1143,7 +1213,7 @@ namespace Omni.Core
                         $"Disconnection Info: Peer '{peer}' removed from the server. Reason: {reason}."
                     );
 
-                    OnServerPeerDisconnected?.Invoke(currentPeer);
+                    OnServerPeerDisconnected?.Invoke(currentPeer, Status.Normal);
 
                     // Dereferencing to allow for GC(Garbage Collector).
                     currentPeer.ClearGroups();
@@ -1152,6 +1222,9 @@ namespace Omni.Core
                     // All resources should be released at this point.
                     Server.DestroyAllCaches(currentPeer);
                     currentPeer.IsConnected = false;
+
+                    // Finished disconnection
+                    OnServerPeerDisconnected?.Invoke(currentPeer, Status.End);
                 }
             }
         }
@@ -1283,11 +1356,27 @@ namespace Omni.Core
                         break;
                     case MessageType.EndHandshake:
                         {
-                            // Connection end & authorized.
-                            LocalPeer.IsConnected = true;
-                            IsClientActive = true;
-                            StartCoroutine(QueryNtp());
-                            OnClientConnected?.Invoke();
+                            if (!isServer)
+                            {
+                                // Connection end & authorized.
+                                LocalPeer.IsConnected = true;
+                                IsClientActive = true;
+                                StartCoroutine(QueryNtp());
+                                OnClientConnected?.Invoke();
+
+                                // Send Ok to the server!
+                                SendToServer(
+                                    MessageType.EndHandshake,
+                                    DataBuffer.Empty,
+                                    DeliveryMode.ReliableOrdered,
+                                    0
+                                );
+                            }
+                            else
+                            {
+                                OnServerPeerConnected?.Invoke(peer, Status.Normal);
+                                OnServerPeerConnected?.Invoke(peer, Status.End);
+                            }
                         }
                         break;
                     case MessageType.LocalInvoke:
@@ -1574,6 +1663,9 @@ namespace Omni.Core
         private bool m_Matchmaking = false;
 
         [SerializeField]
+        private bool m_TickSystem = false;
+
+        [SerializeField]
         [Label("Server Console")]
         private bool m_Console = false;
 
@@ -1610,7 +1702,11 @@ namespace Omni.Core
 
         [SerializeField]
         [Header("Misc")]
-        [Min(0)]
+        [Min(1)]
+        private int m_TickRate = 15;
+
+        [SerializeField]
+        [Min(1)]
         private int m_MaxFpsOnClient = 60;
 
         [SerializeField]
@@ -1632,7 +1728,9 @@ namespace Omni.Core
         private bool m_RunInBackground = true;
 
         public static string ConnectAddress => Manager.m_ConnectAddress;
+
         internal static bool MatchmakingModuleEnabled => Manager.m_Matchmaking;
+        internal static bool TickSystemModuleEnabled => Manager.m_TickSystem;
 
         public static int ServerListenPort => Manager.m_ServerListenPort;
         public static int ClientListenPort => Manager.m_ClientListenPort;

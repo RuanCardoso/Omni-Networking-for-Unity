@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using Omni.Shared;
 using static Omni.Core.NetworkManager;
 
@@ -42,12 +41,19 @@ namespace Omni.Core.Modules.Ntp
 
         public class NtpClient
         {
-            private const double PING_PRECISION = 0.01d;
+            private const double PING_TIME_PRECISION = 0.01d;
+            private const double PING_TICK_PRECISION = 0.01d * 1000d;
 
             /// <summary>
-            /// Returns the synchronized time, which is the UnityTime plus the smoothed offset average.
+            /// Returns the synchronized time or ticks, which is the unity time plus the smoothed offset average.
             /// </summary>
-            public double Time => Math.Round(ClockTime + OffsetAvg.GetAverage(), 2);
+            public double Time =>
+                Math.Round(ClockTime + OffsetAvg.GetAverage(), UseTickTiming ? 0 : 2);
+
+            /// <summary>
+            /// Returns the synchronized time or ticks as a float, which is the unity time plus the smoothed offset average.
+            /// </summary>
+            public float TimeAsFloat => (float)Time;
 
             /// <summary>
             /// Returns the round-trip time (RTT) smoothed average.
@@ -60,14 +66,12 @@ namespace Omni.Core.Modules.Ntp
             public double HalfRtt => Rtt / 2d;
 
             /// <summary>
-            /// Retrieves the latency time in milliseconds, which encompasses not only the round-trip time (RTT) but also processing time for the subsequent frame (receive, send), router delays, among other factors.
+            /// Retrieves the ping time in milliseconds.
             /// </summary>
-            public double Latency => Math.Round(HalfRtt, 2);
-
-            /// <summary>
-            /// Retrieves the latency time in milliseconds, which encompasses not only the round-trip time (RTT) but also processing time for the subsequent frame (receive, send), router delays, among other factors.
-            /// </summary>
-            public double Ping => Math.Round(MinMax(HalfRtt, PING_PRECISION) * 1000d, 0);
+            public double Ping =>
+                UseTickTiming
+                    ? Math.Round(MinMax(HalfRtt * TickSystem.MsPerTick, PING_TICK_PRECISION), 0)
+                    : Math.Round(MinMax(HalfRtt, PING_TIME_PRECISION) * 1000d, 0);
 
             /// <summary>
             /// Simple Moving Average (SMA) for RTT measurements to smooth out short-term fluctuations.
@@ -81,18 +85,22 @@ namespace Omni.Core.Modules.Ntp
             /// This smoothed approach not only improves stability in synchronization by mitigating temporal fluctuations but also provides a solid foundation for detecting and correcting temporal deviations.
             /// Thus, it helps maintain time accuracy in environments that heavily rely on time synchronization, such as NTP systems.
             /// </summary>
-            private ExponentialMovingAverage OffsetAvg { get; }
+            private IMovingAverage OffsetAvg { get; } // default EMA
 
             internal NtpClient()
             {
                 RttAvg = new SimpleMovingAverage(NetworkClock.DEFAULT_RTT_WINDOW);
-                OffsetAvg = new ExponentialMovingAverage(NetworkClock.DEFAULT_TIME_WINDOW);
+                OffsetAvg = UseTickTiming
+                    ? new SimpleMovingAverage(NetworkClock.DEFAULT_TIME_WINDOW)
+                    : new ExponentialMovingAverage(NetworkClock.DEFAULT_TIME_WINDOW);
             }
 
             internal NtpClient(NetworkClock clock)
             {
                 RttAvg = new SimpleMovingAverage(clock.RttWindow);
-                OffsetAvg = new ExponentialMovingAverage(clock.TimeWindow);
+                OffsetAvg = UseTickTiming
+                    ? new SimpleMovingAverage(clock.TimeWindow)
+                    : new ExponentialMovingAverage(clock.TimeWindow);
             }
 
             // The Client reads its clock, which provides the time a.

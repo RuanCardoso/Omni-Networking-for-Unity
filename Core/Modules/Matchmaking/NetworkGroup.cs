@@ -125,7 +125,7 @@ namespace Omni.Core
         {
             if (
                 cacheMode == (CacheMode.Group | CacheMode.New)
-                || cacheMode == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                || cacheMode == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
             )
             {
                 CACHES_APPEND.RemoveAll(x => x.Mode == cacheMode && x.Id == cacheId);
@@ -133,7 +133,7 @@ namespace Omni.Core
             else if (
                 cacheMode == (CacheMode.Group | CacheMode.Overwrite)
                 || cacheMode
-                    == (CacheMode.Group | CacheMode.Overwrite | CacheMode.DestroyOnDisconnect)
+                    == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
             )
             {
                 CACHES_OVERWRITE.Remove(cacheId);
@@ -151,7 +151,7 @@ namespace Omni.Core
         {
             if (
                 cacheMode == (CacheMode.Group | CacheMode.New)
-                || cacheMode == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                || cacheMode == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
             )
             {
                 CACHES_APPEND.RemoveAll(x =>
@@ -161,7 +161,7 @@ namespace Omni.Core
             else if (
                 cacheMode == (CacheMode.Group | CacheMode.Overwrite)
                 || cacheMode
-                    == (CacheMode.Group | CacheMode.Overwrite | CacheMode.DestroyOnDisconnect)
+                    == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
             )
             {
                 CACHES_OVERWRITE.Remove(cacheId);
@@ -177,9 +177,9 @@ namespace Omni.Core
 
         public void DestroyAllCaches(NetworkPeer peer)
         {
-            CACHES_APPEND.RemoveAll(x => x.Peer.Id == peer.Id && x.DestroyOnDisconnect);
+            CACHES_APPEND.RemoveAll(x => x.Peer.Id == peer.Id && x.AutoDestroyCache);
             var caches = CACHES_OVERWRITE
-                .Values.Where(x => x.Peer.Id == peer.Id && x.DestroyOnDisconnect)
+                .Values.Where(x => x.Peer.Id == peer.Id && x.AutoDestroyCache)
                 .ToList();
 
             foreach (var cache in caches)

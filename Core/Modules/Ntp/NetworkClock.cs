@@ -29,9 +29,13 @@ namespace Omni.Core.Modules.Ntp
         [Range(1f, 900f)]
         private float m_QueryInterval = DEFAULT_QUERY_INTERVAL;
 
+        [SerializeField]
+        private bool m_UseTickTiming = false;
+
         internal float QueryInterval => m_QueryInterval;
         internal int TimeWindow => m_TimeWindow;
         internal int RttWindow => m_RttWindow;
         internal int Accuracy => m_Accuracy;
+        internal bool UseTickTiming => m_UseTickTiming;
     }
 }

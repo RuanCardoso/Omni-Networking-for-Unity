@@ -579,6 +579,7 @@ namespace Omni.Core
                 int groupId = GetGroupIdByName(groupName);
                 if (Groups.TryGetValue(groupId, out NetworkGroup group))
                 {
+                    OnPlayerLeftGroup?.Invoke(group, peer, Status.Begin, reason);
                     if (group._peersById.Remove(peer.Id, out _))
                     {
                         if (!peer.Groups.Remove(group.Id))
@@ -592,8 +593,11 @@ namespace Omni.Core
 
                         _allowZeroGroupForInternalMessages = true;
                         SendResponseToClient();
-                        OnPlayerLeftGroup?.Invoke(group, peer, reason);
+                        OnPlayerLeftGroup?.Invoke(group, peer, Status.Normal, reason);
 
+                        // Dereferencing to allow for GC(Garbage Collector).
+                        // All resources should be released at this point.
+                        group.DestroyAllCaches(peer);
                         if (group.DestroyWhenEmpty)
                         {
                             DestroyGroup(group);
@@ -678,9 +682,7 @@ namespace Omni.Core
                         if (
                             cacheMode == (CacheMode.Global | CacheMode.New)
                             || cacheMode
-                                == (
-                                    CacheMode.Global | CacheMode.New | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
                             List<NetworkCache> caches = CACHES_APPEND_GLOBAL
@@ -708,7 +710,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.New)
                             || cacheMode
-                                == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                                == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
                             if (Groups.TryGetValue(groupId, out NetworkGroup group))
@@ -748,11 +750,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Global | CacheMode.Overwrite)
                             || cacheMode
-                                == (
-                                    CacheMode.Global
-                                    | CacheMode.Overwrite
-                                    | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
                             if (
@@ -785,11 +783,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.Overwrite)
                             || cacheMode
-                                == (
-                                    CacheMode.Group
-                                    | CacheMode.Overwrite
-                                    | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
                             if (Groups.TryGetValue(groupId, out NetworkGroup group))
@@ -867,9 +861,7 @@ namespace Omni.Core
                         if (
                             cacheMode == (CacheMode.Global | CacheMode.New)
                             || cacheMode
-                                == (
-                                    CacheMode.Global | CacheMode.New | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
                             CACHES_APPEND_GLOBAL.RemoveAll(x =>
@@ -879,7 +871,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.New)
                             || cacheMode
-                                == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                                == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
                             if (Groups.TryGetValue(groupId, out NetworkGroup group))
@@ -899,11 +891,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Global | CacheMode.Overwrite)
                             || cacheMode
-                                == (
-                                    CacheMode.Global
-                                    | CacheMode.Overwrite
-                                    | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
                             CACHES_OVERWRITE_GLOBAL.Remove(cacheId);
@@ -911,11 +899,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.Overwrite)
                             || cacheMode
-                                == (
-                                    CacheMode.Group
-                                    | CacheMode.Overwrite
-                                    | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
                             if (Groups.TryGetValue(groupId, out NetworkGroup group))
@@ -970,9 +954,7 @@ namespace Omni.Core
                         if (
                             cacheMode == (CacheMode.Global | CacheMode.New)
                             || cacheMode
-                                == (
-                                    CacheMode.Global | CacheMode.New | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
                             CACHES_APPEND_GLOBAL.RemoveAll(x =>
@@ -982,7 +964,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.New)
                             || cacheMode
-                                == (CacheMode.Group | CacheMode.New | CacheMode.DestroyOnDisconnect)
+                                == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
                             if (Groups.TryGetValue(groupId, out NetworkGroup group))
@@ -1002,11 +984,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Global | CacheMode.Overwrite)
                             || cacheMode
-                                == (
-                                    CacheMode.Global
-                                    | CacheMode.Overwrite
-                                    | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
                             CACHES_OVERWRITE_GLOBAL.Remove(cacheId);
@@ -1014,11 +992,7 @@ namespace Omni.Core
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.Overwrite)
                             || cacheMode
-                                == (
-                                    CacheMode.Group
-                                    | CacheMode.Overwrite
-                                    | CacheMode.DestroyOnDisconnect
-                                )
+                                == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
                             if (Groups.TryGetValue(groupId, out NetworkGroup group))
@@ -1052,9 +1026,9 @@ namespace Omni.Core
 
             public static void DestroyAllCaches(NetworkPeer peer)
             {
-                CACHES_APPEND_GLOBAL.RemoveAll(x => x.Peer.Id == peer.Id && x.DestroyOnDisconnect);
+                CACHES_APPEND_GLOBAL.RemoveAll(x => x.Peer.Id == peer.Id && x.AutoDestroyCache);
                 var caches = CACHES_OVERWRITE_GLOBAL
-                    .Values.Where(x => x.Peer.Id == peer.Id && x.DestroyOnDisconnect)
+                    .Values.Where(x => x.Peer.Id == peer.Id && x.AutoDestroyCache)
                     .ToList();
 
                 foreach (var cache in caches)

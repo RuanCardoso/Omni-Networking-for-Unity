@@ -16,41 +16,36 @@ using System;
 
 namespace Omni.Shared
 {
-	public class ExponentialMovingAverage
-	{
-		private readonly float alpha;
-		private bool isInitialized;
-		private double avg;
+    public class ExponentialMovingAverage : IMovingAverage
+    {
+        private readonly float alpha;
+        private bool isInitialized;
+        private double avg;
 
-		public ExponentialMovingAverage(int periods)
-		{
-			alpha = 2.0f / (periods + 1);
-			isInitialized = false;
-			avg = 0;
-		}
+        public ExponentialMovingAverage(int periods)
+        {
+            alpha = 2.0f / (periods + 1);
+            isInitialized = false;
+            avg = 0;
+        }
 
-		public void Add(double value)
-		{
-			if (isInitialized)
-			{
-				double delta = value - avg;
-				avg += alpha * delta;
-			}
-			else
-			{
-				avg = value;
-				isInitialized = true;
-			}
-		}
+        public void Add(double value)
+        {
+            if (isInitialized)
+            {
+                double delta = value - avg;
+                avg += alpha * delta;
+            }
+            else
+            {
+                avg = value;
+                isInitialized = true;
+            }
+        }
 
-		public double GetAverage()
-		{
-			return avg;
-		}
-
-		public double GetRoundedAverage(int digits = 0)
-		{
-			return Math.Round(avg, digits);
-		}
-	}
+        public double GetAverage()
+        {
+            return avg;
+        }
+    }
 }

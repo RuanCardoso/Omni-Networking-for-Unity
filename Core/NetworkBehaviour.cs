@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Omni.Core
 {
-    public class NetworkBehaviour : NetVarBehaviour, INetworkMessage
+    public class NetworkBehaviour : NetVarBehaviour, INetworkMessage, ITickSystem
     {
         // Hacky: DIRTY CODE!
         // This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.
@@ -370,6 +370,17 @@ namespace Omni.Core
         /// <param name="buffer">The buffer containing data associated with the instantiation process.</param>
         protected internal virtual void OnStart(DataBuffer buffer) { }
 
+        /// <summary>
+        /// Called on each update tick.
+        /// </summary>
+        /// <remarks>
+        /// Override this method to perform any per-tick processing that needs to occur
+        /// during the object's active state. This method is called on a regular interval
+        /// determined by the system's tick rate.
+        /// </remarks>
+        /// <param name="data">The data associated with the current tick.</param>
+        public virtual void OnTick(ITickInfo data) { }
+
         internal void Register()
         {
             if (Identity.IsServer)
@@ -385,6 +396,11 @@ namespace Omni.Core
 
             AddEventBehaviour();
             InitializeServiceLocator();
+
+            if (NetworkManager.TickSystemModuleEnabled)
+            {
+                NetworkManager.TickSystem.Register(this);
+            }
         }
 
         internal void Unregister()
