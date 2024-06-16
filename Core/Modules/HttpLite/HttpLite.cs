@@ -502,16 +502,21 @@ namespace Omni.Core
 
                 if (!response.SendEnabled)
                 {
-                    throw new Exception("Maybe you're forgetting to call Send().");
+                    throw new Exception("Http Lite: Maybe you're forgetting to call Send().");
                 }
 
-                if (
-                    response.DeliveryMode == DeliveryMode.Unreliable
-                    || response.DeliveryMode == DeliveryMode.Sequenced
-                )
+                if (response.ForceSendToSelf)
                 {
-                    throw new NotImplementedException(
-                        "HTTP Lite: Unreliable and sequenced delivery modes are not supported yet."
+                    Server.SendMessage(
+                        msgId,
+                        peer.Id,
+                        header,
+                        Target.Self,
+                        response.DeliveryMode,
+                        0,
+                        response.CacheId,
+                        response.CacheMode,
+                        response.SequenceChannel
                     );
                 }
 

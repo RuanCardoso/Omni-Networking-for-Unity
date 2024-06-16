@@ -254,6 +254,7 @@ namespace Omni.Core
         > serverEventBehaviour = new();
 
         [SerializeField]
+        [Header("Service Settings")]
         private string m_ServiceName;
 
         [SerializeField]

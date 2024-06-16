@@ -283,6 +283,7 @@ namespace Omni.Core
     {
         internal bool SendEnabled { get; private set; }
         internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
+        internal bool ForceSendToSelf { get; private set; }
         internal Target Target { get; private set; } = Target.Self;
         internal int GroupId { get; private set; }
         internal int CacheId { get; private set; }
@@ -291,6 +292,7 @@ namespace Omni.Core
 
         public void Send(
             Target target = Target.Self,
+            bool forceSendToSelf = false,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0,
             int cacheId = 0,
@@ -301,6 +303,7 @@ namespace Omni.Core
             SendEnabled = true;
             Target = target;
             DeliveryMode = deliveryMode;
+            ForceSendToSelf = forceSendToSelf;
             GroupId = groupId;
             CacheId = cacheId;
             CacheMode = cacheMode;
