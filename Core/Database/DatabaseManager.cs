@@ -35,13 +35,13 @@ namespace Omni.Core
         private int Timeout { get; set; }
         private bool UseLegacyPagination { get; set; }
 
-        protected DatabaseManager() { }
+        protected DatabaseManager() { } // do not remove.
 
         /// <summary>
         /// Sets the database credentials and timeout values.
         /// </summary>
         /// <remarks>
-        /// The credentials are automatically stripped from non-server builds(<b>only release mode</b>).
+        /// The credentials are automatically stripped from non-server builds if passed directly as a parameter without using declared variables. (<c>only release mode</c>).
         /// </remarks>
         /// <param name="credentials">The credentials used to connect to the database.</param>
         /// <param name="timeout">The timeout value for database operations (optional, default is 30 seconds).</param>

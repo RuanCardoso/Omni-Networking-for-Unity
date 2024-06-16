@@ -13,24 +13,59 @@
     ===========================================================*/
 
 using System;
+using System.Diagnostics;
+#if OMNI_RELEASE
+using System.Runtime.CompilerServices;
+#endif
 
 namespace Omni.Core
 {
-    public class DbCredentials
+    public sealed class DbCredentials
     {
-        public string Server { get; }
-        public string Database { get; }
-        public string Username { get; }
-        public string Password { get; }
+        public string Server { get; private set; }
+        public string Database { get; private set; }
+        public string Username { get; private set; }
+        public string Password { get; private set; }
         public string ConnectionString { get; internal set; }
-        public DatabaseType Type { get; }
+        public DatabaseType Type { get; private set; }
 
-        public DbCredentials(
+        internal DbCredentials(
             DatabaseType type,
             string server,
             string database,
             string username,
             string password
+        )
+        {
+            SetConnectionString(type, server, database, username, password);
+        }
+
+        public DbCredentials([CallerMemberName] string _ = "")
+        {
+            if (_ != "Awake" && _ != "Start")
+            {
+                throw new InvalidOperationException(
+                    $"DbCredentials constructor should be called from within a method (Awake or Start), not directly within the class scope. {_}"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Configures the database connection string with provided credentials. For security reasons,
+        /// always pass credentials as arguments instead of storing them in variables.
+        /// If credentials are passed directly, they are automatically stripped from non-server builds.
+        /// </summary>
+        /// <remarks>Alternatively, you can use <c>#if OMNI_SERVER</c> to strip credentials from non-server builds.</remarks>
+#if OMNI_RELEASE
+        [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
+#endif
+        public void SetConnectionString(
+            DatabaseType type,
+            string server,
+            string database,
+            string username,
+            string password,
+            [CallerMemberName] string _ = ""
         )
         {
             Type = type;

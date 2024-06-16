@@ -1876,16 +1876,24 @@ namespace Omni.Core
             name = "Network Manager";
 
 #if UNITY_SERVER
-            clientObject.tag = "EditorOnly";
-            serverObject.tag = "Untagged";
+            SetTag(clientObject, "EditorOnly");
+            SetTag(serverObject, "Untagged");
 #else
-            serverObject.tag = "EditorOnly";
-            clientObject.tag = "Untagged";
+            SetTag(serverObject, "EditorOnly");
+            SetTag(clientObject, "Untagged");
 #endif
 #elif OMNI_DEBUG
-            clientObject.tag = "Untagged";
-            serverObject.tag = "Untagged";
+            SetTag(clientObject, "Untagged");
+            SetTag(serverObject, "Untagged");
 #endif
+        }
+
+        private void SetTag(Transform gameObject, string tagName)
+        {
+            if (!gameObject.CompareTag(tagName)) // disable warning!
+            {
+                gameObject.tag = tagName;
+            }
         }
 
         [ContextMenu("Set Scripting Backend")]
