@@ -285,6 +285,7 @@ namespace Omni.Core
     [DefaultExecutionOrder(-3000)]
     public class NetworkEventBehaviour : NetVarBehaviour, INetworkMessage
     {
+        [Header("Service Settings")]
         [SerializeField]
         private string m_ServiceName;
 
@@ -603,6 +604,7 @@ namespace Omni.Core
     [DefaultExecutionOrder(-3000)]
     public class ClientEventBehaviour : NetVarBehaviour, INetworkMessage
     {
+        [Header("Service Settings")]
         [SerializeField]
         private string m_ServiceName;
 
@@ -769,6 +771,7 @@ namespace Omni.Core
     [DefaultExecutionOrder(-3000)]
     public class ServerEventBehaviour : NetVarBehaviour, INetworkMessage
     {
+        [Header("Service Settings")]
         [SerializeField]
         private string m_ServiceName;
 
