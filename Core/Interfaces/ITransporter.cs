@@ -14,7 +14,7 @@ namespace Omni.Core.Interfaces
             byte sequenceChannel
         );
         void Connect(string address, int port);
-        void Disconnect();
+        void Disconnect(NetworkPeer peer);
         void Stop();
         void CopyTo(ITransporter ITransporter);
     }

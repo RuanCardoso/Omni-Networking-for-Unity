@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using MemoryPack;
 using Newtonsoft.Json;
@@ -66,13 +68,30 @@ namespace Omni.Core
 
         public void ClearGroups()
         {
+            EnsureServerActive();
             Groups.Clear();
         }
 
         public void ClearData()
         {
+            EnsureServerActive();
             Data.Clear();
             SerializedData.Clear();
+        }
+
+        public void Disconnect()
+        {
+            EnsureServerActive();
+            NetworkManager.DisconnectPeer(this);
+        }
+
+        [Conditional("OMNI_DEBUG")]
+        private void EnsureServerActive()
+        {
+            if (!NetworkManager.IsServerActive)
+            {
+                throw new Exception("Can't use this method on client.");
+            }
         }
 
         public override string ToString()

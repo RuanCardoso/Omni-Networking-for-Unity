@@ -17,6 +17,10 @@ namespace Omni.Editor
                 GameObject manager = new("Network Manager");
                 manager.AddComponent<NetworkManager>();
                 manager.AddComponent<LiteTransporter>();
+                var server = new GameObject(">> [Server Code Here] <<");
+                server.transform.parent = manager.transform;
+                var client = new GameObject(">> [Client Code Here] <<");
+                client.transform.parent = manager.transform;
                 EditorUtility.SetDirty(manager);
             }
         }

@@ -50,6 +50,12 @@ namespace Omni.Core.Modules.Connection
                 NetworkHelper.EnsureRunningOnMainThread();
                 Transporter.Stop();
             }
+
+            internal void Disconnect(NetworkPeer peer)
+            {
+                NetworkHelper.EnsureRunningOnMainThread();
+                Transporter.Disconnect(peer);
+            }
         }
 
         internal class NetworkClient : NetworkSocket
@@ -60,12 +66,6 @@ namespace Omni.Core.Modules.Connection
             {
                 NetworkHelper.EnsureRunningOnMainThread();
                 Transporter.Connect(address, port);
-            }
-
-            internal void Disconnect()
-            {
-                NetworkHelper.EnsureRunningOnMainThread();
-                Transporter.Disconnect();
             }
         }
 

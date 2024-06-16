@@ -156,6 +156,7 @@ namespace Omni.Core
 
     [DefaultExecutionOrder(-1000)]
     [DisallowMultipleComponent]
+    [JsonObject(MemberSerialization.OptIn)]
     public partial class NetworkManager : MonoBehaviour, ITransporterReceive
     {
         private static Stopwatch _stopwatch = new Stopwatch();
@@ -301,7 +302,7 @@ namespace Omni.Core
                 if (_tickSystem == null)
                 {
                     throw new Exception(
-                        "TickSystem module not initialized. Please call NetworkManager.InitializeModule(Module.TickSystem) at least once before accessing the TickSystem."
+                        "TickSystem module not initialized. Please ensure that NetworkManager.InitializeModule(Module.TickSystem) is called at least once before accessing the TickSystem. If you are a client, wait until the connection and authentication processes are completed before accessing the TickSystem."
                     );
                 }
 
@@ -360,7 +361,7 @@ namespace Omni.Core
 
         /// <summary>
         /// Gets a value indicating whether the server is active.
-        /// This property returns true if the server is currently active and accepting connections; otherwise, false.
+        /// This property returns true if the server is currently active; otherwise, false.
         /// It is used to determine the server's status in the network.
         /// </summary>
         public static bool IsServerActive { get; private set; }
@@ -378,6 +379,7 @@ namespace Omni.Core
                 _stopwatch.Start();
             }
 
+            NetworkHelper.SaveComponent(this, "setup.cfg");
             _manager = this;
 #if !UNITY_SERVER || UNITY_EDITOR
             if (m_MaxFpsOnClient > 0)
@@ -394,14 +396,11 @@ namespace Omni.Core
             AotHelper.EnsureDictionary<string, object>();
             MainThreadId = Thread.CurrentThread.ManagedThreadId;
             DisableAutoStartIfHasHud();
-            if (m_NtpClock)
-            {
-                InitializeModule(Module.NtpClock);
-            }
 
-            if (m_TickSystem)
+            if (m_Connection)
             {
-                InitializeModule(Module.TickSystem);
+                HttpLite.Initialize();
+                InitializeModule(Module.Connection);
             }
 
             if (m_Console)
@@ -409,15 +408,19 @@ namespace Omni.Core
                 InitializeModule(Module.Console);
             }
 
+            if (m_NtpClock)
+            {
+                InitializeModule(Module.NtpClock);
+            }
+
             if (m_Matchmaking)
             {
                 InitializeModule(Module.Matchmaking);
             }
 
-            if (m_Connection)
+            if (m_TickSystem)
             {
-                HttpLite.Initialize();
-                InitializeModule(Module.Connection);
+                InitializeModule(Module.TickSystem);
             }
         }
 
@@ -431,7 +434,7 @@ namespace Omni.Core
 
         private void Update()
         {
-            if (m_TickSystem)
+            if (m_TickSystem && _tickSystem != null)
             {
                 TickSystem.OnTick();
             }
@@ -478,8 +481,11 @@ namespace Omni.Core
             {
                 case Module.TickSystem:
                     {
-                        TickSystem = new NetworkTickSystem();
-                        TickSystem.Initialize(Manager.m_TickRate);
+                        if (IsServerActive && _tickSystem == null)
+                        {
+                            TickSystem = new NetworkTickSystem();
+                            TickSystem.Initialize(Manager.m_TickRate);
+                        }
                     }
                     break;
                 case Module.NtpClock:
@@ -602,20 +608,58 @@ namespace Omni.Core
 
         public static void StartServer(int port)
         {
+            if (!IsServerActive)
+            {
 #if OMNI_DEBUG
-            Server.GenerateRsaKeys();
-            Connection.Server.Listen(port);
+                Server.GenerateRsaKeys();
+                Connection.Server.Listen(port);
+                NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #else
 #if UNITY_EDITOR
-            Server.GenerateRsaKeys();
-            Connection.Server.Listen(port);
+                Server.GenerateRsaKeys();
+                Connection.Server.Listen(port);
+                NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #elif !UNITY_SERVER
-            NetworkLogger.LogToFile("Server is not available in release mode on client build.");
+                NetworkLogger.LogToFile("Server is not available in release mode on client build.");
 #else
-            Server.GenerateRsaKeys();
-            Connection.Server.Listen(port);
+                Server.GenerateRsaKeys();
+                Connection.Server.Listen(port);
+                NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #endif
 #endif
+            }
+            else
+            {
+                throw new Exception(
+                    "Server is already initialized. Ensure to call StopServer() before calling StartServer()."
+                );
+            }
+        }
+
+        public static void DisconnectPeer(NetworkPeer peer)
+        {
+            if (IsServerActive)
+            {
+                Connection.Server.Disconnect(peer);
+            }
+            else
+            {
+                throw new Exception("Server is not initialized. Ensure to call StartServer().");
+            }
+        }
+
+        public static void StopServer()
+        {
+            if (IsServerActive)
+            {
+                Connection.Server.Stop();
+            }
+            else
+            {
+                throw new Exception(
+                    "Server is not initialized. Ensure to call StartServer() before calling StopServer()."
+                );
+            }
         }
 
         public static void Connect(string address, int port)
@@ -625,12 +669,47 @@ namespace Omni.Core
 
         public static void Connect(string address, int port, int listenPort)
         {
+            if (!IsClientActive)
+            {
 #if !UNITY_SERVER || UNITY_EDITOR // Don't connect to the server in server build!
-            Connection.Client.Listen(listenPort);
-            Connection.Client.Connect(address, port);
+                Connection.Client.Listen(listenPort);
+                Connection.Client.Connect(address, port);
 #elif UNITY_SERVER && !UNITY_EDITOR
-            NetworkLogger.__Log__("Debug: Client is not available in a server build.");
+                NetworkLogger.__Log__("Debug: Client is not available in a server build.");
 #endif
+            }
+            else
+            {
+                throw new Exception(
+                    "Client is already initialized. Ensure to call StopClient() before calling Connect()."
+                );
+            }
+        }
+
+        public static void Disconnect()
+        {
+            if (IsClientActive)
+            {
+                Connection.Client.Disconnect(LocalPeer);
+            }
+            else
+            {
+                throw new Exception("Client is not initialized. Ensure to call Connect().");
+            }
+        }
+
+        public static void StopClient()
+        {
+            if (IsClientActive)
+            {
+                Connection.Client.Stop();
+            }
+            else
+            {
+                throw new Exception(
+                    "Client is not initialized. Ensure to call Connect() before calling StopClient()."
+                );
+            }
         }
 
         internal static void SendToClient(
@@ -1358,6 +1437,16 @@ namespace Omni.Core
                         {
                             if (!isServer)
                             {
+                                if (_tickSystem == null)
+                                {
+                                    TickSystem = new NetworkTickSystem();
+                                    TickSystem.Initialize(m_TickRate);
+                                }
+                                else
+                                {
+                                    print("Inicializado já");
+                                }
+
                                 // Connection end & authorized.
                                 LocalPeer.IsConnected = true;
                                 IsClientActive = true;
@@ -1719,9 +1808,15 @@ namespace Omni.Core
 
         [Header("Misc +")]
         [SerializeField]
+#if OMNI_RELEASE
+        [ReadOnly]
+#endif
         private bool m_AutoStartClient = true;
 
         [SerializeField]
+#if OMNI_RELEASE
+        [ReadOnly]
+#endif
         private bool m_AutoStartServer = true;
 
         [SerializeField]
@@ -1741,9 +1836,7 @@ namespace Omni.Core
 
         public virtual void Reset()
         {
-            GetExternalIp();
-            DisableAutoStartIfHasHud();
-            SetScriptingBackend();
+            OnValidate();
         }
 
         public virtual void OnValidate()
@@ -1763,11 +1856,36 @@ namespace Omni.Core
 
                 GetExternalIp();
                 SetScriptingBackend();
+                StripComponents();
             }
 
             Application.runInBackground = m_RunInBackground;
             m_ConnectAddress = m_ConnectAddress.Trim();
             DisableAutoStartIfHasHud();
+        }
+
+        [ContextMenu("Strip Components")]
+        private void StripComponents()
+        {
+            // Strip the components.
+            var serverObject = transform.GetChild(0);
+            var clientObject = transform.GetChild(1);
+
+#if OMNI_RELEASE
+            UnityEngine.Debug.Log("Stripping components... Ready to build!");
+            name = "Network Manager";
+
+#if UNITY_SERVER
+            clientObject.tag = "EditorOnly";
+            serverObject.tag = "Untagged";
+#else
+            serverObject.tag = "EditorOnly";
+            clientObject.tag = "Untagged";
+#endif
+#elif OMNI_DEBUG
+            clientObject.tag = "Untagged";
+            serverObject.tag = "Untagged";
+#endif
         }
 
         [ContextMenu("Set Scripting Backend")]

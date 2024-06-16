@@ -15,6 +15,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+#if OMNI_RELEASE
+using System.Runtime.CompilerServices;
+#endif
 
 namespace Omni.Core
 {

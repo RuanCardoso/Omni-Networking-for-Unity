@@ -24,6 +24,22 @@ namespace Omni.Editor
 
         public void OnPreprocessBuild(BuildReport report)
         {
+#if OMNI_RELEASE
+            Object selectedObject = Selection.activeObject;
+            if (selectedObject == null || selectedObject.name != "Network Manager")
+            {
+                EditorUtility.DisplayDialog(
+                    "Omni Build Error",
+                    "Please select the 'Network Manager' in the current scene and try again. An error occurred during the build process. If the problem persists, refer to the documentation or contact technical support.",
+                    "Ok"
+                );
+
+                throw new System.Exception(
+                    "Please select the 'Network Manager' in the current scene and try again. An error occurred during the build process. If the problem persists, refer to the documentation or contact technical support."
+                );
+            }
+#endif
+
             SetScriptingBackend();
         }
 
@@ -53,7 +69,9 @@ namespace Omni.Editor
             SetScriptingBackend(newTarget);
         }
 
+#if OMNI_RELEASE
         [MenuItem("Omni Networking/Change to Debug")]
+#endif
         private static void ChangeToDebug()
         {
             if (EditorHelper.SetDefines(false))
@@ -62,7 +80,9 @@ namespace Omni.Editor
             }
         }
 
+#if OMNI_DEBUG
         [MenuItem("Omni Networking/Change to Release")]
+#endif
         private static void ChangeToRelease()
         {
             if (EditorHelper.SetDefines(true))

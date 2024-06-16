@@ -1,10 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Omni.Core
 {
@@ -129,6 +131,18 @@ namespace Omni.Core
                     "This operation must be performed on the main thread. Omni does not support multithreaded operations. Tip: Dispatch the events to the main thread."
                 );
             }
+        }
+
+        public static void SaveComponent<T>(T component, string fileName)
+        {
+            using StreamWriter writer = new(fileName, false);
+            writer.Write(NetworkManager.ToJson(component));
+        }
+
+        public static void LoadComponent(object target, string fileName)
+        {
+            using StreamReader reader = new(fileName);
+            JsonConvert.PopulateObject(reader.ReadToEnd(), target);
         }
     }
 }

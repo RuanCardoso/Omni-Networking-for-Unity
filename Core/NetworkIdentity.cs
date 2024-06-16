@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using Omni.Core.Attributes;
 using UnityEngine;
+#if OMNI_RELEASE
+using System.Runtime.CompilerServices;
+#endif
 
 namespace Omni.Core
 {

@@ -44,6 +44,10 @@ namespace Omni.Core
 
         public void Register(ITickSystem handler)
         {
+#if OMNI_DEBUG || UNITY_EDITOR
+            if (handlers.Contains(handler))
+                return;
+#endif
             handlers.Add(handler);
         }
 

@@ -293,9 +293,17 @@ namespace Omni.Core.Modules.Connection
             localPeer = _manager.Connect(address, port, m_VersionName);
         }
 
-        public void Disconnect()
+        public void Disconnect(NetworkPeer peer)
         {
-            Stop();
+            ThrowAnErrorIfNotInitialized();
+            if (isServer)
+            {
+                _manager.DisconnectPeer(_peers[peer.EndPoint]);
+            }
+            else
+            {
+                localPeer.Disconnect();
+            }
         }
 
         public void Listen(int port)
@@ -391,7 +399,7 @@ namespace Omni.Core.Modules.Connection
         public void Stop()
         {
             ThrowAnErrorIfNotInitialized();
-            _manager.Stop();
+            _manager.Stop(true);
         }
 
         [Conditional("OMNI_DEBUG")]

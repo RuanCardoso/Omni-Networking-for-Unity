@@ -309,9 +309,18 @@ namespace Omni.Core.Modules.Connection
             kcpClient.Connect(address, (ushort)port);
         }
 
-        public void Disconnect()
+        public void Disconnect(NetworkPeer peer)
         {
-            Stop();
+            ThrowAnErrorIfNotInitialized();
+            if (isServer)
+            {
+                int connId = _peers[peer.EndPoint];
+                kcpServer.connections[connId].Disconnect();
+            }
+            else
+            {
+                kcpClient.Disconnect();
+            }
         }
 
         public void Send(
@@ -333,6 +342,7 @@ namespace Omni.Core.Modules.Connection
                         new ArraySegment<byte>(segment, 0, data.Length),
                         GetKcpChannel(deliveryMode)
                     );
+
                     ArrayPool<byte>.Shared.Return(segment);
                 }
             }
@@ -344,6 +354,7 @@ namespace Omni.Core.Modules.Connection
                     new ArraySegment<byte>(segment, 0, data.Length),
                     GetKcpChannel(deliveryMode)
                 );
+
                 ArrayPool<byte>.Shared.Return(segment);
             }
         }
@@ -367,7 +378,10 @@ namespace Omni.Core.Modules.Connection
             {
                 DeliveryMode.Unreliable => KcpChannel.Unreliable,
                 DeliveryMode.ReliableOrdered => KcpChannel.Reliable,
-                _ => throw new NotImplementedException("Unknown delivery mode!"),
+                _
+                    => throw new NotImplementedException(
+                        "Unknown delivery mode! this mode is not supported!"
+                    ),
             };
         }
 
@@ -377,7 +391,10 @@ namespace Omni.Core.Modules.Connection
             {
                 KcpChannel.Unreliable => DeliveryMode.Unreliable,
                 KcpChannel.Reliable => DeliveryMode.ReliableOrdered,
-                _ => throw new NotImplementedException("Unknown delivery method!"),
+                _
+                    => throw new NotImplementedException(
+                        "Unknown delivery method! this mode is not supported!"
+                    ),
             };
         }
 

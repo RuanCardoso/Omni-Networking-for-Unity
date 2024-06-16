@@ -17,6 +17,9 @@ using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Omni.Shared;
+#if OMNI_RELEASE
+using System.Diagnostics;
+#endif
 
 #pragma warning disable
 
