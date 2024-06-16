@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Net;
 using MemoryPack;
 using Newtonsoft.Json;
-using Omni.Core.Modules.Matchmaking;
 using Omni.Shared.Collections;
 
 namespace Omni.Core

@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Omni.Core
 {
     internal class NetworkCache

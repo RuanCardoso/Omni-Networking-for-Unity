@@ -24,7 +24,7 @@ namespace Omni.Core
             port = NetworkManager.ConnectPort.ToString();
         }
 
-#if OMNI_DEBUG || UNITY_EDITOR
+#if OMNI_DEBUG
         void OnGUI()
         {
             if (NetworkManager.IsClientActive || NetworkManager.IsServerActive)

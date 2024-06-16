@@ -12,8 +12,6 @@
     License: Open Source (MIT)
     ===========================================================*/
 
-using System;
-
 namespace Omni.Shared
 {
     public class ExponentialMovingAverage : IMovingAverage

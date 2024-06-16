@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using Omni.Core.Cryptography;
 using Omni.Core.Interfaces;
-using Omni.Core.Modules.Matchmaking;
 using Omni.Shared;
 
 namespace Omni.Core
