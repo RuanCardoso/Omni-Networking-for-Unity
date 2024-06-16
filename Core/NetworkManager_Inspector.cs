@@ -5,6 +5,9 @@ using System.IO;
 using System.Net;
 using Omni.Core.Attributes;
 using UnityEngine;
+#if OMNI_DEBUG
+using Omni.Shared;
+#endif
 
 #pragma warning disable
 
