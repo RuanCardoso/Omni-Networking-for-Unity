@@ -13,9 +13,9 @@
     ===========================================================*/
 
 using System;
-using System.Diagnostics;
-#if OMNI_RELEASE
 using System.Runtime.CompilerServices;
+#if OMNI_RELEASE
+using System.Diagnostics;
 #endif
 
 namespace Omni.Core

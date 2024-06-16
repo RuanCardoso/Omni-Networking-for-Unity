@@ -260,9 +260,7 @@ namespace Omni.Core
         {
             if (_disposed == true)
             {
-                throw new Exception(
-                    "buffer: Buffer already disposed. Cannot dispose again."
-                );
+                throw new Exception("buffer: Buffer already disposed. Cannot dispose again.");
             }
 
             if (_objectPooling == null)
