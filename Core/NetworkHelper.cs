@@ -133,16 +133,42 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Saves the configuration of a given component to a file in JSON format.
+        /// This method is intended to be used only on the server side.
+        /// </summary>
+        /// <typeparam name="T">The type of the component to be saved.</typeparam>
+        /// <param name="component">The component instance to be saved.</param>
+        /// <param name="fileName">The name of the file where the component's configuration will be saved.</param>
+#if OMNI_DEBUG
+        [Conditional("UNITY_STANDALONE"), Conditional("UNITY_EDITOR")]
+#else
+        [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
+#endif
         public static void SaveComponent<T>(T component, string fileName)
         {
             using StreamWriter writer = new(fileName, false);
             writer.Write(NetworkManager.ToJson(component));
         }
 
+        /// <summary>
+        /// Loads the configuration from a file and populates the target object with this data.
+        /// This method is intended to be used only on the server side.
+        /// </summary>
+        /// <param name="target">The object to be populated with the configuration data.</param>
+        /// <param name="fileName">The name of the file from which the configuration will be read.</param>
+#if OMNI_DEBUG
+        [Conditional("UNITY_STANDALONE"), Conditional("UNITY_EDITOR")]
+#else
+        [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
+#endif
         public static void LoadComponent(object target, string fileName)
         {
-            using StreamReader reader = new(fileName);
-            JsonConvert.PopulateObject(reader.ReadToEnd(), target);
+            if (File.Exists(fileName))
+            {
+                using StreamReader reader = new(fileName);
+                JsonConvert.PopulateObject(reader.ReadToEnd(), target);
+            }
         }
     }
 }
