@@ -59,18 +59,31 @@ namespace Omni.Shared
 #endif
 #pragma warning restore IDE1006
 
+        public static void PrintPlayerLog()
+        {
+            string path = Path.Combine(Application.persistentDataPath, "omni_player_log.txt");
+            if (File.Exists(path))
+            {
+                Log($"Log Path: {path}");
+                Log($"Player Log:\n\r{File.ReadAllText(path)}");
+            }
+            else
+            {
+                Log("No player log found. this file is empty.");
+            }
+        }
+
         /// <summary>
         /// Logs a message to the log file.<br/>
         /// Includes the current local date and time, thread ID, and log type.
         /// </summary>
         public static void LogToFile(object message, LogType logType = LogType.Log)
         {
-            using (StreamWriter file = new("omni_log.txt", true))
-            {
-                string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                int threadId = Thread.CurrentThread.ManagedThreadId;
-                file.WriteLine($"{dateTime}: {message} -> ThreadId: ({threadId}) - {logType}");
-            }
+            string path = Path.Combine(Application.persistentDataPath, "omni_player_log.txt");
+            using StreamWriter file = new(path, true);
+            string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            int threadId = Thread.CurrentThread.ManagedThreadId;
+            file.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
         }
 
         /// <summary>
