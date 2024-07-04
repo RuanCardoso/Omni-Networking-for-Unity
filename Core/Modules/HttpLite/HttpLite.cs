@@ -495,27 +495,34 @@ namespace Omni.Core
                     throw new Exception("Http Lite: Maybe you're forgetting to call Send().");
                 }
 
-                if (response.ForceSendToSelf)
+                // Self:
+                Server.SendMessage(
+                    msgId,
+                    peer.Id,
+                    header,
+                    Target.Self,
+                    response.DeliveryMode,
+                    0,
+                    response.CacheId,
+                    response.CacheMode,
+                    response.SequenceChannel
+                );
+
+                Target target = response.Target switch
                 {
-                    Server.SendMessage(
-                        msgId,
-                        peer.Id,
-                        header,
-                        Target.Self,
-                        response.DeliveryMode,
-                        0,
-                        response.CacheId,
-                        response.CacheMode,
-                        response.SequenceChannel
-                    );
-                }
+                    HttpTarget.Self => Target.Self,
+                    HttpTarget.All => Target.AllExceptSelf,
+                    HttpTarget.GroupMembers => Target.GroupMembersExceptSelf,
+                    HttpTarget.NonGroupMembers => Target.NonGroupMembersExceptSelf,
+                    _ => Target.Self,
+                };
 
                 // Send the get response
                 Server.SendMessage(
                     msgId,
                     peer.Id,
                     header,
-                    response.Target,
+                    target,
                     response.DeliveryMode,
                     response.GroupId,
                     response.CacheId,

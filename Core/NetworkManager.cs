@@ -70,6 +70,32 @@ namespace Omni.Core
     }
 
     /// <summary>
+    /// Specifies the target recipients for a GET/POST message.
+    /// </summary>
+    public enum HttpTarget
+    {
+        /// <summary>
+        /// Sends the message to the current client itself. If the peer ID is 0 (server), the message is not executed.
+        /// </summary>
+        Self,
+
+        /// <summary>
+        /// Broadcasts the message to all connected players.
+        /// </summary>
+        All,
+
+        /// <summary>
+        /// Sends the message to all players who are members of the same groups as the sender.
+        /// </summary>
+        GroupMembers,
+
+        /// <summary>
+        /// Sends the message to all players who are not members of any groups.
+        /// </summary>
+        NonGroupMembers,
+    }
+
+    /// <summary>
     /// Specifies the target recipients for a network message.
     /// </summary>
     public enum Target
@@ -102,7 +128,12 @@ namespace Omni.Core
         /// <summary>
         /// Sends the message to all players who are not members of any groups.
         /// </summary>
-        NonGroupMembers
+        NonGroupMembers,
+
+        /// <summary>
+        /// Sends the message to all players who are not members of any groups. Except the sender.
+        /// </summary>
+        NonGroupMembersExceptSelf
     }
 
     /// <summary>
@@ -1011,11 +1042,18 @@ namespace Omni.Core
                 switch (target)
                 {
                     case Target.NonGroupMembers:
+                    case Target.NonGroupMembersExceptSelf:
                         {
                             var peers = peersById.Values.Where(p => p.Groups.Count == 0);
                             foreach (var peer in peers)
                             {
                                 if (peer.Id == Server.ServerPeer.Id)
+                                    continue;
+
+                                if (
+                                    peer.EndPoint.Equals(fromPeer)
+                                    && target == Target.NonGroupMembersExceptSelf
+                                )
                                     continue;
 
                                 Send(message, peer.EndPoint);
