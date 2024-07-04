@@ -47,7 +47,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Destroys a network identity on the server and serializes its destruction to the buffer.
+        /// Destroys a network identity on the server and serializes its data to the buffer.
         /// </summary>
         /// <param name="identity">The network identity to destroy.</param>
         public static void DestroyOnServer(this DataBuffer buffer, NetworkIdentity identity)
@@ -74,7 +74,7 @@ namespace Omni.Core
         /// Thrown when there is no space available in the buffer acquired from the pool,
         /// or if an error occurs during compression.
         /// </exception>
-        public static DataBuffer ToBrotli(this DataBuffer buffer, int quality = 1, int window = 22)
+        public static DataBuffer Compress(this DataBuffer buffer, int quality = 1, int window = 22)
         {
             try
             {
@@ -98,9 +98,19 @@ namespace Omni.Core
             }
         }
 
-        public static void ToBrotliRaw(this DataBuffer buffer, int quality = 1, int window = 22)
+        /// <summary>
+        /// Compresses the data in the current buffer using the Brotli compression algorithm.
+        /// </summary>
+        /// <param name="buffer">The buffer containing the data to compress.</param>
+        /// <param name="quality">The compression quality, ranging from 0 (fastest) to 11 (slowest). Default is 1.</param>
+        /// <param name="window">The Brotli sliding window size, ranging from 10 to 24. Default is 22.</param>
+        /// <exception cref="Exception">
+        /// Thrown when there is no space available in the buffer acquired from the pool,
+        /// or if an error occurs during compression.
+        /// </exception>
+        public static void CompressRaw(this DataBuffer buffer, int quality = 1, int window = 22)
         {
-            using var compressedBuffer = ToBrotli(buffer, quality, window);
+            using var compressedBuffer = Compress(buffer, quality, window);
             buffer.SeekToBegin();
             WriteRaw(buffer, compressedBuffer.BufferAsSpan);
         }
@@ -113,7 +123,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if an error occurs during decompression.
         /// </exception>
-        public static DataBuffer FromBrotli(this DataBuffer buffer)
+        public static DataBuffer Decompress(this DataBuffer buffer)
         {
             using BrotliDecompressor decompressor = new();
             buffer.SeekToEnd();
@@ -125,16 +135,23 @@ namespace Omni.Core
             return decompressedBuffer;
         }
 
-        public static void FromBrotliRaw(this DataBuffer buffer)
+        /// <summary>
+        /// Decompresses the data in the current buffer using the Brotli decompression algorithm.
+        /// </summary>
+        /// <param name="buffer">The buffer containing the compressed data.</param>
+        /// <exception cref="Exception">
+        /// Thrown if an error occurs during decompression.
+        /// </exception>
+        public static void DecompressRaw(this DataBuffer buffer)
         {
-            using var decompressedBuffer = FromBrotli(buffer);
+            using var decompressedBuffer = Decompress(buffer);
             buffer.SeekToBegin();
             WriteRaw(buffer, decompressedBuffer.Internal_GetSpan(decompressedBuffer.EndPosition));
             buffer.SeekToBegin();
         }
 
         /// <summary>
-        /// Encrypts the data buffer using AES encryption.
+        /// Encrypts the data in the buffer using AES encryption.
         /// </summary>
         /// <param name="buffer">The data buffer to encrypt.</param>
         /// <param name="peer">The network peer used for encryption.</param>
@@ -157,6 +174,11 @@ namespace Omni.Core
             return encryptedBuffer;
         }
 
+        /// <summary>
+        /// Encrypts the data in the current buffer using AES encryption.
+        /// </summary>
+        /// <param name="buffer">The data buffer to encrypt.</param>
+        /// <param name="peer">The network peer used for encryption.</param>
         public static void EncryptRaw(this DataBuffer buffer, NetworkPeer peer)
         {
             using var encryptedBuffer = Encrypt(buffer, peer);
@@ -165,7 +187,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Decrypts the data buffer using AES decryption.
+        /// Decrypts the data in the buffer using AES decryption.
         /// </summary>
         /// <param name="buffer">The data buffer to decrypt.</param>
         /// <param name="peer">The network peer used for decryption.</param>
@@ -188,6 +210,12 @@ namespace Omni.Core
             return decryptedBuffer;
         }
 
+        /// <summary>
+        /// Decrypts the data in the current buffer using AES decryption.
+        /// </summary>
+        /// <param name="buffer">The data buffer to decrypt.</param>
+        /// <param name="peer">The network peer used for decryption.</param>
+        /// <returns>A new decrypted data buffer. The caller must ensure the buffer is disposed or used within a using statement</returns>
         public static void DecryptRaw(this DataBuffer buffer, NetworkPeer peer)
         {
             using var decryptedBuffer = Decrypt(buffer, peer);
