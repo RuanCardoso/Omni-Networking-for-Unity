@@ -79,9 +79,10 @@ namespace Omni.Core
             try
             {
                 using BrotliCompressor compressor = new(quality, window);
-                compressor.Write(buffer.WrittenSpan);
+                buffer.SeekToEnd();
+                compressor.Write(buffer.BufferAsSpan);
 
-                var compressedBuffer = NetworkManager.Pool.Rent();
+                var compressedBuffer = NetworkManager.Pool.Rent(); // Disposed by the caller!
                 compressor.CopyTo(compressedBuffer);
                 return compressedBuffer;
             }
@@ -100,8 +101,8 @@ namespace Omni.Core
         public static void ToBrotliRaw(this DataBuffer buffer, int quality = 1, int window = 22)
         {
             using var compressedBuffer = ToBrotli(buffer, quality, window);
-            buffer.ResetWrittenCount();
-            WriteRaw(buffer, compressedBuffer.WrittenSpan);
+            buffer.SeekToBegin();
+            WriteRaw(buffer, compressedBuffer.BufferAsSpan);
         }
 
         /// <summary>
@@ -115,23 +116,21 @@ namespace Omni.Core
         public static DataBuffer FromBrotli(this DataBuffer buffer)
         {
             using BrotliDecompressor decompressor = new();
-            var data = decompressor.Decompress(buffer.Rework().WrittenSpan);
+            buffer.SeekToEnd();
+            var data = decompressor.Decompress(buffer.BufferAsSpan);
 
             var decompressedBuffer = NetworkManager.Pool.Rent();
             data.CopyTo(decompressedBuffer.GetSpan());
-            decompressedBuffer.SetLastWrittenCount((int)data.Length);
+            decompressedBuffer.SetEndPosition((int)data.Length);
             return decompressedBuffer;
         }
 
         public static void FromBrotliRaw(this DataBuffer buffer)
         {
             using var decompressedBuffer = FromBrotli(buffer);
-            buffer.ResetWrittenCount();
-            WriteRaw(
-                buffer,
-                decompressedBuffer.Internal_GetSpan(decompressedBuffer.LastWrittenCount)
-            );
-            buffer.ResetWrittenCount();
+            buffer.SeekToBegin();
+            WriteRaw(buffer, decompressedBuffer.Internal_GetSpan(decompressedBuffer.EndPosition));
+            buffer.SeekToBegin();
         }
 
         /// <summary>
@@ -142,6 +141,7 @@ namespace Omni.Core
         /// <returns>A new encrypted data buffer. The caller must ensure the buffer is disposed or used within a using statement</returns>
         public static DataBuffer Encrypt(this DataBuffer buffer, NetworkPeer peer)
         {
+            buffer.SeekToEnd();
             byte[] data = buffer.ToArray();
             byte[] encryptedData = AesCryptography.Encrypt(
                 data,
@@ -160,8 +160,8 @@ namespace Omni.Core
         public static void EncryptRaw(this DataBuffer buffer, NetworkPeer peer)
         {
             using var encryptedBuffer = Encrypt(buffer, peer);
-            buffer.ResetWrittenCount();
-            WriteRaw(buffer, encryptedBuffer.WrittenSpan);
+            buffer.SeekToBegin();
+            WriteRaw(buffer, encryptedBuffer.BufferAsSpan);
         }
 
         /// <summary>
@@ -184,16 +184,16 @@ namespace Omni.Core
 
             var decryptedBuffer = NetworkManager.Pool.Rent();
             decryptedBuffer.Write(decryptedData);
-            decryptedBuffer.ResetWrittenCount();
+            decryptedBuffer.SeekToBegin();
             return decryptedBuffer;
         }
 
         public static void DecryptRaw(this DataBuffer buffer, NetworkPeer peer)
         {
             using var decryptedBuffer = Decrypt(buffer, peer);
-            buffer.ResetWrittenCount();
-            WriteRaw(buffer, decryptedBuffer.Internal_GetSpan(decryptedBuffer.LastWrittenCount));
-            buffer.ResetWrittenCount();
+            buffer.SeekToBegin();
+            WriteRaw(buffer, decryptedBuffer.Internal_GetSpan(decryptedBuffer.EndPosition));
+            buffer.SeekToBegin();
         }
     }
 
@@ -447,7 +447,7 @@ namespace Omni.Core
         {
             if (seekToBegin)
             {
-                buffer.ResetReadPosition();
+                buffer.SeekToBegin();
             }
 
             return FromJson<Response>(buffer);
@@ -460,7 +460,7 @@ namespace Omni.Core
         {
             if (seekToBegin)
             {
-                buffer.ResetReadPosition();
+                buffer.SeekToBegin();
             }
 
             return FromJson<T>(buffer);

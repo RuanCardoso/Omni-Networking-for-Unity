@@ -129,7 +129,7 @@ namespace Omni.Core
                 using DataBuffer message = Pool.Rent();
                 message.FastWrite(identityId);
                 message.FastWrite(msgId);
-                message.Write(buffer.WrittenSpan);
+                message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.GlobalInvoke, message, deliveryMode, sequenceChannel);
             }
 
@@ -147,7 +147,7 @@ namespace Omni.Core
                 message.FastWrite(identityId);
                 message.FastWrite(instanceId);
                 message.FastWrite(msgId);
-                message.Write(buffer.WrittenSpan);
+                message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.LocalInvoke, message, deliveryMode, sequenceChannel);
             }
 
@@ -166,7 +166,7 @@ namespace Omni.Core
 
                 using DataBuffer message = Pool.Rent();
                 message.FastWrite(groupName);
-                message.Write(buffer.WrittenSpan);
+                message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.JoinGroup, message, DeliveryMode.ReliableOrdered, 0);
             }
 
@@ -380,7 +380,7 @@ namespace Omni.Core
                 using DataBuffer message = Pool.Rent();
                 message.FastWrite(identityId);
                 message.FastWrite(msgId);
-                message.Write(buffer.WrittenSpan);
+                message.Write(buffer.BufferAsSpan);
                 SendMessage(
                     MessageType.GlobalInvoke,
                     peerId,
@@ -416,7 +416,7 @@ namespace Omni.Core
                 message.FastWrite(identityId);
                 message.FastWrite(instanceId);
                 message.FastWrite(msgId);
-                message.Write(buffer.WrittenSpan);
+                message.Write(buffer.BufferAsSpan);
                 SendMessage(
                     MessageType.LocalInvoke,
                     peerId,
@@ -467,7 +467,7 @@ namespace Omni.Core
 
                     if (writeBufferToClient)
                     {
-                        message.Write(buffer.WrittenSpan);
+                        message.Write(buffer.BufferAsSpan);
                     }
 
                     SendMessage(

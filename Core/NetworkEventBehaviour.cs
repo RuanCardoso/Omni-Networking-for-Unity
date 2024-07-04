@@ -444,7 +444,7 @@ namespace Omni.Core
 
         protected virtual void OnClientMessage(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            buffer.ResetReadPosition();
+            buffer.SeekToBegin();
             TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
         }
 
@@ -506,7 +506,7 @@ namespace Omni.Core
             int seqChannel
         )
         {
-            buffer.ResetReadPosition();
+            buffer.SeekToBegin();
             TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
         }
 
@@ -702,7 +702,7 @@ namespace Omni.Core
 
         protected virtual void OnMessage(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            buffer.ResetReadPosition();
+            buffer.SeekToBegin();
             TryClientLocate(msgId, buffer, seqChannel); // Global Invoke
         }
 
@@ -913,7 +913,7 @@ namespace Omni.Core
             int seqChannel
         )
         {
-            buffer.ResetReadPosition();
+            buffer.SeekToBegin();
             TryServerLocate(msgId, buffer, peer, seqChannel); // Global Invoke
         }
 

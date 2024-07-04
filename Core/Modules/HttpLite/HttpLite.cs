@@ -189,7 +189,7 @@ namespace Omni.Core
 
                 int lastId = routeId;
                 using DataBuffer header = DefaultHeader(routeName, lastId);
-                header.Write(message.WrittenSpan);
+                header.Write(message.BufferAsSpan);
 
                 // Next request id
                 routeId++;
@@ -227,7 +227,7 @@ namespace Omni.Core
 
                 int lastId = routeId;
                 using var header = DefaultHeader(routeName, lastId);
-                header.Write(message.WrittenSpan);
+                header.Write(message.BufferAsSpan);
 
                 // Next request id
                 routeId++;
@@ -419,7 +419,7 @@ namespace Omni.Core
             int sequenceChannel
         )
         {
-            buffer.ResetReadPosition();
+            buffer.SeekToBegin();
             string routeName = buffer.ReadString();
             int routeId = buffer.Read<int>();
             if (msgId == MessageType.HttpGetFetchAsync)
@@ -464,7 +464,7 @@ namespace Omni.Core
                 {
                     using var request = Pool.Rent();
                     request.Write(buffer.GetSpan());
-                    request.ResetWrittenCount();
+                    request.SeekToBegin();
 
                     using var response = Pool.Rent();
                     await asyncCallback(request, response, peer);
@@ -479,7 +479,7 @@ namespace Omni.Core
                 {
                     using var request = Pool.Rent();
                     request.Write(buffer.GetSpan());
-                    request.ResetWrittenCount();
+                    request.SeekToBegin();
 
                     using var response = Pool.Rent();
                     callback(request, response, peer);
@@ -498,7 +498,7 @@ namespace Omni.Core
                 using var header = Pool.Rent();
                 header.FastWrite(routeName);
                 header.FastWrite(routeId);
-                header.Write(response.WrittenSpan);
+                header.Write(response.BufferAsSpan);
 
                 if (!response.SendEnabled)
                 {
@@ -537,7 +537,7 @@ namespace Omni.Core
 
         private static void OnClientMessage(byte msgId, DataBuffer buffer, int sequenceChannel)
         {
-            buffer.ResetReadPosition();
+            buffer.SeekToBegin();
             if (
                 msgId == MessageType.HttpGetResponseAsync
                 || msgId == MessageType.HttpPostResponseAsync
@@ -550,7 +550,7 @@ namespace Omni.Core
                 {
                     var message = Pool.Rent(); // Disposed by the caller!
                     message.Write(buffer.GetSpan());
-                    message.ResetWrittenCount();
+                    message.SeekToBegin();
 
                     // Set task as completed
                     source.TrySetResult(message);
@@ -559,7 +559,7 @@ namespace Omni.Core
                 {
                     using var eventMessage = Pool.Rent();
                     eventMessage.Write(buffer.GetSpan());
-                    eventMessage.ResetWrittenCount();
+                    eventMessage.SeekToBegin();
 
                     if (msgId == MessageType.HttpGetResponseAsync)
                     {

@@ -11,7 +11,7 @@ namespace Omni.Core
         internal DataBufferPool()
         {
             _pool = new Queue<DataBuffer>();
-            for (int i = 0; i < 35; i++)
+            for (int i = 0; i < 32; i++)
             {
                 _pool.Enqueue(new DataBuffer(pool: this));
             }
@@ -38,7 +38,8 @@ namespace Omni.Core
 
         public void Return(DataBuffer _buffer)
         {
-            _buffer.ResetWrittenCount();
+            _buffer.SeekToBegin();
+            _buffer.SetEndPosition(0);
             _pool.Enqueue(_buffer);
         }
     }

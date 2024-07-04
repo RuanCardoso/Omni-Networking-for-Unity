@@ -89,7 +89,7 @@ namespace Omni.Core
 #pragma warning restore IDE1006
         {
             // The overriden method must call base(SourceGenerator).
-            buffer.ResetReadPosition();
+            buffer.SeekToBegin();
             byte propertyId = buffer.Read<byte>();
             if (peer == null)
             {
