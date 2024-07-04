@@ -1012,7 +1012,7 @@ namespace Omni.Core
                 {
                     case Target.NonGroupMembers:
                         {
-                            var peers = peersById.Values.Where(p => p.Groups.Count == 0);
+                            var peers = peersById.Values.Where(p => p._groups.Count == 0);
                             foreach (var peer in peers)
                             {
                                 if (peer.Id == Server.ServerPeer.Id)
@@ -1035,7 +1035,17 @@ namespace Omni.Core
 
                             if (PeersByIp.TryGetValue(fromPeer, out var sender))
                             {
-                                if (sender.Groups.Count == 0)
+                                if (sender.Id == 0)
+                                {
+                                    NetworkLogger.__Log__(
+                                       "Send: The server(id: 0) cannot use Target.GroupMembers. Because he's not in any group.",
+                                       NetworkLogger.LogType.Error
+                                    );
+
+                                    return;
+                                }
+
+                                if (sender._groups.Count == 0)
                                 {
                                     NetworkLogger.__Log__(
                                         "Send: You are not in any groups. Please join a group first.",
@@ -1045,7 +1055,7 @@ namespace Omni.Core
                                     return;
                                 }
 
-                                foreach (var (_, group) in sender.Groups)
+                                foreach (var (_, group) in sender._groups)
                                 {
                                     if (group.IsSubGroup)
                                         continue;
@@ -1260,7 +1270,7 @@ namespace Omni.Core
                 }
                 else
                 {
-                    foreach (var (_, group) in currentPeer.Groups)
+                    foreach (var (_, group) in currentPeer._groups)
                     {
                         if (group._peersById.Remove(currentPeer.Id, out _))
                         {
@@ -1397,7 +1407,7 @@ namespace Omni.Core
                                 // Generate AES Key and send it to the server(Encrypted by RSA public key).
                                 Client.RsaServerPublicKey = rsaServerPublicKey;
                                 byte[] aesKey = AesCryptography.GenerateKey();
-                                LocalPeer.AesKey = aesKey;
+                                LocalPeer._aesKey = aesKey;
 
                                 // Crypt the AES Key with the server's RSA public key
                                 byte[] cryptedAesKey = RsaCryptography.Encrypt(
@@ -1425,7 +1435,7 @@ namespace Omni.Core
                                 using var _ = EndOfHeader();
 
                                 // Decrypt the AES Key with the server's RSA private key
-                                peer.AesKey = RsaCryptography.Decrypt(aesKey, Server.RsaPrivateKey);
+                                peer._aesKey = RsaCryptography.Decrypt(aesKey, Server.RsaPrivateKey);
 
                                 // Send Ok to the client!
                                 SendToClient(
