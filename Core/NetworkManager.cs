@@ -1047,6 +1047,9 @@ namespace Omni.Core
 
                                 foreach (var (_, group) in sender.Groups)
                                 {
+                                    if (group.IsSubGroup)
+                                        continue;
+
                                     foreach (var (_, peer) in group._peersById)
                                     {
                                         if (peer.Id == Server.ServerPeer.Id)
@@ -1207,6 +1210,7 @@ namespace Omni.Core
                 }
                 else
                 {
+                    OnServerPeerConnected?.Invoke(newPeer, Status.Begin);
                     newPeer.IsConnected = true;
                     using var message = Pool.Rent();
                     message.FastWrite(newPeer.Id);
@@ -1229,7 +1233,7 @@ namespace Omni.Core
                         $"Connection Info: Peer '{peer}' added to the server successfully."
                     );
 
-                    OnServerPeerConnected?.Invoke(newPeer, Status.Begin);
+                    OnServerPeerConnected?.Invoke(newPeer, Status.Normal);
                 }
             }
         }
@@ -1447,13 +1451,10 @@ namespace Omni.Core
                                     TickSystem = new NetworkTickSystem();
                                     TickSystem.Initialize(m_TickRate);
                                 }
-                                else
-                                {
-                                    print("Inicializado já");
-                                }
 
                                 // Connection end & authorized.
                                 LocalPeer.IsConnected = true;
+                                LocalPeer.IsAuthenticated = true;
                                 IsClientActive = true;
                                 StartCoroutine(QueryNtp());
                                 OnClientConnected?.Invoke();
@@ -1468,7 +1469,7 @@ namespace Omni.Core
                             }
                             else
                             {
-                                OnServerPeerConnected?.Invoke(peer, Status.Normal);
+                                peer.IsAuthenticated = true;
                                 OnServerPeerConnected?.Invoke(peer, Status.End);
                             }
                         }

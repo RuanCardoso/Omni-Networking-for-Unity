@@ -46,6 +46,9 @@ namespace Omni.Core
         public bool DestroyWhenEmpty { get; set; } = true;
 
         [MemoryPackIgnore]
+        public bool IsSubGroup => Depth != 1;
+
+        [MemoryPackIgnore]
         public bool AllowAcrossGroupMessage { get; set; } = true;
 
         [MemoryPackIgnore]
