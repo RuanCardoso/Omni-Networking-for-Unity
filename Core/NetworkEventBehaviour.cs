@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
+using Omni.Shared;
 using UnityEngine;
 using static Omni.Core.NetworkManager;
 
@@ -293,6 +294,9 @@ namespace Omni.Core
         private bool m_DontDestroyOnLoad;
 
         [SerializeField]
+        private bool m_KeepOldInstanceReference = false;
+
+        [SerializeField]
         private int m_Id;
 
         private NbClient local;
@@ -357,12 +361,7 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            NetworkService.Register(this, m_ServiceName);
-            if (m_DontDestroyOnLoad)
-            {
-                DontDestroyOnLoad(this);
-            }
-
+            InitializeServiceLocator();
             InitializeBehaviour();
             RegisterEvents();
         }
@@ -372,6 +371,55 @@ namespace Omni.Core
             RegisterMatchmakingEvents();
             StartCoroutine(Internal_OnServerStart());
             StartCoroutine(Internal_OnClientStart());
+        }
+
+        private void InitializeServiceLocator()
+        {
+            if (NetworkService.TryRegister(this, m_ServiceName))
+            {
+                if (m_DontDestroyOnLoad)
+                {
+                    if (transform.root == transform)
+                    {
+                        DontDestroyOnLoad(gameObject);
+                    }
+                    else
+                    {
+                        NetworkLogger.__Log__(
+                            "Service: Only the root object can be set to DontDestroyOnLoad",
+                            NetworkLogger.LogType.Error
+                        );
+                    }
+                }
+            }
+            else
+            {
+                if (m_DontDestroyOnLoad)
+                {
+                    if (m_KeepOldInstanceReference)
+                    {
+                        // Keep the old reference, destroy the new one.
+                        Destroy(gameObject);
+                    }
+                    else
+                    {
+                        // Keep/Update the current reference, destroy the old one.
+                        var oldRef = NetworkService.Get<NetworkService>(m_ServiceName);
+                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
+                        {
+                            Destroy(unityObject.gameObject);
+                        }
+
+                        DontDestroyOnLoad(gameObject);
+                        NetworkService.Update(this, m_ServiceName);
+                    }
+                }
+                else
+                {
+                    // Every keep the new reference.
+                    NetworkService.Update(this, m_ServiceName);
+                }
+            }
         }
 
         private IEnumerator Internal_OnServerStart()
@@ -612,6 +660,9 @@ namespace Omni.Core
         private bool m_DontDestroyOnLoad;
 
         [SerializeField]
+        private bool m_KeepOldInstanceReference = false;
+
+        [SerializeField]
         private int m_Id;
         private NbClient local;
 
@@ -645,12 +696,7 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            NetworkService.Register(this, m_ServiceName);
-            if (m_DontDestroyOnLoad)
-            {
-                DontDestroyOnLoad(this);
-            }
-
+            InitializeServiceLocator();
             InitializeBehaviour();
             RegisterEvents();
         }
@@ -659,6 +705,55 @@ namespace Omni.Core
         {
             RegisterMatchmakingEvents();
             StartCoroutine(Internal_OnClientStart());
+        }
+
+        private void InitializeServiceLocator()
+        {
+            if (NetworkService.TryRegister(this, m_ServiceName))
+            {
+                if (m_DontDestroyOnLoad)
+                {
+                    if (transform.root == transform)
+                    {
+                        DontDestroyOnLoad(gameObject);
+                    }
+                    else
+                    {
+                        NetworkLogger.__Log__(
+                            "Service: Only the root object can be set to DontDestroyOnLoad",
+                            NetworkLogger.LogType.Error
+                        );
+                    }
+                }
+            }
+            else
+            {
+                if (m_DontDestroyOnLoad)
+                {
+                    if (m_KeepOldInstanceReference)
+                    {
+                        // Keep the old reference, destroy the new one.
+                        Destroy(gameObject);
+                    }
+                    else
+                    {
+                        // Keep/Update the current reference, destroy the old one.
+                        var oldRef = NetworkService.Get<NetworkService>(m_ServiceName);
+                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
+                        {
+                            Destroy(unityObject.gameObject);
+                        }
+
+                        DontDestroyOnLoad(gameObject);
+                        NetworkService.Update(this, m_ServiceName);
+                    }
+                }
+                else
+                {
+                    // Every keep the new reference.
+                    NetworkService.Update(this, m_ServiceName);
+                }
+            }
         }
 
         private IEnumerator Internal_OnClientStart()
@@ -779,6 +874,9 @@ namespace Omni.Core
         private bool m_DontDestroyOnLoad;
 
         [SerializeField]
+        private bool m_KeepOldInstanceReference = false;
+
+        [SerializeField]
         private int m_Id;
         private NbServer remote;
 
@@ -813,12 +911,7 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            NetworkService.Register(this, m_ServiceName);
-            if (m_DontDestroyOnLoad)
-            {
-                DontDestroyOnLoad(this);
-            }
-
+            InitializeServiceLocator();
             InitializeBehaviour();
             RegisterEvents();
         }
@@ -827,6 +920,55 @@ namespace Omni.Core
         {
             RegisterMatchmakingEvents();
             StartCoroutine(Internal_OnServerStart());
+        }
+
+        private void InitializeServiceLocator()
+        {
+            if (NetworkService.TryRegister(this, m_ServiceName))
+            {
+                if (m_DontDestroyOnLoad)
+                {
+                    if (transform.root == transform)
+                    {
+                        DontDestroyOnLoad(gameObject);
+                    }
+                    else
+                    {
+                        NetworkLogger.__Log__(
+                            "Service: Only the root object can be set to DontDestroyOnLoad",
+                            NetworkLogger.LogType.Error
+                        );
+                    }
+                }
+            }
+            else
+            {
+                if (m_DontDestroyOnLoad)
+                {
+                    if (m_KeepOldInstanceReference)
+                    {
+                        // Keep the old reference, destroy the new one.
+                        Destroy(gameObject);
+                    }
+                    else
+                    {
+                        // Keep/Update the current reference, destroy the old one.
+                        var oldRef = NetworkService.Get<NetworkService>(m_ServiceName);
+                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
+                        {
+                            Destroy(unityObject.gameObject);
+                        }
+
+                        DontDestroyOnLoad(gameObject);
+                        NetworkService.Update(this, m_ServiceName);
+                    }
+                }
+                else
+                {
+                    // Every keep the new reference.
+                    NetworkService.Update(this, m_ServiceName);
+                }
+            }
         }
 
         private IEnumerator Internal_OnServerStart()

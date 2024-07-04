@@ -10,7 +10,7 @@ namespace Omni.Core
 {
     public class NetworkIdentity : MonoBehaviour
     {
-        private readonly Dictionary<string, object> services = new(); // Service Name
+        private readonly Dictionary<string, object> m_Services = new(); // (Service Name, Service Instance) exclusively to identity
 
         [SerializeField]
         [ReadOnly]
@@ -86,7 +86,7 @@ namespace Omni.Core
         {
             try
             {
-                if (services.TryGetValue(serviceName, out object service))
+                if (m_Services.TryGetValue(serviceName, out object service))
                 {
 #if OMNI_RELEASE
                     return Unsafe.As<T>(service);
@@ -120,7 +120,7 @@ namespace Omni.Core
             where T : class
         {
             service = default;
-            if (services.TryGetValue(serviceName, out object @obj))
+            if (m_Services.TryGetValue(serviceName, out object @obj))
             {
                 if (@obj is T)
                 {
@@ -159,7 +159,7 @@ namespace Omni.Core
         {
             service = default;
             string serviceName = typeof(T).Name;
-            if (services.TryGetValue(serviceName, out object @obj))
+            if (m_Services.TryGetValue(serviceName, out object @obj))
             {
                 if (@obj is T)
                 {
@@ -185,7 +185,7 @@ namespace Omni.Core
         /// </exception>
         public void Register<T>(T service, string serviceName)
         {
-            if (!services.TryAdd(serviceName, service))
+            if (!m_Services.TryAdd(serviceName, service))
             {
                 throw new Exception(
                     $"Could not add service with name: \"{serviceName}\" because it already exists."
@@ -205,7 +205,7 @@ namespace Omni.Core
         /// </exception>
         public bool TryRegister<T>(T service, string serviceName)
         {
-            return services.TryAdd(serviceName, service);
+            return m_Services.TryAdd(serviceName, service);
         }
 
         /// <summary>
@@ -220,9 +220,9 @@ namespace Omni.Core
         /// </exception>
         public void UpdateService<T>(T service, string serviceName)
         {
-            if (services.ContainsKey(serviceName))
+            if (m_Services.ContainsKey(serviceName))
             {
-                services[serviceName] = service;
+                m_Services[serviceName] = service;
             }
             else
             {
@@ -244,9 +244,9 @@ namespace Omni.Core
         /// </exception>
         public bool TryUpdate<T>(T service, string serviceName)
         {
-            if (services.ContainsKey(serviceName))
+            if (m_Services.ContainsKey(serviceName))
             {
-                services[serviceName] = service;
+                m_Services[serviceName] = service;
                 return true;
             }
 
@@ -260,7 +260,7 @@ namespace Omni.Core
         /// <returns>True if the service was successfully removed; otherwise, false.</returns>
         public bool Unregister(string serviceName)
         {
-            return services.Remove(serviceName);
+            return m_Services.Remove(serviceName);
         }
     }
 }

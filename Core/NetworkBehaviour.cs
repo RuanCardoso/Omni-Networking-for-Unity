@@ -422,7 +422,11 @@ namespace Omni.Core
 
         private void InitializeServiceLocator()
         {
-            Identity.Register(this, m_ServiceName);
+            if (!Identity.TryRegister(this, m_ServiceName))
+            {
+                // Update the old reference to the new one.
+                Identity.UpdateService(this, m_ServiceName);
+            }
         }
 
         private void AddEventBehaviour()

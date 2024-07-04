@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using Omni.Shared;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -28,14 +29,18 @@ namespace Omni.Core
     [DefaultExecutionOrder(-10500)]
     public class NetworkService : MonoBehaviour
     {
-        private static readonly Dictionary<string, object> services = new(); // Service Name
+        // (Service Name, Service Instance)
+        private static readonly Dictionary<string, object> m_Services = new();
 
         [Header("Service Settings")]
         [SerializeField]
-        private string serviceName;
+        private string m_ServiceName;
 
         [SerializeField]
-        private bool dontDestroyOnLoad;
+        private bool m_DontDestroyOnLoad;
+
+        [SerializeField]
+        private bool m_KeepOldInstanceReference = false;
 
         protected virtual void Awake()
         {
@@ -49,10 +54,50 @@ namespace Omni.Core
         /// </summary>
         protected void InitializeServiceLocator()
         {
-            Register(this, serviceName);
-            if (dontDestroyOnLoad)
+            if (TryRegister(this, m_ServiceName))
             {
-                DontDestroyOnLoad(this);
+                if (m_DontDestroyOnLoad)
+                {
+                    if (transform.root == transform)
+                    {
+                        DontDestroyOnLoad(gameObject);
+                    }
+                    else
+                    {
+                        NetworkLogger.__Log__(
+                            "Service: Only the root object can be set to DontDestroyOnLoad",
+                            NetworkLogger.LogType.Error
+                        );
+                    }
+                }
+            }
+            else
+            {
+                if (m_DontDestroyOnLoad)
+                {
+                    if (m_KeepOldInstanceReference)
+                    {
+                        // Keep the old reference, destroy the new one.
+                        Destroy(gameObject);
+                    }
+                    else
+                    {
+                        // Keep/Update the current reference, destroy the old one.
+                        var oldRef = Get<NetworkService>(m_ServiceName);
+                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
+                        {
+                            Destroy(unityObject.gameObject);
+                        }
+
+                        DontDestroyOnLoad(gameObject);
+                        Update(this, m_ServiceName);
+                    }
+                }
+                else
+                {
+                    // Every keep the new reference.
+                    Update(this, m_ServiceName);
+                }
             }
         }
 
@@ -71,7 +116,7 @@ namespace Omni.Core
         {
             try
             {
-                if (services.TryGetValue(serviceName, out object service))
+                if (m_Services.TryGetValue(serviceName, out object service))
                 {
 #if OMNI_RELEASE
                     return Unsafe.As<T>(service);
@@ -105,7 +150,7 @@ namespace Omni.Core
             where T : class
         {
             service = default;
-            if (services.TryGetValue(serviceName, out object @obj))
+            if (m_Services.TryGetValue(serviceName, out object @obj))
             {
                 if (@obj is T)
                 {
@@ -144,7 +189,7 @@ namespace Omni.Core
         {
             service = default;
             string serviceName = typeof(T).Name;
-            if (services.TryGetValue(serviceName, out object @obj))
+            if (m_Services.TryGetValue(serviceName, out object @obj))
             {
                 if (@obj is T)
                 {
@@ -170,7 +215,7 @@ namespace Omni.Core
         /// </exception>
         public static void Register<T>(T service, string serviceName)
         {
-            if (!services.TryAdd(serviceName, service))
+            if (!m_Services.TryAdd(serviceName, service))
             {
                 throw new Exception(
                     $"Could not add service with name: \"{serviceName}\" because it already exists."
@@ -180,17 +225,13 @@ namespace Omni.Core
 
         /// <summary>
         /// Attempts to retrieve adds a new service instance to the service locator with a specified name.
-        /// Throws an exception if a service with the same name already exists.
         /// </summary>
         /// <typeparam name="T">The type of the service to add.</typeparam>
         /// <param name="service">The service instance to add.</param>
         /// <param name="serviceName">The name to associate with the service instance.</param>
-        /// <exception cref="Exception">
-        /// Thrown if a service with the specified name already exists.
-        /// </exception>
         public static bool TryRegister<T>(T service, string serviceName)
         {
-            return services.TryAdd(serviceName, service);
+            return m_Services.TryAdd(serviceName, service);
         }
 
         /// <summary>
@@ -205,9 +246,9 @@ namespace Omni.Core
         /// </exception>
         public static void Update<T>(T service, string serviceName)
         {
-            if (services.ContainsKey(serviceName))
+            if (m_Services.ContainsKey(serviceName))
             {
-                services[serviceName] = service;
+                m_Services[serviceName] = service;
             }
             else
             {
@@ -219,19 +260,15 @@ namespace Omni.Core
 
         /// <summary>
         /// Attempts to retrieve updates an existing service instance in the service locator with a specified name.
-        /// Throws an exception if a service with the specified name does not exist.
         /// </summary>
         /// <typeparam name="T">The type of the service to update.</typeparam>
         /// <param name="service">The new service instance to associate with the specified name.</param>
         /// <param name="serviceName">The name associated with the service instance to update.</param>
-        /// <exception cref="Exception">
-        /// Thrown if a service with the specified name does not exist in the.
-        /// </exception>
         public static bool TryUpdate<T>(T service, string serviceName)
         {
-            if (services.ContainsKey(serviceName))
+            if (m_Services.ContainsKey(serviceName))
             {
-                services[serviceName] = service;
+                m_Services[serviceName] = service;
                 return true;
             }
 
@@ -245,14 +282,14 @@ namespace Omni.Core
         /// <returns>True if the service was successfully removed; otherwise, false.</returns>
         public static bool Unregister(string serviceName)
         {
-            return services.Remove(serviceName);
+            return m_Services.Remove(serviceName);
         }
 
         protected virtual void OnValidate()
         {
-            if (string.IsNullOrEmpty(serviceName))
+            if (string.IsNullOrEmpty(m_ServiceName))
             {
-                serviceName = GetType().Name;
+                m_ServiceName = GetType().Name;
             }
         }
 
