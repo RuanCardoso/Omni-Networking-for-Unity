@@ -54,6 +54,10 @@ namespace Omni.Core.Modules.Connection
         private int m_MaxEventsPerFrame = 0;
 
         [SerializeField]
+        [Range(1, 64)]
+        private byte m_ChannelsCount = 1;
+
+        [SerializeField]
         [Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
         [Label("IPv6 Enabled")]
         private bool m_IPv6Enabled = false;
@@ -154,6 +158,7 @@ namespace Omni.Core.Modules.Connection
                 PingInterval = m_pingInterval,
                 UseNativeSockets = m_useNativeSockets, // Experimental feature mostly for servers. Only for Windows/Linux
                 UseSafeMtu = m_useSafeMtu,
+                ChannelsCount = m_ChannelsCount,
                 SimulateLatency = m_SimulateLag,
                 SimulatePacketLoss = m_SimulateLag,
                 SimulationMinLatency = m_MinLatency,
@@ -422,6 +427,7 @@ namespace Omni.Core.Modules.Connection
             liteTransporter.m_MaxEventsPerFrame = m_MaxEventsPerFrame;
             liteTransporter.m_useNativeSockets = m_useNativeSockets;
             liteTransporter.m_useSafeMtu = m_useSafeMtu;
+            liteTransporter.m_ChannelsCount = m_ChannelsCount;
 
             // Lag properties
             liteTransporter.m_SimulateLag = m_SimulateLag;
