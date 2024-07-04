@@ -50,11 +50,10 @@ namespace Omni.Core
             /// </remarks>
             public void AddGetHandler(string routeName, Action<DataBuffer> callback)
             {
-                if (!events.TryAdd((routeName, 0), callback))
+                var routeKey = (routeName, 0);
+                if (!events.TryAdd(routeKey, callback))
                 {
-                    throw new InvalidOperationException(
-                        "Route name already exists. Ensure that the route name is unique."
-                    );
+                    events[routeKey] = callback;
                 }
             }
 
@@ -73,11 +72,10 @@ namespace Omni.Core
             /// </remarks>
             public void AddPostHandler(string routeName, Action<DataBuffer> callback)
             {
+                var routeKey = (routeName, 1);
                 if (!events.TryAdd((routeName, 1), callback))
                 {
-                    throw new InvalidOperationException(
-                        "Route name already exists. Ensure that the route name is unique."
-                    );
+                    events[routeKey] = callback;
                 }
             }
 
@@ -337,9 +335,7 @@ namespace Omni.Core
             {
                 if (!asyncGetTasks.TryAdd(routeName, callback) || getTasks.ContainsKey(routeName))
                 {
-                    throw new InvalidOperationException(
-                        "Route name already exists. Ensure that the route name is unique."
-                    );
+                    asyncGetTasks[routeName] = callback;
                 }
             }
 
@@ -352,9 +348,7 @@ namespace Omni.Core
             {
                 if (!getTasks.TryAdd(routeName, callback) || asyncGetTasks.ContainsKey(routeName))
                 {
-                    throw new InvalidOperationException(
-                        "Route name already exists. Ensure that the route name is unique."
-                    );
+                    getTasks[routeName] = callback;
                 }
             }
 
@@ -370,9 +364,7 @@ namespace Omni.Core
             {
                 if (!asyncPostTasks.TryAdd(routeName, callback) || postTasks.ContainsKey(routeName))
                 {
-                    throw new InvalidOperationException(
-                        "Route name already exists. Ensure that the route name is unique."
-                    );
+                    asyncPostTasks[routeName] = callback;
                 }
             }
 
@@ -388,9 +380,7 @@ namespace Omni.Core
             {
                 if (!postTasks.TryAdd(routeName, callback) || asyncPostTasks.ContainsKey(routeName))
                 {
-                    throw new InvalidOperationException(
-                        "Route name already exists. Ensure that the route name is unique."
-                    );
+                    postTasks[routeName] = callback;
                 }
             }
         }
