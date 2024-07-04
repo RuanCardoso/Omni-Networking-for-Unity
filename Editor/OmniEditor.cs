@@ -2,6 +2,7 @@
 
 using Omni.Core;
 using Omni.Core.Modules.Connection;
+using Omni.Shared;
 using UnityEditor;
 using UnityEngine;
 
@@ -23,6 +24,12 @@ namespace Omni.Editor
                 client.transform.parent = manager.transform;
                 EditorUtility.SetDirty(manager);
             }
+        }
+
+        [MenuItem("Omni Networking/Print Player Log", false, 30)]
+        static void PrintPlayerLog()
+        {
+            NetworkLogger.PrintPlayerLog();
         }
     }
 #endif

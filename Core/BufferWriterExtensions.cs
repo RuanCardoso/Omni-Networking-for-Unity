@@ -456,14 +456,14 @@ namespace Omni.Core
         /// <summary>
         /// Reads a generic response to the buffer, used to response any request with status code, message and data(optional). The position is set to <c>0</c>
         /// </summary>
-        public static T FromResponse<T>(this DataBuffer buffer, bool seekToBegin = false)
+        public static Response<T> FromResponse<T>(this DataBuffer buffer, bool seekToBegin = false)
         {
             if (seekToBegin)
             {
                 buffer.SeekToBegin();
             }
 
-            return FromJson<T>(buffer);
+            return FromJson<Response<T>>(buffer);
         }
 
         /// <summary>

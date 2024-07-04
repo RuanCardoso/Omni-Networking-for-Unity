@@ -366,9 +366,11 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
+            NetworkHelper.LoadComponent(this, "setup.cfg");
             if (_manager != null)
             {
                 gameObject.SetActive(false);
+                Destroy(gameObject, 2f);
                 return;
             }
 
@@ -377,7 +379,6 @@ namespace Omni.Core
                 _stopwatch.Start();
             }
 
-            NetworkHelper.SaveComponent(this, "setup.cfg");
             _manager = this;
 #if !UNITY_SERVER || UNITY_EDITOR
             if (m_MaxFpsOnClient > 0)
@@ -618,7 +619,9 @@ namespace Omni.Core
                 Connection.Server.Listen(port);
                 NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #elif !UNITY_SERVER
-                NetworkLogger.LogToFile("Server is not available in release mode on client build.");
+                NetworkLogger.LogToFile(
+                    "Server is not available in 'release mode' on client build."
+                );
 #else
                 Server.GenerateRsaKeys();
                 Connection.Server.Listen(port);
@@ -673,7 +676,7 @@ namespace Omni.Core
                 Connection.Client.Listen(listenPort);
                 Connection.Client.Connect(address, port);
 #elif UNITY_SERVER && !UNITY_EDITOR
-                NetworkLogger.__Log__("Debug: Client is not available in a server build.");
+                NetworkLogger.__Log__("Client is not available in a server build.");
 #endif
             }
             else
