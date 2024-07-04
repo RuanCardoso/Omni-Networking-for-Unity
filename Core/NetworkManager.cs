@@ -90,12 +90,12 @@ namespace Omni.Core
         AllExceptSelf,
 
         /// <summary>
-        /// Sends the message to all players who are members of the same groups as the sender.
+        /// Sends the message to all players who are members of the same groups as the sender(sub groups not included).
         /// </summary>
         GroupMembers,
 
         /// <summary>
-        /// Sends the message to all players(except the sender) who are members of the same groups as the sender.
+        /// Sends the message to all players(except the sender) who are members of the same groups as the sender(sub groups not included).
         /// </summary>
         GroupMembersExceptSelf,
 
