@@ -383,7 +383,7 @@ namespace Omni.Core
         /// <param name="data">The data associated with the current tick.</param>
         public virtual void OnTick(ITickInfo data) { }
 
-        protected void Register()
+        protected internal void Register()
         {
             if (Identity.IsServer)
             {
@@ -407,7 +407,7 @@ namespace Omni.Core
             NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
         }
 
-        protected void Unregister()
+        protected internal void Unregister()
         {
             var eventBehaviours = Identity.IsServer
                 ? NetworkManager.Server.LocalEventBehaviours
