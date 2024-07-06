@@ -164,7 +164,7 @@ namespace Omni.Core
                 data,
                 0,
                 data.Length,
-                peer.AesKey,
+                peer._aesKey,
                 out byte[] Iv
             );
 
@@ -200,7 +200,7 @@ namespace Omni.Core
                 encryptedData,
                 0,
                 encryptedData.Length,
-                peer.AesKey,
+                peer._aesKey,
                 iv
             );
 

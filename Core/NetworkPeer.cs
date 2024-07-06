@@ -13,10 +13,13 @@ namespace Omni.Core
     public partial class NetworkPeer
     {
         [MemoryPackIgnore]
-        internal byte[] AesKey { get; set; }
+        internal byte[] _aesKey;
 
         [MemoryPackIgnore]
         internal NativePeer _nativePeer;
+
+        [MemoryPackIgnore]
+        internal Dictionary<int, NetworkGroup> _groups = new();
 
 #pragma warning disable IDE0052
         [MemoryPackIgnore]
@@ -33,9 +36,6 @@ namespace Omni.Core
 
         [MemoryPackIgnore]
         public bool IsAuthenticated { get; internal set; }
-
-        [MemoryPackIgnore]
-        public Dictionary<int, NetworkGroup> Groups { get; } = new();
 
         [MemoryPackIgnore]
         public ObservableDictionary<string, object> Data { get; } = new();
@@ -68,7 +68,7 @@ namespace Omni.Core
         public void ClearGroups()
         {
             EnsureServerActive();
-            Groups.Clear();
+            _groups.Clear();
         }
 
         public void ClearData()

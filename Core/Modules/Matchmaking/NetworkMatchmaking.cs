@@ -149,6 +149,19 @@ namespace Omni.Core.Modules.Matchmaking
             }
 
             /// <summary>
+            /// Adds a new group to the server.
+            /// </summary>
+            /// <param name="groupName">The name of the group to add.</param>
+            /// <returns>The newly created <see cref="NetworkGroup"/> object.</returns>
+            /// <remarks>
+            /// This method creates a new group on the server with the specified name and returns the created <see cref="NetworkGroup"/> object.
+            /// </remarks>
+            public bool TryAddGroup(string groupName, out NetworkGroup group)
+            {
+                return NetworkManager.Server.TryAddGroup(groupName, out group);
+            }
+
+            /// <summary>
             /// Joins a specified group on the server.
             /// </summary>
             /// <param name="group">The <see cref="NetworkGroup"/> object to join.</param>
@@ -232,6 +245,21 @@ namespace Omni.Core.Modules.Matchmaking
             }
 
             /// <summary>
+            /// Retrieves the <see cref="NetworkGroup"/> object associated with the specified group name.
+            /// </summary>
+            /// <param name="groupName">The name of the group.</param>
+            /// <returns>The <see cref="NetworkGroup"/> object corresponding to the specified group name.</returns>
+            /// <remarks>
+            /// This method first retrieves the group ID associated with the specified group name and then
+            /// returns the corresponding <see cref="NetworkGroup"/> object.
+            /// </remarks>
+            public bool TryGetGroup(string groupName, out NetworkGroup group)
+            {
+                int groupId = GetGroupId(groupName);
+                return TryGetGroup(groupId, out group);
+            }
+
+            /// <summary>
             /// Retrieves the <see cref="NetworkGroup"/> object associated with the specified group ID.
             /// </summary>
             /// <param name="groupId">The ID of the group.</param>
@@ -239,6 +267,16 @@ namespace Omni.Core.Modules.Matchmaking
             public NetworkGroup GetGroup(int groupId)
             {
                 return NetworkManager.Server.GetGroupById(groupId);
+            }
+
+            /// <summary>
+            /// Retrieves the <see cref="NetworkGroup"/> object associated with the specified group ID.
+            /// </summary>
+            /// <param name="groupId">The ID of the group.</param>
+            /// <returns>The <see cref="NetworkGroup"/> object corresponding to the specified group ID.</returns>
+            public bool TryGetGroup(int groupId, out NetworkGroup group)
+            {
+                return NetworkManager.Server.TryGetGroupById(groupId, out group);
             }
 
             /// <summary>
@@ -253,7 +291,8 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public bool HasGroup(string groupName)
             {
-                return Groups.ContainsKey(GetGroupId(groupName));
+                int groupId = GetGroupId(groupName);
+                return Groups.ContainsKey(groupId);
             }
         }
     }

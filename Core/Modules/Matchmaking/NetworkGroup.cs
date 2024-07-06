@@ -43,7 +43,24 @@ namespace Omni.Core
         public ObservableDictionary<string, object> SerializedData { get; } = new();
 
         [MemoryPackIgnore]
+        public Dictionary<int, NetworkPeer> Peers
+        {
+            get
+            {
+                if (__namebuilder__)
+                {
+                    throw new Exception("Peers: Cannot get peers from name builder mode.");
+                }
+
+                return _peersById;
+            }
+        }
+
+        [MemoryPackIgnore]
         public bool DestroyWhenEmpty { get; set; } = true;
+
+        [MemoryPackIgnore]
+        public bool IsSubGroup => Depth != 1;
 
         [MemoryPackIgnore]
         public bool AllowAcrossGroupMessage { get; set; } = true;
@@ -78,21 +95,11 @@ namespace Omni.Core
             Name = subGroups[Depth - 1];
         }
 
-        public Dictionary<int, NetworkPeer> GetPeers()
+        public NetworkPeer GetPeer(int peerId)
         {
             if (__namebuilder__)
             {
-                throw new Exception("Cannot get peers from name builder mode.");
-            }
-
-            return _peersById;
-        }
-
-        public NetworkPeer GetPeerById(int peerId)
-        {
-            if (__namebuilder__)
-            {
-                throw new Exception("Cannot get peer from name builder mode.");
+                throw new Exception("GetPeer: Cannot get peer from name builder mode.");
             }
 
             if (_peersById.TryGetValue(peerId, out var peer))
@@ -108,6 +115,16 @@ namespace Omni.Core
             return null;
         }
 
+        public bool TryGetPeer(int peerId, out NetworkPeer peer)
+        {
+            if (__namebuilder__)
+            {
+                throw new Exception("GetPeer: Cannot get peer from name builder mode.");
+            }
+
+            return _peersById.TryGetValue(peerId, out peer);
+        }
+
         public NetworkGroup AddSubGroup(string subGroupName)
         {
             string newIdentifier = $"{Identifier}->{subGroupName}";
@@ -115,10 +132,20 @@ namespace Omni.Core
             {
                 return NetworkManager.Matchmaking.Server.AddGroup(newIdentifier);
             }
-            else
+
+            return new NetworkGroup(newIdentifier);
+        }
+
+        public bool TryAddSubGroup(string subGroupName, out NetworkGroup subGroup)
+        {
+            string newIdentifier = $"{Identifier}->{subGroupName}";
+            if (!__namebuilder__)
             {
-                return new NetworkGroup(newIdentifier);
+                return NetworkManager.Matchmaking.Server.TryAddGroup(newIdentifier, out subGroup);
             }
+
+            subGroup = new NetworkGroup(newIdentifier);
+            return true;
         }
 
         public void DeleteCache(CacheMode cacheMode, int cacheId)

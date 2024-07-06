@@ -362,6 +362,7 @@ namespace LiteNetLib
 
         private BaseChannel CreateChannel(byte idx)
         {
+            try{
             BaseChannel newChannel = _channels[idx];
             if (newChannel != null)
                 return newChannel;
@@ -385,6 +386,11 @@ namespace LiteNetLib
                 return prevChannel;
 
             return newChannel;
+            }
+            catch
+            {
+                throw new Exception($"The channel {idx} is not available! See the transporter settings.");
+            }
         }
 
         //"Connect to" constructor

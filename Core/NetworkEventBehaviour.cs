@@ -1,8 +1,10 @@
+using System;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
@@ -361,9 +363,11 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            InitializeServiceLocator();
-            InitializeBehaviour();
-            RegisterEvents();
+            if (InitializeServiceLocator())
+            {
+                InitializeBehaviour();
+                RegisterSystemEvents();
+            }
         }
 
         protected virtual void Start()
@@ -373,7 +377,7 @@ namespace Omni.Core
             StartCoroutine(Internal_OnClientStart());
         }
 
-        private void InitializeServiceLocator()
+        private bool InitializeServiceLocator()
         {
             if (NetworkService.TryRegister(this, m_ServiceName))
             {
@@ -400,11 +404,12 @@ namespace Omni.Core
                     {
                         // Keep the old reference, destroy the new one.
                         Destroy(gameObject);
+                        return false;
                     }
                     else
                     {
                         // Keep/Update the current reference, destroy the old one.
-                        var oldRef = NetworkService.Get<NetworkService>(m_ServiceName);
+                        var oldRef = NetworkService.Get<NetworkEventBehaviour>(m_ServiceName);
                         if (oldRef != null && oldRef is MonoBehaviour unityObject)
                         {
                             Destroy(unityObject.gameObject);
@@ -420,6 +425,8 @@ namespace Omni.Core
                     NetworkService.Update(this, m_ServiceName);
                 }
             }
+
+            return true;
         }
 
         private IEnumerator Internal_OnServerStart()
@@ -458,8 +465,9 @@ namespace Omni.Core
             Remote = new NbServer(this);
         }
 
-        protected void RegisterEvents()
+        protected void RegisterSystemEvents()
         {
+            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
             Client.OnMessage += OnClientMessage;
@@ -482,6 +490,39 @@ namespace Omni.Core
 
                 Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
                 Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+            }
+        }
+
+        protected void Unregister()
+        {
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+            NetworkManager.OnClientConnected -= OnClientConnected;
+            NetworkManager.OnClientDisconnected -= OnClientDisconnected;
+            Client.OnMessage -= OnClientMessage;
+
+            NetworkManager.OnServerInitialized -= OnServerInitialized;
+            NetworkManager.OnServerPeerConnected -= OnServerPeerConnected;
+            NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
+            Server.OnMessage -= OnServerMessage;
+
+            if (MatchmakingModuleEnabled)
+            {
+                Matchmaking.Client.OnJoinedGroup -= OnJoinedGroup;
+                Matchmaking.Client.OnLeftGroup -= OnLeftGroup;
+
+                Matchmaking.Server.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
+                Matchmaking.Server.OnPlayerLeftGroup -= OnPlayerLeftGroup;
+
+                Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
+                Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
+            }
+        }
+
+        protected virtual void OnBeforeSceneLoad(Scene scene)
+        {
+            if (!m_KeepOldInstanceReference)
+            {
+                Unregister();
             }
         }
 
@@ -602,14 +643,16 @@ namespace Omni.Core
             DataBuffer buffer,
             NetworkGroup group,
             NetworkPeer peer
-        ) { }
+        )
+        { }
 
         protected virtual void OnPlayerLeftGroup(
             NetworkGroup group,
             NetworkPeer peer,
             Status status,
             string reason
-        ) { }
+        )
+        { }
         #endregion
 
         public void Internal_OnMessage(
@@ -645,6 +688,12 @@ namespace Omni.Core
             if (string.IsNullOrEmpty(m_ServiceName))
             {
                 m_ServiceName = GetType().Name;
+            }
+
+            if (m_KeepOldInstanceReference && !m_DontDestroyOnLoad)
+            {
+                m_KeepOldInstanceReference = false;
+                NetworkLogger.__Log__("Service: Keep old reference only works with DontDestroyOnLoad.", NetworkLogger.LogType.Error);
             }
         }
     }
@@ -696,9 +745,11 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            InitializeServiceLocator();
-            InitializeBehaviour();
-            RegisterEvents();
+            if (InitializeServiceLocator())
+            {
+                InitializeBehaviour();
+                RegisterSystemEvents();
+            }
         }
 
         protected virtual void Start()
@@ -707,7 +758,7 @@ namespace Omni.Core
             StartCoroutine(Internal_OnClientStart());
         }
 
-        private void InitializeServiceLocator()
+        private bool InitializeServiceLocator()
         {
             if (NetworkService.TryRegister(this, m_ServiceName))
             {
@@ -734,11 +785,12 @@ namespace Omni.Core
                     {
                         // Keep the old reference, destroy the new one.
                         Destroy(gameObject);
+                        return false;
                     }
                     else
                     {
                         // Keep/Update the current reference, destroy the old one.
-                        var oldRef = NetworkService.Get<NetworkService>(m_ServiceName);
+                        var oldRef = NetworkService.Get<ClientEventBehaviour>(m_ServiceName);
                         if (oldRef != null && oldRef is MonoBehaviour unityObject)
                         {
                             Destroy(unityObject.gameObject);
@@ -754,6 +806,8 @@ namespace Omni.Core
                     NetworkService.Update(this, m_ServiceName);
                 }
             }
+
+            return true;
         }
 
         private IEnumerator Internal_OnClientStart()
@@ -775,8 +829,9 @@ namespace Omni.Core
             Local = new NbClient(this);
         }
 
-        protected void RegisterEvents()
+        protected void RegisterSystemEvents()
         {
+            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
             Client.OnMessage += OnMessage;
@@ -788,6 +843,28 @@ namespace Omni.Core
             {
                 Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
                 Matchmaking.Client.OnLeftGroup += OnLeftGroup;
+            }
+        }
+
+        protected void Unregister()
+        {
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+            NetworkManager.OnClientConnected -= OnClientConnected;
+            NetworkManager.OnClientDisconnected -= OnClientDisconnected;
+            Client.OnMessage -= OnMessage;
+
+            if (MatchmakingModuleEnabled)
+            {
+                Matchmaking.Client.OnJoinedGroup -= OnJoinedGroup;
+                Matchmaking.Client.OnLeftGroup -= OnLeftGroup;
+            }
+        }
+
+        protected virtual void OnBeforeSceneLoad(Scene scene)
+        {
+            if (!m_KeepOldInstanceReference)
+            {
+                Unregister();
             }
         }
 
@@ -860,6 +937,12 @@ namespace Omni.Core
             {
                 m_ServiceName = GetType().Name;
             }
+
+            if (m_KeepOldInstanceReference && !m_DontDestroyOnLoad)
+            {
+                m_KeepOldInstanceReference = false;
+                NetworkLogger.__Log__("Service: Keep old reference only works with DontDestroyOnLoad.", NetworkLogger.LogType.Error);
+            }
         }
     }
 
@@ -911,9 +994,11 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            InitializeServiceLocator();
-            InitializeBehaviour();
-            RegisterEvents();
+            if (InitializeServiceLocator())
+            {
+                InitializeBehaviour();
+                RegisterSystemEvents();
+            }
         }
 
         protected virtual void Start()
@@ -922,7 +1007,7 @@ namespace Omni.Core
             StartCoroutine(Internal_OnServerStart());
         }
 
-        private void InitializeServiceLocator()
+        private bool InitializeServiceLocator()
         {
             if (NetworkService.TryRegister(this, m_ServiceName))
             {
@@ -949,11 +1034,12 @@ namespace Omni.Core
                     {
                         // Keep the old reference, destroy the new one.
                         Destroy(gameObject);
+                        return false;
                     }
                     else
                     {
                         // Keep/Update the current reference, destroy the old one.
-                        var oldRef = NetworkService.Get<NetworkService>(m_ServiceName);
+                        var oldRef = NetworkService.Get<ServerEventBehaviour>(m_ServiceName);
                         if (oldRef != null && oldRef is MonoBehaviour unityObject)
                         {
                             Destroy(unityObject.gameObject);
@@ -969,6 +1055,8 @@ namespace Omni.Core
                     NetworkService.Update(this, m_ServiceName);
                 }
             }
+
+            return true;
         }
 
         private IEnumerator Internal_OnServerStart()
@@ -990,8 +1078,9 @@ namespace Omni.Core
             Remote = new NbServer(this);
         }
 
-        protected void RegisterEvents()
+        protected void RegisterSystemEvents()
         {
+            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnServerInitialized += OnServerInitialized;
             NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
@@ -1007,6 +1096,32 @@ namespace Omni.Core
 
                 Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
                 Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+            }
+        }
+
+        protected void Unregister()
+        {
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+            NetworkManager.OnServerInitialized -= OnServerInitialized;
+            NetworkManager.OnServerPeerConnected -= OnServerPeerConnected;
+            NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
+            Server.OnMessage -= OnMessage;
+
+            if (MatchmakingModuleEnabled)
+            {
+                Matchmaking.Server.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
+                Matchmaking.Server.OnPlayerLeftGroup -= OnPlayerLeftGroup;
+
+                Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
+                Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
+            }
+        }
+
+        protected virtual void OnBeforeSceneLoad(Scene scene)
+        {
+            if (!m_KeepOldInstanceReference)
+            {
+                Unregister();
             }
         }
 
@@ -1102,7 +1217,8 @@ namespace Omni.Core
             DataBuffer buffer,
             NetworkGroup group,
             NetworkPeer peer
-        ) { }
+        )
+        { }
 
         /// <summary>
         /// Called when a player has left a group.
@@ -1115,7 +1231,8 @@ namespace Omni.Core
             NetworkPeer peer,
             Status status,
             string reason
-        ) { }
+        )
+        { }
 
         public void Internal_OnMessage(
             byte msgId,
@@ -1144,6 +1261,18 @@ namespace Omni.Core
             {
                 m_ServiceName = GetType().Name;
             }
+
+            if (m_KeepOldInstanceReference && !m_DontDestroyOnLoad)
+            {
+                m_KeepOldInstanceReference = false;
+                NetworkLogger.__Log__("Service: Keep old reference only works with DontDestroyOnLoad.", NetworkLogger.LogType.Error);
+            }
         }
     }
 }
+
+// Hacky: DIRTY CODE!
+// This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.
+// Despite its appearance, this approach is essential to achieve high performance.
+// Avoid refactoring as these techniques are crucial for optimizing execution speed.
+// Works with il2cpp.

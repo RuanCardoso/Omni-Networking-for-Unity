@@ -193,7 +193,10 @@ namespace Omni.Core
 
             internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
             {
-                GlobalEventBehaviours.Add(identityId, behaviour);
+                if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
+                {
+                    GlobalEventBehaviours[identityId] = behaviour;
+                }
             }
         }
 
@@ -453,6 +456,11 @@ namespace Omni.Core
                 return null;
             }
 
+            internal static bool TryGetGroupById(int groupId, out NetworkGroup group)
+            {
+                return Groups.TryGetValue(groupId, out group);
+            }
+
             internal static void JoinGroup(
                 string groupName,
                 DataBuffer buffer,
@@ -525,7 +533,7 @@ namespace Omni.Core
 
                 void EnterGroup(DataBuffer buffer, NetworkPeer peer, NetworkGroup group)
                 {
-                    if (!peer.Groups.TryAdd(group.Id, group))
+                    if (!peer._groups.TryAdd(group.Id, group))
                     {
                         OnPlayerFailedJoinGroup?.Invoke(
                             peer,
@@ -546,14 +554,21 @@ namespace Omni.Core
             {
                 int groupId = GetGroupIdByName(groupName);
                 NetworkGroup group = new(groupId, groupName);
-                if (Groups.TryAdd(groupId, group))
+                if (!Groups.TryAdd(groupId, group))
                 {
-                    return group;
+                    throw new Exception(
+                        $"Failed to add group: [{groupName}] because it already exists."
+                    );
                 }
 
-                throw new Exception(
-                    $"Failed to add group: [{groupName}] because it already exists."
-                );
+                return group;
+            }
+
+            internal static bool TryAddGroup(string groupName, out NetworkGroup group)
+            {
+                int groupId = GetGroupIdByName(groupName);
+                group = new(groupId, groupName);
+                return Groups.TryAdd(groupId, group);
             }
 
             internal static void LeaveGroup(string groupName, string reason, NetworkPeer peer)
@@ -581,7 +596,7 @@ namespace Omni.Core
                     OnPlayerLeftGroup?.Invoke(group, peer, Status.Begin, reason);
                     if (group._peersById.Remove(peer.Id, out _))
                     {
-                        if (!peer.Groups.Remove(group.Id))
+                        if (!peer._groups.Remove(group.Id))
                         {
                             NetworkLogger.__Log__(
                                 "LeaveGroup: Failed to remove group from peer!!!"
@@ -1050,7 +1065,10 @@ namespace Omni.Core
 
             internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
             {
-                GlobalEventBehaviours.Add(identityId, behaviour);
+                if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
+                {
+                    GlobalEventBehaviours[identityId] = behaviour;
+                }
             }
         }
     }
