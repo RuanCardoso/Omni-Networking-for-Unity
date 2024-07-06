@@ -188,7 +188,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Resets the data written to the underlying buffer without zeroing its content.
+        /// Resets the data writer's position to the beginning without clearing the buffer's content.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -205,17 +205,28 @@ namespace Omni.Core
             _position = 0;
         }
 
+        /// <summary>
+        /// Sets the writer's position to the end of the buffer.
+        /// </summary>
         public void SeekToEnd()
         {
             _position = _endPosition;
         }
 
+        /// <summary>
+        /// Sets the writer's position to the specified position and saves the current position as the end position.
+        /// </summary>
+        /// <param name="pos">The new position to set the writer's position to.</param>
         public void SetPosition(int pos)
         {
             _endPosition = _position;
             _position = pos;
         }
 
+        /// <summary>
+        /// Sets the end position of the buffer to the specified position.
+        /// </summary>
+        /// <param name="pos">The new end position to set.</param>
         internal void SetEndPosition(int pos)
         {
             _endPosition = pos;
@@ -252,36 +263,6 @@ namespace Omni.Core
 
             // internal purpose
             SendEnabled = false;
-        }
-    }
-
-    /// Used for Lite HTTP
-    public sealed partial class DataBuffer
-    {
-        internal bool SendEnabled { get; private set; }
-        internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
-        internal HttpTarget Target { get; private set; } = HttpTarget.Self;
-        internal int GroupId { get; private set; }
-        internal int CacheId { get; private set; }
-        internal CacheMode CacheMode { get; private set; } = CacheMode.None;
-        internal byte SequenceChannel { get; private set; }
-
-        public void Send(
-            HttpTarget target = HttpTarget.Self,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            int cacheId = 0,
-            CacheMode cacheMode = CacheMode.None,
-            byte sequenceChannel = 0
-        )
-        {
-            SendEnabled = true;
-            Target = target;
-            DeliveryMode = deliveryMode;
-            GroupId = groupId;
-            CacheId = cacheId;
-            CacheMode = cacheMode;
-            SequenceChannel = sequenceChannel;
         }
     }
 }
