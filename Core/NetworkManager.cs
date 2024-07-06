@@ -17,6 +17,7 @@ using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 #pragma warning disable
 
@@ -158,6 +159,8 @@ namespace Omni.Core
     public partial class NetworkManager : MonoBehaviour, ITransporterReceive
     {
         private static Stopwatch _stopwatch = new Stopwatch();
+        private static bool _allowLoadScene;
+
         public static bool UseTickTiming { get; private set; } = false;
         internal static float DeltaTime =>
             UseTickTiming ? (float)TickSystem.DeltaTick : UnityEngine.Time.deltaTime;
@@ -167,6 +170,10 @@ namespace Omni.Core
 
         public static int MainThreadId { get; private set; }
         public static IObjectPooling<DataBuffer> Pool { get; } = new DataBufferPool();
+
+        public static event Action<Scene, LoadSceneMode> OnSceneLoaded;
+        public static event Action<Scene> OnSceneUnloaded;
+        public static event Action<Scene> OnBeforeSceneLoad;
 
         public static event Action OnServerInitialized;
         public static event Action<NetworkPeer, Status> OnServerPeerConnected;
@@ -421,6 +428,28 @@ namespace Omni.Core
             {
                 InitializeModule(Module.TickSystem);
             }
+
+            // Used to perform some operations before the scene is loaded.
+            // for example: removing registered events. (:
+
+            int sceneIndex = 0;
+            SceneManager.sceneLoaded += (scene, mode) =>
+            {
+                if (!_allowLoadScene && sceneIndex > 0)
+                {
+                    throw new NotSupportedException("Use 'NetworkManager.LoadScene() or NetworkManager.LoadSceneAsync()' to load a scene instead of 'SceneManager.LoadScene().'");
+                }
+
+                if (sceneIndex > 0)
+                {
+                    _allowLoadScene = false;
+                    OnSceneLoaded?.Invoke(scene, mode);
+                }
+
+                sceneIndex++;
+            };
+
+            SceneManager.sceneUnloaded += (scene) => OnSceneUnloaded?.Invoke(scene);
         }
 
         protected virtual void Start()
@@ -1625,6 +1654,54 @@ namespace Omni.Core
                         break;
                 }
             }
+        }
+
+        private static void DestroyScene(LoadSceneMode mode, Scene scene)
+        {
+            _allowLoadScene = true;
+            if (mode == LoadSceneMode.Single)
+            {
+                // This event is used to perform some operations before the scene is loaded.
+                // for example: removing registered events, destroying objects, etc.
+                // Only single mode, because the additive does not destroy/unregister anything.
+                OnBeforeSceneLoad?.Invoke(scene);
+            }
+        }
+
+        public static void LoadScene(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
+        {
+            DestroyScene(mode, SceneManager.GetSceneByName(sceneName));
+            SceneManager.LoadScene(sceneName, mode);
+        }
+
+        public static AsyncOperation LoadSceneAsync(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
+        {
+            DestroyScene(mode, SceneManager.GetSceneByName(sceneName));
+            return SceneManager.LoadSceneAsync(sceneName, mode);
+        }
+
+        public static void LoadScene(int index, LoadSceneMode mode = LoadSceneMode.Single)
+        {
+            DestroyScene(mode, SceneManager.GetSceneAt(index));
+            SceneManager.LoadScene(index, mode);
+        }
+
+        public static AsyncOperation LoadSceneAsync(int index, LoadSceneMode mode = LoadSceneMode.Single)
+        {
+            DestroyScene(mode, SceneManager.GetSceneAt(index));
+            return SceneManager.LoadSceneAsync(index, mode);
+        }
+
+        public static AsyncOperation UnloadSceneAsync(string sceneName, UnloadSceneOptions options = UnloadSceneOptions.None)
+        {
+            DestroyScene(LoadSceneMode.Single, SceneManager.GetSceneByName(sceneName));
+            return SceneManager.UnloadSceneAsync(sceneName, options);
+        }
+
+        public static AsyncOperation UnloadSceneAsync(int index, UnloadSceneOptions options = UnloadSceneOptions.None)
+        {
+            DestroyScene(LoadSceneMode.Single, SceneManager.GetSceneAt(index));
+            return SceneManager.UnloadSceneAsync(index, options);
         }
 
         /// <summary>

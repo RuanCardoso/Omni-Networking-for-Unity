@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
@@ -382,7 +383,7 @@ namespace Omni.Core
         /// <param name="data">The data associated with the current tick.</param>
         public virtual void OnTick(ITickInfo data) { }
 
-        internal void Register()
+        protected void Register()
         {
             if (Identity.IsServer)
             {
@@ -395,16 +396,18 @@ namespace Omni.Core
                 Local = new NbClient(this);
             }
 
-            AddEventBehaviour();
             InitializeServiceLocator();
+            AddEventBehaviour();
 
             if (NetworkManager.TickSystemModuleEnabled)
             {
                 NetworkManager.TickSystem.Register(this);
             }
+
+            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
         }
 
-        internal void Unregister()
+        protected void Unregister()
         {
             var eventBehaviours = Identity.IsServer
                 ? NetworkManager.Server.LocalEventBehaviours
@@ -418,6 +421,26 @@ namespace Omni.Core
                     NetworkLogger.LogType.Error
                 );
             }
+
+            if (NetworkManager.TickSystemModuleEnabled)
+            {
+                NetworkManager.TickSystem.Unregister(this);
+            }
+
+            if (!Identity.Unregister(m_ServiceName))
+            {
+                NetworkLogger.__Log__(
+                    $"Unregister Error: ServiceLocator with name '{m_ServiceName}' does not exist. Please ensure the ServiceLocator is registered before attempting to unregister.",
+                    NetworkLogger.LogType.Error
+                );
+            }
+
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+        }
+
+        protected virtual void OnBeforeSceneLoad(Scene scene)
+        {
+            Unregister();
         }
 
         private void InitializeServiceLocator()
@@ -438,10 +461,7 @@ namespace Omni.Core
             var key = (IdentityId, m_Id);
             if (!eventBehaviours.TryAdd(key, this))
             {
-                NetworkLogger.__Log__(
-                    $"Failed to add: EventBehaviour with ID {m_Id} and peer ID {IdentityId} already exists.",
-                    NetworkLogger.LogType.Error
-                );
+                eventBehaviours[key] = this;
             }
         }
 

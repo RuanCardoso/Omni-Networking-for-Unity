@@ -407,3 +407,9 @@ namespace Omni.Core
         }
     }
 }
+
+// Hacky: DIRTY CODE!
+// This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.
+// Despite its appearance, this approach is essential to achieve high performance.
+// Avoid refactoring as these techniques are crucial for optimizing execution speed.
+// Works with il2cpp.

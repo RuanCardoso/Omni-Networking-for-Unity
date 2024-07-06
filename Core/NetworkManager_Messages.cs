@@ -193,7 +193,10 @@ namespace Omni.Core
 
             internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
             {
-                GlobalEventBehaviours.Add(identityId, behaviour);
+                if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
+                {
+                    GlobalEventBehaviours[identityId] = behaviour;
+                }
             }
         }
 
@@ -1062,7 +1065,10 @@ namespace Omni.Core
 
             internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
             {
-                GlobalEventBehaviours.Add(identityId, behaviour);
+                if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
+                {
+                    GlobalEventBehaviours[identityId] = behaviour;
+                }
             }
         }
     }
