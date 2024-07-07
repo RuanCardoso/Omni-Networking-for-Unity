@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 namespace Omni.Core.Components
 {
     [DefaultExecutionOrder(-10000)]
+    [DisallowMultipleComponent]
     public class NetworkIsolate : MonoBehaviour
     {
         private Scene m_Scene;
