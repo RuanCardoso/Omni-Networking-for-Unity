@@ -468,7 +468,9 @@ namespace Omni.Core
             {
                 if (!_allowLoadScene && sceneIndex > 0)
                 {
-                    throw new NotSupportedException("Use 'NetworkManager.LoadScene() or NetworkManager.LoadSceneAsync()' to load a scene instead of 'SceneManager.LoadScene().'");
+                    throw new NotSupportedException(
+                        "Use 'NetworkManager.LoadScene() or NetworkManager.LoadSceneAsync()' to load a scene instead of 'SceneManager.LoadScene().'"
+                    );
                 }
 
                 if (sceneIndex > 0)
@@ -1105,8 +1107,8 @@ namespace Omni.Core
                                 if (sender.Id == 0)
                                 {
                                     NetworkLogger.__Log__(
-                                       "Send: The server(id: 0) cannot use Target.GroupMembers. Because he's not in any group.",
-                                       NetworkLogger.LogType.Error
+                                        "Send: The server(id: 0) cannot use Target.GroupMembers. Because he's not in any group.",
+                                        NetworkLogger.LogType.Error
                                     );
 
                                     return;
@@ -1502,7 +1504,10 @@ namespace Omni.Core
                                 using var _ = EndOfHeader();
 
                                 // Decrypt the AES Key with the server's RSA private key
-                                peer._aesKey = RsaCryptography.Decrypt(aesKey, Server.RsaPrivateKey);
+                                peer._aesKey = RsaCryptography.Decrypt(
+                                    aesKey,
+                                    Server.RsaPrivateKey
+                                );
 
                                 // Send Ok to the client!
                                 SendToClient(
@@ -1712,7 +1717,10 @@ namespace Omni.Core
             SceneManager.LoadScene(sceneName, mode);
         }
 
-        public static AsyncOperation LoadSceneAsync(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
+        public static AsyncOperation LoadSceneAsync(
+            string sceneName,
+            LoadSceneMode mode = LoadSceneMode.Single
+        )
         {
             DestroyScene(mode, SceneManager.GetSceneByName(sceneName));
             return SceneManager.LoadSceneAsync(sceneName, mode);
@@ -1720,25 +1728,41 @@ namespace Omni.Core
 
         public static void LoadScene(int index, LoadSceneMode mode = LoadSceneMode.Single)
         {
-            DestroyScene(mode, SceneManager.GetSceneAt(index));
+            DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index));
             SceneManager.LoadScene(index, mode);
         }
 
-        public static AsyncOperation LoadSceneAsync(int index, LoadSceneMode mode = LoadSceneMode.Single)
+        public static AsyncOperation LoadSceneAsync(
+            int index,
+            LoadSceneMode mode = LoadSceneMode.Single
+        )
         {
-            DestroyScene(mode, SceneManager.GetSceneAt(index));
+            DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index));
             return SceneManager.LoadSceneAsync(index, mode);
         }
 
-        public static AsyncOperation UnloadSceneAsync(string sceneName, UnloadSceneOptions options = UnloadSceneOptions.None)
+        public static AsyncOperation UnloadSceneAsync(
+            string sceneName,
+            UnloadSceneOptions options = UnloadSceneOptions.None
+        )
         {
             DestroyScene(LoadSceneMode.Single, SceneManager.GetSceneByName(sceneName));
             return SceneManager.UnloadSceneAsync(sceneName, options);
         }
 
-        public static AsyncOperation UnloadSceneAsync(int index, UnloadSceneOptions options = UnloadSceneOptions.None)
+        public static AsyncOperation UnloadSceneAsync(
+            int index,
+            bool useBuildIndex = false,
+            UnloadSceneOptions options = UnloadSceneOptions.None
+        )
         {
-            DestroyScene(LoadSceneMode.Single, SceneManager.GetSceneAt(index));
+            DestroyScene(
+                LoadSceneMode.Single,
+                useBuildIndex
+                    ? SceneManager.GetSceneByBuildIndex(index)
+                    : SceneManager.GetSceneAt(index)
+            );
+
             return SceneManager.UnloadSceneAsync(index, options);
         }
 
