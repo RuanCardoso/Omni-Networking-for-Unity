@@ -517,18 +517,21 @@ namespace Omni.Core
                     _ => Target.Self,
                 };
 
-                // Send the get response
-                Server.SendMessage(
-                    msgId,
-                    peer.Id,
-                    header,
-                    target,
-                    response.DeliveryMode,
-                    response.GroupId,
-                    response.CacheId,
-                    response.CacheMode,
-                    response.SequenceChannel
-                );
+                // Send the get response, except for Self
+                if (target != Target.Self)
+                {
+                    Server.SendMessage(
+                        msgId,
+                        peer.Id,
+                        header,
+                        target,
+                        response.DeliveryMode,
+                        response.GroupId,
+                        response.CacheId,
+                        response.CacheMode,
+                        response.SequenceChannel
+                    );
+                }
             }
         }
 
