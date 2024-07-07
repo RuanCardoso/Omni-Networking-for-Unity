@@ -158,6 +158,7 @@ namespace Omni.Core
         /// <returns>A new encrypted data buffer. The caller must ensure the buffer is disposed or used within a using statement</returns>
         public static DataBuffer Encrypt(this DataBuffer buffer, NetworkPeer peer)
         {
+            peer ??= NetworkManager.LocalPeer;
             buffer.SeekToEnd();
             byte[] data = buffer.ToArray();
             byte[] encryptedData = AesCryptography.Encrypt(
@@ -194,6 +195,7 @@ namespace Omni.Core
         /// <returns>A new decrypted data buffer. The caller must ensure the buffer is disposed or used within a using statement</returns>
         public static DataBuffer Decrypt(this DataBuffer buffer, NetworkPeer peer)
         {
+            peer ??= NetworkManager.LocalPeer;
             byte[] iv = buffer.FromBinary<byte[]>();
             byte[] encryptedData = buffer.FromBinary<byte[]>();
             byte[] decryptedData = AesCryptography.Decrypt(
@@ -529,7 +531,7 @@ namespace Omni.Core
         {
             int dataSize = Read7BitEncodedInt(buffer);
             Span<byte> data = buffer.Internal_GetSpan(dataSize);
-            buffer.Advance(dataSize);
+            buffer.Internal_Advance(dataSize);
             return MemoryPackSerializer.Deserialize<T>(data, settings);
         }
 
@@ -541,7 +543,7 @@ namespace Omni.Core
             encoding ??= DefaultEncoding;
             int byteCount = Read7BitEncodedInt(buffer);
             Span<byte> data = buffer.Internal_GetSpan(byteCount);
-            buffer.Advance(byteCount);
+            buffer.Internal_Advance(byteCount);
             return encoding.GetString(data);
         }
 
@@ -565,7 +567,7 @@ namespace Omni.Core
         {
             int size_t = Read7BitEncodedInt(buffer);
             ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
-            buffer.Advance(size_t);
+            buffer.Internal_Advance(size_t);
 
             // Allocate a new array.
             int elementCount = size_t / Unsafe.SizeOf<T>();
@@ -589,7 +591,7 @@ namespace Omni.Core
         {
             int size_t = Read7BitEncodedInt(buffer);
             ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
-            buffer.Advance(size_t);
+            buffer.Internal_Advance(size_t);
 
             // Fastest way to cast a byte[] to a T[].
             ReadOnlySpan<T> arraySpan = MemoryMarshal.Cast<byte, T>(data);
@@ -605,7 +607,7 @@ namespace Omni.Core
         {
             int size_t = Unsafe.SizeOf<T>();
             ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
-            buffer.Advance(size_t);
+            buffer.Internal_Advance(size_t);
             return MemoryMarshal.Read<T>(data);
         }
 
