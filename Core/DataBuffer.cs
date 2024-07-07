@@ -101,6 +101,29 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Notifies <see cref="IBufferWriter{T}"/> that <paramref name="count"/> amount of data was written to the output <see cref="Span{T}"/>/<see cref="Memory{T}"/>
+        /// </summary>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="count"/> is negative.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when attempting to advance past the end of the underlying buffer.
+        /// </exception>
+        /// <remarks>
+        /// You must request a new buffer after calling Advance to continue writing more data and cannot write to a previously acquired buffer.
+        /// </remarks>
+        internal void Internal_Advance(int count)
+        {
+            if (count < 0)
+                throw new ArgumentException(null, nameof(count));
+
+            if (_position > _buffer.Length - count)
+                throw new ArgumentException(null, nameof(count));
+
+            _position += count;
+        }
+
+        /// <summary>
         /// Converts the written data to a byte array.
         /// </summary>
         /// <returns>A byte array containing the written data.</returns>
