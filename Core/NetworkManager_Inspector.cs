@@ -198,7 +198,7 @@ namespace Omni.Core
                 var clientObject = transform.GetChild(1);
 
 #if OMNI_RELEASE
-                UnityEngine.Debug.Log("Stripping components... Ready to build!");
+                UnityEngine.Debug.Log("Network Manager: Components stripped. Ready to build!");
                 name = "Network Manager";
 
 #if UNITY_SERVER
