@@ -11,6 +11,11 @@ namespace Omni.Core
         private string m_ServiceName;
 
         private bool m_UnregisterOnLoad = true;
+        public string ServiceName
+        {
+            get => m_ServiceName;
+            set => m_ServiceName = value;
+        }
 
         protected virtual void Awake()
         {

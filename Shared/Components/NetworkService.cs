@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using Omni.Core.Interfaces;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -21,11 +22,58 @@ using System.Runtime.CompilerServices;
 
 namespace Omni.Core
 {
+    public static class ComponentService
+    {
+        public static T Get<T>(string componentName)
+            where T : class
+        {
+            return NetworkService.Get<INetworkComponentService>(componentName).Component as T;
+        }
+
+        public static bool TryGet<T>(string componentName, out T service)
+            where T : class
+        {
+            service = null;
+            bool success = NetworkService.TryGet<INetworkComponentService>(
+                componentName,
+                out var componentService
+            );
+
+            if (success)
+            {
+                service = componentService.Component as T;
+            }
+
+            return success;
+        }
+
+        public static GameObject GetGameObject(string componentName)
+        {
+            return NetworkService.Get<INetworkComponentService>(componentName).GameObject;
+        }
+
+        public static bool TryGetGameObject(string componentName, out GameObject service)
+        {
+            service = null;
+            bool success = NetworkService.TryGet<INetworkComponentService>(
+                componentName,
+                out var componentService
+            );
+
+            if (success)
+            {
+                service = componentService.GameObject;
+            }
+
+            return success;
+        }
+    }
+
     /// <summary>
     /// Service Locator is a pattern used to provide global access to a service instance.
     /// This class provides a static methods to store and retrieve services by name.
     /// </summary>
-    public sealed class NetworkService
+    public static class NetworkService
     {
         // (Service Name, Service Instance)
         private static readonly Dictionary<string, object> m_Services = new();
