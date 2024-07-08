@@ -7,7 +7,6 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Omni.Shared;
 using UnityEngine;
 
 namespace Omni.Core
@@ -183,6 +182,13 @@ namespace Omni.Core
                 using StreamReader reader = new(fileName);
                 JsonConvert.PopulateObject(reader.ReadToEnd(), target);
             }
+        }
+
+        public static void EditorSaveObject(GameObject target)
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(target);
+#endif
         }
     }
 }

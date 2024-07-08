@@ -19,6 +19,12 @@ namespace Omni.Core
             set => m_ServiceName = value;
         }
 
+        /// <summary>
+        /// The `Awake` method is virtual, allowing it to be overridden in derived classes
+        /// for additional startup logic. If overridden, it is essential to call the base class's
+        /// `Awake` method to ensure proper initialization. Not doing so may result in incomplete
+        /// initialization and unpredictable behavior.
+        /// </summary>
         public virtual void Awake()
         {
             InitAwake();
@@ -40,6 +46,12 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// The `Start` method is virtual, allowing it to be overridden in derived classes
+        /// for additional startup logic. If overridden, it is essential to call the base class's
+        /// `Start` method to ensure proper initialization. Not doing so may result in incomplete
+        /// initialization and unpredictable behavior.
+        /// </summary>
         public virtual void Start()
         {
             InitStart();
@@ -108,6 +120,7 @@ namespace Omni.Core
             if (string.IsNullOrEmpty(m_ServiceName))
             {
                 m_ServiceName = GetType().Name;
+                NetworkHelper.EditorSaveObject(gameObject);
             }
         }
     }

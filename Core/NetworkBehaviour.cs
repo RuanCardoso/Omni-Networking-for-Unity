@@ -567,10 +567,12 @@ namespace Omni.Core
             if (m_Id < 0)
             {
                 m_Id = 0;
+                NetworkHelper.EditorSaveObject(gameObject);
             }
             else if (m_Id > 255)
             {
                 m_Id = 255;
+                NetworkHelper.EditorSaveObject(gameObject);
             }
 
             if (string.IsNullOrEmpty(m_ServiceName))
@@ -588,6 +590,8 @@ namespace Omni.Core
                 {
                     m_ServiceName = serviceName;
                 }
+
+                NetworkHelper.EditorSaveObject(gameObject);
             }
         }
 

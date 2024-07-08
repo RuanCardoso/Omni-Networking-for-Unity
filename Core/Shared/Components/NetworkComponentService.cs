@@ -30,6 +30,7 @@ namespace Omni.Core.Components
             if (string.IsNullOrEmpty(ServiceName))
             {
                 ServiceName = GameObject.name;
+                NetworkHelper.EditorSaveObject(gameObject);
             }
 
             if (m_Component == null)
@@ -81,6 +82,8 @@ namespace Omni.Core.Components
                         m_Component = mImage;
                     }
                 }
+
+                NetworkHelper.EditorSaveObject(gameObject);
             }
         }
     }
