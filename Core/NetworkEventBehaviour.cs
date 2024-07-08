@@ -361,6 +361,7 @@ namespace Omni.Core
         {
             if (NetworkService.Exists(m_ServiceName))
             {
+                m_UnregisterOnLoad = false;
                 return;
             }
 
@@ -701,6 +702,7 @@ namespace Omni.Core
         {
             if (NetworkService.Exists(m_ServiceName))
             {
+                m_UnregisterOnLoad = false;
                 return;
             }
 
@@ -910,6 +912,7 @@ namespace Omni.Core
         {
             if (NetworkService.Exists(m_ServiceName))
             {
+                m_UnregisterOnLoad = false;
                 return;
             }
 
