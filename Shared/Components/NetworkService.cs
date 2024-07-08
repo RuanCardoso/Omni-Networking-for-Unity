@@ -14,7 +14,6 @@
 
 using System;
 using System.Collections.Generic;
-using Omni.Shared;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -26,80 +25,10 @@ namespace Omni.Core
     /// Service Locator is a pattern used to provide global access to a service instance.
     /// This class provides a static methods to store and retrieve services by name.
     /// </summary>
-    [DefaultExecutionOrder(-10500)]
-    public class NetworkService : MonoBehaviour
+    public sealed class NetworkService
     {
         // (Service Name, Service Instance)
         private static readonly Dictionary<string, object> m_Services = new();
-
-        [Header("Service Settings")]
-        [SerializeField]
-        private string m_ServiceName;
-
-        [SerializeField]
-        private bool m_DontDestroyOnLoad;
-
-        [SerializeField]
-        private bool m_KeepOldInstanceReference = false;
-
-        protected virtual void Awake()
-        {
-            InitializeServiceLocator();
-        }
-
-        /// <summary>
-        /// Adds the current instance to the service locator using the provided service name.
-        /// If `dontDestroyOnLoad` is set to true, the instance will persist across scene loads.
-        /// Called automatically by <c>Awake</c>, if you override <c>Awake</c> call this method yourself.
-        /// </summary>
-        protected void InitializeServiceLocator()
-        {
-            if (TryRegister(this, m_ServiceName))
-            {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (transform.root == transform)
-                    {
-                        DontDestroyOnLoad(gameObject);
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            "Service: Only the root object can be set to DontDestroyOnLoad",
-                            NetworkLogger.LogType.Error
-                        );
-                    }
-                }
-            }
-            else
-            {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (m_KeepOldInstanceReference)
-                    {
-                        // Keep the old reference, destroy the new one.
-                        Destroy(gameObject);
-                    }
-                    else
-                    {
-                        // Keep/Update the current reference, destroy the old one.
-                        var oldRef = Get<NetworkService>(m_ServiceName);
-                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
-                        {
-                            Destroy(unityObject.gameObject);
-                        }
-
-                        DontDestroyOnLoad(gameObject);
-                        Update(this, m_ServiceName);
-                    }
-                }
-                else
-                {
-                    // Every keep the new reference.
-                    Update(this, m_ServiceName);
-                }
-            }
-        }
 
         /// <summary>
         /// Retrieves a service instance by its name from the service locator.
@@ -285,17 +214,14 @@ namespace Omni.Core
             return m_Services.Remove(serviceName);
         }
 
-        protected virtual void OnValidate()
+        /// <summary>
+        /// Determines whether a service with the specified name exists in the service locator.
+        /// </summary>
+        /// <param name="serviceName"></param>
+        /// <returns></returns>
+        public static bool Exists(string serviceName)
         {
-            if (string.IsNullOrEmpty(m_ServiceName))
-            {
-                m_ServiceName = GetType().Name;
-            }
-        }
-
-        protected virtual void Reset()
-        {
-            OnValidate();
+            return m_Services.ContainsKey(serviceName);
         }
     }
 }

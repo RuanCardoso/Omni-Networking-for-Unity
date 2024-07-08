@@ -435,6 +435,7 @@ namespace Omni.Core
                 );
             }
 
+            OnDestroy();
             NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
         }
 
@@ -539,6 +540,8 @@ namespace Omni.Core
                 }
             }
         }
+
+        protected virtual void OnDestroy() { }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void Internal_OnMessage(

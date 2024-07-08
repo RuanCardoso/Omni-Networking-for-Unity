@@ -1,14 +1,13 @@
 {
-    "name": "Omni.Database",
+    "name": "Omni.Core.Shared",
     "rootNamespace": "",
     "references": [
-        "GUID:f78144eb38abd120196a4c4db40adfad",
         "GUID:5662d6c161a4f14c18e4c4db0e92654c",
-        "GUID:b786b742b47b24234b3ad1f1b6d86de4"
+        "GUID:5db78ed8ab375b5a1b0c08e0717d7a09"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": true,
+    "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,

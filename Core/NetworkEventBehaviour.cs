@@ -293,16 +293,12 @@ namespace Omni.Core
         private string m_ServiceName;
 
         [SerializeField]
-        private bool m_DontDestroyOnLoad;
-
-        [SerializeField]
-        private bool m_KeepOldInstanceReference = false;
-
-        [SerializeField]
         private int m_Id;
 
         private NbClient local;
         private NbServer remote;
+
+        private bool m_UnregisterOnLoad = true;
 
         /// <summary>
         /// Gets the identifier of the associated <see cref="INetworkMessage"/>.
@@ -320,7 +316,7 @@ namespace Omni.Core
             {
                 if (local == null)
                 {
-                    throw new System.NullReferenceException(
+                    throw new NullReferenceException(
                         "The event behaviour has not been initialized. Call Awake() first or initialize manually."
                     );
                 }
@@ -340,7 +336,7 @@ namespace Omni.Core
             {
                 if (remote == null)
                 {
-                    throw new System.NullReferenceException(
+                    throw new NullReferenceException(
                         "The event behaviour has not been initialized. Call Awake() first or initialize manually."
                     );
                 }
@@ -363,8 +359,14 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            if (InitializeServiceLocator())
+            if (NetworkService.Exists(m_ServiceName))
             {
+                return;
+            }
+
+            if (m_UnregisterOnLoad)
+            {
+                InitializeServiceLocator();
                 InitializeBehaviour();
                 RegisterSystemEvents();
             }
@@ -372,61 +374,23 @@ namespace Omni.Core
 
         protected virtual void Start()
         {
-            RegisterMatchmakingEvents();
-            StartCoroutine(Internal_OnServerStart());
-            StartCoroutine(Internal_OnClientStart());
+            if (m_UnregisterOnLoad)
+            {
+                RegisterMatchmakingEvents();
+                StartCoroutine(Internal_OnServerStart());
+                StartCoroutine(Internal_OnClientStart());
+            }
+
+            m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
         }
 
-        private bool InitializeServiceLocator()
+        protected void InitializeServiceLocator()
         {
-            if (NetworkService.TryRegister(this, m_ServiceName))
+            if (!NetworkService.TryRegister(this, m_ServiceName))
             {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (transform.root == transform)
-                    {
-                        DontDestroyOnLoad(gameObject);
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            "Service: Only the root object can be set to DontDestroyOnLoad",
-                            NetworkLogger.LogType.Error
-                        );
-                    }
-                }
+                // Update the old reference to the new one.
+                NetworkService.Update(this, m_ServiceName);
             }
-            else
-            {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (m_KeepOldInstanceReference)
-                    {
-                        // Keep the old reference, destroy the new one.
-                        Destroy(gameObject);
-                        return false;
-                    }
-                    else
-                    {
-                        // Keep/Update the current reference, destroy the old one.
-                        var oldRef = NetworkService.Get<NetworkEventBehaviour>(m_ServiceName);
-                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
-                        {
-                            Destroy(unityObject.gameObject);
-                        }
-
-                        DontDestroyOnLoad(gameObject);
-                        NetworkService.Update(this, m_ServiceName);
-                    }
-                }
-                else
-                {
-                    // Every keep the new reference.
-                    NetworkService.Update(this, m_ServiceName);
-                }
-            }
-
-            return true;
         }
 
         private IEnumerator Internal_OnServerStart()
@@ -516,11 +480,13 @@ namespace Omni.Core
                 Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
                 Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
             }
+
+            NetworkService.Unregister(m_ServiceName);
         }
 
         protected virtual void OnBeforeSceneLoad(Scene scene)
         {
-            if (!m_KeepOldInstanceReference)
+            if (m_UnregisterOnLoad)
             {
                 Unregister();
             }
@@ -643,16 +609,14 @@ namespace Omni.Core
             DataBuffer buffer,
             NetworkGroup group,
             NetworkPeer peer
-        )
-        { }
+        ) { }
 
         protected virtual void OnPlayerLeftGroup(
             NetworkGroup group,
             NetworkPeer peer,
             Status status,
             string reason
-        )
-        { }
+        ) { }
         #endregion
 
         public void Internal_OnMessage(
@@ -689,12 +653,6 @@ namespace Omni.Core
             {
                 m_ServiceName = GetType().Name;
             }
-
-            if (m_KeepOldInstanceReference && !m_DontDestroyOnLoad)
-            {
-                m_KeepOldInstanceReference = false;
-                NetworkLogger.__Log__("Service: Keep old reference only works with DontDestroyOnLoad.", NetworkLogger.LogType.Error);
-            }
         }
     }
 
@@ -706,14 +664,10 @@ namespace Omni.Core
         private string m_ServiceName;
 
         [SerializeField]
-        private bool m_DontDestroyOnLoad;
-
-        [SerializeField]
-        private bool m_KeepOldInstanceReference = false;
-
-        [SerializeField]
         private int m_Id;
         private NbClient local;
+
+        private bool m_UnregisterOnLoad = true;
 
         /// <summary>
         /// Gets the identifier of the associated <see cref="INetworkMessage"/>.
@@ -745,8 +699,14 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            if (InitializeServiceLocator())
+            if (NetworkService.Exists(m_ServiceName))
             {
+                return;
+            }
+
+            if (m_UnregisterOnLoad)
+            {
+                InitializeServiceLocator();
                 InitializeBehaviour();
                 RegisterSystemEvents();
             }
@@ -754,60 +714,22 @@ namespace Omni.Core
 
         protected virtual void Start()
         {
-            RegisterMatchmakingEvents();
-            StartCoroutine(Internal_OnClientStart());
+            if (m_UnregisterOnLoad)
+            {
+                RegisterMatchmakingEvents();
+                StartCoroutine(Internal_OnClientStart());
+            }
+
+            m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
         }
 
-        private bool InitializeServiceLocator()
+        protected void InitializeServiceLocator()
         {
-            if (NetworkService.TryRegister(this, m_ServiceName))
+            if (!NetworkService.TryRegister(this, m_ServiceName))
             {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (transform.root == transform)
-                    {
-                        DontDestroyOnLoad(gameObject);
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            "Service: Only the root object can be set to DontDestroyOnLoad",
-                            NetworkLogger.LogType.Error
-                        );
-                    }
-                }
+                // Update the old reference to the new one.
+                NetworkService.Update(this, m_ServiceName);
             }
-            else
-            {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (m_KeepOldInstanceReference)
-                    {
-                        // Keep the old reference, destroy the new one.
-                        Destroy(gameObject);
-                        return false;
-                    }
-                    else
-                    {
-                        // Keep/Update the current reference, destroy the old one.
-                        var oldRef = NetworkService.Get<ClientEventBehaviour>(m_ServiceName);
-                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
-                        {
-                            Destroy(unityObject.gameObject);
-                        }
-
-                        DontDestroyOnLoad(gameObject);
-                        NetworkService.Update(this, m_ServiceName);
-                    }
-                }
-                else
-                {
-                    // Every keep the new reference.
-                    NetworkService.Update(this, m_ServiceName);
-                }
-            }
-
-            return true;
         }
 
         private IEnumerator Internal_OnClientStart()
@@ -858,11 +780,13 @@ namespace Omni.Core
                 Matchmaking.Client.OnJoinedGroup -= OnJoinedGroup;
                 Matchmaking.Client.OnLeftGroup -= OnLeftGroup;
             }
+
+            NetworkService.Unregister(m_ServiceName);
         }
 
         protected virtual void OnBeforeSceneLoad(Scene scene)
         {
-            if (!m_KeepOldInstanceReference)
+            if (m_UnregisterOnLoad)
             {
                 Unregister();
             }
@@ -937,12 +861,6 @@ namespace Omni.Core
             {
                 m_ServiceName = GetType().Name;
             }
-
-            if (m_KeepOldInstanceReference && !m_DontDestroyOnLoad)
-            {
-                m_KeepOldInstanceReference = false;
-                NetworkLogger.__Log__("Service: Keep old reference only works with DontDestroyOnLoad.", NetworkLogger.LogType.Error);
-            }
         }
     }
 
@@ -954,14 +872,10 @@ namespace Omni.Core
         private string m_ServiceName;
 
         [SerializeField]
-        private bool m_DontDestroyOnLoad;
-
-        [SerializeField]
-        private bool m_KeepOldInstanceReference = false;
-
-        [SerializeField]
         private int m_Id;
         private NbServer remote;
+
+        private bool m_UnregisterOnLoad = true;
 
         /// <summary>
         /// Gets the identifier of the associated <see cref="INetworkMessage"/>.
@@ -994,8 +908,14 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            if (InitializeServiceLocator())
+            if (NetworkService.Exists(m_ServiceName))
             {
+                return;
+            }
+
+            if (m_UnregisterOnLoad)
+            {
+                InitializeServiceLocator();
                 InitializeBehaviour();
                 RegisterSystemEvents();
             }
@@ -1003,60 +923,22 @@ namespace Omni.Core
 
         protected virtual void Start()
         {
-            RegisterMatchmakingEvents();
-            StartCoroutine(Internal_OnServerStart());
+            if (m_UnregisterOnLoad)
+            {
+                RegisterMatchmakingEvents();
+                StartCoroutine(Internal_OnServerStart());
+            }
+
+            m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
         }
 
-        private bool InitializeServiceLocator()
+        protected void InitializeServiceLocator()
         {
-            if (NetworkService.TryRegister(this, m_ServiceName))
+            if (!NetworkService.TryRegister(this, m_ServiceName))
             {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (transform.root == transform)
-                    {
-                        DontDestroyOnLoad(gameObject);
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            "Service: Only the root object can be set to DontDestroyOnLoad",
-                            NetworkLogger.LogType.Error
-                        );
-                    }
-                }
+                // Update the old reference to the new one.
+                NetworkService.Update(this, m_ServiceName);
             }
-            else
-            {
-                if (m_DontDestroyOnLoad)
-                {
-                    if (m_KeepOldInstanceReference)
-                    {
-                        // Keep the old reference, destroy the new one.
-                        Destroy(gameObject);
-                        return false;
-                    }
-                    else
-                    {
-                        // Keep/Update the current reference, destroy the old one.
-                        var oldRef = NetworkService.Get<ServerEventBehaviour>(m_ServiceName);
-                        if (oldRef != null && oldRef is MonoBehaviour unityObject)
-                        {
-                            Destroy(unityObject.gameObject);
-                        }
-
-                        DontDestroyOnLoad(gameObject);
-                        NetworkService.Update(this, m_ServiceName);
-                    }
-                }
-                else
-                {
-                    // Every keep the new reference.
-                    NetworkService.Update(this, m_ServiceName);
-                }
-            }
-
-            return true;
         }
 
         private IEnumerator Internal_OnServerStart()
@@ -1115,11 +997,13 @@ namespace Omni.Core
                 Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
                 Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
             }
+
+            NetworkService.Unregister(m_ServiceName);
         }
 
         protected virtual void OnBeforeSceneLoad(Scene scene)
         {
-            if (!m_KeepOldInstanceReference)
+            if (m_UnregisterOnLoad)
             {
                 Unregister();
             }
@@ -1217,8 +1101,7 @@ namespace Omni.Core
             DataBuffer buffer,
             NetworkGroup group,
             NetworkPeer peer
-        )
-        { }
+        ) { }
 
         /// <summary>
         /// Called when a player has left a group.
@@ -1231,8 +1114,7 @@ namespace Omni.Core
             NetworkPeer peer,
             Status status,
             string reason
-        )
-        { }
+        ) { }
 
         public void Internal_OnMessage(
             byte msgId,
@@ -1260,12 +1142,6 @@ namespace Omni.Core
             if (string.IsNullOrEmpty(m_ServiceName))
             {
                 m_ServiceName = GetType().Name;
-            }
-
-            if (m_KeepOldInstanceReference && !m_DontDestroyOnLoad)
-            {
-                m_KeepOldInstanceReference = false;
-                NetworkLogger.__Log__("Service: Keep old reference only works with DontDestroyOnLoad.", NetworkLogger.LogType.Error);
             }
         }
     }

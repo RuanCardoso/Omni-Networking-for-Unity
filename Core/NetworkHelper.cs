@@ -7,6 +7,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Omni.Shared;
+using UnityEngine;
 
 namespace Omni.Core
 {
@@ -131,6 +133,18 @@ namespace Omni.Core
                     "This operation must be performed on the main thread. Omni does not support multithreaded operations. Tip: Dispatch the events to the main thread."
                 );
             }
+        }
+
+        /// <summary>
+        /// Checks if the given <see cref="GameObject"/> is set to dont destroy on load.
+        /// </summary>
+        /// <param name="gameObject"></param>
+        /// <returns>Returns true if the given <see cref="GameObject"/> is set to dont destroy on load.</returns>
+        public static bool IsDontDestroyOnLoad(GameObject gameObject)
+        {
+            GameObject root = gameObject.transform.root.gameObject;
+            return root.scene.name == "DontDestroyOnLoad"
+                || root.TryGetComponent<NetworkManager>(out _);
         }
 
         /// <summary>

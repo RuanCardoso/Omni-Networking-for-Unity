@@ -29,7 +29,7 @@ namespace Omni.Core
     /// Database Manager is a base class responsible for managing database connections and operations in a Unity environment.
     /// Inherit from this class to implement custom database management functionalities tailored to specific project requirements.
     /// </summary>
-    public class DatabaseManager : NetworkService
+    public class DatabaseManager : ServiceBehaviour
     {
         private DbCredentials Credentials { get; set; }
         private int Timeout { get; set; }
