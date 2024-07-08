@@ -15,6 +15,7 @@
 using System;
 using System.Collections.Generic;
 using Omni.Core.Interfaces;
+using Omni.Shared;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -24,16 +25,26 @@ namespace Omni.Core
 {
     public static class Service
     {
-        public static event Action OnReferenceChanged;
+        /// <summary>
+        /// Called when a service is added or updated, can be called multiple times.
+        /// Be sure to unsubscribe to avoid double subscriptions.
+        /// </summary>
+        public static event Action<string> OnReferenceChanged;
 
-        public static void UpdateReferences()
+        public static void UpdateReference(string componentName)
         {
-            OnReferenceChanged?.Invoke();
+            OnReferenceChanged?.Invoke(componentName);
         }
     }
 
     public static class ComponentService
     {
+        public static void Get<T>(string componentName, out T service)
+            where T : class
+        {
+            service = NetworkService.Get<INetworkComponentService>(componentName).Component as T;
+        }
+
         public static T Get<T>(string componentName)
             where T : class
         {
@@ -44,10 +55,12 @@ namespace Omni.Core
             where T : class
         {
             service = null;
-            bool success = NetworkService.TryGet<INetworkComponentService>(
-                componentName,
-                out var componentService
-            );
+            bool success =
+                NetworkService.TryGet<INetworkComponentService>(
+                    componentName,
+                    out var componentService
+                )
+                && componentService.Component is T;
 
             if (success)
             {

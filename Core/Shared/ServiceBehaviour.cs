@@ -1,10 +1,11 @@
+using Omni.Core.Interfaces;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
     [DefaultExecutionOrder(-10500)]
-    public class ServiceBehaviour : MonoBehaviour
+    public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
     {
         [Header("Service Settings")]
         [SerializeField]
@@ -17,7 +18,7 @@ namespace Omni.Core
             set => m_ServiceName = value;
         }
 
-        protected virtual void Awake()
+        public virtual void Awake()
         {
             if (NetworkService.Exists(m_ServiceName))
             {
@@ -33,11 +34,12 @@ namespace Omni.Core
             }
         }
 
-        protected virtual void Start()
+        public virtual void Start()
         {
             if (m_UnregisterOnLoad)
             {
                 OnStart();
+                Service.UpdateReference(m_ServiceName);
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
@@ -69,10 +71,7 @@ namespace Omni.Core
 
         protected virtual void OnAwake() { }
 
-        protected virtual void OnStart()
-        {
-            Service.UpdateReferences();
-        }
+        protected virtual void OnStart() { }
 
         protected virtual void OnStop() { }
 
