@@ -69,7 +69,10 @@ namespace Omni.Core
 
         protected virtual void OnAwake() { }
 
-        protected virtual void OnStart() { }
+        protected virtual void OnStart()
+        {
+            Service.UpdateReferences();
+        }
 
         protected virtual void OnStop() { }
 

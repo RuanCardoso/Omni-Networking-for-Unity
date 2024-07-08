@@ -22,6 +22,16 @@ using System.Runtime.CompilerServices;
 
 namespace Omni.Core
 {
+    public static class Service
+    {
+        public static event Action OnReferenceChanged;
+
+        public static void UpdateReferences()
+        {
+            OnReferenceChanged?.Invoke();
+        }
+    }
+
     public static class ComponentService
     {
         public static T Get<T>(string componentName)
