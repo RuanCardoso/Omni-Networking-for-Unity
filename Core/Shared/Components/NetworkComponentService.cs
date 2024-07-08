@@ -25,7 +25,10 @@ namespace Omni.Core.Components
 
         protected override void OnValidate()
         {
-            ServiceName = GameObject.name;
+            if (string.IsNullOrEmpty(ServiceName))
+            {
+                ServiceName = GameObject.name;
+            }
         }
     }
 }
