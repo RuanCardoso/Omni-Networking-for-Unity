@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
-    public class NetworkBehaviour : NetVarBehaviour, INetworkMessage, ITickSystem
+    public class NetworkBehaviour : NetworkVariablesBehaviour, INetworkMessage, ITickSystem
     {
         // Hacky: DIRTY CODE!
         // This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.

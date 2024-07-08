@@ -35,7 +35,7 @@ namespace Omni.Core
         public byte Id { get; }
     }
 
-    public class NetVarBehaviour : MonoBehaviour
+    public class NetworkVariablesBehaviour : MonoBehaviour
     {
         private readonly Dictionary<string, IPropertyInfo> properties = new();
 

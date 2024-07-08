@@ -18,12 +18,12 @@ namespace Omni.Core
     public class NbClient
     {
         private readonly INetworkMessage m_NetworkMessage;
-        private readonly NetVarBehaviour m_NetVarBehaviour;
+        private readonly NetworkVariablesBehaviour m_NetworkVariablesBehaviour;
 
         internal NbClient(INetworkMessage networkMessage)
         {
             m_NetworkMessage = networkMessage;
-            m_NetVarBehaviour = m_NetworkMessage as NetVarBehaviour;
+            m_NetworkVariablesBehaviour = m_NetworkMessage as NetworkVariablesBehaviour;
         }
 
         /// <summary>
@@ -41,7 +41,10 @@ namespace Omni.Core
             byte sequenceChannel = 0
         )
         {
-            using DataBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
+            using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(
+                property,
+                propertyId
+            );
             Invoke(255, message, deliveryMode, sequenceChannel);
         }
 
@@ -58,12 +61,14 @@ namespace Omni.Core
             [CallerMemberName] string callerName = ""
         )
         {
-            IPropertyInfo property = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(callerName);
+            IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(
+                callerName
+            );
             IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
 
             if (property != null)
             {
-                using DataBuffer message = m_NetVarBehaviour.CreateHeader(
+                using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(
                     propertyGeneric.Invoke(),
                     property.Id
                 );
@@ -111,12 +116,12 @@ namespace Omni.Core
     public class NbServer
     {
         private readonly INetworkMessage m_NetworkMessage;
-        private readonly NetVarBehaviour m_NetVarBehaviour;
+        private readonly NetworkVariablesBehaviour m_NetworkVariablesBehaviour;
 
         internal NbServer(INetworkMessage networkMessage)
         {
             m_NetworkMessage = networkMessage;
-            m_NetVarBehaviour = m_NetworkMessage as NetVarBehaviour;
+            m_NetworkVariablesBehaviour = m_NetworkMessage as NetworkVariablesBehaviour;
         }
 
         /// <summary>
@@ -144,7 +149,10 @@ namespace Omni.Core
         )
         {
             peer ??= Server.ServerPeer;
-            using DataBuffer message = m_NetVarBehaviour.CreateHeader(property, propertyId);
+            using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(
+                property,
+                propertyId
+            );
             Invoke(
                 255,
                 peer.Id,
@@ -180,13 +188,15 @@ namespace Omni.Core
             [CallerMemberName] string callerName = ""
         )
         {
-            IPropertyInfo property = m_NetVarBehaviour.GetPropertyInfoWithCallerName<T>(callerName);
+            IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(
+                callerName
+            );
             IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
 
             if (property != null)
             {
                 peer ??= Server.ServerPeer;
-                using DataBuffer message = m_NetVarBehaviour.CreateHeader(
+                using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(
                     propertyGeneric.Invoke(),
                     property.Id
                 );
@@ -286,7 +296,10 @@ namespace Omni.Core
     // Works with il2cpp.
 
     [DefaultExecutionOrder(-3000)]
-    public class NetworkEventBehaviour : NetVarBehaviour, INetworkMessage
+    public class NetworkEventBehaviour
+        : NetworkVariablesBehaviour,
+            INetworkMessage,
+            IServiceBehaviour
     {
         [Header("Service Settings")]
         [SerializeField]
@@ -357,7 +370,7 @@ namespace Omni.Core
             Null
         > serverEventBehaviour = new();
 
-        protected virtual void Awake()
+        public virtual void Awake()
         {
             if (NetworkService.Exists(m_ServiceName))
             {
@@ -374,14 +387,16 @@ namespace Omni.Core
             }
         }
 
-        protected virtual void Start()
+        public virtual void Start()
         {
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
                 StartCoroutine(Internal_OnServerStart());
                 StartCoroutine(Internal_OnClientStart());
+
                 OnStart();
+                Service.UpdateReference(m_ServiceName);
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
@@ -422,10 +437,7 @@ namespace Omni.Core
 
         protected virtual void OnAwake() { }
 
-        protected virtual void OnStart()
-        {
-            Service.UpdateReferences();
-        }
+        protected virtual void OnStart() { }
 
         protected virtual void OnStop() { }
 
@@ -670,7 +682,10 @@ namespace Omni.Core
     }
 
     [DefaultExecutionOrder(-3000)]
-    public class ClientEventBehaviour : NetVarBehaviour, INetworkMessage
+    public class ClientEventBehaviour
+        : NetworkVariablesBehaviour,
+            INetworkMessage,
+            IServiceBehaviour
     {
         [Header("Service Settings")]
         [SerializeField]
@@ -710,7 +725,7 @@ namespace Omni.Core
 
         private readonly EventBehaviour<DataBuffer, int, Null, Null, Null> eventBehaviour = new();
 
-        protected virtual void Awake()
+        public virtual void Awake()
         {
             if (NetworkService.Exists(m_ServiceName))
             {
@@ -727,13 +742,15 @@ namespace Omni.Core
             }
         }
 
-        protected virtual void Start()
+        public virtual void Start()
         {
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
                 StartCoroutine(Internal_OnClientStart());
+
                 OnStart();
+                Service.UpdateReference(m_ServiceName);
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
@@ -762,10 +779,7 @@ namespace Omni.Core
 
         protected virtual void OnAwake() { }
 
-        protected virtual void OnStart()
-        {
-            Service.UpdateReferences();
-        }
+        protected virtual void OnStart() { }
 
         protected virtual void OnStop() { }
 
@@ -891,7 +905,10 @@ namespace Omni.Core
     }
 
     [DefaultExecutionOrder(-3000)]
-    public class ServerEventBehaviour : NetVarBehaviour, INetworkMessage
+    public class ServerEventBehaviour
+        : NetworkVariablesBehaviour,
+            INetworkMessage,
+            IServiceBehaviour
     {
         [Header("Service Settings")]
         [SerializeField]
@@ -932,7 +949,7 @@ namespace Omni.Core
         private readonly EventBehaviour<DataBuffer, NetworkPeer, int, Null, Null> eventBehaviour =
             new();
 
-        protected virtual void Awake()
+        public virtual void Awake()
         {
             if (NetworkService.Exists(m_ServiceName))
             {
@@ -949,13 +966,15 @@ namespace Omni.Core
             }
         }
 
-        protected virtual void Start()
+        public virtual void Start()
         {
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
                 StartCoroutine(Internal_OnServerStart());
+
                 OnStart();
+                Service.UpdateReference(m_ServiceName);
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
@@ -984,10 +1003,7 @@ namespace Omni.Core
 
         protected virtual void OnAwake() { }
 
-        protected virtual void OnStart()
-        {
-            Service.UpdateReferences();
-        }
+        protected virtual void OnStart() { }
 
         protected virtual void OnStop() { }
 
