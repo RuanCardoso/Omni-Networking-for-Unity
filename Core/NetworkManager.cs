@@ -1701,6 +1701,13 @@ namespace Omni.Core
 
         private static void DestroyScene(LoadSceneMode mode, Scene scene)
         {
+            if (_allowLoadScene)
+            {
+                throw new Exception(
+                    "Load Scene: Wait for scene load to complete before loading another scene."
+                );
+            }
+
             _allowLoadScene = true;
             if (mode == LoadSceneMode.Single)
             {

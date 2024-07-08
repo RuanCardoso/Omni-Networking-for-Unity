@@ -370,6 +370,7 @@ namespace Omni.Core
                 InitializeServiceLocator();
                 InitializeBehaviour();
                 RegisterSystemEvents();
+                OnAwake();
             }
         }
 
@@ -380,6 +381,7 @@ namespace Omni.Core
                 RegisterMatchmakingEvents();
                 StartCoroutine(Internal_OnServerStart());
                 StartCoroutine(Internal_OnClientStart());
+                OnStart();
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
@@ -417,6 +419,12 @@ namespace Omni.Core
         /// but is specifically called when the client is up and running.
         /// </summary>
         protected virtual void OnClientStart() { }
+
+        protected virtual void OnAwake() { }
+
+        protected virtual void OnStart() { }
+
+        protected virtual void OnStop() { }
 
         protected void InitializeBehaviour()
         {
@@ -483,6 +491,7 @@ namespace Omni.Core
             }
 
             NetworkService.Unregister(m_ServiceName);
+            OnStop();
         }
 
         protected virtual void OnBeforeSceneLoad(Scene scene)
@@ -711,6 +720,7 @@ namespace Omni.Core
                 InitializeServiceLocator();
                 InitializeBehaviour();
                 RegisterSystemEvents();
+                OnAwake();
             }
         }
 
@@ -720,6 +730,7 @@ namespace Omni.Core
             {
                 RegisterMatchmakingEvents();
                 StartCoroutine(Internal_OnClientStart());
+                OnStart();
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
@@ -745,6 +756,12 @@ namespace Omni.Core
         /// but is specifically called when the client is up and running.
         /// </summary>
         protected virtual void OnClientStart() { }
+
+        protected virtual void OnAwake() { }
+
+        protected virtual void OnStart() { }
+
+        protected virtual void OnStop() { }
 
         protected void InitializeBehaviour()
         {
@@ -784,6 +801,7 @@ namespace Omni.Core
             }
 
             NetworkService.Unregister(m_ServiceName);
+            OnStop();
         }
 
         protected virtual void OnBeforeSceneLoad(Scene scene)
@@ -921,6 +939,7 @@ namespace Omni.Core
                 InitializeServiceLocator();
                 InitializeBehaviour();
                 RegisterSystemEvents();
+                OnAwake();
             }
         }
 
@@ -930,6 +949,7 @@ namespace Omni.Core
             {
                 RegisterMatchmakingEvents();
                 StartCoroutine(Internal_OnServerStart());
+                OnStart();
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
@@ -955,6 +975,12 @@ namespace Omni.Core
         /// but is specifically called when the server is up and running.
         /// </summary>
         protected virtual void OnServerStart() { }
+
+        protected virtual void OnAwake() { }
+
+        protected virtual void OnStart() { }
+
+        protected virtual void OnStop() { }
 
         protected void InitializeBehaviour()
         {
@@ -1002,6 +1028,7 @@ namespace Omni.Core
             }
 
             NetworkService.Unregister(m_ServiceName);
+            OnStop();
         }
 
         protected virtual void OnBeforeSceneLoad(Scene scene)
