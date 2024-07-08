@@ -408,7 +408,7 @@ namespace Omni.Core
             if (_manager != null)
             {
                 gameObject.SetActive(false);
-                Destroy(gameObject, 2f);
+                Destroy(gameObject, 1f);
                 return;
             }
 
