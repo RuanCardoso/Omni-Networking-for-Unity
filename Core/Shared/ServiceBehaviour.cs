@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Omni.Core.Interfaces;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,6 +21,11 @@ namespace Omni.Core
 
         public virtual void Awake()
         {
+            InitAwake();
+        }
+
+        private void InitAwake()
+        {
             if (NetworkService.Exists(m_ServiceName))
             {
                 m_UnregisterOnLoad = false;
@@ -36,6 +42,11 @@ namespace Omni.Core
 
         public virtual void Start()
         {
+            InitStart();
+        }
+
+        private void InitStart()
+        {
             if (m_UnregisterOnLoad)
             {
                 OnStart();
@@ -43,6 +54,18 @@ namespace Omni.Core
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Awake()
+        {
+            InitAwake();
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Start()
+        {
+            InitStart();
         }
 
         protected void InitializeServiceLocator()

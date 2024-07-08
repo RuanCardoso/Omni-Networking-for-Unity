@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
 using Omni.Shared;
@@ -372,6 +373,11 @@ namespace Omni.Core
 
         public virtual void Awake()
         {
+            InitAwake();
+        }
+
+        private void InitAwake()
+        {
             if (NetworkService.Exists(m_ServiceName))
             {
                 m_UnregisterOnLoad = false;
@@ -389,6 +395,11 @@ namespace Omni.Core
 
         public virtual void Start()
         {
+            InitStart();
+        }
+
+        private void InitStart()
+        {
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
@@ -400,6 +411,18 @@ namespace Omni.Core
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Awake()
+        {
+            InitAwake();
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Start()
+        {
+            InitStart();
         }
 
         protected void InitializeServiceLocator()
@@ -727,6 +750,11 @@ namespace Omni.Core
 
         public virtual void Awake()
         {
+            InitAwake();
+        }
+
+        private void InitAwake()
+        {
             if (NetworkService.Exists(m_ServiceName))
             {
                 m_UnregisterOnLoad = false;
@@ -744,6 +772,11 @@ namespace Omni.Core
 
         public virtual void Start()
         {
+            InitStart();
+        }
+
+        private void InitStart()
+        {
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
@@ -754,6 +787,18 @@ namespace Omni.Core
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Awake()
+        {
+            InitAwake();
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Start()
+        {
+            InitStart();
         }
 
         protected void InitializeServiceLocator()
@@ -951,6 +996,11 @@ namespace Omni.Core
 
         public virtual void Awake()
         {
+            InitAwake();
+        }
+
+        private void InitAwake()
+        {
             if (NetworkService.Exists(m_ServiceName))
             {
                 m_UnregisterOnLoad = false;
@@ -968,6 +1018,11 @@ namespace Omni.Core
 
         public virtual void Start()
         {
+            InitStart();
+        }
+
+        private void InitStart()
+        {
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
@@ -978,6 +1033,18 @@ namespace Omni.Core
             }
 
             m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Awake()
+        {
+            InitAwake();
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Start()
+        {
+            InitStart();
         }
 
         protected void InitializeServiceLocator()

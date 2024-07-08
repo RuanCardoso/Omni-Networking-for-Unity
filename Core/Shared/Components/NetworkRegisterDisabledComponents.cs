@@ -13,7 +13,7 @@ public class NetworkRegisterDisabledComponents : MonoBehaviour
         {
             if (!component.gameObject.activeSelf && component is IServiceBehaviour mono)
             {
-                mono.Awake();
+                mono.Internal_Awake();
             }
         }
     }
@@ -24,7 +24,7 @@ public class NetworkRegisterDisabledComponents : MonoBehaviour
         {
             if (!component.gameObject.activeSelf && component is IServiceBehaviour mono)
             {
-                mono.Start();
+                mono.Internal_Start();
             }
         }
     }
