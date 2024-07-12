@@ -19,11 +19,12 @@ namespace Omni.Core
         public static DataBuffer InstantiateOnServer(
             NetworkIdentity prefab,
             NetworkPeer peer,
+            out NetworkIdentity identity,
             Action<NetworkIdentity> OnBeforeStart = null
         )
         {
             var message = Pool.Rent();
-            message.InstantiateOnServer(prefab, peer, OnBeforeStart);
+            identity = message.InstantiateOnServer(prefab, peer, OnBeforeStart);
             return message;
         }
 
