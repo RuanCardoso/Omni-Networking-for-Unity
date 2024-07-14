@@ -18,6 +18,14 @@ namespace Omni.Core.Modules.Matchmaking
         public class MatchClient
         {
             /// <summary>
+            /// Gets a dictionary containing all the <see cref="NetworkGroup"/> objects on the client.
+            /// </summary>
+            /// <remarks>
+            /// The key is the unique identifier of each group.
+            /// </remarks>
+            public Dictionary<int, NetworkGroup> Groups => NetworkManager.Client.Groups;
+
+            /// <summary>
             /// Event triggered when a client successfully joins a group on the server.
             /// </summary>
             /// <remarks>
@@ -133,7 +141,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// <remarks>
             /// The key is the unique identifier of each group.
             /// </remarks>
-            public Dictionary<int, NetworkGroup> Groups => NetworkManager.Server.GetGroups();
+            public Dictionary<int, NetworkGroup> Groups => NetworkManager.Server.Groups;
 
             /// <summary>
             /// Adds a new group to the server.
