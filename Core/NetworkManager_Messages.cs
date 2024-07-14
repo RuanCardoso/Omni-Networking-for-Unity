@@ -58,10 +58,13 @@ namespace Omni.Core
             /// </summary>
             internal static string RsaServerPublicKey { get; set; }
 
+            internal static Dictionary<int, NetworkGroup> Groups { get; } = new();
             internal static Dictionary<int, NetworkIdentity> Identities { get; } = new();
             internal static Dictionary<int, INetworkMessage> GlobalEventBehaviours { get; } = new(); // int: identifier(identity id)
             internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
                 new();
+
+            public static Dictionary<int, NetworkPeer> Peers { get; } = new();
 
             public static event Action<byte, DataBuffer, int> OnMessage
             {
@@ -223,10 +226,13 @@ namespace Omni.Core
             internal static List<NetworkCache> CACHES_APPEND_GLOBAL { get; } = new();
             internal static Dictionary<int, NetworkCache> CACHES_OVERWRITE_GLOBAL { get; } = new();
 
-            internal static Dictionary<int, NetworkIdentity> Identities { get; } = new();
+            internal static Dictionary<int, NetworkGroup> Groups => GroupsById;
             internal static Dictionary<int, INetworkMessage> GlobalEventBehaviours { get; } = new();
             internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
                 new();
+
+            public static Dictionary<int, NetworkPeer> Peers => PeersById;
+            public static Dictionary<int, NetworkIdentity> Identities { get; } = new();
 
             public static event Action<byte, DataBuffer, NetworkPeer, int> OnMessage
             {
@@ -239,21 +245,6 @@ namespace Omni.Core
                 RsaCryptography.GetRsaKeys(out var rsaPrivateKey, out var rsaPublicKey);
                 RsaPrivateKey = rsaPrivateKey;
                 RsaPublicKey = rsaPublicKey;
-            }
-
-            public static Dictionary<int, NetworkIdentity> GetIdentities()
-            {
-                return Identities;
-            }
-
-            internal static Dictionary<int, NetworkGroup> GetGroups()
-            {
-                return Groups;
-            }
-
-            public static Dictionary<int, NetworkPeer> GetPeers()
-            {
-                return PeersById;
             }
 
             public static NetworkIdentity GetIdentity(int identityId)
@@ -293,7 +284,7 @@ namespace Omni.Core
                 }
                 else
                 {
-                    if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                     {
                         if (group._peersById.TryGetValue(peerId, out var peer))
                         {
@@ -443,7 +434,7 @@ namespace Omni.Core
 
             internal static NetworkGroup GetGroupById(int groupId)
             {
-                if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                 {
                     return group;
                 }
@@ -458,7 +449,7 @@ namespace Omni.Core
 
             internal static bool TryGetGroupById(int groupId, out NetworkGroup group)
             {
-                return Groups.TryGetValue(groupId, out group);
+                return GroupsById.TryGetValue(groupId, out group);
             }
 
             internal static void JoinGroup(
@@ -490,7 +481,7 @@ namespace Omni.Core
                 }
 
                 int uniqueId = GetGroupIdByName(groupName);
-                if (Groups.TryGetValue(uniqueId, out NetworkGroup group))
+                if (GroupsById.TryGetValue(uniqueId, out NetworkGroup group))
                 {
                     if (!group._peersById.TryAdd(peer.Id, peer))
                     {
@@ -513,7 +504,7 @@ namespace Omni.Core
                 {
                     group = new NetworkGroup(uniqueId, groupName);
                     group._peersById.Add(peer.Id, peer);
-                    if (!Groups.TryAdd(uniqueId, group))
+                    if (!GroupsById.TryAdd(uniqueId, group))
                     {
                         NetworkLogger.__Log__(
                             $"JoinGroup: Failed to add group: {groupName} because it already exists.",
@@ -554,7 +545,7 @@ namespace Omni.Core
             {
                 int groupId = GetGroupIdByName(groupName);
                 NetworkGroup group = new(groupId, groupName);
-                if (!Groups.TryAdd(groupId, group))
+                if (!GroupsById.TryAdd(groupId, group))
                 {
                     throw new Exception(
                         $"Failed to add group: [{groupName}] because it already exists."
@@ -568,7 +559,7 @@ namespace Omni.Core
             {
                 int groupId = GetGroupIdByName(groupName);
                 group = new(groupId, groupName);
-                return Groups.TryAdd(groupId, group);
+                return GroupsById.TryAdd(groupId, group);
             }
 
             internal static void LeaveGroup(string groupName, string reason, NetworkPeer peer)
@@ -591,7 +582,7 @@ namespace Omni.Core
                 }
 
                 int groupId = GetGroupIdByName(groupName);
-                if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                 {
                     OnPlayerLeftGroup?.Invoke(group, peer, Status.Begin, reason);
                     if (group._peersById.Remove(peer.Id, out _))
@@ -648,7 +639,7 @@ namespace Omni.Core
             {
                 if (group._peersById.Count == 0)
                 {
-                    if (!Groups.Remove(group.Id))
+                    if (!GroupsById.Remove(group.Id))
                     {
                         NetworkLogger.__Log__(
                             $"LeaveGroup: Destroy was called on group: {group.Name} but it does not exist.",
@@ -727,7 +718,7 @@ namespace Omni.Core
                                 == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
-                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                             {
                                 List<NetworkCache> caches = group
                                     .CACHES_APPEND.Where(x =>
@@ -800,7 +791,7 @@ namespace Omni.Core
                                 == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
-                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                             {
                                 if (
                                     group.CACHES_OVERWRITE.TryGetValue(
@@ -888,7 +879,7 @@ namespace Omni.Core
                                 == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
-                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                             {
                                 group.CACHES_APPEND.RemoveAll(x =>
                                     x.Mode == cacheMode && x.Id == cacheId
@@ -916,7 +907,7 @@ namespace Omni.Core
                                 == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
-                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                             {
                                 group.CACHES_OVERWRITE.Remove(cacheId);
                             }
@@ -981,7 +972,7 @@ namespace Omni.Core
                                 == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
-                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                             {
                                 group.CACHES_APPEND.RemoveAll(x =>
                                     x.Mode == cacheMode && x.Id == cacheId && x.Peer.Id == peer.Id
@@ -1009,7 +1000,7 @@ namespace Omni.Core
                                 == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
-                            if (Groups.TryGetValue(groupId, out NetworkGroup group))
+                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                             {
                                 group.CACHES_OVERWRITE.Remove(cacheId);
                             }

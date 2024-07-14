@@ -38,7 +38,7 @@ namespace Omni.Core
             set => _manager = value;
         }
 
-        private static Dictionary<int, NetworkGroup> Groups { get; } = new();
+        private static Dictionary<int, NetworkGroup> GroupsById { get; } = new();
         private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
         private static Dictionary<int, NetworkPeer> PeersById { get; } = new();
 
