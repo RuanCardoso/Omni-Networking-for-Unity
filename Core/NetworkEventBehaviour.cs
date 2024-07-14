@@ -155,7 +155,7 @@ namespace Omni.Core
             );
             Invoke(
                 255,
-                peer.Id,
+                peer,
                 message,
                 target,
                 deliveryMode,
@@ -203,7 +203,7 @@ namespace Omni.Core
 
                 Invoke(
                     255,
-                    peer.Id,
+                    peer,
                     message,
                     target,
                     deliveryMode,
@@ -228,7 +228,7 @@ namespace Omni.Core
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void GlobalInvoke(
             byte msgId,
-            int peerId,
+            NetworkPeer peer,
             DataBuffer buffer = null,
             Target target = Target.Self,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -240,7 +240,7 @@ namespace Omni.Core
         {
             Server.GlobalInvoke(
                 msgId,
-                peerId,
+                peer,
                 buffer,
                 target,
                 deliveryMode,
@@ -264,7 +264,7 @@ namespace Omni.Core
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
         public void Invoke(
             byte msgId,
-            int peerId,
+            NetworkPeer peer,
             DataBuffer buffer = null,
             Target target = Target.All,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -276,7 +276,7 @@ namespace Omni.Core
         {
             Server.Invoke(
                 msgId,
-                peerId,
+                peer,
                 m_NetworkMessage.IdentityId,
                 buffer,
                 target,

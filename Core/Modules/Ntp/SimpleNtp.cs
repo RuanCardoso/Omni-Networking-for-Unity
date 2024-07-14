@@ -192,7 +192,7 @@ namespace Omni.Core.Modules.Ntp
                 // Send NTP response
                 NetworkManager.Server.SendMessage(
                     MessageType.NtpQuery,
-                    peer.Id,
+                    peer,
                     message,
                     target: Target.Self,
                     deliveryMode: DeliveryMode.Unreliable,

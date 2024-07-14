@@ -221,7 +221,7 @@ namespace Omni.Core
 
                 NetworkManager.Server.Invoke(
                     msgId,
-                    m_NetworkBehaviour.Identity.Owner.Id,
+                    m_NetworkBehaviour.Identity.Owner,
                     m_NetworkBehaviour.IdentityId,
                     m_NetworkBehaviour.Id,
                     buffer,

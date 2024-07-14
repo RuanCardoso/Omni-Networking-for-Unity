@@ -498,7 +498,7 @@ namespace Omni.Core
                 // Self:
                 Server.SendMessage(
                     msgId,
-                    peer.Id,
+                    peer,
                     header,
                     Target.Self,
                     response.DeliveryMode,
@@ -522,7 +522,7 @@ namespace Omni.Core
                 {
                     Server.SendMessage(
                         msgId,
-                        peer.Id,
+                        peer,
                         header,
                         target,
                         response.DeliveryMode,

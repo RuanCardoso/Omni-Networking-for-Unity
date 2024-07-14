@@ -150,7 +150,7 @@ namespace Omni.Core
                 message.ToJson(keyValuePair);
                 NetworkManager.Server.SendMessage(
                     MessageType.SyncPeerSerializedData,
-                    Id,
+                    this,
                     message,
                     target,
                     deliveryMode,

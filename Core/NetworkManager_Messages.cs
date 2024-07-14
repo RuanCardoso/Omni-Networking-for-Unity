@@ -9,11 +9,12 @@ using Omni.Shared;
 
 namespace Omni.Core
 {
+    // High-level methods for sending network messages.
     public partial class NetworkManager
     {
         private static void Internal_SendMessage(
             byte msgId,
-            int peerId,
+            NetworkPeer peer,
             DataBuffer buffer,
             Target target,
             DeliveryMode deliveryMode,
@@ -31,21 +32,22 @@ namespace Omni.Core
             }
             else
             {
-                NetworkPeer targetPeer = Server.GetPeerById(peerId);
-                if (targetPeer != null)
+                if (peer == null)
                 {
-                    SendToClient(
-                        msgId,
-                        buffer,
-                        targetPeer.EndPoint,
-                        target,
-                        deliveryMode,
-                        groupId,
-                        cacheId,
-                        cacheMode,
-                        seqChannel
-                    );
+                    throw new NullReferenceException("Peer cannot be null.");
                 }
+
+                SendToClient(
+                    msgId,
+                    buffer,
+                    peer.EndPoint,
+                    target,
+                    deliveryMode,
+                    groupId,
+                    cacheId,
+                    cacheMode,
+                    seqChannel
+                );
             }
         }
 
@@ -102,7 +104,7 @@ namespace Omni.Core
             ) =>
                 Internal_SendMessage(
                     msgId,
-                    0,
+                    LocalPeer,
                     buffer,
                     Target.Self,
                     deliveryMode,
@@ -118,7 +120,10 @@ namespace Omni.Core
                 DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
-            ) => SendMessage(msgId, buffer, deliveryMode, sequenceChannel);
+            )
+            {
+                SendMessage(msgId, buffer, deliveryMode, sequenceChannel);
+            }
 
             public static void Invoke(
                 byte msgId,
@@ -205,6 +210,12 @@ namespace Omni.Core
 
         public static class Server
         {
+            /// <summary>
+            /// Gets the server peer.
+            /// </summary>
+            /// <remarks>
+            /// The server peer is a special peer that is used to represent the server.
+            /// </remarks>
             public static NetworkPeer ServerPeer { get; } =
                 new(new IPEndPoint(IPAddress.None, 0), 0);
 
@@ -264,55 +275,9 @@ namespace Omni.Core
                 }
             }
 
-            public static NetworkPeer GetPeerById(int peerId, int groupId = 0)
-            {
-                if (groupId == 0)
-                {
-                    if (PeersById.TryGetValue(peerId, out var peer))
-                    {
-                        return peer;
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            $"Peer Retrieval Error: Peer with ID '{peerId}' not found. Please verify the peer ID and ensure the peer is properly registered(connected!).",
-                            NetworkLogger.LogType.Error
-                        );
-
-                        return null;
-                    }
-                }
-                else
-                {
-                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
-                    {
-                        if (group._peersById.TryGetValue(peerId, out var peer))
-                        {
-                            return peer;
-                        }
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            $"Get Error: Group with ID {groupId} not found. ensure that the group exists and that the provided groupId is correct.",
-                            NetworkLogger.LogType.Error
-                        );
-
-                        return null;
-                    }
-                }
-
-                NetworkLogger.__Log__(
-                    $"Peer Retrieval Error: Peer with ID '{peerId}' not found. Please verify the peer ID and ensure the peer is properly registered(connected!).",
-                    NetworkLogger.LogType.Error
-                );
-
-                return null;
-            }
-
             public static void SendMessage(
                 byte msgId,
-                int peerId,
+                NetworkPeer peer,
                 DataBuffer buffer = null,
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -320,10 +285,11 @@ namespace Omni.Core
                 int cacheId = 0,
                 CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0
-            ) =>
+            )
+            {
                 Internal_SendMessage(
                     msgId,
-                    peerId,
+                    peer,
                     buffer,
                     target,
                     deliveryMode,
@@ -333,10 +299,11 @@ namespace Omni.Core
                     cacheMode,
                     sequenceChannel
                 );
+            }
 
             public static void GlobalInvoke(
                 byte msgId,
-                int peerId,
+                NetworkPeer peer,
                 DataBuffer buffer = null,
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -344,10 +311,11 @@ namespace Omni.Core
                 int cacheId = 0,
                 CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0
-            ) =>
+            )
+            {
                 SendMessage(
                     msgId,
-                    peerId,
+                    peer,
                     buffer,
                     target,
                     deliveryMode,
@@ -356,10 +324,11 @@ namespace Omni.Core
                     cacheMode,
                     sequenceChannel
                 );
+            }
 
             public static void Invoke(
                 byte msgId,
-                int peerId,
+                NetworkPeer peer,
                 int identityId,
                 DataBuffer buffer = null,
                 Target target = Target.All,
@@ -377,7 +346,7 @@ namespace Omni.Core
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(
                     MessageType.GlobalInvoke,
-                    peerId,
+                    peer,
                     message,
                     target,
                     deliveryMode,
@@ -393,7 +362,7 @@ namespace Omni.Core
 
             public static void Invoke(
                 byte msgId,
-                int peerId,
+                NetworkPeer peer,
                 int identityId,
                 byte instanceId,
                 DataBuffer buffer = null,
@@ -413,7 +382,7 @@ namespace Omni.Core
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(
                     MessageType.LocalInvoke,
-                    peerId,
+                    peer,
                     message,
                     target,
                     deliveryMode,
@@ -471,7 +440,7 @@ namespace Omni.Core
 
                     SendMessage(
                         MessageType.JoinGroup,
-                        peer.Id,
+                        peer,
                         message,
                         Target.Self,
                         DeliveryMode.ReliableOrdered,
@@ -572,7 +541,7 @@ namespace Omni.Core
 
                     SendMessage(
                         MessageType.LeaveGroup,
-                        peer.Id,
+                        peer,
                         message,
                         Target.Self,
                         DeliveryMode.ReliableOrdered,

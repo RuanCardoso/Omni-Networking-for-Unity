@@ -5,6 +5,7 @@ using MemoryPack;
 using Newtonsoft.Json;
 using Omni.Shared;
 using Omni.Shared.Collections;
+using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
 {
@@ -133,7 +134,7 @@ namespace Omni.Core
             string newIdentifier = $"{Identifier}->{subGroupName}";
             if (!__namebuilder__)
             {
-                return NetworkManager.Matchmaking.Server.AddGroup(newIdentifier);
+                return Matchmaking.Server.AddGroup(newIdentifier);
             }
 
             return new NetworkGroup(newIdentifier);
@@ -144,7 +145,7 @@ namespace Omni.Core
             string newIdentifier = $"{Identifier}->{subGroupName}";
             if (!__namebuilder__)
             {
-                return NetworkManager.Matchmaking.Server.TryAddGroup(newIdentifier, out subGroup);
+                return Matchmaking.Server.TryAddGroup(newIdentifier, out subGroup);
             }
 
             subGroup = new NetworkGroup(newIdentifier);
@@ -202,7 +203,7 @@ namespace Omni.Core
             byte sequenceChannel = 0
         )
         {
-            if (!NetworkManager.IsServerActive)
+            if (!IsServerActive)
             {
                 throw new Exception("Can't use this method on client.");
             }
@@ -214,29 +215,39 @@ namespace Omni.Core
                 );
             }
 
-            if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
+            if (Server.Peers.TryGetValue(MasterClientId, out var peer))
             {
-                value = key != "_AllKeys_" ? value : SerializedData;
-                ImmutableKeyValuePair keyValuePair = new(key, value);
-                using var message = NetworkManager.Pool.Rent();
-                message.FastWrite(Id);
-                message.ToJson(keyValuePair);
-                NetworkManager.Server.SendMessage(
-                    MessageType.SyncGroupSerializedData,
-                    MasterClientId,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    cacheId,
-                    cacheMode,
-                    sequenceChannel
-                );
+                if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
+                {
+                    value = key != "_AllKeys_" ? value : SerializedData;
+                    ImmutableKeyValuePair keyValuePair = new(key, value);
+                    using var message = Pool.Rent();
+                    message.FastWrite(Id);
+                    message.ToJson(keyValuePair);
+                    Server.SendMessage(
+                        MessageType.SyncGroupSerializedData,
+                        peer,
+                        message,
+                        target,
+                        deliveryMode,
+                        groupId,
+                        cacheId,
+                        cacheMode,
+                        sequenceChannel
+                    );
+                }
+                else
+                {
+                    NetworkLogger.__Log__(
+                        $"SyncSerializedData Group Error: Failed to sync '{key}' because it doesn't exist.",
+                        NetworkLogger.LogType.Error
+                    );
+                }
             }
             else
             {
                 NetworkLogger.__Log__(
-                    $"SyncSerializedData Error: Failed to sync '{key}' because it doesn't exist.",
+                    $"SyncSerializedData Group Error: Peer(Master) with ID '{MasterClientId}' not found. Please verify the master ID and ensure the peer is properly registered(connected!).",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -251,7 +262,7 @@ namespace Omni.Core
             byte sequenceChannel = 0
         )
         {
-            if (!NetworkManager.IsServerActive)
+            if (!IsServerActive)
             {
                 throw new Exception("Can't use this method on client.");
             }
@@ -263,10 +274,10 @@ namespace Omni.Core
                 );
             }
 
-            // using var message = NetworkManager.Pool.Rent();
+            // using var message = Pool.Rent();
             // message.FastWrite(Id);
             // message.ToJson(keyValuePair);
-            // NetworkManager.Server.SendMessage(
+            // Server.SendMessage(
             //     MessageType.SyncGroupSerializedData,
             //     MasterClientId,
             //     message,
@@ -369,7 +380,7 @@ namespace Omni.Core
 
         public override string ToString()
         {
-            return NetworkManager.ToJson(this);
+            return ToJson(this);
         }
     }
 }
