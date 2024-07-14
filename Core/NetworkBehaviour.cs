@@ -27,7 +27,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a manual 'NetVar' message to the server with the specified property and property ID.
+            /// Sends a manual 'NetVar' message to the server with the specified property and property id.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
@@ -51,7 +51,6 @@ namespace Omni.Core
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            /// <param name="callerName">The name of the calling member. This parameter is automatically supplied by the compiler.</param>
             public void AutoSync<T>(
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0,
@@ -153,7 +152,6 @@ namespace Omni.Core
             /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
             /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            /// <param name="callerName">The name of the calling member. This parameter is automatically supplied by the compiler
             public void AutoSync<T>(
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,

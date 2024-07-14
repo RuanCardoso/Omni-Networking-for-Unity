@@ -104,10 +104,19 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Called when the service is initialized.
+        /// </summary>
         protected virtual void OnAwake() { }
 
+        /// <summary>
+        /// Called when the service is initialized.
+        /// </summary>
         protected virtual void OnStart() { }
 
+        /// <summary>
+        /// Called when the service is stopped/destroyed/unregistered.
+        /// </summary>
         protected virtual void OnStop() { }
 
         protected virtual void Reset()

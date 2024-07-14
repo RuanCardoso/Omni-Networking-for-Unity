@@ -55,7 +55,6 @@ namespace Omni.Core
         /// <typeparam name="T">The type of the property to synchronize.</typeparam>
         /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-        /// <param name="callerName">The name of the calling member. This parameter is automatically supplied by the compiler.</param>
         public void AutoSync<T>(
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             byte sequenceChannel = 0,
@@ -470,10 +469,19 @@ namespace Omni.Core
         /// </summary>
         protected virtual void OnClientStart() { }
 
+        /// <summary>
+        /// Called when the service is initialized.
+        /// </summary>
         protected virtual void OnAwake() { }
 
+        /// <summary>
+        /// Called when the service is initialized.
+        /// </summary>
         protected virtual void OnStart() { }
 
+        /// <summary>
+        /// Called when the service is stopped/destroyed/unregistered.
+        /// </summary>
         protected virtual void OnStop() { }
 
         protected void InitializeBehaviour()
