@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Omni.Shared;
@@ -34,7 +35,10 @@ namespace Omni.Core
 
         internal bool TryGetLocate(int methodId, out int argsCount)
         {
-            return T_Locate.TryGetValue(methodId, out argsCount);
+            bool success = T_Locate.TryGetValue(methodId, out argsCount);
+            if (!success)
+                ThrowNoMethodFound(methodId);
+            return success;
         }
 
         internal void Invoke(int methodId)
@@ -49,7 +53,10 @@ namespace Omni.Core
             if (T0_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke();
+                return;
             }
+
+            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1)
@@ -64,7 +71,10 @@ namespace Omni.Core
             if (T1_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1);
+                return;
             }
+
+            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2)
@@ -79,7 +89,10 @@ namespace Omni.Core
             if (T1_T2_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2);
+                return;
             }
+
+            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3)
@@ -94,7 +107,10 @@ namespace Omni.Core
             if (T1_T2_T3_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3);
+                return;
             }
+
+            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
@@ -109,7 +125,10 @@ namespace Omni.Core
             if (T1_T2_T3_T4_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3, arg4);
+                return;
             }
+
+            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
@@ -124,7 +143,10 @@ namespace Omni.Core
             if (T1_T2_T3_T4_T5_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3, arg4, arg5);
+                return;
             }
+
+            ThrowNoMethodFound(methodId);
         }
 
         internal void FindEvents<T>(object target)
@@ -404,6 +426,15 @@ namespace Omni.Core
                     NetworkLogger.LogType.Error
                 );
             }
+        }
+
+        [Conditional("OMNI_DEBUG")]
+        void ThrowNoMethodFound(int methodId)
+        {
+            NetworkLogger.__Log__(
+                $"Configuration Error: No method(event) with ID '{methodId}' registered. Ensure a method with the same ID is registered.",
+                NetworkLogger.LogType.Error
+            );
         }
     }
 }
