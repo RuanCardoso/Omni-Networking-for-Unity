@@ -157,12 +157,15 @@ namespace Omni.Core
             // Delegates are used to avoid reflection overhead, it is much faster, like a direct call.
             // works with il2cpp.
 
-            MethodInfo[] methodInfos = target
-                .GetType()
-                .GetMethods(
-                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly
-                );
+#if OMNI_DEBUG
+            BindingFlags flags =
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
+#else
+            BindingFlags flags =
+                BindingFlags.NonPublic | BindingFlags.DeclaredOnly | BindingFlags.Instance; // Optimization!
+#endif
 
+            MethodInfo[] methodInfos = target.GetType().GetMethods(flags);
             for (int i = 0; i < methodInfos.Length; i++)
             {
                 MethodInfo method = methodInfos[i];
@@ -172,6 +175,18 @@ namespace Omni.Core
                 {
                     if (attr != null)
                     {
+#if OMNI_DEBUG
+                        if (!method.IsPrivate)
+                        {
+                            NetworkLogger.__Log__(
+                                $"The method '{method.Name}' is public. You must remove 'access modifier' from it for performance reasons.",
+                                NetworkLogger.LogType.Error
+                            );
+
+                            return;
+                        }
+#endif
+
                         int argsCount = method.GetParameters().Length;
                         if (expectedArgsCount > -1 && argsCount != expectedArgsCount)
                         {
