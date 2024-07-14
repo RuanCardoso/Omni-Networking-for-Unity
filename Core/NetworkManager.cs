@@ -8,6 +8,7 @@ using System.Net;
 using System.Threading;
 using MemoryPack;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Utilities;
 using Omni.Core.Cryptography;
 using Omni.Core.Interfaces;
@@ -16,6 +17,7 @@ using Omni.Core.Modules.Matchmaking;
 using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
+using Omni.Shared.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -171,6 +173,8 @@ namespace Omni.Core
 
     internal class MessageType // not a enum to avoid casting
     {
+        internal const byte SyncGroupSerializedData = 243;
+        internal const byte SyncPeerSerializedData = 244;
         internal const byte HttpPostResponseAsync = 245;
         internal const byte HttpPostFetchAsync = 246;
         internal const byte HttpGetResponseAsync = 247;
@@ -182,6 +186,25 @@ namespace Omni.Core
         internal const byte GlobalInvoke = 253;
         internal const byte LeaveGroup = 254;
         internal const byte JoinGroup = 255;
+    }
+
+    [JsonObject(MemberSerialization.OptIn)]
+    internal class ImmutableKeyValuePair
+    {
+        [JsonProperty]
+        internal string Key { get; set; }
+
+        [JsonProperty]
+        internal object Value { get; set; }
+
+        [JsonConstructor]
+        internal ImmutableKeyValuePair() { }
+
+        internal ImmutableKeyValuePair(string key, object value)
+        {
+            Key = key;
+            Value = value;
+        }
     }
 
     [DefaultExecutionOrder(-1000)]
@@ -434,12 +457,6 @@ namespace Omni.Core
             MainThreadId = Thread.CurrentThread.ManagedThreadId;
             DisableAutoStartIfHasHud();
 
-            if (m_Connection)
-            {
-                HttpLite.Initialize();
-                InitializeModule(Module.Connection);
-            }
-
             if (m_Console)
             {
                 InitializeModule(Module.Console);
@@ -450,14 +467,21 @@ namespace Omni.Core
                 InitializeModule(Module.NtpClock);
             }
 
+            if (m_TickSystem)
+            {
+                InitializeModule(Module.TickSystem);
+            }
+
             if (m_Matchmaking)
             {
                 InitializeModule(Module.Matchmaking);
             }
 
-            if (m_TickSystem)
+            // This module should be initialized last, as it needs the other modules to be initialized.
+            if (m_Connection)
             {
-                InitializeModule(Module.TickSystem);
+                HttpLite.Initialize();
+                InitializeModule(Module.Connection);
             }
 
             // Used to perform some operations before the scene is loaded.
@@ -1037,7 +1061,7 @@ namespace Omni.Core
 
                 if (groupId != 0)
                 {
-                    if (Groups.TryGetValue(groupId, out _group))
+                    if (GroupsById.TryGetValue(groupId, out _group))
                     {
                         if (!m_AcrossGroupMessage || !_group.AllowAcrossGroupMessage)
                         {
@@ -1438,6 +1462,73 @@ namespace Omni.Core
 
                 switch (msgType)
                 {
+                    case MessageType.SyncGroupSerializedData:
+                        {
+                            int groupId = header.FastRead<int>();
+                            ImmutableKeyValuePair keyValuePair =
+                                header.FromJson<ImmutableKeyValuePair>();
+
+                            var groups = Client.Groups;
+                            if (!groups.ContainsKey(groupId))
+                                groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!")); // group name is not valid in this case!
+
+                            NetworkGroup fGroup = groups[groupId];
+                            if (keyValuePair.Key != "_AllKeys_")
+                            {
+                                if (
+                                    !fGroup.SerializedData.TryAdd(
+                                        keyValuePair.Key,
+                                        keyValuePair.Value
+                                    )
+                                )
+                                {
+                                    fGroup.SerializedData[keyValuePair.Key] = keyValuePair.Value;
+                                }
+                            }
+                            else
+                            {
+                                JObject jObject = (JObject)keyValuePair.Value;
+                                fGroup.SerializedData = jObject.ToObject<
+                                    ObservableDictionary<string, object>
+                                >();
+                            }
+                        }
+                        break;
+                    case MessageType.SyncPeerSerializedData:
+                        {
+                            if (!isServer)
+                            {
+                                int peerId = header.FastRead<int>();
+                                ImmutableKeyValuePair keyValuePair =
+                                    header.FromJson<ImmutableKeyValuePair>();
+
+                                var peers = Client.Peers;
+                                if (!peers.ContainsKey(peerId))
+                                    peers.Add(peerId, new NetworkPeer(_peer, peerId)); // _peer is not valid endpoint in this case!
+
+                                NetworkPeer fPeer = peers[peerId];
+                                if (keyValuePair.Key != "_AllKeys_")
+                                {
+                                    if (
+                                        !fPeer.SerializedData.TryAdd(
+                                            keyValuePair.Key,
+                                            keyValuePair.Value
+                                        )
+                                    )
+                                    {
+                                        fPeer.SerializedData[keyValuePair.Key] = keyValuePair.Value;
+                                    }
+                                }
+                                else
+                                {
+                                    JObject jObject = (JObject)keyValuePair.Value;
+                                    fPeer.SerializedData = jObject.ToObject<
+                                        ObservableDictionary<string, object>
+                                    >();
+                                }
+                            }
+                        }
+                        break;
                     case MessageType.NtpQuery:
                         {
                             if (isServer)
@@ -1472,6 +1563,7 @@ namespace Omni.Core
                                 LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId);
                                 LocalPeer._nativePeer = LocalNativePeer;
                                 IsClientActive = true; // true: to allow send the aes key to the server.
+                                Client.Peers.Add(localPeerId, LocalPeer);
 
                                 // Generate AES Key and send it to the server(Encrypted by RSA public key).
                                 Client.RsaServerPublicKey = rsaServerPublicKey;
