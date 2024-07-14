@@ -28,6 +28,9 @@ namespace Omni.Core
         public string Name { get; }
 
         [MemoryPackIgnore]
+        public int MasterClientId { get; set; } = -1;
+
+        [MemoryPackIgnore]
         public int PeerCount => _peersById.Count;
 
         [MemoryPackIgnore]
@@ -40,7 +43,7 @@ namespace Omni.Core
         public ObservableDictionary<string, object> Data { get; } = new();
 
         [MemoryPackIgnore, JsonProperty("Data")]
-        public ObservableDictionary<string, object> SerializedData { get; } = new();
+        public ObservableDictionary<string, object> SerializedData { get; internal set; } = new();
 
         [MemoryPackIgnore]
         public Dictionary<int, NetworkPeer> Peers
@@ -148,6 +151,134 @@ namespace Omni.Core
             return true;
         }
 
+        public void SyncSerializedData(
+            Target target = Target.GroupMembers,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            SyncSerializedData(
+                "_AllKeys_",
+                target,
+                deliveryMode,
+                groupId,
+                cacheId,
+                cacheMode,
+                sequenceChannel
+            );
+        }
+
+        public void SyncSerializedData(
+            string key,
+            Target target = Target.GroupMembers,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            Internal_SyncSerializedData(
+                key,
+                target,
+                deliveryMode,
+                groupId,
+                cacheId,
+                cacheMode,
+                sequenceChannel
+            );
+        }
+
+        private void Internal_SyncSerializedData(
+            string key = "_AllKeys_",
+            Target target = Target.GroupMembers,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            if (!NetworkManager.IsServerActive)
+            {
+                throw new Exception("Can't use this method on client.");
+            }
+
+            if (MasterClientId <= -1)
+            {
+                throw new Exception(
+                    "MasterClientId is not set. Please set it before using this method."
+                );
+            }
+
+            if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
+            {
+                value = key != "_AllKeys_" ? value : SerializedData;
+                ImmutableKeyValuePair keyValuePair = new(key, value);
+                using var message = NetworkManager.Pool.Rent();
+                message.FastWrite(Id);
+                message.ToJson(keyValuePair);
+                NetworkManager.Server.SendMessage(
+                    MessageType.SyncGroupSerializedData,
+                    MasterClientId,
+                    message,
+                    target,
+                    deliveryMode,
+                    groupId,
+                    cacheId,
+                    cacheMode,
+                    sequenceChannel
+                );
+            }
+            else
+            {
+                NetworkLogger.__Log__(
+                    $"SyncSerializedData Error: Failed to sync '{key}' because it doesn't exist.",
+                    NetworkLogger.LogType.Error
+                );
+            }
+        }
+
+        public void SyncBinaryProperties(
+            Target target = Target.GroupMembers,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            if (!NetworkManager.IsServerActive)
+            {
+                throw new Exception("Can't use this method on client.");
+            }
+
+            if (MasterClientId <= -1)
+            {
+                throw new Exception(
+                    "MasterClientId is not set. Please set it before using this method."
+                );
+            }
+
+            // using var message = NetworkManager.Pool.Rent();
+            // message.FastWrite(Id);
+            // message.ToJson(keyValuePair);
+            // NetworkManager.Server.SendMessage(
+            //     MessageType.SyncGroupSerializedData,
+            //     MasterClientId,
+            //     message,
+            //     target,
+            //     deliveryMode,
+            //     groupId,
+            //     cacheId,
+            //     cacheMode,
+            //     sequenceChannel
+            // );
+        }
+
         public void DeleteCache(CacheMode cacheMode, int cacheId)
         {
             if (
@@ -159,8 +290,7 @@ namespace Omni.Core
             }
             else if (
                 cacheMode == (CacheMode.Group | CacheMode.Overwrite)
-                || cacheMode
-                    == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
+                || cacheMode == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
             )
             {
                 CACHES_OVERWRITE.Remove(cacheId);
@@ -187,8 +317,7 @@ namespace Omni.Core
             }
             else if (
                 cacheMode == (CacheMode.Group | CacheMode.Overwrite)
-                || cacheMode
-                    == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
+                || cacheMode == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
             )
             {
                 CACHES_OVERWRITE.Remove(cacheId);

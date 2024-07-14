@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using MemoryPack;
 using Newtonsoft.Json;
+using Omni.Shared;
 using Omni.Shared.Collections;
 
 namespace Omni.Core
@@ -41,7 +42,7 @@ namespace Omni.Core
         public ObservableDictionary<string, object> Data { get; } = new();
 
         [MemoryPackIgnore, JsonProperty("Data")]
-        public ObservableDictionary<string, object> SerializedData { get; } = new();
+        public ObservableDictionary<string, object> SerializedData { get; internal set; } = new();
 
         [MemoryPackIgnore]
         public double Time => _nativePeer.Time;
@@ -82,6 +83,90 @@ namespace Omni.Core
         {
             EnsureServerActive();
             NetworkManager.DisconnectPeer(this);
+        }
+
+        public void SyncSerializedData(
+            Target target = Target.Self,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            SyncSerializedData(
+                "_AllKeys_",
+                target,
+                deliveryMode,
+                groupId,
+                cacheId,
+                cacheMode,
+                sequenceChannel
+            );
+        }
+
+        public void SyncSerializedData(
+            string key,
+            Target target = Target.Self,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            Internal_SyncSerializedData(
+                key,
+                target,
+                deliveryMode,
+                groupId,
+                cacheId,
+                cacheMode,
+                sequenceChannel
+            );
+        }
+
+        private void Internal_SyncSerializedData(
+            string key = "_AllKeys_",
+            Target target = Target.Self,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            if (!NetworkManager.IsServerActive)
+            {
+                throw new Exception("Can't use this method on client.");
+            }
+
+            if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
+            {
+                value = key != "_AllKeys_" ? value : SerializedData;
+                ImmutableKeyValuePair keyValuePair = new(key, value);
+                using var message = NetworkManager.Pool.Rent();
+                message.FastWrite(Id);
+                message.ToJson(keyValuePair);
+                NetworkManager.Server.SendMessage(
+                    MessageType.SyncPeerSerializedData,
+                    Id,
+                    message,
+                    target,
+                    deliveryMode,
+                    groupId,
+                    cacheId,
+                    cacheMode,
+                    sequenceChannel
+                );
+            }
+            else
+            {
+                NetworkLogger.__Log__(
+                    $"SyncSerializedData Error: Failed to sync '{key}' because it doesn't exist.",
+                    NetworkLogger.LogType.Error
+                );
+            }
         }
 
         [Conditional("OMNI_DEBUG")]
