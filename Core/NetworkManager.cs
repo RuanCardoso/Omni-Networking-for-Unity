@@ -1468,9 +1468,12 @@ namespace Omni.Core
                             ImmutableKeyValuePair keyValuePair =
                                 header.FromJson<ImmutableKeyValuePair>();
 
+                            using var _ = EndOfHeader();
                             var groups = Client.Groups;
                             if (!groups.ContainsKey(groupId))
+                            {
                                 groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!")); // group name is not valid in this case!
+                            }
 
                             NetworkGroup fGroup = groups[groupId];
                             if (keyValuePair.Key != "_AllKeys_")
@@ -1502,9 +1505,12 @@ namespace Omni.Core
                                 ImmutableKeyValuePair keyValuePair =
                                     header.FromJson<ImmutableKeyValuePair>();
 
+                                using var _ = EndOfHeader();
                                 var peers = Client.Peers;
                                 if (!peers.ContainsKey(peerId))
+                                {
                                     peers.Add(peerId, new NetworkPeer(_peer, peerId)); // _peer is not valid endpoint in this case!
+                                }
 
                                 NetworkPeer fPeer = peers[peerId];
                                 if (keyValuePair.Key != "_AllKeys_")
