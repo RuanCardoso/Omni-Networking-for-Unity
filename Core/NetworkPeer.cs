@@ -6,6 +6,7 @@ using MemoryPack;
 using Newtonsoft.Json;
 using Omni.Shared;
 using Omni.Shared.Collections;
+using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
 {
@@ -82,7 +83,7 @@ namespace Omni.Core
         public void Disconnect()
         {
             EnsureServerActive();
-            NetworkManager.DisconnectPeer(this);
+            DisconnectPeer(this);
         }
 
         public void SyncSerializedData(
@@ -136,7 +137,7 @@ namespace Omni.Core
             byte sequenceChannel = 0
         )
         {
-            if (!NetworkManager.IsServerActive)
+            if (!IsServerActive)
             {
                 throw new Exception("Can't use this method on client.");
             }
@@ -145,10 +146,10 @@ namespace Omni.Core
             {
                 value = key != "_AllKeys_" ? value : SerializedData;
                 ImmutableKeyValuePair keyValuePair = new(key, value);
-                using var message = NetworkManager.Pool.Rent();
+                using var message = Pool.Rent();
                 message.FastWrite(Id);
                 message.ToJson(keyValuePair);
-                NetworkManager.Server.SendMessage(
+                Server.SendMessage(
                     MessageType.SyncPeerSerializedData,
                     this,
                     message,
@@ -172,7 +173,7 @@ namespace Omni.Core
         [Conditional("OMNI_DEBUG")]
         private void EnsureServerActive()
         {
-            if (!NetworkManager.IsServerActive)
+            if (!IsServerActive)
             {
                 throw new Exception("Can't use this method on client.");
             }
@@ -180,7 +181,7 @@ namespace Omni.Core
 
         public override string ToString()
         {
-            return NetworkManager.ToJson(this);
+            return ToJson(this);
         }
     }
 }
