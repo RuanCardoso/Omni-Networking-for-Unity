@@ -42,9 +42,9 @@ namespace Omni.Editor
             if (
                 targetObject
                 is NetworkBehaviour
-                    or NetworkEventBehaviour
-                    or ClientEventBehaviour
-                    or ServerEventBehaviour
+                    or DualBehaviour
+                    or ClientBehaviour
+                    or ServerBehaviour
             )
             {
                 // Validate naming convetion

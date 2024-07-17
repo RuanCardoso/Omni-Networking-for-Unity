@@ -62,8 +62,8 @@ namespace Omni.Core
 
             internal static Dictionary<int, NetworkGroup> Groups { get; } = new();
             internal static Dictionary<int, NetworkIdentity> Identities { get; } = new();
-            internal static Dictionary<int, INetworkMessage> GlobalEventBehaviours { get; } = new(); // int: identifier(identity id)
-            internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
+            internal static Dictionary<int, IInvokeMessage> GlobalEventBehaviours { get; } = new(); // int: identifier(identity id)
+            internal static Dictionary<(int, byte), IInvokeMessage> LocalEventBehaviours { get; } =
                 new();
 
             public static Dictionary<int, NetworkPeer> Peers { get; } = new();
@@ -96,12 +96,18 @@ namespace Omni.Core
                 }
             }
 
+            public static void SendMessage(byte msgId, SyncOptions options)
+            {
+                SendMessage(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
+            }
+
             public static void SendMessage(
                 byte msgId,
                 DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
-            ) =>
+            )
+            {
                 Internal_SendMessage(
                     msgId,
                     LocalPeer,
@@ -114,6 +120,12 @@ namespace Omni.Core
                     CacheMode.None,
                     sequenceChannel
                 );
+            }
+
+            public static void GlobalInvoke(byte msgId, SyncOptions options)
+            {
+                GlobalInvoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
+            }
 
             public static void GlobalInvoke(
                 byte msgId,
@@ -123,6 +135,17 @@ namespace Omni.Core
             )
             {
                 SendMessage(msgId, buffer, deliveryMode, sequenceChannel);
+            }
+
+            public static void Invoke(byte msgId, int identityId, SyncOptions options)
+            {
+                Invoke(
+                    msgId,
+                    identityId,
+                    options.Buffer,
+                    options.DeliveryMode,
+                    options.SequenceChannel
+                );
             }
 
             public static void Invoke(
@@ -139,6 +162,23 @@ namespace Omni.Core
                 message.FastWrite(msgId);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.GlobalInvoke, message, deliveryMode, sequenceChannel);
+            }
+
+            public static void Invoke(
+                byte msgId,
+                int identityId,
+                byte instanceId,
+                SyncOptions options
+            )
+            {
+                Invoke(
+                    msgId,
+                    identityId,
+                    instanceId,
+                    options.Buffer,
+                    options.DeliveryMode,
+                    options.SequenceChannel
+                );
             }
 
             public static void Invoke(
@@ -199,7 +239,7 @@ namespace Omni.Core
                 SendMessage(MessageType.LeaveGroup, message, DeliveryMode.ReliableOrdered, 0);
             }
 
-            internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
+            internal static void AddEventBehaviour(int identityId, IInvokeMessage behaviour)
             {
                 if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
                 {
@@ -238,8 +278,8 @@ namespace Omni.Core
             internal static Dictionary<int, NetworkCache> CACHES_OVERWRITE_GLOBAL { get; } = new();
 
             internal static Dictionary<int, NetworkGroup> Groups => GroupsById;
-            internal static Dictionary<int, INetworkMessage> GlobalEventBehaviours { get; } = new();
-            internal static Dictionary<(int, byte), INetworkMessage> LocalEventBehaviours { get; } =
+            internal static Dictionary<int, IInvokeMessage> GlobalEventBehaviours { get; } = new();
+            internal static Dictionary<(int, byte), IInvokeMessage> LocalEventBehaviours { get; } =
                 new();
 
             public static Dictionary<int, NetworkPeer> Peers => PeersById;
@@ -275,6 +315,21 @@ namespace Omni.Core
                 }
             }
 
+            public static void SendMessage(byte msgId, NetworkPeer peer, SyncOptions options)
+            {
+                SendMessage(
+                    msgId,
+                    peer,
+                    options.Buffer,
+                    options.Target,
+                    options.DeliveryMode,
+                    options.GroupId,
+                    options.CacheId,
+                    options.CacheMode,
+                    options.SequenceChannel
+                );
+            }
+
             public static void SendMessage(
                 byte msgId,
                 NetworkPeer peer,
@@ -301,6 +356,21 @@ namespace Omni.Core
                 );
             }
 
+            public static void GlobalInvoke(byte msgId, NetworkPeer peer, SyncOptions options)
+            {
+                GlobalInvoke(
+                    msgId,
+                    peer,
+                    options.Buffer,
+                    options.Target,
+                    options.DeliveryMode,
+                    options.GroupId,
+                    options.CacheId,
+                    options.CacheMode,
+                    options.SequenceChannel
+                );
+            }
+
             public static void GlobalInvoke(
                 byte msgId,
                 NetworkPeer peer,
@@ -323,6 +393,27 @@ namespace Omni.Core
                     cacheId,
                     cacheMode,
                     sequenceChannel
+                );
+            }
+
+            public static void Invoke(
+                byte msgId,
+                NetworkPeer peer,
+                int identityId,
+                SyncOptions options
+            )
+            {
+                Invoke(
+                    msgId,
+                    peer,
+                    identityId,
+                    options.Buffer,
+                    options.Target,
+                    options.DeliveryMode,
+                    options.GroupId,
+                    options.CacheId,
+                    options.CacheMode,
+                    options.SequenceChannel
                 );
             }
 
@@ -358,6 +449,29 @@ namespace Omni.Core
 
                 // byte count per empty message: 4 + 1 = 5 + header;
                 // TODO: reduce bandwidth usage
+            }
+
+            public static void Invoke(
+                byte msgId,
+                NetworkPeer peer,
+                int identityId,
+                byte instanceId,
+                SyncOptions options
+            )
+            {
+                Invoke(
+                    msgId,
+                    peer,
+                    identityId,
+                    instanceId,
+                    options.Buffer,
+                    options.Target,
+                    options.DeliveryMode,
+                    options.GroupId,
+                    options.CacheId,
+                    options.CacheMode,
+                    options.SequenceChannel
+                );
             }
 
             public static void Invoke(
@@ -1023,7 +1137,7 @@ namespace Omni.Core
                 CACHES_OVERWRITE_GLOBAL.Clear();
             }
 
-            internal static void AddEventBehaviour(int identityId, INetworkMessage behaviour)
+            internal static void AddEventBehaviour(int identityId, IInvokeMessage behaviour)
             {
                 if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
                 {

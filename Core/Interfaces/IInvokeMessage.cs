@@ -1,10 +1,10 @@
 namespace Omni.Core.Interfaces
 {
-    internal interface INetworkMessage
+    internal interface IInvokeMessage
     {
         int IdentityId { get; }
-        void Internal_OnMessage(
-            byte msgId,
+        void OnMessageInvoked(
+            byte methodId,
             DataBuffer buffer,
             NetworkPeer peer,
             bool isServer,

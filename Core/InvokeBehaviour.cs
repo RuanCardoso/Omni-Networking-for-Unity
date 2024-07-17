@@ -15,7 +15,7 @@ namespace Omni.Core
 
     internal struct Null { }
 
-    internal class EventBehaviour<T1, T2, T3, T4, T5>
+    internal class InvokeBehaviour<T1, T2, T3, T4, T5>
     {
         private readonly int expectedArgsCount = -1;
 
@@ -26,19 +26,16 @@ namespace Omni.Core
         private readonly Dictionary<int, Action<T1, T2, T3>> T1_T2_T3_action = new();
         private readonly Dictionary<int, Action<T1, T2, T3, T4>> T1_T2_T3_T4_action = new();
         private readonly Dictionary<int, Action<T1, T2, T3, T4, T5>> T1_T2_T3_T4_T5_action = new();
-        private readonly Dictionary<int, int> T_Locate = new(); // int: method id, int: args count
+        private readonly Dictionary<int, int> t_methods = new(); // int: method id, int: args count
 
-        internal EventBehaviour(int expectedArgsCount = -1)
+        internal InvokeBehaviour(int expectedArgsCount = -1)
         {
             this.expectedArgsCount = expectedArgsCount;
         }
 
-        internal bool TryGetLocate(int methodId, out int argsCount)
+        internal bool Exists(int methodId, out int argsCount)
         {
-            bool success = T_Locate.TryGetValue(methodId, out argsCount);
-            if (!success)
-                ThrowNoMethodFound(methodId);
-            return success;
+            return t_methods.TryGetValue(methodId, out argsCount);
         }
 
         internal void Invoke(int methodId)
@@ -53,10 +50,7 @@ namespace Omni.Core
             if (T0_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke();
-                return;
             }
-
-            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1)
@@ -71,10 +65,7 @@ namespace Omni.Core
             if (T1_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1);
-                return;
             }
-
-            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2)
@@ -89,10 +80,7 @@ namespace Omni.Core
             if (T1_T2_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2);
-                return;
             }
-
-            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3)
@@ -107,10 +95,7 @@ namespace Omni.Core
             if (T1_T2_T3_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3);
-                return;
             }
-
-            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
@@ -125,10 +110,7 @@ namespace Omni.Core
             if (T1_T2_T3_T4_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3, arg4);
-                return;
             }
-
-            ThrowNoMethodFound(methodId);
         }
 
         internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
@@ -143,10 +125,7 @@ namespace Omni.Core
             if (T1_T2_T3_T4_T5_action.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3, arg4, arg5);
-                return;
             }
-
-            ThrowNoMethodFound(methodId);
         }
 
         internal void FindEvents<T>(object target)
@@ -197,7 +176,7 @@ namespace Omni.Core
                             );
                         }
 
-                        if (T_Locate.TryAdd(attr.Id, argsCount))
+                        if (t_methods.TryAdd(attr.Id, argsCount))
                         {
                             switch (argsCount)
                             {
@@ -444,12 +423,15 @@ namespace Omni.Core
         }
 
         [Conditional("OMNI_DEBUG")]
-        void ThrowNoMethodFound(int methodId)
+        internal void ThrowNoMethodFound(int methodId)
         {
-            NetworkLogger.__Log__(
-                $"Configuration Error: No method(event) with ID '{methodId}' registered. Ensure a method with the same ID is registered.",
-                NetworkLogger.LogType.Error
-            );
+            if (!Exists(methodId, out _))
+            {
+                NetworkLogger.__Log__(
+                    $"Invoke Error: No method(event) with ID '{methodId}' registered. Ensure a method with the same ID is registered.",
+                    NetworkLogger.LogType.Error
+                );
+            }
         }
     }
 }

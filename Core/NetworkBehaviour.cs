@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
-    public class NetworkBehaviour : NetworkVariablesBehaviour, INetworkMessage, ITickSystem
+    public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem
     {
         // Hacky: DIRTY CODE!
         // This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.
@@ -344,10 +344,10 @@ namespace Omni.Core
         // Avoid refactoring as these techniques are crucial for optimizing execution speed.
         // Works with il2cpp.
 
-        private readonly EventBehaviour<DataBuffer, int, Null, Null, Null> clientEventBehaviour =
+        private readonly InvokeBehaviour<DataBuffer, int, Null, Null, Null> clientEventBehaviour =
             new();
 
-        private readonly EventBehaviour<
+        private readonly InvokeBehaviour<
             DataBuffer,
             NetworkPeer,
             int,
@@ -569,7 +569,7 @@ namespace Omni.Core
 
         private void TryClientLocate(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            if (clientEventBehaviour.TryGetLocate(msgId, out int argsCount))
+            if (clientEventBehaviour.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
@@ -609,7 +609,7 @@ namespace Omni.Core
             int seqChannel
         )
         {
-            if (serverEventBehaviour.TryGetLocate(msgId, out int argsCount))
+            if (serverEventBehaviour.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
@@ -645,7 +645,7 @@ namespace Omni.Core
         protected virtual void OnDestroy() { }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public void Internal_OnMessage(
+        public void OnMessageInvoked(
             byte msgId,
             DataBuffer buffer,
             NetworkPeer peer,

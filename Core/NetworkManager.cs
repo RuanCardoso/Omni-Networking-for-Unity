@@ -1781,9 +1781,9 @@ namespace Omni.Core
                                 ? Server.LocalEventBehaviours
                                 : Client.LocalEventBehaviours;
 
-                            if (eventBehavious.TryGetValue(key, out INetworkMessage behaviour))
+                            if (eventBehavious.TryGetValue(key, out IInvokeMessage behaviour))
                             {
-                                behaviour.Internal_OnMessage(
+                                behaviour.OnMessageInvoked(
                                     invokeId,
                                     message,
                                     peer, // peer is null on client.
@@ -1816,11 +1816,11 @@ namespace Omni.Core
                             if (
                                 eventBehavious.TryGetValue(
                                     identityId,
-                                    out INetworkMessage behaviour
+                                    out IInvokeMessage behaviour
                                 )
                             )
                             {
-                                behaviour.Internal_OnMessage(
+                                behaviour.OnMessageInvoked(
                                     invokeId,
                                     message,
                                     peer, // peer is null on client.
