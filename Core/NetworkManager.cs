@@ -101,17 +101,17 @@ namespace Omni.Core
     /// <summary>
     /// Specifies the target recipients for a network message.
     /// </summary>
-    public enum Target
+    public enum Target : byte
     {
-        /// <summary>
-        /// Sends the message to the current client itself. If the peer ID is 0 (server), the message is not executed.
-        /// </summary>
-        Self,
-
         /// <summary>
         /// Broadcasts the message to all connected players.
         /// </summary>
         All,
+
+        /// <summary>
+        /// Sends the message to the current client itself. If the peer ID is 0 (server), the message is not executed.
+        /// </summary>
+        Self,
 
         /// <summary>
         /// Sends the message to all players except the sender.
@@ -145,30 +145,30 @@ namespace Omni.Core
     public enum DeliveryMode : byte
     {
         /// <summary>
+        /// Reliable and ordered. Packets won't be dropped, won't be duplicated, will arrive in order.
+        /// </summary>
+        ReliableOrdered,
+
+        /// <summary>
         /// Unreliable. Packets can be dropped, can be duplicated, can arrive without order.
         /// </summary>
-        Unreliable = 4,
+        Unreliable,
 
         /// <summary>
         /// Reliable. Packets won't be dropped, won't be duplicated, can arrive without order.
         /// </summary>
-        ReliableUnordered = 0,
+        ReliableUnordered,
 
         /// <summary>
         /// Unreliable. Packets can be dropped, won't be duplicated, will arrive in order.
         /// </summary>
-        Sequenced = 1,
-
-        /// <summary>
-        /// Reliable and ordered. Packets won't be dropped, won't be duplicated, will arrive in order.
-        /// </summary>
-        ReliableOrdered = 2,
+        Sequenced,
 
         /// <summary>
         /// Reliable only last packet. Packets can be dropped (except the last one), won't be duplicated, will arrive in order.
         /// Cannot be fragmented
         /// </summary>
-        ReliableSequenced = 3
+        ReliableSequenced
     }
 
     internal class MessageType // not a enum to avoid casting
@@ -205,6 +205,120 @@ namespace Omni.Core
             Key = key;
             Value = value;
         }
+    }
+
+    /// <summary>
+    /// Provides default synchronization options with the following settings:<br/>
+    /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+    /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+    /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+    /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+    /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+    /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+    /// </summary>
+    public struct SyncOptions
+    {
+        public Target Target { get; set; }
+        public DeliveryMode DeliveryMode { get; set; }
+        public int GroupId { get; set; }
+        public int CacheId { get; set; }
+        public CacheMode CacheMode { get; set; }
+        public byte SequenceChannel { get; set; }
+        public DataBuffer Buffer { get; set; }
+
+        /// <summary>
+        /// Provides default synchronization options with the following settings:<br/>
+        /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+        /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+        /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+        /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+        /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+        /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+        /// </summary>
+        public SyncOptions(DataBuffer buffer)
+        {
+            Buffer = buffer;
+            Target = Target.All;
+            DeliveryMode = DeliveryMode.ReliableOrdered;
+            GroupId = 0;
+            CacheId = 0;
+            CacheMode = CacheMode.None;
+            SequenceChannel = 0;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyncOptions"/> struct with the specified parameters.
+        /// </summary>
+        public SyncOptions(
+            DataBuffer buffer,
+            Target target,
+            DeliveryMode deliveryMode,
+            int groupId,
+            int cacheId,
+            CacheMode cacheMode,
+            byte sequenceChannel
+        )
+        {
+            Buffer = buffer;
+            Target = target;
+            DeliveryMode = deliveryMode;
+            GroupId = groupId;
+            CacheId = cacheId;
+            CacheMode = cacheMode;
+            SequenceChannel = sequenceChannel;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyncOptions"/> struct with the specified parameters.
+        /// </summary>
+        public SyncOptions(
+            Target target,
+            DeliveryMode deliveryMode,
+            int groupId,
+            int cacheId,
+            CacheMode cacheMode,
+            byte sequenceChannel
+        )
+        {
+            Buffer = null;
+            Target = target;
+            DeliveryMode = deliveryMode;
+            GroupId = groupId;
+            CacheId = cacheId;
+            CacheMode = cacheMode;
+            SequenceChannel = sequenceChannel;
+        }
+
+        /// <summary>
+        /// Provides default synchronization options with the following settings:<br/>
+        /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+        /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+        /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+        /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+        /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+        /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+        /// </summary>
+        public SyncOptions(bool useDefaultOptions)
+        {
+            Buffer = null;
+            Target = Target.All;
+            DeliveryMode = DeliveryMode.ReliableOrdered;
+            GroupId = 0;
+            CacheId = 0;
+            CacheMode = CacheMode.None;
+            SequenceChannel = 0;
+        }
+
+        /// <summary>
+        /// Provides default synchronization options with the following settings:<br/>
+        /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+        /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+        /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+        /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+        /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+        /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+        /// </summary>
+        public static SyncOptions Default => new SyncOptions(true);
     }
 
     [DefaultExecutionOrder(-1000)]

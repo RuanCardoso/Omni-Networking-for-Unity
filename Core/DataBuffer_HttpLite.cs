@@ -14,6 +14,21 @@ namespace Omni.Core
         /// <summary>
         /// Sends a GET/POST response from the server.
         /// </summary>
+        public void Send(HttpTarget target, SyncOptions options)
+        {
+            Send(
+                target,
+                options.DeliveryMode,
+                options.GroupId,
+                options.CacheId,
+                options.CacheMode,
+                options.SequenceChannel
+            );
+        }
+
+        /// <summary>
+        /// Sends a GET/POST response from the server.
+        /// </summary>
         public void Send(
             HttpTarget target = HttpTarget.Self,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,

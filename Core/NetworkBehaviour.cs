@@ -32,6 +32,17 @@ namespace Omni.Core
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
             /// <param name="propertyId">The ID of the property being synchronized.</param>
+            public void ManualSync<T>(T property, byte propertyId, SyncOptions options)
+            {
+                ManualSync<T>(property, propertyId, options.DeliveryMode, options.SequenceChannel);
+            }
+
+            /// <summary>
+            /// Sends a manual 'NetVar' message to the server with the specified property and property id.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="property">The property value to synchronize.</param>
+            /// <param name="propertyId">The ID of the property being synchronized.</param>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void ManualSync<T>(
@@ -49,17 +60,24 @@ namespace Omni.Core
             /// Automatically sends a 'NetVar' message to the server based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            public void AutoSync<T>(SyncOptions options, [CallerMemberName] string ___ = "")
+            {
+                AutoSync<T>(options.DeliveryMode, options.SequenceChannel, ___);
+            }
+
+            /// <summary>
+            /// Automatically sends a 'NetVar' message to the server based on the caller member name.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void AutoSync<T>(
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0,
-                [CallerMemberName] string callerName = ""
+                [CallerMemberName] string ___ = ""
             )
             {
-                IPropertyInfo property = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
-                    callerName
-                );
+                IPropertyInfo property = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(___);
 
                 IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
 
@@ -78,6 +96,15 @@ namespace Omni.Core
             /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
             /// </summary>
             /// <param name="msgId">The ID of the message to be invoked.</param>
+            public void Invoke(byte msgId, SyncOptions options)
+            {
+                Invoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
+            }
+
+            /// <summary>
+            /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
+            /// </summary>
+            /// <param name="msgId">The ID of the message to be invoked.</param>
             /// <param name="buffer">The buffer containing the message data. Default is null.</param>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
@@ -86,7 +113,8 @@ namespace Omni.Core
                 DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
-            ) =>
+            )
+            {
                 NetworkManager.Client.Invoke(
                     msgId,
                     m_NetworkBehaviour.IdentityId,
@@ -95,6 +123,7 @@ namespace Omni.Core
                     deliveryMode,
                     sequenceChannel
                 );
+            }
         }
 
         public class NbServer
@@ -104,6 +133,32 @@ namespace Omni.Core
             internal NbServer(NetworkBehaviour networkBehaviour)
             {
                 m_NetworkBehaviour = networkBehaviour;
+            }
+
+            /// <summary>
+            /// Sends a manual 'NetVar' message to all(default) clients with the specified property and property ID.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="property">The property value to synchronize.</param>
+            /// <param name="propertyId">The ID of the property being synchronized.</param>
+            /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="groupId">The group ID for the message. Default is 0.</param>
+            /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+            /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            public void ManualSync<T>(T property, byte propertyId, SyncOptions options)
+            {
+                ManualSync(
+                    property,
+                    propertyId,
+                    options.Target,
+                    options.DeliveryMode,
+                    options.GroupId,
+                    options.CacheId,
+                    options.CacheMode,
+                    options.SequenceChannel
+                );
             }
 
             /// <summary>
@@ -152,6 +207,29 @@ namespace Omni.Core
             /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
             /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            public void AutoSync<T>(SyncOptions options, [CallerMemberName] string ___ = "")
+            {
+                AutoSync<T>(
+                    options.Target,
+                    options.DeliveryMode,
+                    options.GroupId,
+                    options.CacheId,
+                    options.CacheMode,
+                    options.SequenceChannel,
+                    ___
+                );
+            }
+
+            /// <summary>
+            /// Automatically sends a 'NetVar' message to all(default) clients based on the caller member name.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="groupId">The group ID for the message. Default is 0.</param>
+            /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+            /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             public void AutoSync<T>(
                 Target target = Target.All,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -159,11 +237,11 @@ namespace Omni.Core
                 int cacheId = 0,
                 CacheMode cacheMode = CacheMode.None,
                 byte sequenceChannel = 0,
-                [CallerMemberName] string callerName = ""
+                [CallerMemberName] string ___ = ""
             )
             {
                 IPropertyInfo propertyInfo = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
-                    callerName
+                    ___
                 );
                 IPropertyInfo<T> propertyInfoGeneric = propertyInfo as IPropertyInfo<T>;
 
@@ -185,6 +263,31 @@ namespace Omni.Core
                         sequenceChannel
                     );
                 }
+            }
+
+            /// <summary>
+            /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
+            /// </summary>
+            /// <param name="msgId">The ID of the message to be invoked.</param>
+            /// <param name="buffer">The buffer containing the message data. Default is null.</param>
+            /// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
+            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="groupId">The group ID for the message. Default is 0.</param>
+            /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
+            /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            public void Invoke(byte msgId, SyncOptions options)
+            {
+                Invoke(
+                    msgId,
+                    options.Buffer,
+                    options.Target,
+                    options.DeliveryMode,
+                    options.GroupId,
+                    options.CacheId,
+                    options.CacheMode,
+                    options.SequenceChannel
+                );
             }
 
             /// <summary>

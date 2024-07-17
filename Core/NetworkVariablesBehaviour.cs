@@ -37,7 +37,7 @@ namespace Omni.Core
 
     public class NetworkVariablesBehaviour : MonoBehaviour
     {
-        private readonly Dictionary<string, IPropertyInfo> properties = new();
+        readonly Dictionary<string, IPropertyInfo> properties = new();
 
         internal DataBuffer CreateHeader<T>(T @object, byte id)
         {
