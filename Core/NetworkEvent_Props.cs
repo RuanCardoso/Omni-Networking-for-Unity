@@ -245,13 +245,6 @@ namespace Omni.Core
         /// Automatically sends a 'NetVar' message to all(default) clients based on the caller member name.
         /// </summary>
         /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-        /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
-        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-        /// <param name="groupId">The group ID for the message. Default is 0.</param>
-        /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
-        /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
-        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-        /// <param name="___">The name of the calling member. This parameter is automatically supplied by the compiler
         public void AutoSync<T>(
             SyncOptions options,
             NetworkPeer peer = null,
@@ -280,7 +273,6 @@ namespace Omni.Core
         /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
         /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-        /// <param name="___">The name of the calling member. This parameter is automatically supplied by the compiler
         public void AutoSync<T>(
             NetworkPeer peer = null,
             Target target = Target.All,

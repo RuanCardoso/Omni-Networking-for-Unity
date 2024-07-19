@@ -1814,10 +1814,7 @@ namespace Omni.Core
                                 : Client.GlobalEventBehaviours;
 
                             if (
-                                eventBehavious.TryGetValue(
-                                    identityId,
-                                    out IInvokeMessage behaviour
-                                )
+                                eventBehavious.TryGetValue(identityId, out IInvokeMessage behaviour)
                             )
                             {
                                 behaviour.OnMessageInvoked(
@@ -1994,6 +1991,7 @@ namespace Omni.Core
         /// <returns>A string representing the JSON serialization of the object.</returns>
         public static string ToJson<T>(T obj, JsonSerializerSettings settings = null)
         {
+            settings ??= BufferWriterExtensions.DefaultJsonSettings;
             return JsonConvert.SerializeObject(obj, settings);
         }
 
@@ -2006,6 +2004,7 @@ namespace Omni.Core
         /// <returns>A byte array representing the binary serialization of the object.</returns>
         public static byte[] ToBinary<T>(T obj, MemoryPackSerializerOptions settings = null)
         {
+            settings ??= BufferWriterExtensions.DefaultMemoryPackSettings;
             return MemoryPackSerializer.Serialize(obj, settings);
         }
 
@@ -2018,6 +2017,7 @@ namespace Omni.Core
         /// <returns>The deserialized object.</returns>
         public static T FromJson<T>(string json, JsonSerializerSettings settings = null)
         {
+            settings ??= BufferWriterExtensions.DefaultJsonSettings;
             return JsonConvert.DeserializeObject<T>(json, settings);
         }
 
@@ -2030,6 +2030,7 @@ namespace Omni.Core
         /// <returns>The deserialized object.</returns>
         public static T FromBinary<T>(byte[] data, MemoryPackSerializerOptions settings = null)
         {
+            settings ??= BufferWriterExtensions.DefaultMemoryPackSettings;
             return MemoryPackSerializer.Deserialize<T>(data, settings);
         }
 
