@@ -64,7 +64,10 @@ namespace Omni.Core
         /// <exception cref="ArgumentException">
         /// Thrown when <paramref name="capacity"/> is not positive (i.e. less than or equal to 0).
         /// </exception>
-        public DataBuffer(int capacity = 16384, IObjectPooling<DataBuffer> pool = null)
+        public DataBuffer(int capacity = 16384)
+            : this(capacity, null) { }
+
+        internal DataBuffer(int capacity = 16384, IObjectPooling<DataBuffer> pool = null)
         {
             if (capacity <= 0)
             {
