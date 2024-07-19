@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -8,6 +9,7 @@ using MemoryPack;
 using MemoryPack.Compression;
 using Newtonsoft.Json;
 using Omni.Core.Cryptography;
+using UnityEngine;
 
 namespace Omni.Core
 {
@@ -235,6 +237,22 @@ namespace Omni.Core
         public static Encoding DefaultEncoding { get; set; } = Encoding.ASCII;
 
         /// <summary>
+        /// The default JSON serializer settings used when serializing or deserializing objects.
+        /// </summary>
+        public static JsonSerializerSettings DefaultJsonSettings { get; set; } =
+            new JsonSerializerSettings()
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                Converters = { new HalfJsonConverter() },
+            };
+
+        /// <summary>
+        /// The default settings used when serializing or deserializing objects using MemoryPack.
+        /// </summary>
+        public static MemoryPackSerializerOptions DefaultMemoryPackSettings { get; set; } =
+            MemoryPackSerializerOptions.Default;
+
+        /// <summary>
         /// Converts an object to JSON and writes it to the buffer.<br/>
         /// By default, Newtonsoft.Json is used for serialization.
         /// </summary>
@@ -244,7 +262,10 @@ namespace Omni.Core
             JsonSerializerSettings settings = null
         )
         {
+            settings ??= DefaultJsonSettings;
             string json = JsonConvert.SerializeObject(value, settings);
+            // The json string returned may be very large, so avoid using FastWrite which uses "stackalloc".
+            // Could cause a stack overflow.
             Write(buffer, json);
             return json;
         }
@@ -259,6 +280,7 @@ namespace Omni.Core
             MemoryPackSerializerOptions settings = null
         )
         {
+            settings ??= DefaultMemoryPackSettings;
             IBufferWriter<byte> writer = buffer;
             byte[] data = MemoryPackSerializer.Serialize(value, settings);
             Write7BitEncodedInt(buffer, data.Length);
@@ -275,6 +297,7 @@ namespace Omni.Core
             MemoryPackSerializerOptions settings = null
         )
         {
+            settings ??= DefaultMemoryPackSettings;
             IBufferWriter<byte> writer = buffer;
             using MemoryStream stream = new();
             await MemoryPackSerializer.SerializeAsync(stream, value, settings);
@@ -466,6 +489,33 @@ namespace Omni.Core
 
             FastWrite(buffer, (byte)uValue);
         }
+
+        /// <summary>
+        /// Writes a compressed representation of a Vector3 to the DataBuffer.
+        /// This method reduces the size of the data by compressing the Vector3 before writing,
+        /// resulting in significant bandwidth savings during data transmission.
+        /// The compressed size of the Vector3 is 8 bytes (long).<br/><br/>
+        /// Min/Max Values (X / Y / Z)<br/>
+        /// Min Values: -9999.99f / -9999.99f / -9999.99f<br/>
+        /// Max Values: 9999.99f / 9999.99f / 9999.99f<br/>
+        /// </summary>
+        public static void WritePacked(this DataBuffer buffer, Vector3 vector)
+        {
+            long packedValue = VectorCompressor.Compress(vector);
+            FastWrite(buffer, packedValue);
+        }
+
+        /// <summary>
+        /// Writes a compressed representation of a Quaternion to the DataBuffer.
+        /// This method reduces the size of the data by compressing the Quaternion before writing,
+        /// resulting in significant bandwidth savings during data transmission.
+        /// The compressed size of the Quaternion is 4 bytes (uint).
+        /// </summary>
+        public static void WritePacked(this DataBuffer buffer, Quaternion quat)
+        {
+            uint packedValue = QuaternionCompressor.Compress(quat);
+            FastWrite(buffer, packedValue);
+        }
     }
 
     public static partial class BufferWriterExtensions
@@ -502,6 +552,7 @@ namespace Omni.Core
         /// </summary>
         public static T FromJson<T>(this DataBuffer buffer, JsonSerializerSettings settings = null)
         {
+            settings ??= DefaultJsonSettings;
             string json = ReadString(buffer);
             return JsonConvert.DeserializeObject<T>(json, settings);
         }
@@ -516,6 +567,7 @@ namespace Omni.Core
             JsonSerializerSettings settings = null
         )
         {
+            settings ??= DefaultJsonSettings;
             json = ReadString(buffer);
             return JsonConvert.DeserializeObject<T>(json, settings);
         }
@@ -529,6 +581,7 @@ namespace Omni.Core
             MemoryPackSerializerOptions settings = null
         )
         {
+            settings ??= DefaultMemoryPackSettings;
             int dataSize = Read7BitEncodedInt(buffer);
             Span<byte> data = buffer.Internal_GetSpan(dataSize);
             buffer.Internal_Advance(dataSize);
@@ -721,6 +774,26 @@ namespace Omni.Core
 
             result |= (ulong)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
             return (long)result;
+        }
+
+        /// <summary>
+        /// Reads and decompresses a Vector3 from the DataBuffer.
+        /// This method expects the data to be in the compressed format written by WritePacked.
+        /// </summary>
+        public static Vector3 ReadPackedVector3(this DataBuffer buffer)
+        {
+            long packedValue = FastRead<long>(buffer);
+            return VectorCompressor.Decompress(packedValue);
+        }
+
+        /// <summary>
+        /// Reads and decompresses a Quaternion from the DataBuffer.
+        /// This method expects the data to be in the compressed format written by WritePacked.
+        /// </summary>
+        public static Quaternion ReadPackedQuaternion(this DataBuffer buffer)
+        {
+            uint packedValue = FastRead<uint>(buffer);
+            return QuaternionCompressor.Decompress(packedValue);
         }
     }
 }
