@@ -2,6 +2,7 @@ using System;
 
 namespace Omni.Core
 {
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class EventAttribute : Attribute
     {
         internal byte Id { get; }
@@ -9,10 +10,10 @@ namespace Omni.Core
         public EventAttribute(byte id)
         {
             Id = id;
-            if (Id >= 230)
+            if (Id > 230 && Id < 255)
             {
                 throw new Exception(
-                    "Event ID must be less than 230. IDs above 230 are reserved for internal use, such as RPC or custom messages. Please avoid using IDs above this threshold."
+                    $"Event ID({Id}) must be less than 230. IDs above 230 are reserved for internal use, such as RPC or custom messages. Please avoid using IDs above this threshold."
                 );
             }
         }
