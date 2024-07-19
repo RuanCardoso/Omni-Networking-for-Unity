@@ -12,6 +12,7 @@
     License: Open Source (MIT)
     ===========================================================*/
 
+using System;
 using System.Security.Cryptography;
 
 #pragma warning disable IDE0063
@@ -25,6 +26,13 @@ namespace Omni.Core.Cryptography
     {
         public static byte[] Encrypt(byte[] data, int offset, int length, byte[] key, out byte[] Iv)
         {
+            if (key == null || key.Length < 16)
+            {
+                throw new ArgumentException(
+                    "The encryption key is not provided or is invalid. Please provide a valid key."
+                );
+            }
+
             using (Aes Aes = Aes.Create())
             {
                 Aes.KeySize = 128; // 128 bit key
@@ -43,6 +51,13 @@ namespace Omni.Core.Cryptography
 
         public static byte[] Decrypt(byte[] data, int offset, int length, byte[] key, byte[] Iv)
         {
+            if (key == null || key.Length < 16)
+            {
+                throw new ArgumentException(
+                    "The encryption key is not provided or is invalid. Please provide a valid key."
+                );
+            }
+
             using (Aes Aes = Aes.Create())
             {
                 Aes.KeySize = 128;

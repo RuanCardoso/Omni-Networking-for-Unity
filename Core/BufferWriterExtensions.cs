@@ -9,6 +9,7 @@ using MemoryPack;
 using MemoryPack.Compression;
 using Newtonsoft.Json;
 using Omni.Core.Cryptography;
+using Omni.Shared;
 using UnityEngine;
 
 namespace Omni.Core
@@ -226,6 +227,70 @@ namespace Omni.Core
             buffer.SeekToBegin();
             WriteRaw(buffer, decryptedBuffer.Internal_GetSpan(decryptedBuffer.EndPosition));
             buffer.SeekToBegin();
+        }
+
+        private static void SetNetworkSerializableOptions(
+            ISerializable message,
+            bool isServer,
+            NetworkPeer peer
+        )
+        {
+            if (message is ISerializableWithPeer withPeer)
+            {
+                withPeer.Peer = peer;
+                withPeer.IsServer = isServer;
+            }
+        }
+
+        /// <summary>
+        /// Serializes the given network serializable object into a new data buffer.
+        /// </summary>
+        /// <returns>
+        /// A new data buffer containing the serialized data. The caller must ensure the buffer is disposed or used within a using statement.
+        /// </returns>
+        public static DataBuffer Serialize(
+            this ISerializable message,
+            bool isServer = false,
+            NetworkPeer peer = null
+        )
+        {
+            var writer = NetworkManager.Pool.Rent();
+            SetNetworkSerializableOptions(message, isServer, peer);
+            message.Serialize(writer);
+            return writer;
+        }
+
+        /// <summary>
+        /// Deserializes the contents of the given data buffer into the given network serializable object.
+        /// </summary>
+        /// <param name="reader">The data buffer containing the serialized data to deserialize.</param>
+        public static void Populate(
+            this ISerializable message,
+            DataBuffer reader,
+            bool isServer = false,
+            NetworkPeer peer = null
+        )
+        {
+            SetNetworkSerializableOptions(message, isServer, peer);
+            message.Deserialize(reader);
+        }
+
+        /// <summary>
+        /// Deserializes the contents of the given data buffer into a new instance of the given type.
+        /// </summary>
+        /// <typeparam name="T">The type of the message to deserialize. Must be a network serializable object.</typeparam>
+        /// <returns>The deserialized message.</returns>
+        public static T Deserialize<T>(
+            this DataBuffer reader,
+            bool isServer = false,
+            NetworkPeer peer = null
+        )
+            where T : ISerializable, new()
+        {
+            T message = new();
+            SetNetworkSerializableOptions(message, isServer, peer);
+            message.Deserialize(reader);
+            return message;
         }
     }
 
