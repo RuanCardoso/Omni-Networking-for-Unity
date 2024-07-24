@@ -35,17 +35,26 @@ namespace Omni.Core.Cryptography
 
             using (Aes Aes = Aes.Create())
             {
-                Aes.KeySize = 128; // 128 bit key
-                Aes.BlockSize = 128; // 128 bit block size
-                Aes.Mode = CipherMode.CBC; // Cipher Block Chaining
-                Aes.Padding = PaddingMode.PKCS7;
+                try
+                {
+                    Aes.KeySize = 128; // 128 bit key
+                    Aes.BlockSize = 128; // 128 bit block size
+                    Aes.Mode = CipherMode.CBC; // Cipher Block Chaining
+                    Aes.Padding = PaddingMode.PKCS7;
 
-                Aes.Key = key;
-                Aes.GenerateIV(); // Generate unique and random IV
-                Iv = Aes.IV;
+                    Aes.Key = key;
+                    Aes.GenerateIV(); // Generate unique and random IV
+                    Iv = Aes.IV;
 
-                ICryptoTransform encryptor = Aes.CreateEncryptor();
-                return encryptor.TransformFinalBlock(data, offset, length);
+                    ICryptoTransform encryptor = Aes.CreateEncryptor();
+                    return encryptor.TransformFinalBlock(data, offset, length);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(
+                        $"The encryption key is invalid. Please provide a valid key. Error: {ex.Message}"
+                    );
+                }
             }
         }
 
@@ -60,16 +69,25 @@ namespace Omni.Core.Cryptography
 
             using (Aes Aes = Aes.Create())
             {
-                Aes.KeySize = 128;
-                Aes.BlockSize = 128;
-                Aes.Mode = CipherMode.CBC;
-                Aes.Padding = PaddingMode.PKCS7;
+                try
+                {
+                    Aes.KeySize = 128;
+                    Aes.BlockSize = 128;
+                    Aes.Mode = CipherMode.CBC;
+                    Aes.Padding = PaddingMode.PKCS7;
 
-                Aes.IV = Iv;
-                Aes.Key = key;
+                    Aes.IV = Iv;
+                    Aes.Key = key;
 
-                ICryptoTransform decryptor = Aes.CreateDecryptor();
-                return decryptor.TransformFinalBlock(data, offset, length);
+                    ICryptoTransform decryptor = Aes.CreateDecryptor();
+                    return decryptor.TransformFinalBlock(data, offset, length);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(
+                        $"The encryption key is invalid. Please provide a valid key. Error: {ex.Message}"
+                    );
+                }
             }
         }
 
