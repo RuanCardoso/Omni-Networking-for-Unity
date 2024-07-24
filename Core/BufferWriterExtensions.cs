@@ -1,92 +1,56 @@
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using MemoryPack;
 using MemoryPack.Compression;
 using Newtonsoft.Json;
 using Omni.Core.Cryptography;
-using Omni.Shared;
 using UnityEngine;
 
 namespace Omni.Core
 {
+    public enum BrotliCompressionLevel
+    {
+        UltraFast = 1, // Ultra Rápido
+        VeryFast = 2, // Muito Rápido
+        Fast = 3, // Rápido
+        ModeratelyFast = 4, // Moderadamente Rápido
+        Balanced = 5, // Balanceado
+        ModeratelySlow = 6, // Moderadamente Lento
+        Slow = 7, // Lento
+        VerySlow = 8, // Muito Lento
+        UltraSlow = 9, // Ultra Lento
+        MaxCompression = 10, // Compressão Máxima
+        ExtremeCompression = 11 // Compressão Extrema
+    }
+
+    // Global
     public static partial class BufferWriterExtensions
     {
         /// <summary>
-        /// Instantiates a network identity on the server for a specific network peer and serializes its data to the buffer.
-        /// </summary>
-        /// <param name="prefab">The prefab of the network identity to instantiate.</param>
-        /// <param name="peer">The network peer for which the identity is instantiated.</param>
-        /// <param name="buffer">The buffer to write identity data.</param>
-        /// <param name="OnBeforeStart">An action to execute before the network identity starts, but after it has been registered.</param>
-        /// <returns>The instantiated network identity.</returns>
-        public static NetworkIdentity InstantiateOnServer(
-            this DataBuffer buffer,
-            NetworkIdentity prefab,
-            NetworkPeer peer,
-            Action<NetworkIdentity> OnBeforeStart = null
-        )
-        {
-            return prefab.InstantiateOnServer(peer, buffer, OnBeforeStart);
-        }
-
-        /// <summary>
-        /// Instantiates a network identity on the client from serialized data in the buffer.
-        /// </summary>
-        /// <param name="prefab">The prefab of the network identity to instantiate.</param>
-        /// <param name="buffer">The buffer containing serialized identity data.</param>
-        /// <returns>The instantiated network identity.</returns>
-        public static NetworkIdentity InstantiateOnClient(
-            this DataBuffer buffer,
-            NetworkIdentity prefab,
-            Action<NetworkIdentity> OnBeforeStart = null
-        )
-        {
-            return prefab.InstantiateOnClient(buffer, OnBeforeStart);
-        }
-
-        /// <summary>
-        /// Destroys a network identity on the server and serializes its data to the buffer.
-        /// </summary>
-        /// <param name="identity">The network identity to destroy.</param>
-        public static void DestroyOnServer(this DataBuffer buffer, NetworkIdentity identity)
-        {
-            identity.DestroyOnServer(buffer);
-        }
-
-        /// <summary>
-        /// Destroys a network identity on the client from serialized data in the buffer.
-        /// </summary>
-        public static void DestroyOnClient(this DataBuffer buffer)
-        {
-            buffer.Internal_DestroyOnClient();
-        }
-
-        /// <summary>
         /// Compresses the data in the buffer using the Brotli compression algorithm.
         /// </summary>
-        /// <param name="buffer">The buffer containing the data to compress.</param>
-        /// <param name="quality">The compression quality, ranging from 0 (fastest) to 11 (slowest). Default is 1.</param>
+        /// <param name="data">The buffer containing the data to compress.</param>
         /// <param name="window">The Brotli sliding window size, ranging from 10 to 24. Default is 22.</param>
         /// <returns>A new buffer containing the compressed data. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        /// <exception cref="Exception">
-        /// Thrown when there is no space available in the buffer acquired from the pool,
-        /// or if an error occurs during compression.
-        /// </exception>
-        public static DataBuffer Compress(this DataBuffer buffer, int quality = 1, int window = 22)
+        public static DataBuffer Compress(
+            this DataBuffer data,
+            BrotliCompressionLevel level = BrotliCompressionLevel.UltraFast,
+            int window = 22
+        )
         {
             try
             {
-                using BrotliCompressor compressor = new(quality, window);
-                buffer.SeekToEnd();
-                compressor.Write(buffer.BufferAsSpan);
+                data.SeekToEnd();
+                using BrotliCompressor compressor = new((int)level, window);
+                compressor.Write(data.BufferAsSpan);
 
                 var compressedBuffer = NetworkManager.Pool.Rent(); // Disposed by the caller!
-                compressor.CopyTo(compressedBuffer);
+                compressor.CopyTo(compressedBuffer); // IBufferWriter<byte> implementation
                 return compressedBuffer;
             }
             catch (NotSupportedException ex)
@@ -104,53 +68,49 @@ namespace Omni.Core
         /// <summary>
         /// Compresses the data in the current buffer using the Brotli compression algorithm.
         /// </summary>
-        /// <param name="buffer">The buffer containing the data to compress.</param>
-        /// <param name="quality">The compression quality, ranging from 0 (fastest) to 11 (slowest). Default is 1.</param>
+        /// <param name="data">The buffer containing the data to compress.</param>
         /// <param name="window">The Brotli sliding window size, ranging from 10 to 24. Default is 22.</param>
-        /// <exception cref="Exception">
-        /// Thrown when there is no space available in the buffer acquired from the pool,
-        /// or if an error occurs during compression.
-        /// </exception>
-        public static void CompressRaw(this DataBuffer buffer, int quality = 1, int window = 22)
+        public static void CompressRaw(
+            this DataBuffer data,
+            BrotliCompressionLevel level = BrotliCompressionLevel.UltraFast,
+            int window = 22
+        )
         {
-            using var compressedBuffer = Compress(buffer, quality, window);
-            buffer.SeekToBegin();
-            WriteRaw(buffer, compressedBuffer.BufferAsSpan);
+            using var compressedBuffer = Compress(data, level, window);
+            data.Reset();
+            data.Write(compressedBuffer.BufferAsSpan);
         }
 
         /// <summary>
         /// Decompresses the data in the buffer using the Brotli decompression algorithm.
         /// </summary>
-        /// <param name="buffer">The buffer containing the compressed data.</param>
+        /// <param name="data">The buffer containing the compressed data.</param>
         /// <returns>A new buffer containing the decompressed data. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        /// <exception cref="Exception">
-        /// Thrown if an error occurs during decompression.
-        /// </exception>
-        public static DataBuffer Decompress(this DataBuffer buffer)
+        public static DataBuffer Decompress(this DataBuffer data)
         {
+            data.SeekToEnd();
             using BrotliDecompressor decompressor = new();
-            buffer.SeekToEnd();
-            var data = decompressor.Decompress(buffer.BufferAsSpan);
+            var sequenceData = decompressor.Decompress(data.BufferAsSpan);
 
+            var length = (int)sequenceData.Length;
             var decompressedBuffer = NetworkManager.Pool.Rent();
-            data.CopyTo(decompressedBuffer.GetSpan());
-            decompressedBuffer.SetEndPosition((int)data.Length);
+
+            sequenceData.CopyTo(decompressedBuffer.Internal_GetSpan(length));
+            decompressedBuffer.SetLength(length);
+            decompressedBuffer.SetEndPosition(length);
             return decompressedBuffer;
         }
 
         /// <summary>
         /// Decompresses the data in the current buffer using the Brotli decompression algorithm.
         /// </summary>
-        /// <param name="buffer">The buffer containing the compressed data.</param>
-        /// <exception cref="Exception">
-        /// Thrown if an error occurs during decompression.
-        /// </exception>
-        public static void DecompressRaw(this DataBuffer buffer)
+        /// <param name="data">The buffer containing the compressed data.</param>
+        public static void DecompressRaw(this DataBuffer data)
         {
-            using var decompressedBuffer = Decompress(buffer);
-            buffer.SeekToBegin();
-            WriteRaw(buffer, decompressedBuffer.Internal_GetSpan(decompressedBuffer.EndPosition));
-            buffer.SeekToBegin();
+            using var decompressedBuffer = Decompress(data);
+            data.Reset();
+            data.Write(decompressedBuffer.Internal_GetSpan(decompressedBuffer.EndPosition));
+            data.SeekToBegin();
         }
 
         /// <summary>
@@ -186,8 +146,8 @@ namespace Omni.Core
         public static void EncryptRaw(this DataBuffer buffer, NetworkPeer peer)
         {
             using var encryptedBuffer = Encrypt(buffer, peer);
-            buffer.SeekToBegin();
-            WriteRaw(buffer, encryptedBuffer.BufferAsSpan);
+            buffer.Reset();
+            buffer.Write(encryptedBuffer.BufferAsSpan);
         }
 
         /// <summary>
@@ -224,8 +184,8 @@ namespace Omni.Core
         public static void DecryptRaw(this DataBuffer buffer, NetworkPeer peer)
         {
             using var decryptedBuffer = Decrypt(buffer, peer);
-            buffer.SeekToBegin();
-            WriteRaw(buffer, decryptedBuffer.Internal_GetSpan(decryptedBuffer.EndPosition));
+            buffer.Reset();
+            buffer.Write(decryptedBuffer.Internal_GetSpan(decryptedBuffer.EndPosition));
             buffer.SeekToBegin();
         }
 
@@ -294,6 +254,7 @@ namespace Omni.Core
         }
     }
 
+    // Writers
     public static partial class BufferWriterExtensions
     {
         /// <summary>
@@ -316,6 +277,11 @@ namespace Omni.Core
         /// </summary>
         public static MemoryPackSerializerOptions DefaultMemoryPackSettings { get; set; } =
             MemoryPackSerializerOptions.Default;
+
+        /// <summary>
+        /// Use binary serialization for some types by default. Useful for types like as <see cref="ApiResponse"/>
+        /// </summary>
+        public static bool UseBinarySerialization = false;
 
         /// <summary>
         /// Converts an object to JSON and writes it to the buffer.<br/>
@@ -356,7 +322,7 @@ namespace Omni.Core
         /// Asynchronously converts an object to binary and writes it to the buffer.<br/>
         /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for serialization.
         /// </summary>
-        public static async void ToBinaryAsync<T>(
+        public static async ValueTask ToBinaryAsync<T>(
             this DataBuffer buffer,
             T value,
             MemoryPackSerializerOptions settings = null
@@ -364,26 +330,43 @@ namespace Omni.Core
         {
             settings ??= DefaultMemoryPackSettings;
             IBufferWriter<byte> writer = buffer;
+
             using MemoryStream stream = new();
             await MemoryPackSerializer.SerializeAsync(stream, value, settings);
-            Write7BitEncodedInt(buffer, (int)stream.Length);
-            writer.Write(stream.GetBuffer().AsSpan(0, (int)stream.Length));
+
+            int length = (int)stream.Length;
+            Write7BitEncodedInt(buffer, length);
+            writer.Write(stream.GetBuffer().AsSpan(0, length));
         }
 
         /// <summary>
         /// Writes a response to the buffer, used to response any request with status code, message and data(optional).
         /// </summary>
-        public static string ToResponse(this DataBuffer buffer, Response response)
+        public static void ToApiResponse(this DataBuffer buffer, ApiResponse response)
         {
-            return ToJson(buffer, response);
+            if (!UseBinarySerialization)
+            {
+                ToJson(buffer, response);
+            }
+            else
+            {
+                ToBinary(buffer, response);
+            }
         }
 
         /// <summary>
         /// Writes a generic response to the buffer, used to response any request with status code, message and data(optional).
         /// </summary>
-        public static string ToResponse<T>(this DataBuffer buffer, Response<T> response)
+        public static void ToApiResponse<T>(this DataBuffer buffer, ApiResponse<T> response)
         {
-            return ToJson(buffer, response);
+            if (!UseBinarySerialization)
+            {
+                ToJson(buffer, response);
+            }
+            else
+            {
+                ToBinary(buffer, response);
+            }
         }
 
         /// <summary>
@@ -391,7 +374,7 @@ namespace Omni.Core
         /// </summary>
         /// <param name="buffer">The buffer to write to.</param>
         /// <param name="data">The raw bytes to write.</param>
-        public static void WriteRaw(this DataBuffer buffer, ReadOnlySpan<byte> data)
+        public static void RawWrite(this DataBuffer buffer, ReadOnlySpan<byte> data)
         {
             BuffersExtensions.Write(buffer, data);
         }
@@ -484,10 +467,20 @@ namespace Omni.Core
         /// </summary>
         /// <param name="buffer">The buffer to write to.</param>
         /// <param name="identity">The network identity to write.</param>
-        internal static void Write(this DataBuffer buffer, NetworkIdentity identity)
+        public static void WriteIdentity(this DataBuffer buffer, NetworkIdentity identity)
         {
             FastWrite(buffer, identity.IdentityId);
             FastWrite(buffer, identity.Owner.Id);
+        }
+
+        /// <summary>
+        /// Writes network identity data to the buffer, most used to instantiate network objects.
+        /// </summary>
+        /// <param name="buffer">The buffer to write to.</param>
+        public static void WriteIdentity(this DataBuffer buffer, int identityId, int peerId)
+        {
+            FastWrite(buffer, identityId);
+            FastWrite(buffer, peerId);
         }
 
         /// <summary>
@@ -583,32 +576,34 @@ namespace Omni.Core
         }
     }
 
+    // Readers
     public static partial class BufferWriterExtensions
     {
         /// <summary>
-        /// Reads a response to the buffer, used to response any request with status code, message and data(optional). The position is set to <c>0</c>
+        /// Reads and deserializes an API response from the given data buffer. This method is used to parse a response that includes a status code, a message, and optionally, data of type <see cref="ApiResponse"/>.
         /// </summary>
-        public static Response FromResponse(this DataBuffer buffer, bool seekToBegin = false)
+        /// <param name="buffer">The data buffer containing the serialized API response.</param>
+        /// <returns>An instance of <see cref="ApiResponse"/> representing the deserialized response.</returns>
+        public static ApiResponse FromApiResponse(this DataBuffer buffer)
         {
-            if (seekToBegin)
-            {
-                buffer.SeekToBegin();
-            }
+            if (!UseBinarySerialization)
+                return FromJson<ApiResponse>(buffer);
 
-            return FromJson<Response>(buffer);
+            return FromBinary<ApiResponse>(buffer);
         }
 
         /// <summary>
-        /// Reads a generic response to the buffer, used to response any request with status code, message and data(optional). The position is set to <c>0</c>
+        /// Reads and deserializes a generic API response from the given data buffer. This method is used to parse a response that includes a status code, a message, and optionally, data of type <typeparamref name="T"/>. The data is deserialized into an instance of <see cref="ApiResponse{T}"/>.
         /// </summary>
-        public static Response<T> FromResponse<T>(this DataBuffer buffer, bool seekToBegin = false)
+        /// <typeparam name="T">The type of the data included in the API response.</typeparam>
+        /// <param name="buffer">The data buffer containing the serialized API response.</param>
+        /// <returns>An instance of <see cref="ApiResponse{T}"/> representing the deserialized response with data of type <typeparamref name="T"/>.</returns>
+        public static ApiResponse<T> FromApiResponse<T>(this DataBuffer buffer)
         {
-            if (seekToBegin)
-            {
-                buffer.SeekToBegin();
-            }
+            if (!UseBinarySerialization)
+                return FromJson<ApiResponse<T>>(buffer);
 
-            return FromJson<Response<T>>(buffer);
+            return FromBinary<ApiResponse<T>>(buffer);
         }
 
         /// <summary>
@@ -739,11 +734,7 @@ namespace Omni.Core
             return FastRead<T>(buffer);
         }
 
-        internal static void ReadIdentityData(
-            this DataBuffer buffer,
-            out int identityId,
-            out int peerId
-        )
+        public static void ReadIdentity(this DataBuffer buffer, out int peerId, out int identityId)
         {
             identityId = FastRead<int>(buffer);
             peerId = FastRead<int>(buffer);
@@ -859,6 +850,44 @@ namespace Omni.Core
         {
             uint packedValue = FastRead<uint>(buffer);
             return QuaternionCompressor.Decompress(packedValue);
+        }
+    }
+
+    // Syntactic sugar
+    public static partial class BufferWriterExtensions
+    {
+        /// <returns>The caller must ensure the buffer is disposed or used within a using statement.</returns>
+        public static DataBuffer ToApiResponse<T>(
+            this T data,
+            ResponseStatusCode statusCode,
+            string statusMessage = ""
+        )
+        {
+            var message = NetworkManager.Pool.Rent(); // disposed by the caller
+            message.ToApiResponse(
+                new ApiResponse<T>()
+                {
+                    Result = data,
+                    StatusCode = statusCode,
+                    StatusMessage = statusMessage
+                }
+            );
+
+            return message;
+        }
+
+        /// <returns>The caller must ensure the buffer is disposed or used within a using statement.</returns>
+        public static DataBuffer ToApiResponse(
+            this string statusMessage,
+            ResponseStatusCode statusCode
+        )
+        {
+            var message = NetworkManager.Pool.Rent(); // disposed by the caller
+            message.ToApiResponse(
+                new ApiResponse() { StatusCode = statusCode, StatusMessage = statusMessage }
+            );
+
+            return message;
         }
     }
 }
