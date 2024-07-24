@@ -10,14 +10,21 @@ namespace Omni.Editor.Drawers
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            LabelAttribute labelAttribute = attribute as LabelAttribute;
+            LabelAttribute labelAttribute = (LabelAttribute)attribute;
                            label.text     = labelAttribute.Label;
-            EditorGUI.PropertyField(position, property, label);
-        }
 
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-        {
-            return EditorGUI.GetPropertyHeight(property, label);
+            if (property.propertyType == SerializedPropertyType.Boolean)
+            {
+                var alignment                    = EditorStyles.label.alignment;
+                    EditorStyles.label.alignment = TextAnchor.UpperLeft;
+
+                property.boolValue           = EditorGUI.Toggle(position, label, property.boolValue);
+                EditorStyles.label.alignment = alignment;
+            }
+            else
+            {
+                EditorGUI.PropertyField(position, property, label);
+            }
         }
     }
 }
