@@ -13,9 +13,12 @@
     ===========================================================*/
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Omni.Shared
 {
@@ -27,6 +30,12 @@ namespace Omni.Shared
             Warning = 2,
             Log = 3,
         }
+
+        /// <summary>
+        /// Indicates whether buffer tracking is enabled. If true, additional tracking is performed to ensure
+        /// that buffers are properly disposed of and returned to the pool. <c>Debug mode only.</c>
+        /// </summary>
+        public static bool EnableTracking { get; set; } = true;
 
 #pragma warning disable IDE1006
 #if OMNI_DEBUG
@@ -127,6 +136,65 @@ namespace Omni.Shared
             );
 #endif
 #endif
+
+#if OMNI_DEBUG
+            if (logType == LogType.Error && EnableTracking)
+            {
+                string _message = GetStackTrace();
+
+                // Print the stack trace only in debug mode.
+                Print(_message, logType);
+            }
+#endif
+        }
+
+        public static void Print(string message, LogType logType = LogType.Error)
+        {
+            Debug.LogFormat(
+                (UnityEngine.LogType)logType,
+                LogOption.NoStacktrace,
+                null,
+                "{0}",
+                message
+            );
+        }
+
+        /// <summary>
+        /// Retrieves the stack trace information.
+        /// </summary>
+        /// <returns>The stack trace information as a string.</returns>
+        public static string GetStackTrace()
+        {
+            var frames = CreateStackTrace();
+            var _message = "";
+
+            // Very slow operation, but useful for debugging. Debug mode only.
+            foreach (var frame in frames)
+            {
+                var method = frame.GetMethod();
+                int line = frame.GetFileLineNumber();
+                _message +=
+                    $"StackTrace -> Class: [{method.DeclaringType}] | Method: [{method.Name}] | Line: [{line}]\r\n";
+            }
+
+            return _message;
+        }
+
+        /// <summary>
+        /// Creates a sequence of <see cref="StackFrame"/>s representing the call stack.
+        /// </summary>
+        /// <returns>A sequence of <see cref="StackFrame"/>s.</returns>
+        public static IEnumerable<StackFrame> CreateStackTrace()
+        {
+            StackTrace stack = new(true);
+            for (int i = stack.FrameCount - 1; i >= 0; i--)
+            {
+                StackFrame frame = stack.GetFrame(i);
+                if (frame == null)
+                    continue;
+
+                yield return frame;
+            }
         }
     }
 }
