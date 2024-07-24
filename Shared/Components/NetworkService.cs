@@ -27,7 +27,9 @@ namespace Omni.Core
     {
         /// <summary>
         /// Called when a service is added or updated, can be called multiple times.
-        /// Be sure to unsubscribe to avoid double subscriptions.
+        /// Be sure to unsubscribe to avoid double subscriptions. <br/><br/>
+        /// - Subscribers should be called from the <c>OnAwake</c> method.<br/>
+        /// - Unsubscribers should be called from the <c>OnStop</c> method.<br/>
         /// </summary>
         public static event Action<string> OnReferenceChanged;
 
@@ -37,29 +39,44 @@ namespace Omni.Core
         }
     }
 
-    public static class ComponentService
+    public static partial class NetworkService
     {
-        public static void Get<T>(string componentName, out T service)
+        public static void GetAsComponent<T>(out T service)
             where T : class
         {
-            service = NetworkService.Get<INetworkComponentService>(componentName).Component as T;
+            GetAsComponent<T>(typeof(T).Name, out service);
         }
 
-        public static T Get<T>(string componentName)
+        public static void GetAsComponent<T>(string componentName, out T service)
             where T : class
         {
-            return NetworkService.Get<INetworkComponentService>(componentName).Component as T;
+            service = Get<INetworkComponentService>(componentName).Component as T;
         }
 
-        public static bool TryGet<T>(string componentName, out T service)
+        public static T GetAsComponent<T>()
+            where T : class
+        {
+            return GetAsComponent<T>(typeof(T).Name);
+        }
+
+        public static T GetAsComponent<T>(string componentName)
+            where T : class
+        {
+            return Get<INetworkComponentService>(componentName).Component as T;
+        }
+
+        public static bool TryGetAsComponent<T>(out T service)
+            where T : class
+        {
+            return TryGetAsComponent<T>(typeof(T).Name, out service);
+        }
+
+        public static bool TryGetAsComponent<T>(string componentName, out T service)
             where T : class
         {
             service = null;
             bool success =
-                NetworkService.TryGet<INetworkComponentService>(
-                    componentName,
-                    out var componentService
-                )
+                TryGet<INetworkComponentService>(componentName, out var componentService)
                 && componentService.Component is T;
 
             if (success)
@@ -70,16 +87,26 @@ namespace Omni.Core
             return success;
         }
 
-        public static GameObject GetGameObject(string componentName)
+        public static GameObject GetAsGameObject<T>()
         {
-            return NetworkService.Get<INetworkComponentService>(componentName).GameObject;
+            return GetAsGameObject(typeof(T).Name);
         }
 
-        public static bool TryGetGameObject(string componentName, out GameObject service)
+        public static GameObject GetAsGameObject(string gameObjectName)
+        {
+            return Get<INetworkComponentService>(gameObjectName).GameObject;
+        }
+
+        public static bool TryGetAsGameObject<T>(out GameObject service)
+        {
+            return TryGetAsGameObject(typeof(T).Name, out service);
+        }
+
+        public static bool TryGetAsGameObject(string gameObjectName, out GameObject service)
         {
             service = null;
-            bool success = NetworkService.TryGet<INetworkComponentService>(
-                componentName,
+            bool success = TryGet<INetworkComponentService>(
+                gameObjectName,
                 out var componentService
             );
 
@@ -96,7 +123,7 @@ namespace Omni.Core
     /// Service Locator is a pattern used to provide global access to a service instance.
     /// This class provides a static methods to store and retrieve services by name.
     /// </summary>
-    public static class NetworkService
+    public static partial class NetworkService
     {
         // (Service Name, Service Instance)
         private static readonly Dictionary<string, object> m_Services = new();
