@@ -673,7 +673,7 @@ namespace Omni.Core
                 int groupId = GetGroupIdByName(groupName);
                 if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                 {
-                    OnPlayerLeftGroup?.Invoke(group, peer, Status.Begin, reason);
+                    OnPlayerLeftGroup?.Invoke(group, peer, Phase.Begin, reason);
                     if (group._peersById.Remove(peer.Id, out _))
                     {
                         if (!peer._groups.Remove(group.Id))
@@ -687,7 +687,7 @@ namespace Omni.Core
 
                         _allowZeroGroupForInternalMessages = true;
                         SendResponseToClient();
-                        OnPlayerLeftGroup?.Invoke(group, peer, Status.Normal, reason);
+                        OnPlayerLeftGroup?.Invoke(group, peer, Phase.Normal, reason);
 
                         // Dereferencing to allow for GC(Garbage Collector).
                         // All resources should be released at this point.

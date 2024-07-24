@@ -38,13 +38,13 @@ namespace Omni.Core
             return d_UniqueId++;
         }
 
-        internal static void Destroy(NetworkIdentity identity, bool isServer)
+        internal static void Destroy(int identityId, bool isServer)
         {
             var identities = isServer
                 ? NetworkManager.Server.Identities
                 : NetworkManager.Client.Identities;
 
-            if (identities.Remove(identity.IdentityId))
+            if (identities.Remove(identityId, out var identity))
             {
                 NetworkBehaviour[] networkBehaviours =
                     identity.GetComponentsInChildren<NetworkBehaviour>(true);
@@ -81,6 +81,7 @@ namespace Omni.Core
             identity.Owner = peer;
             identity.IsServer = isServer;
             identity.IsLocalPlayer = isLocalPlayer;
+            identity._prefabName = prefab.name;
 
             NetworkBehaviour[] networkBehaviours =
                 identity.GetComponentsInChildren<NetworkBehaviour>(true);

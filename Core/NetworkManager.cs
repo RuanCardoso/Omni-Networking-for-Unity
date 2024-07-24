@@ -32,7 +32,7 @@ namespace Omni.Core
         Mono
     }
 
-    public enum Status
+    public enum Phase
     {
         /// <summary>
         /// Indicates the initial phase of an event.
@@ -182,6 +182,8 @@ namespace Omni.Core
 
     internal class MessageType // not a enum to avoid casting
     {
+        internal const byte Destroy = 241;
+        internal const byte Spawn = 242;
         internal const byte SyncGroupSerializedData = 243;
         internal const byte SyncPeerSerializedData = 244;
         internal const byte HttpPostResponseAsync = 245;
@@ -353,8 +355,8 @@ namespace Omni.Core
         public static event Action<Scene> OnBeforeSceneLoad;
 
         public static event Action OnServerInitialized;
-        public static event Action<NetworkPeer, Status> OnServerPeerConnected;
-        public static event Action<NetworkPeer, Status> OnServerPeerDisconnected;
+        public static event Action<NetworkPeer, Phase> OnServerPeerConnected;
+        public static event Action<NetworkPeer, Phase> OnServerPeerDisconnected;
         public static event Action OnClientConnected;
         public static event Action<string> OnClientDisconnected;
 
@@ -365,7 +367,7 @@ namespace Omni.Core
         internal static event Action<DataBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedJoinGroup; // for server
         internal static event Action<string, string> OnLeftGroup; // for client
-        internal static event Action<NetworkGroup, NetworkPeer, Status, string> OnPlayerLeftGroup; // for server
+        internal static event Action<NetworkGroup, NetworkPeer, Phase, string> OnPlayerLeftGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
 
         static NetworkConsole _console;
@@ -586,22 +588,22 @@ namespace Omni.Core
             MainThreadId = Thread.CurrentThread.ManagedThreadId;
             DisableAutoStartIfHasHud();
 
-            if (m_Console)
+            if (m_ConsoleModule)
             {
                 InitializeModule(Module.Console);
             }
 
-            if (m_NtpClock)
+            if (m_SntpModule)
             {
                 InitializeModule(Module.NtpClock);
             }
 
-            if (m_TickSystem)
+            if (m_TickModule)
             {
                 InitializeModule(Module.TickSystem);
             }
 
-            if (m_Matchmaking)
+            if (m_MatchModule)
             {
                 InitializeModule(Module.Matchmaking);
             }
@@ -648,7 +650,7 @@ namespace Omni.Core
 
         private void Update()
         {
-            if (m_TickSystem && _tickSystem != null)
+            if (m_TickModule && _tickSystem != null)
             {
                 TickSystem.OnTick();
             }
@@ -1373,7 +1375,7 @@ namespace Omni.Core
             // Furthermore, the introduction of these initial pauses may serve as a startup measure to allow the system time to stabilize before initiating the repetitive querying of the NTP server.
             // This can be particularly useful if there are other startup or configuration operations that need to occur before the system is fully ready to synchronize the clock continuously.
 
-            if (IsClientActive && m_NtpClock)
+            if (IsClientActive && m_SntpModule)
             {
                 Sntp.Client.Query();
                 yield return new WaitForSeconds(0.5f);
@@ -1382,7 +1384,7 @@ namespace Omni.Core
                 Sntp.Client.Query();
                 yield return new WaitForSeconds(0.5f);
 
-                while (IsClientActive && m_NtpClock)
+                while (IsClientActive && m_SntpModule)
                 {
                     // Continuously query the NTP server to ensure that the system clock is continuously synchronized with the NTP server.
                     Sntp.Client.Query();
@@ -1450,7 +1452,7 @@ namespace Omni.Core
                 }
                 else
                 {
-                    OnServerPeerConnected?.Invoke(newPeer, Status.Begin);
+                    OnServerPeerConnected?.Invoke(newPeer, Phase.Begin);
                     newPeer.IsConnected = true;
                     using var message = Pool.Rent();
                     message.FastWrite(newPeer.Id);
@@ -1473,7 +1475,7 @@ namespace Omni.Core
                         $"Connection Info: Peer '{peer}' added to the server successfully."
                     );
 
-                    OnServerPeerConnected?.Invoke(newPeer, Status.Normal);
+                    OnServerPeerConnected?.Invoke(newPeer, Phase.Normal);
                 }
             }
         }
@@ -1481,7 +1483,7 @@ namespace Omni.Core
         public virtual void Internal_OnServerPeerDisconnected(IPEndPoint peer, string reason)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            OnServerPeerDisconnected?.Invoke(PeersByIp[peer], Status.Begin);
+            OnServerPeerDisconnected?.Invoke(PeersByIp[peer], Phase.Begin);
             if (!PeersByIp.Remove(peer, out NetworkPeer currentPeer))
             {
                 NetworkLogger.__Log__(
@@ -1515,7 +1517,7 @@ namespace Omni.Core
                             OnPlayerLeftGroup?.Invoke(
                                 group,
                                 currentPeer,
-                                Status.End,
+                                Phase.End,
                                 "Leave event called by disconnect event."
                             );
 
@@ -1537,7 +1539,7 @@ namespace Omni.Core
                         $"Disconnection Info: Peer '{peer}' removed from the server. Reason: {reason}."
                     );
 
-                    OnServerPeerDisconnected?.Invoke(currentPeer, Status.Normal);
+                    OnServerPeerDisconnected?.Invoke(currentPeer, Phase.Normal);
 
                     // Dereferencing to allow for GC(Garbage Collector).
                     currentPeer.ClearGroups();
@@ -1548,7 +1550,7 @@ namespace Omni.Core
                     currentPeer.IsConnected = false;
 
                     // Finished disconnection
-                    OnServerPeerDisconnected?.Invoke(currentPeer, Status.End);
+                    OnServerPeerDisconnected?.Invoke(currentPeer, Phase.End);
                 }
             }
         }
@@ -1813,7 +1815,7 @@ namespace Omni.Core
                             else
                             {
                                 peer.IsAuthenticated = true;
-                                OnServerPeerConnected?.Invoke(peer, Status.End);
+                                OnServerPeerConnected?.Invoke(peer, Phase.End);
                             }
                         }
                         break;
@@ -1934,6 +1936,30 @@ namespace Omni.Core
                             }
                         }
                         break;
+                    case MessageType.Spawn:
+                        {
+                            if (!isServer)
+                            {
+                                string prefabName = header.FastReadString();
+                                header.ReadIdentity(out int peerId, out int identityId);
+
+                                using var _ = EndOfHeader();
+
+                                NetworkIdentity prefab = GetPrefab(prefabName);
+                                prefab.SpawnOnClient(peerId, identityId);
+                            }
+                        }
+                        break;
+                    case MessageType.Destroy:
+                        {
+                            if (!isServer)
+                            {
+                                int identityId = header.FastRead<int>();
+                                using var _ = EndOfHeader();
+                                NetworkHelper.Destroy(identityId, isServer);
+                            }
+                        }
+                        break;
                     default:
                         {
                             if (isServer)
@@ -2029,6 +2055,36 @@ namespace Omni.Core
             );
 
             return SceneManager.UnloadSceneAsync(index, options);
+        }
+
+        /// <summary>
+        /// Retrieves a prefab by its name.
+        /// </summary>
+        /// <param name="prefabName">The name of the prefab to retrieve.</param>
+        /// <returns>The prefab with the specified name.</returns>
+        public static NetworkIdentity GetPrefab(string prefabName)
+        {
+            return Manager.m_Prefabs.FirstOrDefault(x => x.name == prefabName)
+                ?? throw new Exception(
+                    $"Could not find prefab with name: \"{prefabName}\". Ensure the prefab is added to the registration list."
+                );
+        }
+
+        /// <summary>
+        /// Retrieves a prefab by its index in the list.
+        /// </summary>
+        /// <param name="index">The index of the prefab to retrieve.</param>
+        /// <returns>The prefab at the specified index or null if index is out of bounds.</returns>
+        public static NetworkIdentity GetPrefab(int index)
+        {
+            if (index >= 0 && index < Manager.m_Prefabs.Count)
+            {
+                return Manager.m_Prefabs[index];
+            }
+
+            throw new IndexOutOfRangeException(
+                "Prefab index out of bounds. Ensure the prefab is added to the registration list."
+            );
         }
 
         /// <summary>

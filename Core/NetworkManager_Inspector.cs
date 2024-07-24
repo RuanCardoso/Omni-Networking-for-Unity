@@ -16,6 +16,9 @@ namespace Omni.Core
 {
     public partial class NetworkManager
     {
+        private TransporterBehaviour m_ServerTransporter;
+        private TransporterBehaviour m_ClientTransporter;
+
         private int frameCount = 0;
         private float deltaTime = 0f;
 
@@ -57,6 +60,7 @@ namespace Omni.Core
         [SerializeField]
 #if OMNI_DEBUG
         [ReadOnly]
+        [HideInInspector]
 #endif
         [Label("Client Backend")]
         private ScriptingBackend m_ClientScriptingBackend = ScriptingBackend.Mono;
@@ -64,37 +68,25 @@ namespace Omni.Core
         [SerializeField]
 #if OMNI_DEBUG
         [ReadOnly]
+        [HideInInspector]
 #endif
         [Label("Server Backend")]
         private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
 
-        [ReadOnly]
-        [SerializeField]
-        [Header("Modules")]
         private bool m_Connection = true;
 
         [SerializeField]
-        private bool m_Matchmaking = false;
+        [Header("Modules")]
+        private bool m_ConsoleModule = false;
 
         [SerializeField]
-        private bool m_TickSystem = false;
+        private bool m_MatchModule = false;
 
         [SerializeField]
-        [Label("Server Console")]
-        private bool m_Console = false;
+        private bool m_TickModule = false;
 
         [SerializeField]
-        [Label("Server Clock(Ntp)")]
-        private bool m_NtpClock = false;
-
-        [ReadOnly]
-        [SerializeField]
-        [Header("Transporters")]
-        private TransporterBehaviour m_ServerTransporter;
-
-        [ReadOnly]
-        [SerializeField]
-        private TransporterBehaviour m_ClientTransporter;
+        private bool m_SntpModule = false;
 
         [SerializeField]
         [Header("Listen")]
@@ -154,10 +146,14 @@ namespace Omni.Core
         [SerializeField]
         private bool m_RunInBackground = true;
 
+        [Header("Registered Prefabs")]
+        [SerializeField]
+        private List<NetworkIdentity> m_Prefabs = new();
+
         public static string ConnectAddress => Manager.m_ConnectAddress;
 
-        internal static bool MatchmakingModuleEnabled => Manager.m_Matchmaking;
-        internal static bool TickSystemModuleEnabled => Manager.m_TickSystem;
+        internal static bool MatchmakingModuleEnabled => Manager.m_MatchModule;
+        internal static bool TickSystemModuleEnabled => Manager.m_TickModule;
 
         public static int ServerListenPort => Manager.m_ServerListenPort;
         public static int ClientListenPort => Manager.m_ClientListenPort;

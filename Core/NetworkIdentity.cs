@@ -10,6 +10,7 @@ namespace Omni.Core
 {
     public class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
     {
+        internal string _prefabName;
         private readonly Dictionary<string, object> m_Services = new(); // (Service Name, Service Instance) exclusively to identity
 
         [SerializeField]
@@ -52,6 +53,14 @@ namespace Omni.Core
         {
             get { return m_IsLocalPlayer; }
             internal set { m_IsLocalPlayer = value; }
+        }
+
+        /// <summary>
+        /// Indicates whether this NetworkIdentity is registered.
+        /// </summary>
+        public bool IsRegistered
+        {
+            get { return Owner != null && m_Id != 0; }
         }
 
         /// <summary>
@@ -244,6 +253,121 @@ namespace Omni.Core
         public bool Unregister(string serviceName)
         {
             return m_Services.Remove(serviceName);
+        }
+
+        /// <summary>
+        /// Automatic instantiates a network identity on the client.
+        /// </summary>
+        /// <returns>The instantiated network identity.</returns>
+        public void SpawnOnClient(SyncOptions options)
+        {
+            SpawnOnClient(
+                options.Target,
+                options.DeliveryMode,
+                options.GroupId,
+                options.CacheId,
+                options.CacheMode,
+                options.SequenceChannel
+            );
+        }
+
+        /// <summary>
+        /// Automatic instantiates a network identity on the client.
+        /// </summary>
+        /// <returns>The instantiated network identity.</returns>
+        public void SpawnOnClient(
+            Target target = Target.All,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            if (!IsRegistered)
+            {
+                throw new Exception(
+                    $"The game object '{name}' is not registered. Please register it first."
+                );
+            }
+
+            if (!IsServer)
+            {
+                throw new Exception($"Only server can spawn the game object '{name}'.");
+            }
+
+            using var message = NetworkManager.Pool.Rent();
+            message.FastWrite(_prefabName);
+            message.WriteIdentity(this);
+            NetworkManager.Server.SendMessage(
+                MessageType.Spawn,
+                Owner,
+                message,
+                target,
+                deliveryMode,
+                groupId,
+                cacheId,
+                cacheMode,
+                sequenceChannel
+            );
+        }
+
+        /// <summary>
+        /// Automatic destroys a network identity on the client.
+        /// </summary>
+        /// <returns>The instantiated network identity.</returns>
+        public void Destroy(SyncOptions options)
+        {
+            Destroy(
+                options.Target,
+                options.DeliveryMode,
+                options.GroupId,
+                options.CacheId,
+                options.CacheMode,
+                options.SequenceChannel
+            );
+        }
+
+        /// <summary>
+        /// Automatic destroys a network identity on the client.
+        /// </summary>
+        /// <returns>The instantiated network identity.</returns>
+        public void Destroy(
+            Target target = Target.All,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
+        {
+            if (!IsRegistered)
+            {
+                throw new Exception(
+                    $"The game object '{name}' is not registered. Please register it first."
+                );
+            }
+
+            if (!IsServer)
+            {
+                throw new Exception($"Only server can destroy the game object '{name}'.");
+            }
+
+            using var message = NetworkManager.Pool.Rent();
+            message.FastWrite(m_Id);
+            NetworkManager.Server.SendMessage(
+                MessageType.Destroy,
+                Owner,
+                message,
+                target,
+                deliveryMode,
+                groupId,
+                cacheId,
+                cacheMode,
+                sequenceChannel
+            );
+
+            NetworkHelper.Destroy(m_Id, IsServer);
         }
 
         public override bool Equals(object obj)
