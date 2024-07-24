@@ -40,7 +40,7 @@ namespace Omni.Core
                 SendToClient(
                     msgId,
                     buffer,
-                    peer.EndPoint,
+                    peer,
                     target,
                     deliveryMode,
                     groupId,
@@ -53,6 +53,12 @@ namespace Omni.Core
 
         public static class Client
         {
+            /// <summary>
+            /// Gets the server peer used for exclusively for encryption keys.
+            /// </summary>
+            public static NetworkPeer ServerPeer { get; } =
+                new(new IPEndPoint(IPAddress.None, 0), 0);
+
             /// <summary>
             /// Gets the server RSA public key .
             /// This property stores the public key used in RSA cryptographic operations.

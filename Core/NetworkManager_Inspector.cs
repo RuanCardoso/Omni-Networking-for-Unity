@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Text;
 using Omni.Core.Attributes;
 using UnityEngine;
 #if OMNI_DEBUG
@@ -142,6 +143,13 @@ namespace Omni.Core
         [ReadOnly]
 #endif
         private bool m_AutoStartServer = true;
+
+        [SerializeField]
+        [Label("Use UTF-8 Encoding")]
+        private bool m_UseUtf8 = false;
+
+        [SerializeField]
+        private bool m_UseBinarySerialization = false;
 
         [SerializeField]
         private bool m_RunInBackground = true;

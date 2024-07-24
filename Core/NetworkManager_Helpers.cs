@@ -1,5 +1,3 @@
-using System;
-
 namespace Omni.Core
 {
     // The NetworkManager class is a partial class containing methods for managing network operations.
@@ -9,23 +7,52 @@ namespace Omni.Core
     public partial class NetworkManager
     {
         /// <summary>
-        /// Instantiates a network identity on the server for a specific network peer and serializes its data to the buffer.
+        /// Instantiates a network identity on the server.
         /// </summary>
-        /// <param name="prefab">The prefab of the network identity to instantiate.</param>
-        /// <param name="peer">The network peer for which the identity is instantiated.</param>
-        /// <param name="buffer">The buffer to write identity data.</param>
-        /// <param name="OnBeforeStart">An action to execute before the network identity starts, but after it has been registered.</param>
-        /// <returns>The instantiated network message. The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static DataBuffer InstantiateOnServer(
+        /// <param name="prefab">The prefab to instantiate.</param>
+        /// <param name="peerId">The ID of the peer who will receive the instantiated object.</param>
+        /// <param name="identityId">The ID of the instantiated object. If not provided, a dynamic unique ID will be generated.</param>
+        /// <returns>The instantiated network identity.</returns>
+        public static NetworkIdentity InstantiateOnServer(
             NetworkIdentity prefab,
-            NetworkPeer peer,
-            out NetworkIdentity identity,
-            Action<NetworkIdentity> OnBeforeStart = null
+            int peerId,
+            int identityId = 0
         )
         {
-            var message = Pool.Rent();
-            identity = message.InstantiateOnServer(prefab, peer, OnBeforeStart);
-            return message;
+            if (identityId == 0)
+            {
+                identityId = NetworkHelper.GenerateDynamicUniqueId();
+            }
+
+            return NetworkHelper.Instantiate(prefab, Server.Peers[peerId], identityId, true, false);
+        }
+
+        /// <summary>
+        /// Instantiates a network identity on the server for a specific peer.
+        /// </summary>
+        /// <param name="prefab">The prefab to instantiate.</param>
+        /// <param name="peer">The peer who will receive the instantiated object.</param>
+        /// <returns>The instantiated network identity.</returns>
+        public static NetworkIdentity InstantiateOnServer(NetworkIdentity prefab, NetworkPeer peer)
+        {
+            return InstantiateOnServer(prefab, peer.Id, 0);
+        }
+
+        /// <summary>
+        /// Instantiates a network identity on the client.
+        /// </summary>
+        /// <param name="prefab">The prefab to instantiate.</param>
+        /// <param name="peerId">The ID of the peer who owns the instantiated object.</param>
+        /// <param name="identityId">The ID of the instantiated object.</param>
+        /// <returns>The instantiated network identity.</returns>
+        public static NetworkIdentity InstantiateOnClient(
+            NetworkIdentity prefab,
+            int peerId,
+            int identityId
+        )
+        {
+            bool isLocalPlayer = LocalPeer.Id == peerId;
+            return NetworkHelper.Instantiate(prefab, LocalPeer, identityId, false, isLocalPlayer);
         }
 
         /// <summary>

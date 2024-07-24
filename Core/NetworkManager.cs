@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
 using MemoryPack;
 using Newtonsoft.Json;
@@ -55,12 +56,20 @@ namespace Omni.Core
     [Flags]
     public enum CacheMode
     {
+        // Unique
         None = 0,
+
+        // Combine
         New = 1,
         Overwrite = 2,
+
+        // Combine
         Global = 4,
         Group = 8,
-        AutoDestroy = 16,
+        Peer = 16,
+
+        // Unique
+        AutoDestroy = 32,
     }
 
     public enum Module
@@ -441,7 +450,7 @@ namespace Omni.Core
         }
 
         static SimpleNtp _ntpClock;
-        public static SimpleNtp SNTP
+        public static SimpleNtp Sntp
         {
             get
             {
@@ -547,6 +556,12 @@ namespace Omni.Core
                 gameObject.SetActive(false);
                 Destroy(gameObject, 1f);
                 return;
+            }
+
+            BufferWriterExtensions.UseBinarySerialization = m_UseBinarySerialization;
+            if (m_UseUtf8)
+            {
+                BufferWriterExtensions.DefaultEncoding = Encoding.UTF8;
             }
 
             if (!UseTickTiming)
@@ -680,7 +695,7 @@ namespace Omni.Core
             {
                 case Module.TickSystem:
                     {
-                        if (IsServerActive && _tickSystem == null)
+                        if (_tickSystem == null)
                         {
                             TickSystem = new NetworkTickSystem();
                             TickSystem.Initialize(Manager.m_TickRate);
@@ -696,8 +711,8 @@ namespace Omni.Core
                             UseTickTiming = nClock.UseTickTiming;
                         }
 
-                        SNTP = new SimpleNtp();
-                        SNTP.Initialize(nClock);
+                        Sntp = new SimpleNtp();
+                        Sntp.Initialize(nClock);
                     }
                     break;
                 case Module.Console:
@@ -916,7 +931,7 @@ namespace Omni.Core
         internal static void SendToClient(
             byte msgType,
             DataBuffer buffer,
-            IPEndPoint fromPeer,
+            NetworkPeer sender,
             Target target,
             DeliveryMode deliveryMode,
             int groupId,
@@ -928,7 +943,7 @@ namespace Omni.Core
             Manager.Internal_SendToClient(
                 msgType,
                 buffer.BufferAsSpan,
-                fromPeer,
+                sender,
                 target,
                 deliveryMode,
                 groupId,
@@ -978,7 +993,7 @@ namespace Omni.Core
         protected virtual void Internal_SendToClient(
             byte msgType,
             ReadOnlySpan<byte> _data,
-            IPEndPoint fromPeer,
+            NetworkPeer sender,
             Target target,
             DeliveryMode deliveryMode,
             int groupId,
@@ -988,9 +1003,9 @@ namespace Omni.Core
         )
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            void Send(ReadOnlySpan<byte> message, IPEndPoint peer)
+            void Send(ReadOnlySpan<byte> message, NetworkPeer sender)
             {
-                Connection.Server.Send(message, peer, deliveryMode, sequenceChannel);
+                Connection.Server.Send(message, sender.EndPoint, deliveryMode, sequenceChannel);
             }
 
             void CreateCache(ReadOnlySpan<byte> message, NetworkGroup _group)
@@ -1008,20 +1023,39 @@ namespace Omni.Core
                     }
                     else
                     {
-                        if (PeersByIp.TryGetValue(fromPeer, out NetworkPeer owner))
+                        if (
+                            cacheMode == (CacheMode.Global | CacheMode.New)
+                            || cacheMode
+                                == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
+                        )
                         {
-                            if (
-                                cacheMode == (CacheMode.Global | CacheMode.New)
-                                || cacheMode
-                                    == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
-                            )
+                            Server.CACHES_APPEND_GLOBAL.Add(
+                                new NetworkCache(
+                                    cacheId,
+                                    cacheMode,
+                                    message.ToArray(),
+                                    sender,
+                                    deliveryMode,
+                                    target,
+                                    sequenceChannel,
+                                    destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
+                                )
+                            );
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Group | CacheMode.New)
+                            || cacheMode
+                                == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
+                        )
+                        {
+                            if (_group != null)
                             {
-                                Server.CACHES_APPEND_GLOBAL.Add(
+                                _group.CACHES_APPEND.Add(
                                     new NetworkCache(
                                         cacheId,
                                         cacheMode,
                                         message.ToArray(),
-                                        owner,
+                                        sender,
                                         deliveryMode,
                                         target,
                                         sequenceChannel,
@@ -1031,73 +1065,38 @@ namespace Omni.Core
                                     )
                                 );
                             }
-                            else if (
-                                cacheMode == (CacheMode.Group | CacheMode.New)
-                                || cacheMode
-                                    == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
-                            )
-                            {
-                                if (_group != null)
-                                {
-                                    _group.CACHES_APPEND.Add(
-                                        new NetworkCache(
-                                            cacheId,
-                                            cacheMode,
-                                            message.ToArray(),
-                                            owner,
-                                            deliveryMode,
-                                            target,
-                                            sequenceChannel,
-                                            destroyOnDisconnect: cacheMode.HasFlag(
-                                                CacheMode.AutoDestroy
-                                            )
-                                        )
-                                    );
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        "Cache Error: The specified group was not found. Please verify the existence of the group and ensure the groupId is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
-                            }
-                            else if (
-                                cacheMode == (CacheMode.Global | CacheMode.Overwrite)
-                                || cacheMode
-                                    == (
-                                        CacheMode.Global
-                                        | CacheMode.Overwrite
-                                        | CacheMode.AutoDestroy
-                                    )
-                            )
-                            {
-                                NetworkCache newCache = new NetworkCache(
-                                    cacheId,
-                                    cacheMode,
-                                    message.ToArray(),
-                                    owner,
-                                    deliveryMode,
-                                    target,
-                                    sequenceChannel,
-                                    destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
-                                );
-
-                                if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(cacheId))
-                                {
-                                    Server.CACHES_OVERWRITE_GLOBAL[cacheId] = newCache;
-                                }
-                                else
-                                {
-                                    Server.CACHES_OVERWRITE_GLOBAL.Add(cacheId, newCache);
-                                }
-                            }
                             else
                             {
                                 NetworkLogger.__Log__(
-                                    "Cache Error: Unsupported cache mode set.",
+                                    "Cache Error: The specified group was not found. Please verify the existence of the group and ensure the groupId is correct.",
                                     NetworkLogger.LogType.Error
                                 );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Global | CacheMode.Overwrite)
+                            || cacheMode
+                                == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
+                        )
+                        {
+                            NetworkCache newCache = new NetworkCache(
+                                cacheId,
+                                cacheMode,
+                                message.ToArray(),
+                                sender,
+                                deliveryMode,
+                                target,
+                                sequenceChannel,
+                                destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
+                            );
+
+                            if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(cacheId))
+                            {
+                                Server.CACHES_OVERWRITE_GLOBAL[cacheId] = newCache;
+                            }
+                            else
+                            {
+                                Server.CACHES_OVERWRITE_GLOBAL.Add(cacheId, newCache);
                             }
                         }
                         else if (
@@ -1112,7 +1111,7 @@ namespace Omni.Core
                                     cacheId,
                                     cacheMode,
                                     message.ToArray(),
-                                    owner,
+                                    sender,
                                     deliveryMode,
                                     target,
                                     sequenceChannel,
@@ -1139,7 +1138,7 @@ namespace Omni.Core
                         else
                         {
                             NetworkLogger.__Log__(
-                                "Cache Error: Peer not found. ensure that the peer is connected.",
+                                "Cache Error: Unsupported cache mode set.",
                                 NetworkLogger.LogType.Error
                             );
                         }
@@ -1179,17 +1178,14 @@ namespace Omni.Core
                     {
                         if (!m_AcrossGroupMessage || !_group.AllowAcrossGroupMessage)
                         {
-                            if (PeersByIp.TryGetValue(fromPeer, out var peer))
+                            if (!_group._peersById.ContainsKey(sender.Id) && sender.Id != 0)
                             {
-                                if (!_group._peersById.ContainsKey(peer.Id) && peer.Id != 0)
-                                {
-                                    NetworkLogger.__Log__(
-                                        "Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
-                                        NetworkLogger.LogType.Error
-                                    );
+                                NetworkLogger.__Log__(
+                                    "Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
+                                    NetworkLogger.LogType.Error
+                                );
 
-                                    return;
-                                }
+                                return;
                             }
                         }
 
@@ -1208,6 +1204,14 @@ namespace Omni.Core
 
                 CreateCache(message, _group);
 
+                // Authentication
+                if (msgType == MessageType.BeginHandshake || msgType == MessageType.EndHandshake)
+                {
+                    Send(message, sender);
+                    return;
+                }
+
+                // Send message to peers
                 switch (target)
                 {
                     case Target.NonGroupMembers:
@@ -1216,16 +1220,19 @@ namespace Omni.Core
                             var peers = peersById.Values.Where(p => p._groups.Count == 0);
                             foreach (var peer in peers)
                             {
+                                if (!peer.IsAuthenticated)
+                                    continue;
+
                                 if (peer.Id == Server.ServerPeer.Id)
                                     continue;
 
                                 if (
-                                    peer.EndPoint.Equals(fromPeer)
+                                    peer.Equals(sender)
                                     && target == Target.NonGroupMembersExceptSelf
                                 )
                                     continue;
 
-                                Send(message, peer.EndPoint);
+                                Send(message, peer);
                             }
                         }
                         break;
@@ -1240,46 +1247,46 @@ namespace Omni.Core
                                 );
                             }
 
-                            if (PeersByIp.TryGetValue(fromPeer, out var sender))
+                            if (sender.Id == 0)
                             {
-                                if (sender.Id == 0)
+                                NetworkLogger.__Log__(
+                                    "Send: The server(id: 0) cannot use Target.GroupMembers. Because he's not in any group.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+                                return;
+                            }
+
+                            if (sender._groups.Count == 0)
+                            {
+                                NetworkLogger.__Log__(
+                                    "Send: You are not in any groups. Please join a group first.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+                                return;
+                            }
+
+                            foreach (var (_, group) in sender._groups)
+                            {
+                                if (group.IsSubGroup)
+                                    continue;
+
+                                foreach (var (_, peer) in group._peersById)
                                 {
-                                    NetworkLogger.__Log__(
-                                        "Send: The server(id: 0) cannot use Target.GroupMembers. Because he's not in any group.",
-                                        NetworkLogger.LogType.Error
-                                    );
-
-                                    return;
-                                }
-
-                                if (sender._groups.Count == 0)
-                                {
-                                    NetworkLogger.__Log__(
-                                        "Send: You are not in any groups. Please join a group first.",
-                                        NetworkLogger.LogType.Error
-                                    );
-
-                                    return;
-                                }
-
-                                foreach (var (_, group) in sender._groups)
-                                {
-                                    if (group.IsSubGroup)
+                                    if (!peer.IsAuthenticated)
                                         continue;
 
-                                    foreach (var (_, peer) in group._peersById)
-                                    {
-                                        if (peer.Id == Server.ServerPeer.Id)
-                                            continue;
+                                    if (peer.Id == Server.ServerPeer.Id)
+                                        continue;
 
-                                        if (
-                                            peer.EndPoint.Equals(fromPeer)
-                                            && target == Target.GroupMembersExceptSelf
-                                        )
-                                            continue;
+                                    if (
+                                        peer.Equals(sender)
+                                        && target == Target.GroupMembersExceptSelf
+                                    )
+                                        continue;
 
-                                        Send(message, peer.EndPoint);
-                                    }
+                                    Send(message, peer);
                                 }
                             }
                         }
@@ -1288,10 +1295,13 @@ namespace Omni.Core
                         {
                             foreach (var (_, peer) in peersById)
                             {
+                                if (!peer.IsAuthenticated)
+                                    continue;
+
                                 if (peer.Id == Server.ServerPeer.Id)
                                     continue;
 
-                                Send(message, peer.EndPoint);
+                                Send(message, peer);
                             }
                         }
                         break;
@@ -1299,20 +1309,26 @@ namespace Omni.Core
                         {
                             foreach (var (_, peer) in peersById)
                             {
+                                if (!peer.IsAuthenticated)
+                                    continue;
+
                                 if (peer.Id == Server.ServerPeer.Id)
                                     continue;
 
-                                if (peer.EndPoint.Equals(fromPeer))
+                                if (peer.Equals(sender))
                                     continue;
 
-                                Send(message, peer.EndPoint);
+                                Send(message, peer);
                             }
                         }
                         break;
                     case Target.Self:
                         {
+                            if (!sender.IsAuthenticated)
+                                return;
+
                             // group id doesn't make sense here, because peersById is not used for target.Self.
-                            Send(message, fromPeer);
+                            Send(message, sender);
                         }
                         break;
                 }
@@ -1359,17 +1375,17 @@ namespace Omni.Core
 
             if (IsClientActive && m_NtpClock)
             {
-                SNTP.Client.Query();
+                Sntp.Client.Query();
                 yield return new WaitForSeconds(0.5f);
-                SNTP.Client.Query();
+                Sntp.Client.Query();
                 yield return new WaitForSeconds(0.5f);
-                SNTP.Client.Query();
+                Sntp.Client.Query();
                 yield return new WaitForSeconds(0.5f);
 
                 while (IsClientActive && m_NtpClock)
                 {
                     // Continuously query the NTP server to ensure that the system clock is continuously synchronized with the NTP server.
-                    SNTP.Client.Query();
+                    Sntp.Client.Query();
                     yield return new WaitForSeconds(m_QueryInterval);
                 }
             }
@@ -1379,9 +1395,16 @@ namespace Omni.Core
         {
             NetworkHelper.EnsureRunningOnMainThread();
             // Set the default peer, used when the server sends to nothing(peerId = 0).
-            PeersByIp.Add(Server.ServerPeer.EndPoint, Server.ServerPeer);
-            PeersById.Add(Server.ServerPeer.Id, Server.ServerPeer);
+            NetworkPeer serverPeer = Server.ServerPeer;
+            serverPeer._aesKey = AesCryptography.GenerateKey();
+            serverPeer.IsConnected = true;
+            serverPeer.IsAuthenticated = true;
 
+            // Add the server to the list of peers.
+            PeersByIp.Add(serverPeer.EndPoint, serverPeer);
+            PeersById.Add(serverPeer.Id, serverPeer);
+
+            // Set the server as active.
             IsServerActive = true;
             OnServerInitialized?.Invoke();
         }
@@ -1437,7 +1460,7 @@ namespace Omni.Core
                     SendToClient(
                         MessageType.BeginHandshake,
                         message,
-                        peer,
+                        newPeer,
                         Target.Self,
                         DeliveryMode.ReliableOrdered,
                         0,
@@ -1533,13 +1556,13 @@ namespace Omni.Core
         public virtual void Internal_OnDataReceived(
             ReadOnlySpan<byte> _data,
             DeliveryMode deliveryMethod,
-            IPEndPoint _peer,
+            IPEndPoint endPoint,
             byte sequenceChannel,
             bool isServer
         )
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            if (PeersByIp.TryGetValue(_peer, out NetworkPeer peer) || !isServer)
+            if (PeersByIp.TryGetValue(endPoint, out NetworkPeer peer) || !isServer)
             {
                 using DataBuffer header = Pool.Rent();
                 header.Write(_data);
@@ -1623,7 +1646,7 @@ namespace Omni.Core
                                 var peers = Client.Peers;
                                 if (!peers.ContainsKey(peerId))
                                 {
-                                    peers.Add(peerId, new NetworkPeer(_peer, peerId)); // _peer is not valid endpoint in this case!
+                                    peers.Add(peerId, new NetworkPeer(endPoint, peerId)); // _peer is not valid endpoint in this case!
                                 }
 
                                 NetworkPeer fPeer = peers[peerId];
@@ -1656,7 +1679,7 @@ namespace Omni.Core
                                 double time = header.FastRead<double>();
                                 float t = header.FastRead<float>();
                                 using var _ = EndOfHeader();
-                                SNTP.Server.SendNtpResponse(time, peer, t);
+                                Sntp.Server.SendNtpResponse(time, peer, t);
                             }
                             else
                             {
@@ -1665,7 +1688,7 @@ namespace Omni.Core
                                 double y = header.FastRead<double>();
                                 float t = header.FastRead<float>();
                                 using var _ = EndOfHeader();
-                                SNTP.Client.Evaluate(a, x, y, t);
+                                Sntp.Client.Evaluate(a, x, y, t);
                             }
                         }
                         break;
@@ -1721,11 +1744,23 @@ namespace Omni.Core
                                     Server.RsaPrivateKey
                                 );
 
+                                byte[] serverAesKey = Server.ServerPeer._aesKey;
+                                byte[] cryptedServerAesKey = AesCryptography.Encrypt(
+                                    serverAesKey,
+                                    0,
+                                    serverAesKey.Length,
+                                    peer._aesKey,
+                                    out byte[] iv
+                                );
+
+                                using var message = Pool.Rent();
+                                message.ToBinary(iv);
+                                message.ToBinary(cryptedServerAesKey);
                                 // Send Ok to the client!
                                 SendToClient(
                                     MessageType.EndHandshake,
-                                    DataBuffer.Empty,
-                                    _peer,
+                                    message,
+                                    peer,
                                     Target.Self,
                                     DeliveryMode.ReliableOrdered,
                                     0,
@@ -1740,11 +1775,25 @@ namespace Omni.Core
                         {
                             if (!isServer)
                             {
-                                if (_tickSystem == null)
-                                {
-                                    TickSystem = new NetworkTickSystem();
-                                    TickSystem.Initialize(m_TickRate);
-                                }
+                                // if (_tickSystem == null)
+                                // {
+                                //     TickSystem = new NetworkTickSystem();
+                                //     TickSystem.Initialize(m_TickRate);
+                                // }
+
+                                // Read server aes key
+                                byte[] iv = header.FromBinary<byte[]>();
+                                byte[] serverAesKeyCrypted = header.FromBinary<byte[]>();
+                                using var _ = EndOfHeader();
+
+                                // decrypt server aes key
+                                Client.ServerPeer._aesKey = AesCryptography.Decrypt(
+                                    serverAesKeyCrypted,
+                                    0,
+                                    serverAesKeyCrypted.Length,
+                                    LocalPeer._aesKey,
+                                    iv
+                                );
 
                                 // Connection end & authorized.
                                 LocalPeer.IsConnected = true;
