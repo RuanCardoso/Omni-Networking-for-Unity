@@ -16,8 +16,8 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using Omni.Shared;
+using Omni.Threading.Tasks;
 using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
@@ -32,7 +32,8 @@ namespace Omni.Core
         public class HttpFetch
         {
             private int routeId = int.MinValue;
-            internal readonly Dictionary<int, TaskCompletionSource<DataBuffer>> asyncTasks = new();
+            internal readonly Dictionary<int, UniTaskCompletionSource<DataBuffer>> asyncTasks =
+                new();
             internal readonly Dictionary<(string, int), Action<DataBuffer>> events = new(); // 0: Get, 1: Post
 
             /// <summary>
@@ -88,7 +89,7 @@ namespace Omni.Core
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server. The caller must ensure the buffer is disposed or used within a using statement.</returns>
             /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
-            public Task<DataBuffer> GetAsync(
+            public UniTask<DataBuffer> GetAsync(
                 string routeName,
                 int timeout = 5000,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -173,9 +174,9 @@ namespace Omni.Core
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server. The caller must ensure the buffer is disposed or used within a using statement.</returns>
             /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
-            public async Task<DataBuffer> PostAsync(
+            public async UniTask<DataBuffer> PostAsync(
                 string routeName,
-                Func<DataBuffer, Task> callback,
+                Func<DataBuffer, UniTask> callback,
                 int timeout = 5000,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0
@@ -183,6 +184,7 @@ namespace Omni.Core
             {
                 // Await written the data before sending!
                 using var message = Pool.Rent();
+                message.SuppressTracking();
                 await callback(message);
 
                 int lastId = routeId;
@@ -212,7 +214,7 @@ namespace Omni.Core
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             /// <returns>A Task that represents the asynchronous operation. The task result contains the data buffer received from the server. The caller must ensure the buffer is disposed or used within a using statement.</returns>
             /// <exception cref="TimeoutException">Thrown when the request times out.</exception>
-            public Task<DataBuffer> PostAsync(
+            public UniTask<DataBuffer> PostAsync(
                 string routeName,
                 Action<DataBuffer> callback,
                 int timeout = 5000,
@@ -240,7 +242,7 @@ namespace Omni.Core
                 );
             }
 
-            private Task<DataBuffer> Send(
+            private UniTask<DataBuffer> Send(
                 byte msgId,
                 DataBuffer message,
                 int timeout,
@@ -251,12 +253,21 @@ namespace Omni.Core
             {
                 Client.SendMessage(msgId, message, deliveryMode, sequenceChannel);
 
-                // Timeout system
-                TaskCompletionSource<DataBuffer> source = new();
+                UniTaskCompletionSource<DataBuffer> source = CreateTask(timeout);
+                asyncTasks.Add(lastId, source);
+                return source.Task;
+            }
+
+            private UniTaskCompletionSource<DataBuffer> CreateTask(int timeout)
+            {
+                UniTaskCompletionSource<DataBuffer> source = new();
                 CancellationTokenSource cts = new(timeout);
+
+                // Register a callback to handle the cancellation of the request.
                 cts.Token.Register(() =>
                 {
-                    if (!source.Task.IsCompletedSuccessfully)
+                    bool success = source.Task.Status.IsCompletedSuccessfully();
+                    if (!success)
                     {
                         NetworkLogger.__Log__(
                             $"The request has timed out. Ensure that the route exists and that the server is running or the request will fail.",
@@ -266,16 +277,14 @@ namespace Omni.Core
                         cts.Cancel();
                         cts.Dispose();
                         source.TrySetCanceled();
+                        return;
                     }
-                    else
-                    {
-                        cts.Cancel();
-                        cts.Dispose();
-                    }
+
+                    cts.Cancel();
+                    cts.Dispose();
                 });
 
-                asyncTasks.Add(lastId, source);
-                return source.Task;
+                return source;
             }
 
             private DataBuffer DefaultHeader(string routeName, int lastId)
@@ -291,12 +300,12 @@ namespace Omni.Core
         {
             internal readonly Dictionary<
                 string,
-                Func<DataBuffer, NetworkPeer, Task>
+                Func<DataBuffer, NetworkPeer, UniTask>
             > asyncGetTasks = new();
 
             internal readonly Dictionary<
                 string,
-                Func<DataBuffer, DataBuffer, NetworkPeer, Task>
+                Func<DataBuffer, DataBuffer, NetworkPeer, UniTask>
             > asyncPostTasks = new();
 
             internal readonly Dictionary<string, Action<DataBuffer, NetworkPeer>> getTasks = new();
@@ -317,6 +326,16 @@ namespace Omni.Core
             }
 
             /// <summary>
+            /// Registers an POST route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the POST request is received.</param>
+            public void Post(string route, Action<DataBuffer, DataBuffer> res)
+            {
+                PostAsync(route, (_req, _res, _peer) => res(_req, _res));
+            }
+
+            /// <summary>
             /// Registers an GET route and its associated callback function.
             /// </summary>
             /// <param name="routeName">The name of the route to be registered.</param>
@@ -327,16 +346,46 @@ namespace Omni.Core
             }
 
             /// <summary>
+            /// Registers an GET route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the GET request is received.</param>
+            public void Get(string route, Action<DataBuffer> res)
+            {
+                GetAsync(route, (_res, _peer) => res(_res));
+            }
+
+            /// <summary>
             /// Registers an asynchronous GET route and its associated callback function.
             /// </summary>
             /// <param name="routeName">The name of the route to be registered.</param>
             /// <param name="callback">The callback function to be executed when the GET request is received.</param>
-            public void GetAsync(string routeName, Func<DataBuffer, NetworkPeer, Task> callback)
+            public void GetAsync(string routeName, Func<DataBuffer, UniTask> callback)
+            {
+                GetAsync(routeName, (_res, _peer) => callback(_res));
+            }
+
+            /// <summary>
+            /// Registers an asynchronous GET route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the GET request is received.</param>
+            public void GetAsync(string routeName, Func<DataBuffer, NetworkPeer, UniTask> callback)
             {
                 if (!asyncGetTasks.TryAdd(routeName, callback) || getTasks.ContainsKey(routeName))
                 {
                     asyncGetTasks[routeName] = callback;
                 }
+            }
+
+            /// <summary>
+            /// Registers an asynchronous GET route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the GET request is received.</param>
+            public void GetAsync(string routeName, Action<DataBuffer> callback)
+            {
+                GetAsync(routeName, (_res, _peer) => callback(_res));
             }
 
             /// <summary>
@@ -357,15 +406,35 @@ namespace Omni.Core
             /// </summary>
             /// <param name="routeName">The name of the route to be registered.</param>
             /// <param name="callback">The callback function to be executed when the POST request is received.</param>
+            public void PostAsync(string routeName, Func<DataBuffer, DataBuffer, UniTask> callback)
+            {
+                PostAsync(routeName, (_req, _res, _peer) => callback(_req, _res));
+            }
+
+            /// <summary>
+            /// Registers an asynchronous POST route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the POST request is received.</param>
             public void PostAsync(
                 string routeName,
-                Func<DataBuffer, DataBuffer, NetworkPeer, Task> callback
+                Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> callback
             )
             {
                 if (!asyncPostTasks.TryAdd(routeName, callback) || postTasks.ContainsKey(routeName))
                 {
                     asyncPostTasks[routeName] = callback;
                 }
+            }
+
+            /// <summary>
+            /// Registers an asynchronous POST route and its associated callback function.
+            /// </summary>
+            /// <param name="routeName">The name of the route to be registered.</param>
+            /// <param name="callback">The callback function to be executed when the POST request is received.</param>
+            public void PostAsync(string routeName, Action<DataBuffer, DataBuffer> callback)
+            {
+                PostAsync(routeName, (_req, _res, _peer) => callback(_req, _res));
             }
 
             /// <summary>
@@ -417,11 +486,12 @@ namespace Omni.Core
                 if (
                     Http.asyncGetTasks.TryGetValue(
                         routeName,
-                        out Func<DataBuffer, NetworkPeer, Task> asyncCallback
+                        out Func<DataBuffer, NetworkPeer, UniTask> asyncCallback
                     )
                 )
                 {
                     using var response = Pool.Rent();
+                    response.SuppressTracking();
                     await asyncCallback(response, peer);
                     Send(MessageType.HttpGetResponseAsync, response);
                 }
@@ -438,8 +508,9 @@ namespace Omni.Core
                 }
                 else
                 {
-                    throw new Exception(
-                        $"The route {routeName} has not been registered. Ensure that you register it first."
+                    NetworkLogger.__Log__(
+                        $"The route {routeName} has not been registered. Ensure that you register it first.",
+                        NetworkLogger.LogType.Error
                     );
                 }
             }
@@ -448,15 +519,17 @@ namespace Omni.Core
                 if (
                     Http.asyncPostTasks.TryGetValue(
                         routeName,
-                        out Func<DataBuffer, DataBuffer, NetworkPeer, Task> asyncCallback
+                        out Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> asyncCallback
                     )
                 )
                 {
                     using var request = Pool.Rent();
-                    request.Write(buffer.GetSpan());
+                    request.SuppressTracking();
+                    request.Write(buffer.Internal_GetSpan(buffer.Length));
                     request.SeekToBegin();
 
                     using var response = Pool.Rent();
+                    response.SuppressTracking();
                     await asyncCallback(request, response, peer);
                     Send(MessageType.HttpPostResponseAsync, response);
                 }
@@ -468,7 +541,7 @@ namespace Omni.Core
                 )
                 {
                     using var request = Pool.Rent();
-                    request.Write(buffer.GetSpan());
+                    request.Write(buffer.Internal_GetSpan(buffer.Length));
                     request.SeekToBegin();
 
                     using var response = Pool.Rent();
@@ -477,8 +550,9 @@ namespace Omni.Core
                 }
                 else
                 {
-                    throw new Exception(
-                        $"The route {routeName} has not been registered. Ensure that you register it first."
+                    NetworkLogger.__Log__(
+                        $"The route {routeName} has not been registered. Ensure that you register it first.",
+                        NetworkLogger.LogType.Error
                     );
                 }
             }
@@ -492,7 +566,12 @@ namespace Omni.Core
 
                 if (!response.SendEnabled)
                 {
-                    throw new Exception("Http Lite: Maybe you're forgetting to call Send().");
+                    NetworkLogger.__Log__(
+                        "Http Lite: Maybe you're forgetting to call Send().",
+                        NetworkLogger.LogType.Error
+                    );
+
+                    return;
                 }
 
                 // Self:
@@ -546,10 +625,12 @@ namespace Omni.Core
                 string routeName = buffer.ReadString();
                 int routeId = buffer.Read<int>();
 
-                if (Fetch.asyncTasks.Remove(routeId, out TaskCompletionSource<DataBuffer> source))
+                if (
+                    Fetch.asyncTasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source)
+                )
                 {
                     var message = Pool.Rent(); // Disposed by the caller!
-                    message.Write(buffer.GetSpan());
+                    message.Write(buffer.Internal_GetSpan(buffer.Length));
                     message.SeekToBegin();
 
                     // Set task as completed
@@ -558,7 +639,7 @@ namespace Omni.Core
                 else
                 {
                     using var eventMessage = Pool.Rent();
-                    eventMessage.Write(buffer.GetSpan());
+                    eventMessage.Write(buffer.Internal_GetSpan(buffer.Length));
                     eventMessage.SeekToBegin();
 
                     if (msgId == MessageType.HttpGetResponseAsync)
@@ -587,8 +668,9 @@ namespace Omni.Core
                     }
                     else
                     {
-                        throw new Exception(
-                            $"The route {routeName} has not been registered. Ensure that you register it first."
+                        NetworkLogger.__Log__(
+                            $"The route {routeName} has not been registered. Ensure that you register it first.",
+                            NetworkLogger.LogType.Error
                         );
                     }
                 }
