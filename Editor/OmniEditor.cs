@@ -22,6 +22,13 @@ namespace Omni.Editor
                 server.transform.parent = manager.transform;
                 var client = new GameObject(">> [Client Code Here] <<");
                 client.transform.parent = manager.transform;
+
+                // Add logger prefab.
+                GameObject logger = Resources.Load<GameObject>("IngameDebugConsole");
+                Object.Instantiate(logger, manager.transform);
+                logger.name = "Console";
+
+                // Set dirty to save changes.
                 EditorUtility.SetDirty(manager);
             }
         }
