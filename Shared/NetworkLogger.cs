@@ -148,6 +148,11 @@ namespace Omni.Shared
 #endif
         }
 
+        /// <summary>
+        /// Prints a message to the console without a stack trace. not logging to a file.
+        /// </summary>
+        /// <param name="message">The message to be printed.</param>
+        /// <param name="logType">The type of log message. Default is <see cref="LogType.Error"/>.</param>
         public static void Print(string message, LogType logType = LogType.Error)
         {
             Debug.LogFormat(
