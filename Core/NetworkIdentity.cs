@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace Omni.Core
 {
-    public class NetworkIdentity : MonoBehaviour
+    public class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
     {
         private readonly Dictionary<string, object> m_Services = new(); // (Service Name, Service Instance) exclusively to identity
 
@@ -31,7 +31,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Owner of this object. Only available on server, returns null on client.
+        /// Owner of this object. Only available on server, returns LocalPeer on client.
         /// </summary>
         public NetworkPeer Owner { get; internal set; }
 
@@ -52,23 +52,6 @@ namespace Omni.Core
         {
             get { return m_IsLocalPlayer; }
             internal set { m_IsLocalPlayer = value; }
-        }
-
-        /// <summary>
-        /// Destroys this object on the server. The caller must ensure the buffer is disposed or used within a using statement.
-        /// </summary>
-        public DataBuffer DestroyOnServer()
-        {
-            if (IsServer)
-            {
-                DataBuffer message = NetworkManager.Pool.Rent();
-                message.DestroyOnServer(this);
-                return message;
-            }
-            else
-            {
-                throw new Exception("Cannot destroy on client. Coming soon.");
-            }
         }
 
         /// <summary>
@@ -261,6 +244,22 @@ namespace Omni.Core
         public bool Unregister(string serviceName)
         {
             return m_Services.Remove(serviceName);
+        }
+
+        public override bool Equals(object obj)
+        {
+            NetworkIdentity other = (NetworkIdentity)obj;
+            return IdentityId == other.IdentityId;
+        }
+
+        public override int GetHashCode()
+        {
+            return IdentityId.GetHashCode();
+        }
+
+        public bool Equals(NetworkIdentity other)
+        {
+            return IdentityId == other.IdentityId;
         }
     }
 }
