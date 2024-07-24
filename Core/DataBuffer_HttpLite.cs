@@ -3,7 +3,7 @@ namespace Omni.Core
     // Used for HTTP Lite
     public sealed partial class DataBuffer
     {
-        internal bool SendEnabled { get; private set; }
+        internal bool SendEnabled { get; set; }
         internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
         internal HttpTarget Target { get; private set; } = HttpTarget.Self;
         internal int GroupId { get; private set; }
