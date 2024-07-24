@@ -18,13 +18,33 @@ namespace Omni.Shared
 {
     public class SimpleMovingAverage : IMovingAverage
     {
-        private readonly Queue<double> m_queue = new Queue<double>();
-        private readonly int windowSize;
+        private readonly Queue<double> m_queue = new();
+        private int windowSize;
         private double sum;
+
+        public double Average
+        {
+            get
+            {
+                if (m_queue.Count == 0)
+                {
+                    return 0.0;
+                }
+
+                return sum / m_queue.Count;
+            }
+        }
+
+        public SimpleMovingAverage() { }
 
         public SimpleMovingAverage(int windowSize)
         {
-            this.windowSize = windowSize;
+            SetPeriods(windowSize);
+        }
+
+        public void SetPeriods(int periods)
+        {
+            windowSize = periods;
         }
 
         public void Add(double value)
@@ -36,16 +56,6 @@ namespace Omni.Shared
             {
                 sum -= m_queue.Dequeue();
             }
-        }
-
-        public double GetAverage()
-        {
-            if (m_queue.Count == 0)
-            {
-                return 0.0;
-            }
-
-            return sum / m_queue.Count;
         }
     }
 }
