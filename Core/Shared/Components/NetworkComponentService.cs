@@ -1,8 +1,10 @@
 using System;
 using Omni.Core.Interfaces;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+#if OMNI_TEXTMESHPRO_ENABLED
+using TMPro;
+#endif
 
 namespace Omni.Core.Components
 {
@@ -27,18 +29,13 @@ namespace Omni.Core.Components
 
         protected override void OnValidate()
         {
-            if (string.IsNullOrEmpty(ServiceName))
-            {
-                ServiceName = GameObject.name;
-                NetworkHelper.EditorSaveObject(gameObject);
-            }
-
             if (m_Component == null)
             {
                 if (TryGetComponent<Button>(out var mButton))
                 {
                     m_Component = mButton;
                 }
+#if OMNI_TEXTMESHPRO_ENABLED
                 else if (TryGetComponent<TMP_Text>(out var mText))
                 {
                     m_Component = mText;
@@ -51,6 +48,7 @@ namespace Omni.Core.Components
                 {
                     m_Component = mDropdown;
                 }
+#endif
                 else if (TryGetComponent<Text>(out var mUnityText))
                 {
                     m_Component = mUnityText;
@@ -84,6 +82,20 @@ namespace Omni.Core.Components
                 }
 
                 NetworkHelper.EditorSaveObject(gameObject);
+            }
+
+            if (string.IsNullOrEmpty(ServiceName))
+            {
+                if (m_Component != null)
+                {
+                    ServiceName = m_Component.GetType().Name;
+                    NetworkHelper.EditorSaveObject(gameObject);
+                }
+                else
+                {
+                    ServiceName = GameObject.name;
+                    NetworkHelper.EditorSaveObject(gameObject);
+                }
             }
         }
     }
