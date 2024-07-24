@@ -247,9 +247,9 @@ namespace Omni.Core
         #region Server
         protected virtual void OnServerInitialized() { }
 
-        protected virtual void OnServerPeerConnected(NetworkPeer peer, Status status) { }
+        protected virtual void OnServerPeerConnected(NetworkPeer peer, Phase phase) { }
 
-        protected virtual void OnServerPeerDisconnected(NetworkPeer peer, Status status) { }
+        protected virtual void OnServerPeerDisconnected(NetworkPeer peer, Phase phase) { }
 
         protected virtual void OnPlayerFailedLeaveGroup(NetworkPeer peer, string reason) { }
 
@@ -303,7 +303,7 @@ namespace Omni.Core
         protected virtual void OnPlayerLeftGroup(
             NetworkGroup group,
             NetworkPeer peer,
-            Status status,
+            Phase phase,
             string reason
         ) { }
         #endregion

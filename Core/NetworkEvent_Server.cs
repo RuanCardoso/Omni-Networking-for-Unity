@@ -176,13 +176,13 @@ namespace Omni.Core
         /// Called when a new peer has successfully connected to the server.
         /// </summary>
         /// <param name="peer">The network peer that connected.</param>
-        protected virtual void OnServerPeerConnected(NetworkPeer peer, Status status) { }
+        protected virtual void OnServerPeerConnected(NetworkPeer peer, Phase phase) { }
 
         /// <summary>
         /// Called when a peer has disconnected from the server.
         /// </summary>
         /// <param name="peer">The network peer that disconnected.</param>
-        protected virtual void OnServerPeerDisconnected(NetworkPeer peer, Status status) { }
+        protected virtual void OnServerPeerDisconnected(NetworkPeer peer, Phase phase) { }
 
         /// <summary>
         /// Called when a player fails to leave a group on the server.
@@ -265,7 +265,7 @@ namespace Omni.Core
         protected virtual void OnPlayerLeftGroup(
             NetworkGroup group,
             NetworkPeer peer,
-            Status status,
+            Phase phase,
             string reason
         ) { }
 

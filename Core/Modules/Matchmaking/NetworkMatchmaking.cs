@@ -103,7 +103,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// The second parameter is the <see cref="NetworkPeer"/> object representing the player.
             /// The third parameter is a string containing additional information, if any.
             /// </remarks>
-            public event Action<NetworkGroup, NetworkPeer, Status, string> OnPlayerLeftGroup
+            public event Action<NetworkGroup, NetworkPeer, Phase, string> OnPlayerLeftGroup
             {
                 add => NetworkManager.OnPlayerLeftGroup += value;
                 remove => NetworkManager.OnPlayerLeftGroup -= value;
