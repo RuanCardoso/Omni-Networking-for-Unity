@@ -11,7 +11,7 @@ namespace Omni.Core
 {
     [JsonObject(MemberSerialization.OptIn)]
     [MemoryPackable]
-    public partial class NetworkGroup
+    public partial class NetworkGroup : IEquatable<NetworkGroup>
     {
         [MemoryPackIgnore]
         internal readonly Dictionary<int, NetworkPeer> _peersById = new();
@@ -152,6 +152,18 @@ namespace Omni.Core
             return true;
         }
 
+        public void SyncSerializedData(SyncOptions options)
+        {
+            SyncSerializedData(
+                options.Target,
+                options.DeliveryMode,
+                options.GroupId,
+                options.CacheId,
+                options.CacheMode,
+                options.SequenceChannel
+            );
+        }
+
         public void SyncSerializedData(
             Target target = Target.GroupMembers,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -169,6 +181,19 @@ namespace Omni.Core
                 cacheId,
                 cacheMode,
                 sequenceChannel
+            );
+        }
+
+        public void SyncSerializedData(string key, SyncOptions options)
+        {
+            SyncSerializedData(
+                key,
+                options.Target,
+                options.DeliveryMode,
+                options.GroupId,
+                options.CacheId,
+                options.CacheMode,
+                options.SequenceChannel
             );
         }
 
@@ -251,43 +276,6 @@ namespace Omni.Core
                     NetworkLogger.LogType.Error
                 );
             }
-        }
-
-        public void SyncBinaryProperties(
-            Target target = Target.GroupMembers,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            int cacheId = 0,
-            CacheMode cacheMode = CacheMode.None,
-            byte sequenceChannel = 0
-        )
-        {
-            if (!IsServerActive)
-            {
-                throw new Exception("Can't use this method on client.");
-            }
-
-            if (MasterClientId <= -1)
-            {
-                throw new Exception(
-                    "MasterClientId is not set. Please set it before using this method."
-                );
-            }
-
-            // using var message = Pool.Rent();
-            // message.FastWrite(Id);
-            // message.ToJson(keyValuePair);
-            // Server.SendMessage(
-            //     MessageType.SyncGroupSerializedData,
-            //     MasterClientId,
-            //     message,
-            //     target,
-            //     deliveryMode,
-            //     groupId,
-            //     cacheId,
-            //     cacheMode,
-            //     sequenceChannel
-            // );
         }
 
         public void DeleteCache(CacheMode cacheMode, int cacheId)
@@ -381,6 +369,22 @@ namespace Omni.Core
         public override string ToString()
         {
             return ToJson(this);
+        }
+
+        public override bool Equals(object obj)
+        {
+            NetworkGroup other = (NetworkGroup)obj;
+            return Id == other.Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
+        }
+
+        public bool Equals(NetworkGroup other)
+        {
+            return Id == other.Id;
         }
     }
 }

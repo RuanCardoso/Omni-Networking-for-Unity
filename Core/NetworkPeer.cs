@@ -12,7 +12,7 @@ namespace Omni.Core
 {
     [JsonObject(MemberSerialization.OptIn)]
     [MemoryPackable]
-    public partial class NetworkPeer
+    public partial class NetworkPeer : IEquatable<NetworkPeer>
     {
         [MemoryPackIgnore]
         internal byte[] _aesKey;
@@ -86,6 +86,18 @@ namespace Omni.Core
             DisconnectPeer(this);
         }
 
+        public void SyncSerializedData(SyncOptions options)
+        {
+            SyncSerializedData(
+                options.Target,
+                options.DeliveryMode,
+                options.GroupId,
+                options.CacheId,
+                options.CacheMode,
+                options.SequenceChannel
+            );
+        }
+
         public void SyncSerializedData(
             Target target = Target.Self,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -103,6 +115,19 @@ namespace Omni.Core
                 cacheId,
                 cacheMode,
                 sequenceChannel
+            );
+        }
+
+        public void SyncSerializedData(string key, SyncOptions options)
+        {
+            SyncSerializedData(
+                key,
+                options.Target,
+                options.DeliveryMode,
+                options.GroupId,
+                options.CacheId,
+                options.CacheMode,
+                options.SequenceChannel
             );
         }
 
@@ -182,6 +207,22 @@ namespace Omni.Core
         public override string ToString()
         {
             return ToJson(this);
+        }
+
+        public override bool Equals(object obj)
+        {
+            NetworkPeer other = (NetworkPeer)obj;
+            return Id == other.Id;
+        }
+
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
+        }
+
+        public bool Equals(NetworkPeer other)
+        {
+            return Id == other.Id;
         }
     }
 }
