@@ -3,13 +3,18 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
+using Omni.Core.Modules.Ntp;
 using Omni.Shared;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
-    public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem
+    public class NetworkBehaviour
+        : NetworkVariablesBehaviour,
+            IInvokeMessage,
+            ITickSystem,
+            IEquatable<NetworkBehaviour>
     {
         // Hacky: DIRTY CODE!
         // This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.
@@ -409,6 +414,28 @@ namespace Omni.Core
         /// <value><c>true</c> if this instance is on the client; otherwise, <c>false</c>.</value>
         public bool IsClient => !IsServer;
 
+        /// <summary>
+        /// Gets the <see cref="SimpleNtp"/> instance that provides access to the server and client time.
+        /// </summary>
+        /// <value>
+        /// The <see cref="SimpleNtp"/> instance that provides the server and client time.
+        /// </value>
+        protected SimpleNtp Sntp => NetworkManager.Sntp;
+
+        /// <summary>
+        /// Gets the synchronized time between the server and the clients as a <see cref="double"/>.
+        /// This property returns the current synchronized time, providing a consistent reference point across all clients and the server.
+        /// Although the time is not exactly the same due to precision differences, it is synchronized to be as close as possible between the server and the clients.
+        /// </summary>
+        protected double SynchronizedTime => IsServer ? Sntp.Server.Time : Sntp.Client.Time;
+
+        /// <summary>
+        /// Gets the synchronized time between the client and the server as a <see cref="double"/>.
+        /// This property returns the current synchronized time as perceived by the client, providing a reference point that is consistent between that client and the server.
+        /// Unlike the <see cref="SynchronizedTime"/> property, <see cref="PeerTime"/> represents the time from the perspective of the individual client and may differ between clients.
+        /// </summary>
+        protected double PeerTime => Identity.Owner.Time;
+
         private NbClient _local;
 
         // public api: allow send from other object
@@ -461,7 +488,7 @@ namespace Omni.Core
         /// before the object becomes active.
         /// </remarks>
         /// <param name="buffer">The buffer containing data associated with the instantiation process.</param>
-        protected internal virtual void OnAwake(DataBuffer buffer) { }
+        protected internal virtual void OnAwake() { }
 
         /// <summary>
         /// Called after the object is instantiated and after it becomes active.
@@ -471,7 +498,7 @@ namespace Omni.Core
         /// after the object has become active.
         /// </remarks>
         /// <param name="buffer">The buffer containing data associated with the instantiation process.</param>
-        protected internal virtual void OnStart(DataBuffer buffer) { }
+        protected internal virtual void OnStart() { }
 
         /// <summary>
         /// Called on each update tick.
@@ -699,6 +726,24 @@ namespace Omni.Core
         protected virtual void Reset()
         {
             OnValidate();
+        }
+
+        public override bool Equals(object obj)
+        {
+            NetworkBehaviour other = obj as NetworkBehaviour;
+            return Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(IdentityId, m_Id, IsServer);
+        }
+
+        public bool Equals(NetworkBehaviour other)
+        {
+            bool isTheSameBehaviour = m_Id == other.m_Id;
+            bool isTheSameIdentity = Identity.Equals(other.Identity);
+            return isTheSameBehaviour && isTheSameIdentity && IsServer == other.IsServer;
         }
     }
 }
