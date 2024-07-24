@@ -7,6 +7,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Omni.Core.Components;
+using Omni.Shared;
 using UnityEngine;
 
 namespace Omni.Core
@@ -34,6 +36,103 @@ namespace Omni.Core
             }
 
             return d_UniqueId++;
+        }
+
+        internal static void Destroy(NetworkIdentity identity, bool isServer)
+        {
+            var identities = isServer
+                ? NetworkManager.Server.Identities
+                : NetworkManager.Client.Identities;
+
+            if (identities.Remove(identity.IdentityId))
+            {
+                NetworkBehaviour[] networkBehaviours =
+                    identity.GetComponentsInChildren<NetworkBehaviour>(true);
+
+                for (int i = 0; i < networkBehaviours.Length; i++)
+                {
+                    networkBehaviours[i].Unregister();
+                }
+
+                UnityEngine.Object.Destroy(identity.gameObject);
+            }
+            else
+            {
+                NetworkLogger.__Log__(
+                    $"Server Destroy: Identity with ID {identity.IdentityId} not found.",
+                    NetworkLogger.LogType.Error
+                );
+            }
+        }
+
+        internal static NetworkIdentity Instantiate(
+            NetworkIdentity prefab,
+            NetworkPeer peer,
+            int identityId,
+            bool isServer,
+            bool isLocalPlayer
+        )
+        {
+            // Disable the prefab to avoid Awake and Start being called multiple times before the registration.
+            prefab.gameObject.SetActive(false);
+
+            NetworkIdentity identity = UnityEngine.Object.Instantiate(prefab);
+            identity.IdentityId = identityId;
+            identity.Owner = peer;
+            identity.IsServer = isServer;
+            identity.IsLocalPlayer = isLocalPlayer;
+
+            NetworkBehaviour[] networkBehaviours =
+                identity.GetComponentsInChildren<NetworkBehaviour>(true);
+
+            for (int i = 0; i < networkBehaviours.Length; i++)
+            {
+                NetworkBehaviour networkBehaviour = networkBehaviours[i];
+                networkBehaviour.Identity = identity;
+
+                if (networkBehaviour.Id == 0)
+                {
+                    networkBehaviour.Id = (byte)(i + 1);
+                }
+
+                networkBehaviour.Register();
+                networkBehaviour.OnAwake();
+            }
+
+#if UNITY_EDITOR || !UNITY_SERVER
+            identity.name = $"{prefab.name}(On {(isServer ? "Server" : "Client")})";
+            if (!isServer)
+            {
+                NetworkIsolate[] _ = identity.GetComponentsInChildren<NetworkIsolate>(true);
+                foreach (NetworkIsolate isolate in _)
+                {
+                    UnityEngine.Object.Destroy(isolate);
+                }
+            }
+#endif
+
+            var identities = isServer
+                ? NetworkManager.Server.Identities
+                : NetworkManager.Client.Identities;
+
+            if (!identities.TryAdd(identity.IdentityId, identity))
+            {
+                NetworkLogger.__Log__(
+                    $"Instantiation Error: Failed to add identity with ID '{identity.IdentityId}' to {(isServer ? "server" : "client")} identities. The identity might already exist.",
+                    NetworkLogger.LogType.Error
+                );
+            }
+
+            prefab.gameObject.SetActive(true); // After registration, enable the prefab again.
+            identity.gameObject.SetActive(true); // Enable instantiated object!
+
+            // After Start
+            foreach (var behaviour in networkBehaviours)
+            {
+                behaviour.OnStart();
+            }
+
+            return identity;
         }
 
         internal static bool IsPortAvailable(int port, ProtocolType protocolType, bool useIPv6)
