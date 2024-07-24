@@ -48,17 +48,12 @@ namespace Omni.Core.Modules.Ntp
             /// Returns the synchronized time or ticks, which is the unity time plus the smoothed offset average.
             /// </summary>
             public double Time =>
-                Math.Round(ClockTime + OffsetAvg.GetAverage(), UseTickTiming ? 0 : 2);
-
-            /// <summary>
-            /// Returns the synchronized time or ticks as a float, which is the unity time plus the smoothed offset average.
-            /// </summary>
-            public float TimeAsFloat => (float)Time;
+                Math.Round(ClockTime + OffsetAvg.Average, UseTickTiming ? 0 : 2);
 
             /// <summary>
             /// Returns the round-trip time (RTT) smoothed average.
             /// </summary>
-            public double Rtt => RttAvg.GetAverage();
+            public double Rtt => RttAvg.Average;
 
             /// <summary>
             /// Returns the half round-trip time (RTT) smoothed average.
