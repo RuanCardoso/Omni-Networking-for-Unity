@@ -279,7 +279,7 @@ namespace Omni.Core
             MemoryPackSerializerOptions.Default;
 
         /// <summary>
-        /// Use binary serialization for some types by default. Useful for types like as <see cref="ApiResponse"/>
+        /// Use binary serialization for some types by default. Useful for types like as <see cref="Response"/>
         /// </summary>
         public static bool UseBinarySerialization = false;
 
@@ -340,33 +340,36 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Writes a response to the buffer, used to response any request with status code, message and data(optional).
+        /// Writes an HTTP response to the buffer.
         /// </summary>
-        public static void ToApiResponse(this DataBuffer buffer, ApiResponse response)
+        /// <param name="buffer">The buffer to write to.</param>
+        /// <param name="response">The HTTP response to write.</param>
+        public static void WriteHttpResponse(this DataBuffer buffer, HttpResponse response)
         {
             if (!UseBinarySerialization)
             {
                 ToJson(buffer, response);
+                return;
             }
-            else
-            {
-                ToBinary(buffer, response);
-            }
+
+            ToBinary(buffer, response);
         }
 
         /// <summary>
-        /// Writes a generic response to the buffer, used to response any request with status code, message and data(optional).
+        /// Writes an HTTP response with a generic payload to the buffer.
         /// </summary>
-        public static void ToApiResponse<T>(this DataBuffer buffer, ApiResponse<T> response)
+        /// <typeparam name="T">The type of the payload.</typeparam>
+        /// <param name="buffer">The buffer to write to.</param>
+        /// <param name="response">The HTTP response with the generic payload to write.</param>
+        public static void WriteHttpResponse<T>(this DataBuffer buffer, HttpResponse<T> response)
         {
             if (!UseBinarySerialization)
             {
                 ToJson(buffer, response);
+                return;
             }
-            else
-            {
-                ToBinary(buffer, response);
-            }
+
+            ToBinary(buffer, response);
         }
 
         /// <summary>
@@ -580,30 +583,32 @@ namespace Omni.Core
     public static partial class BufferWriterExtensions
     {
         /// <summary>
-        /// Reads and deserializes an API response from the given data buffer. This method is used to parse a response that includes a status code, a message, and optionally, data of type <see cref="ApiResponse"/>.
+        /// Reads an HTTP response from the DataBuffer.
         /// </summary>
-        /// <param name="buffer">The data buffer containing the serialized API response.</param>
-        /// <returns>An instance of <see cref="ApiResponse"/> representing the deserialized response.</returns>
-        public static ApiResponse FromApiResponse(this DataBuffer buffer)
+        /// <returns>The deserialized HTTP response.</returns>
+        public static HttpResponse ReadHttpResponse(this DataBuffer buffer)
         {
             if (!UseBinarySerialization)
-                return FromJson<ApiResponse>(buffer);
+            {
+                return FromJson<HttpResponse>(buffer);
+            }
 
-            return FromBinary<ApiResponse>(buffer);
+            return FromBinary<HttpResponse>(buffer);
         }
 
         /// <summary>
-        /// Reads and deserializes a generic API response from the given data buffer. This method is used to parse a response that includes a status code, a message, and optionally, data of type <typeparamref name="T"/>. The data is deserialized into an instance of <see cref="ApiResponse{T}"/>.
+        /// Reads an HTTP response with a generic payload from the DataBuffer.
         /// </summary>
-        /// <typeparam name="T">The type of the data included in the API response.</typeparam>
-        /// <param name="buffer">The data buffer containing the serialized API response.</param>
-        /// <returns>An instance of <see cref="ApiResponse{T}"/> representing the deserialized response with data of type <typeparamref name="T"/>.</returns>
-        public static ApiResponse<T> FromApiResponse<T>(this DataBuffer buffer)
+        /// <typeparam name="T">The type of the payload.</typeparam>
+        /// <returns>The deserialized HTTP response.</returns>
+        public static HttpResponse<T> ReadHttpResponse<T>(this DataBuffer buffer)
         {
             if (!UseBinarySerialization)
-                return FromJson<ApiResponse<T>>(buffer);
+            {
+                return FromJson<HttpResponse<T>>(buffer);
+            }
 
-            return FromBinary<ApiResponse<T>>(buffer);
+            return FromBinary<HttpResponse<T>>(buffer);
         }
 
         /// <summary>
@@ -854,34 +859,5 @@ namespace Omni.Core
     }
 
     // Syntactic sugar
-    public static partial class BufferWriterExtensions
-    {
-        /// <returns>The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static DataBuffer ToApiResponse<T>(
-            this ApiResponse<T> data,
-            ResponseStatusCode statusCode,
-            string statusMessage = ""
-        )
-        {
-            var message = NetworkManager.Pool.Rent(); // disposed by the caller
-            data.StatusCode = statusCode;
-            data.StatusMessage = statusMessage;
-            message.ToApiResponse(data);
-            return message;
-        }
-
-        /// <returns>The caller must ensure the buffer is disposed or used within a using statement.</returns>
-        public static DataBuffer ToApiResponse(
-            this string statusMessage,
-            ResponseStatusCode statusCode
-        )
-        {
-            var message = NetworkManager.Pool.Rent(); // disposed by the caller
-            message.ToApiResponse(
-                new ApiResponse() { StatusCode = statusCode, StatusMessage = statusMessage }
-            );
-
-            return message;
-        }
-    }
+    public static partial class BufferWriterExtensions { }
 }
