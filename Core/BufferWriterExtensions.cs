@@ -858,21 +858,15 @@ namespace Omni.Core
     {
         /// <returns>The caller must ensure the buffer is disposed or used within a using statement.</returns>
         public static DataBuffer ToApiResponse<T>(
-            this T data,
+            this ApiResponse<T> data,
             ResponseStatusCode statusCode,
             string statusMessage = ""
         )
         {
             var message = NetworkManager.Pool.Rent(); // disposed by the caller
-            message.ToApiResponse(
-                new ApiResponse<T>()
-                {
-                    Result = data,
-                    StatusCode = statusCode,
-                    StatusMessage = statusMessage
-                }
-            );
-
+            data.StatusCode = statusCode;
+            data.StatusMessage = statusMessage;
+            message.ToApiResponse(data);
             return message;
         }
 
