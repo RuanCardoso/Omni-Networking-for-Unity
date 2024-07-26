@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 
+#pragma warning disable
+
 namespace Omni.Core
 {
     public class NetworkEventBase : NetworkVariablesBehaviour
@@ -78,6 +80,9 @@ namespace Omni.Core
 
         protected virtual void OnValidate()
         {
+            if (remote != null || local != null)
+                ___NotifyChange___(); // Override by the source generator.
+
             if (m_Id == 0)
             {
                 m_Id = NetworkHelper.GenerateSceneUniqueId();
@@ -89,6 +94,15 @@ namespace Omni.Core
                 m_ServiceName = GetType().Name;
                 NetworkHelper.EditorSaveObject(gameObject);
             }
+
+#if OMNI_DEBUG
+            if (GetComponentInChildren<NetworkIdentity>() != null)
+            {
+                throw new NotSupportedException(
+                    "NetworkEventBase should not be attached to an object with a NetworkIdentity. Use 'NetworkBehaviour' instead."
+                );
+            }
+#endif
         }
     }
 }
