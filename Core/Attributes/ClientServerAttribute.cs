@@ -19,12 +19,14 @@ namespace Omni.Core
         }
     }
 
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class ClientAttribute : EventAttribute
     {
         public ClientAttribute(byte id)
             : base(id) { }
     }
 
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class ServerAttribute : EventAttribute
     {
         public ServerAttribute(byte id)
