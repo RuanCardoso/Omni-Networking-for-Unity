@@ -23,20 +23,29 @@ using UnityEngine;
 
 namespace Omni.Editor
 {
-    [CustomPropertyDrawer(typeof(AutoPropertyAttribute), true)]
+    [CustomPropertyDrawer(typeof(NetworkVariableAttribute), true)]
     [CanEditMultipleObjects]
-    public class NetVarDrawer : PropertyDrawer
+    public class NetworkVariableDrawer : PropertyDrawer
     {
         private Texture2D quadTexture;
         private PropertyInfo propertyInfo;
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            return EditorGUI.GetPropertyHeight(property, label);
+            return EditorGUI.GetPropertyHeight(property, label, true);
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
+            var attr = (NetworkVariableAttribute)attribute;
+            if (attr.TrackChangesInInspector == false)
+            {
+                label.text = $" {property.displayName}";
+                label.image = GetTexture(new Color(1, 0.5f, 0, 1f));
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
             EditorGUI.BeginProperty(position, label, property);
             UnityEngine.Object targetObject = property.serializedObject.targetObject;
             if (
@@ -52,7 +61,7 @@ namespace Omni.Editor
                 if (fieldName.Contains("M_") || char.IsUpper(fieldName[0]))
                 {
                     NetworkLogger.__Log__(
-                        "NetVar fields must always begin with the first lowercase letter.",
+                        "NetworkVariable fields must always begin with the first lowercase letter.",
                         NetworkLogger.LogType.Error
                     );
 
@@ -74,7 +83,7 @@ namespace Omni.Editor
                 if (propertyInfo != null)
                 {
                     label.text = $" {property.displayName}";
-                    label.image = GetTexture();
+                    label.image = GetTexture(Color.green);
                     // Update the property!
                     EditorGUI.BeginChangeCheck();
                     EditorGUI.PropertyField(position, property, label, true);
@@ -112,7 +121,7 @@ namespace Omni.Editor
                 else
                 {
                     NetworkLogger.__Log__(
-                        $"Error: The NetVar requires a property named '{propertyName}' in the class '{type}'.",
+                        $"Error: The NetworkVariable requires a property named '{propertyName}' in the class '{type}'.",
                         NetworkLogger.LogType.Error
                     );
                 }
@@ -120,7 +129,7 @@ namespace Omni.Editor
             else
             {
                 NetworkLogger.__Log__(
-                    "Error: The NetVar requires the class to inherit from 'EventBehaviour'.",
+                    "Error: The NetworkVariable requires the class to inherit from 'EventBehaviour'.",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -150,7 +159,7 @@ namespace Omni.Editor
                 return false;
         }
 
-        private Texture2D GetTexture()
+        private Texture2D GetTexture(Color color)
         {
             if (quadTexture == null)
             {
@@ -163,7 +172,7 @@ namespace Omni.Editor
                 {
                     for (int x = 0; x < quadTexture.width; x++)
                     {
-                        quadTexture.SetPixel(x, y, Color.green);
+                        quadTexture.SetPixel(x, y, color);
                     }
                 }
 
