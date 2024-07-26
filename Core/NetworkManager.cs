@@ -227,6 +227,130 @@ namespace Omni.Core
     /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
     /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
     /// </summary>
+    public class NetworkVariableOptions
+    {
+        public Target Target { get; set; }
+        public DeliveryMode DeliveryMode { get; set; }
+        public int GroupId { get; set; }
+        public int CacheId { get; set; }
+        public CacheMode CacheMode { get; set; }
+        public byte SequenceChannel { get; set; }
+        public DataBuffer Buffer { get; set; }
+
+        public NetworkVariableOptions()
+        {
+            Target = Target.All;
+            DeliveryMode = DeliveryMode.ReliableOrdered;
+            GroupId = 0;
+            CacheId = 0;
+            CacheMode = CacheMode.None;
+            SequenceChannel = 0;
+        }
+
+        /// <summary>
+        /// Provides default synchronization options with the following settings:<br/>
+        /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+        /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+        /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+        /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+        /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+        /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+        /// </summary>
+        public NetworkVariableOptions(DataBuffer buffer)
+        {
+            Buffer = buffer;
+            Target = Target.All;
+            DeliveryMode = DeliveryMode.ReliableOrdered;
+            GroupId = 0;
+            CacheId = 0;
+            CacheMode = CacheMode.None;
+            SequenceChannel = 0;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyncOptions"/> struct with the specified parameters.
+        /// </summary>
+        public NetworkVariableOptions(
+            DataBuffer buffer,
+            Target target,
+            DeliveryMode deliveryMode,
+            int groupId,
+            int cacheId,
+            CacheMode cacheMode,
+            byte sequenceChannel
+        )
+        {
+            Buffer = buffer;
+            Target = target;
+            DeliveryMode = deliveryMode;
+            GroupId = groupId;
+            CacheId = cacheId;
+            CacheMode = cacheMode;
+            SequenceChannel = sequenceChannel;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyncOptions"/> struct with the specified parameters.
+        /// </summary>
+        public NetworkVariableOptions(
+            Target target,
+            DeliveryMode deliveryMode,
+            int groupId,
+            int cacheId,
+            CacheMode cacheMode,
+            byte sequenceChannel
+        )
+        {
+            Buffer = null;
+            Target = target;
+            DeliveryMode = deliveryMode;
+            GroupId = groupId;
+            CacheId = cacheId;
+            CacheMode = cacheMode;
+            SequenceChannel = sequenceChannel;
+        }
+
+        /// <summary>
+        /// Provides default synchronization options with the following settings:<br/>
+        /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+        /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+        /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+        /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+        /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+        /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+        /// </summary>
+        public NetworkVariableOptions(bool useDefaultOptions)
+        {
+            Buffer = null;
+            Target = Target.All;
+            DeliveryMode = DeliveryMode.ReliableOrdered;
+            GroupId = 0;
+            CacheId = 0;
+            CacheMode = CacheMode.None;
+            SequenceChannel = 0;
+        }
+
+        /// <summary>
+        /// Provides default synchronization options with the following settings:<br/>
+        /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+        /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+        /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+        /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+        /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+        /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+        /// </summary>
+        public static SyncOptions Default => new SyncOptions(true);
+    }
+
+    /// <summary>
+    /// Provides default synchronization options with the following settings:<br/>
+    /// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+    /// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
+    /// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
+    /// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
+    /// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+    /// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+    /// </summary>
     public struct SyncOptions
     {
         public Target Target { get; set; }
@@ -1153,7 +1277,7 @@ namespace Omni.Core
 
             if (IsServerActive)
             {
-                if (!_allowZeroGroupForInternalMessages && !m_ZeroGroupMessage && groupId == 0)
+                if (!_allowZeroGroupForInternalMessages && !m_AllowZeroGroupMessage && groupId == 0)
                 {
                     NetworkLogger.__Log__(
                         "Send: Access denied: Zero-group message not allowed. Join a group first or set 'AllowZeroGroupMessage' to true.",
@@ -1178,7 +1302,7 @@ namespace Omni.Core
                 {
                     if (GroupsById.TryGetValue(groupId, out _group))
                     {
-                        if (!m_AcrossGroupMessage || !_group.AllowAcrossGroupMessage)
+                        if (!m_AllowAcrossGroupMessage || !_group.AllowAcrossGroupMessage)
                         {
                             if (!_group._peersById.ContainsKey(sender.Id) && sender.Id != 0)
                             {
@@ -1825,6 +1949,20 @@ namespace Omni.Core
                             byte instanceId = header.FastRead<byte>();
                             byte invokeId = header.FastRead<byte>();
 
+                            if (isServer && invokeId == 255 && !m_AllowNetworkVariablesFromClients) // 255 is reserved for NetVar
+                            {
+                                // NetVar exclusively
+                                NetworkLogger.__Log__(
+                                    "The client does not have permission to send Network Variables.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+#if OMNI_RELEASE
+                                peer.Disconnect();
+#endif
+                                return;
+                            }
+
                             using var message = EndOfHeader();
 
                             var key = (identityId, instanceId);
@@ -1857,6 +1995,20 @@ namespace Omni.Core
                         {
                             int identityId = header.FastRead<int>();
                             byte invokeId = header.FastRead<byte>();
+
+                            if (isServer && invokeId == 255 && !m_AllowNetworkVariablesFromClients)
+                            {
+                                // NetVar exclusively
+                                NetworkLogger.__Log__(
+                                    "The Client does not have permission to send Network Variables. Server refuses it.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+#if OMNI_RELEASE
+                                peer.Disconnect();
+#endif
+                                return;
+                            }
 
                             using var message = EndOfHeader();
 
