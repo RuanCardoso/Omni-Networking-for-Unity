@@ -55,7 +55,7 @@ namespace Omni.Core.Modules.Connection
 
         [SerializeField]
         [Range(1, 64)]
-        private byte m_ChannelsCount = 1;
+        private byte m_ChannelsCount = 3;
 
         [SerializeField]
         [Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
