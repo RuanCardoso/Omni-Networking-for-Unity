@@ -8,6 +8,8 @@ using Omni.Shared;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+#pragma warning disable
+
 namespace Omni.Core
 {
     public class NetworkBehaviour
@@ -32,18 +34,18 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a manual 'NetVar' message to the server with the specified property and property id.
+            /// Sends a manual 'NetworkVariable' message to the server with the specified property and property id.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
             /// <param name="propertyId">The ID of the property being synchronized.</param>
-            public void ManualSync<T>(T property, byte propertyId, SyncOptions options)
+            public void ManualSync<T>(T property, byte propertyId, NetworkVariableOptions options)
             {
                 ManualSync<T>(property, propertyId, options.DeliveryMode, options.SequenceChannel);
             }
 
             /// <summary>
-            /// Sends a manual 'NetVar' message to the server with the specified property and property id.
+            /// Sends a manual 'NetworkVariable' message to the server with the specified property and property id.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
@@ -62,16 +64,19 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Automatically sends a 'NetVar' message to the server based on the caller member name.
+            /// Automatically sends a 'NetworkVariable' message to the server based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-            public void AutoSync<T>(SyncOptions options, [CallerMemberName] string ___ = "")
+            public void AutoSync<T>(
+                NetworkVariableOptions options,
+                [CallerMemberName] string ___ = ""
+            )
             {
                 AutoSync<T>(options.DeliveryMode, options.SequenceChannel, ___);
             }
 
             /// <summary>
-            /// Automatically sends a 'NetVar' message to the server based on the caller member name.
+            /// Automatically sends a 'NetworkVariable' message to the server based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
@@ -141,7 +146,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a manual 'NetVar' message to all(default) clients with the specified property and property ID.
+            /// Sends a manual 'NetworkVariable' message to all(default) clients with the specified property and property ID.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
@@ -152,7 +157,7 @@ namespace Omni.Core
             /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
             /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            public void ManualSync<T>(T property, byte propertyId, SyncOptions options)
+            public void ManualSync<T>(T property, byte propertyId, NetworkVariableOptions options)
             {
                 ManualSync(
                     property,
@@ -167,7 +172,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a manual 'NetVar' message to all(default) clients with the specified property and property ID.
+            /// Sends a manual 'NetworkVariable' message to all(default) clients with the specified property and property ID.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
@@ -203,7 +208,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Automatically sends a 'NetVar' message to all(default) clients based on the caller member name.
+            /// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
@@ -212,7 +217,10 @@ namespace Omni.Core
             /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
             /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            public void AutoSync<T>(SyncOptions options, [CallerMemberName] string ___ = "")
+            public void AutoSync<T>(
+                NetworkVariableOptions options,
+                [CallerMemberName] string ___ = ""
+            )
             {
                 AutoSync<T>(
                     options.Target,
@@ -226,7 +234,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Automatically sends a 'NetVar' message to all(default) clients based on the caller member name.
+            /// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
@@ -381,7 +389,21 @@ namespace Omni.Core
         /// Gets or sets the <see cref="NetworkIdentity"/> associated with this instance.
         /// </summary>
         /// <value>The <see cref="NetworkIdentity"/> associated with this instance.</value>
-        public NetworkIdentity Identity { get; internal set; }
+        public NetworkIdentity Identity
+        {
+            get
+            {
+                if (_identity == null)
+                {
+                    throw new InvalidOperationException(
+                        "The 'NetworkIdentity' property has not been assigned yet. Make sure to set it before accessing it. If you are trying to access it during the object's initialization, ensure that the object has been fully initialized before accessing it."
+                    );
+                }
+
+                return _identity;
+            }
+            internal set => _identity = value;
+        }
 
         /// <summary>
         /// Gets the identifier of the associated <see cref="NetworkIdentity"/>.
@@ -459,6 +481,7 @@ namespace Omni.Core
         }
 
         private NbServer _remote;
+        private NetworkIdentity _identity;
 
         // public api: allow send from other object
         /// <summary>
@@ -692,6 +715,9 @@ namespace Omni.Core
 
         protected virtual void OnValidate()
         {
+            if (_identity != null && _identity.IsRegistered)
+                ___NotifyChange___(); // Override by the source generator.
+
             if (m_Id < 0)
             {
                 m_Id = 0;
