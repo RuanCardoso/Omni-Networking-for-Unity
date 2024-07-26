@@ -116,15 +116,6 @@ namespace Omni.Core
         private int m_MaxFpsOnClient = 60;
 
         [SerializeField]
-        [Label("Allow Across-Group Message")]
-        private bool m_AcrossGroupMessage = false;
-
-        [SerializeField]
-        [Label("Allow Zero-Group Message")]
-        private bool m_ZeroGroupMessage = true;
-
-        [Header("Misc +")]
-        [SerializeField]
 #if OMNI_RELEASE
         [ReadOnly]
 #endif
@@ -136,6 +127,7 @@ namespace Omni.Core
 #endif
         private bool m_AutoStartServer = true;
 
+        [Header("Misc +")]
         [SerializeField]
         [Label("Use UTF-8 Encoding")]
         private bool m_UseUtf8 = false;
@@ -145,6 +137,20 @@ namespace Omni.Core
 
         [SerializeField]
         private bool m_RunInBackground = true;
+
+        [Header("Permissions")]
+        [SerializeField]
+        [Label("Allow NetVar's From Clients")]
+        private bool m_AllowNetworkVariablesFromClients = false;
+
+        [SerializeField]
+        [Label("Allow Across-Group Message")]
+        private bool m_AllowAcrossGroupMessage = false;
+
+        [SerializeField]
+        [ReadOnly]
+        [Label("Allow Zero-Group Message")]
+        private bool m_AllowZeroGroupMessage = true;
 
         [Header("Registered Prefabs")]
         [SerializeField]
