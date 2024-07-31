@@ -1,7 +1,6 @@
 using System;
 using System.Globalization;
 using System.Runtime.CompilerServices;
-using Newtonsoft.Json;
 using UnityEngine;
 
 namespace Omni.Core
@@ -23,11 +22,13 @@ namespace Omni.Core
             this.z = new Half(z);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator HalfVector3(Vector3 vector)
         {
             return new HalfVector3(vector.x, vector.y, vector.z);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator Vector3(HalfVector3 vector)
         {
             return new Vector3(vector.x, vector.y, vector.z);

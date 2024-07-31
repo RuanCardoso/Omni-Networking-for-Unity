@@ -8,7 +8,10 @@ namespace Omni.Core
 
     public interface ISerializableWithPeer : ISerializable
     {
-        NetworkPeer Peer { get; set; }
+        /// <summary>
+        /// Useful for encryption and authentication.
+        /// </summary>
+        NetworkPeer SharedPeer { get; set; }
         bool IsServer { get; set; }
     }
 }

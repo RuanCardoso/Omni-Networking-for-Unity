@@ -24,11 +24,13 @@ namespace Omni.Core
             this.w = new Half(w);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator HalfQuaternion(Quaternion quat)
         {
             return new HalfQuaternion(quat.x, quat.y, quat.z, quat.w);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator Quaternion(HalfQuaternion quat)
         {
             return new Quaternion(quat.x, quat.y, quat.z, quat.w);

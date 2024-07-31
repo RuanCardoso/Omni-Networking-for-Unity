@@ -14,11 +14,18 @@ namespace Omni.Core.Modules.Connection
             protected ITransporter Transporter { get; private set; }
             protected virtual bool IsServer { get; }
 
+            internal BandwidthMonitor SentBandwidth { get; } = new();
+            internal BandwidthMonitor ReceivedBandwidth { get; } = new();
+
             internal void StartTransporter(ITransporter ITransporter, ITransporterReceive IReceive)
             {
                 NetworkHelper.EnsureRunningOnMainThread();
                 Transporter = ITransporter;
                 Transporter.Initialize(IReceive, IsServer);
+#if OMNI_DEBUG || (UNITY_SERVER && !UNITY_EDITOR)
+                SentBandwidth.Start();
+                ReceivedBandwidth.Start();
+#endif
             }
 
             internal void Send(
@@ -36,6 +43,9 @@ namespace Omni.Core.Modules.Connection
                     );
                 }
 
+#if OMNI_DEBUG || (UNITY_SERVER && !UNITY_EDITOR)
+                SentBandwidth.Add(data.Length);
+#endif
                 Transporter.Send(data, target, deliveryMode, channel);
             }
 

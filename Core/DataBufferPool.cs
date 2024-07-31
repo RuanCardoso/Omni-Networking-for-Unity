@@ -7,7 +7,7 @@ using Omni.Threading.Tasks;
 
 namespace Omni.Core
 {
-    public class DataBufferPool : IObjectPooling<DataBuffer>
+    public sealed class DataBufferPool : IObjectPooling<DataBuffer>
     {
         /// The maximum time in milliseconds that a buffer is being tracked before it is considered
         /// to have not been disposed or returned to the pool. <c>Debug mode only.</c>
@@ -31,20 +31,13 @@ namespace Omni.Core
         /// <returns>A <see cref="DataBuffer"/> object from the pool.</returns>
         public DataBuffer Rent()
         {
-            var rentedBuffer = UnsafeRent();
-            CreateTrace(rentedBuffer);
-            return rentedBuffer;
-        }
-
-        /// <summary>
-        /// Rents a buffer from the pool. does not performing any tracking.
-        /// </summary>
-        public DataBuffer UnsafeRent()
-        {
             if (_pool.Count > 0)
             {
                 var buffer = _pool.Dequeue();
                 buffer._disposed = false;
+#if UNITY_EDITOR // disable tracking in the build for best testing performance
+                CreateTrace(buffer);
+#endif
                 return buffer;
             }
             else

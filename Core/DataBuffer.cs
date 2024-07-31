@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
+using UnityEngine;
 
 namespace Omni.Core
 {
@@ -132,6 +133,7 @@ namespace Omni.Core
         /// <remarks>
         /// You must request a new buffer after calling Advance to continue writing more data and cannot write to a previously acquired buffer.
         /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Advance(int count) // interface!
         {
             Internal_Advance(count);
@@ -140,8 +142,10 @@ namespace Omni.Core
         }
 
         // Advances when read, read-only.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void Internal_Advance(int count, [CallerMemberName] string ___ = "")
         {
+#if OMNI_DEBUG
             if (_disposed)
             {
                 throw new ObjectDisposedException(
@@ -172,7 +176,7 @@ namespace Omni.Core
                     $"Cannot advance past the end of the buffer. Not enough data to read. Current position: {_position}, Length: {_length}, Count: {count}"
                 );
             }
-
+#endif
             _position += count;
         }
 
@@ -210,6 +214,7 @@ namespace Omni.Core
         /// If you clear the writer using the <see cref="Clear"/> method, this method will return a <see cref="Memory{T}"/> with its content zeroed.
         /// </para>
         /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> GetMemory(int sizeHint = 0) // interface!
         {
             CheckAndResizeBuffer(sizeHint);
@@ -231,12 +236,14 @@ namespace Omni.Core
         /// If you clear the writer using the <see cref="Clear"/> method, this method will return a <see cref="Span{T}"/> with its content zeroed.
         /// </para>
         /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<byte> GetSpan(int sizeHint = 0) // interface!
         {
             CheckAndResizeBuffer(sizeHint);
             return _buffer.AsSpan(_position);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal Span<byte> Internal_GetSpan(int length)
         {
             CheckAndResizeBuffer(length);
@@ -369,6 +376,7 @@ namespace Omni.Core
             return _position > 0 ? _position : _endPosition;
         }
 
+        [Conditional("OMNI_DEBUG")]
         private void CheckAndResizeBuffer(int sizeHint)
         {
             if (sizeHint > FreeCapacity)
@@ -411,6 +419,138 @@ namespace Omni.Core
             }
 
             _objectPooling.Return(this);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator bool(DataBuffer buffer)
+        {
+            return buffer.Read<bool>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator char(DataBuffer buffer)
+        {
+            return buffer.Read<char>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator byte(DataBuffer buffer)
+        {
+            return buffer.Read<byte>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator sbyte(DataBuffer buffer)
+        {
+            return buffer.Read<sbyte>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator int(DataBuffer buffer)
+        {
+            return buffer.Read<int>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator uint(DataBuffer buffer)
+        {
+            return buffer.Read<uint>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator short(DataBuffer buffer)
+        {
+            return buffer.Read<short>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ushort(DataBuffer buffer)
+        {
+            return buffer.Read<ushort>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator float(DataBuffer buffer)
+        {
+            return buffer.Read<float>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator double(DataBuffer buffer)
+        {
+            return buffer.Read<double>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator string(DataBuffer buffer)
+        {
+            return buffer.ReadString();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator long(DataBuffer buffer)
+        {
+            return buffer.Read<long>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator ulong(DataBuffer buffer)
+        {
+            return buffer.Read<ulong>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator decimal(DataBuffer buffer)
+        {
+            return buffer.Read<decimal>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector3(DataBuffer buffer)
+        {
+            return buffer.Read<Vector3>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector2(DataBuffer buffer)
+        {
+            return buffer.Read<Vector2>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Quaternion(DataBuffer buffer)
+        {
+            return buffer.Read<Quaternion>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator HalfVector3(DataBuffer buffer)
+        {
+            return buffer.Read<HalfVector3>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator HalfVector2(DataBuffer buffer)
+        {
+            return buffer.Read<HalfVector2>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator HalfQuaternion(DataBuffer buffer)
+        {
+            return buffer.Read<HalfQuaternion>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Color(DataBuffer buffer)
+        {
+            return buffer.Read<Color>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Color32(DataBuffer buffer)
+        {
+            return buffer.Read<Color32>();
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
 using Omni.Core.Cryptography;
 using Omni.Core.Interfaces;
 using Omni.Shared;
@@ -53,6 +54,9 @@ namespace Omni.Core
 
         public static class Client
         {
+            public static BandwidthMonitor SentBandwidth => Connection.Client.SentBandwidth;
+            public static BandwidthMonitor ReceivedBandwidth => Connection.Client.ReceivedBandwidth;
+
             /// <summary>
             /// Gets the server peer used for exclusively for encryption keys.
             /// </summary>
@@ -102,11 +106,13 @@ namespace Omni.Core
                 }
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SendMessage(byte msgId, SyncOptions options)
             {
                 SendMessage(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SendMessage(
                 byte msgId,
                 DataBuffer buffer = null,
@@ -128,11 +134,13 @@ namespace Omni.Core
                 );
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void GlobalInvoke(byte msgId, SyncOptions options)
             {
                 GlobalInvoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void GlobalInvoke(
                 byte msgId,
                 DataBuffer buffer = null,
@@ -143,6 +151,7 @@ namespace Omni.Core
                 SendMessage(msgId, buffer, deliveryMode, sequenceChannel);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Invoke(byte msgId, int identityId, SyncOptions options)
             {
                 Invoke(
@@ -164,12 +173,13 @@ namespace Omni.Core
             {
                 buffer ??= DataBuffer.Empty;
                 using DataBuffer message = Pool.Rent();
-                message.FastWrite(identityId);
-                message.FastWrite(msgId);
+                message.Write(identityId);
+                message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.GlobalInvoke, message, deliveryMode, sequenceChannel);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Invoke(
                 byte msgId,
                 int identityId,
@@ -198,9 +208,9 @@ namespace Omni.Core
             {
                 buffer ??= DataBuffer.Empty;
                 using DataBuffer message = Pool.Rent();
-                message.FastWrite(identityId);
-                message.FastWrite(instanceId);
-                message.FastWrite(msgId);
+                message.Internal_Write(identityId);
+                message.Write(instanceId);
+                message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.LocalInvoke, message, deliveryMode, sequenceChannel);
             }
@@ -219,7 +229,7 @@ namespace Omni.Core
                 }
 
                 using DataBuffer message = Pool.Rent();
-                message.FastWrite(groupName);
+                message.WriteString(groupName);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.JoinGroup, message, DeliveryMode.ReliableOrdered, 0);
             }
@@ -240,8 +250,8 @@ namespace Omni.Core
                 }
 
                 using DataBuffer message = Pool.Rent();
-                message.FastWrite(groupName);
-                message.FastWrite(reason);
+                message.WriteString(groupName);
+                message.WriteString(reason);
                 SendMessage(MessageType.LeaveGroup, message, DeliveryMode.ReliableOrdered, 0);
             }
 
@@ -256,6 +266,9 @@ namespace Omni.Core
 
         public static class Server
         {
+            public static BandwidthMonitor SentBandwidth => Connection.Server.SentBandwidth;
+            public static BandwidthMonitor ReceivedBandwidth => Connection.Server.ReceivedBandwidth;
+
             /// <summary>
             /// Gets the server peer.
             /// </summary>
@@ -321,6 +334,7 @@ namespace Omni.Core
                 }
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SendMessage(byte msgId, NetworkPeer peer, SyncOptions options)
             {
                 SendMessage(
@@ -336,6 +350,7 @@ namespace Omni.Core
                 );
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SendMessage(
                 byte msgId,
                 NetworkPeer peer,
@@ -362,6 +377,7 @@ namespace Omni.Core
                 );
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void GlobalInvoke(byte msgId, NetworkPeer peer, SyncOptions options)
             {
                 GlobalInvoke(
@@ -377,6 +393,7 @@ namespace Omni.Core
                 );
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void GlobalInvoke(
                 byte msgId,
                 NetworkPeer peer,
@@ -402,6 +419,7 @@ namespace Omni.Core
                 );
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Invoke(
                 byte msgId,
                 NetworkPeer peer,
@@ -438,8 +456,8 @@ namespace Omni.Core
             {
                 buffer ??= DataBuffer.Empty;
                 using DataBuffer message = Pool.Rent();
-                message.FastWrite(identityId);
-                message.FastWrite(msgId);
+                message.Write(identityId);
+                message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(
                     MessageType.GlobalInvoke,
@@ -457,6 +475,7 @@ namespace Omni.Core
                 // TODO: reduce bandwidth usage
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void Invoke(
                 byte msgId,
                 NetworkPeer peer,
@@ -496,9 +515,9 @@ namespace Omni.Core
             {
                 buffer ??= DataBuffer.Empty;
                 using DataBuffer message = Pool.Rent();
-                message.FastWrite(identityId);
-                message.FastWrite(instanceId);
-                message.FastWrite(msgId);
+                message.Internal_Write(identityId);
+                message.Write(instanceId);
+                message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(
                     MessageType.LocalInvoke,
@@ -551,7 +570,7 @@ namespace Omni.Core
                 void SendResponseToClient()
                 {
                     using DataBuffer message = Pool.Rent();
-                    message.FastWrite(groupName);
+                    message.WriteString(groupName);
 
                     if (writeBufferToClient)
                     {
@@ -656,8 +675,8 @@ namespace Omni.Core
                 void SendResponseToClient()
                 {
                     using DataBuffer message = Pool.Rent();
-                    message.FastWrite(groupName);
-                    message.FastWrite(reason);
+                    message.WriteString(groupName);
+                    message.WriteString(reason);
 
                     SendMessage(
                         MessageType.LeaveGroup,

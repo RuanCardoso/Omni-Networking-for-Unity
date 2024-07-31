@@ -2,7 +2,7 @@ using System;
 
 namespace Omni.Core
 {
-    public class NativePeer
+    public sealed class NativePeer
     {
         private readonly Func<double> _onTime;
         private readonly Func<int> _onPing;

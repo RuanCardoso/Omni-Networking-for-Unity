@@ -290,8 +290,8 @@ namespace Omni.Core
             private DataBuffer DefaultHeader(string routeName, int lastId)
             {
                 var message = Pool.Rent(); // disposed by the caller
-                message.FastWrite(routeName);
-                message.FastWrite(lastId);
+                message.WriteString(routeName);
+                message.Write(lastId);
                 return message;
             }
         }
@@ -560,8 +560,8 @@ namespace Omni.Core
             void Send(byte msgId, DataBuffer response)
             {
                 using var header = Pool.Rent();
-                header.FastWrite(routeName);
-                header.FastWrite(routeId);
+                header.WriteString(routeName);
+                header.Write(routeId);
                 header.Write(response.BufferAsSpan);
 
                 if (!response.SendEnabled)

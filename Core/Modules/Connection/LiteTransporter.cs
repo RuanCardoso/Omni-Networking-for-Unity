@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using LiteNetLib;
 using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
@@ -19,8 +20,8 @@ namespace Omni.Core.Modules.Connection
         private EventBasedNetListener _listener;
         private NetManager _manager;
 
-        private bool isServer;
-        private bool isRunning;
+        private bool _isServer;
+        private bool _isRunning;
 
         [Header("Settings")]
         [Tooltip(
@@ -94,8 +95,8 @@ namespace Omni.Core.Modules.Connection
         private NetPeer localPeer;
         private readonly Dictionary<IPEndPoint, NetPeer> _peers = new();
 
-        public bool IsServer => isServer;
-        public bool IsRunning => isRunning;
+        public bool IsServer => _isServer;
+        public bool IsRunning => _isRunning;
 
         public int MaxConnections
         {
@@ -139,10 +140,10 @@ namespace Omni.Core.Modules.Connection
             // Disable lag simulation in release(prod).
             m_SimulateLag = false;
 #endif
-            this.isServer = isServer;
+            this._isServer = isServer;
             this.IReceive = IReceive;
 
-            if (isRunning)
+            if (_isRunning)
             {
                 throw new Exception("Transporter is already initialized!");
             }
@@ -168,66 +169,9 @@ namespace Omni.Core.Modules.Connection
 
             if (isServer)
             {
-                _listener.ConnectionRequestEvent += request =>
-                {
-                    if (_manager.ConnectedPeersCount < m_MaxConnections)
-                    {
-                        if (request.AcceptIfKey(m_VersionName) == null)
-                        {
-                            NetworkLogger.__Log__(
-                                "Lite: The connection was rejected! because the version is not the same.",
-                                NetworkLogger.LogType.Error
-                            );
-                        }
-                    }
-                    else
-                    {
-                        request.Reject();
-                        NetworkLogger.__Log__(
-                            "Lite: Max connections reached! The connection was rejected!",
-                            NetworkLogger.LogType.Warning
-                        );
-                    }
-                };
-
-                _listener.PeerConnectedEvent += peer =>
-                {
-                    if (!_peers.TryAdd(peer, peer))
-                    {
-                        NetworkLogger.__Log__(
-                            $"Lite: The peer: {peer} is already connected!",
-                            NetworkLogger.LogType.Error
-                        );
-                    }
-                    else
-                    {
-                        IReceive.Internal_OnServerPeerConnected(
-                            peer,
-                            new NativePeer(
-                                () =>
-                                    (
-                                        peer.RemoteUtcTime - new DateTime(peer.ConnectTime)
-                                    ).TotalSeconds,
-                                () => peer.Ping
-                            )
-                        );
-                    }
-                };
-
-                _listener.PeerDisconnectedEvent += (peer, info) =>
-                {
-                    if (!_peers.Remove(peer))
-                    {
-                        NetworkLogger.__Log__(
-                            $"Lite: The peer: {peer} is already disconnected!",
-                            NetworkLogger.LogType.Error
-                        );
-                    }
-                    else
-                    {
-                        IReceive.Internal_OnServerPeerDisconnected(peer, info.Reason.ToString());
-                    }
-                };
+                _listener.ConnectionRequestEvent += OnConnectionRequestEvent;
+                _listener.PeerConnectedEvent += OnPeerConnectedEvent;
+                _listener.PeerDisconnectedEvent += OnPeerDisconnectedEvent;
             }
             else
             {
@@ -258,20 +202,80 @@ namespace Omni.Core.Modules.Connection
                 };
             }
 
-            _listener.NetworkReceiveEvent += (peer, reader, sequenceChannel, deliveryMethod) =>
+            _listener.NetworkReceiveEvent += OnReceiveEvent;
+            _isRunning = true;
+        }
+
+        private void OnReceiveEvent( // Server and client
+            NetPeer peer,
+            NetPacketReader reader,
+            byte seqChannel,
+            DeliveryMethod deliveryMode
+        )
+        {
+            var data = reader.GetRemainingBytesSpan();
+            var mode = GetDeliveryMode(deliveryMode);
+
+            IReceive.Internal_OnDataReceived(data, mode, peer, seqChannel, _isServer);
+            reader.Recycle(); // Important! avoid memory leaks. auto recycle is disabled
+        }
+
+        private void OnPeerDisconnectedEvent(NetPeer peer, DisconnectInfo info) // server
+        {
+            if (!_peers.Remove(peer))
             {
-                IReceive.Internal_OnDataReceived(
-                    reader.GetRemainingBytesSpan(),
-                    GetDeliveryMode(deliveryMethod),
-                    peer,
-                    sequenceChannel,
-                    isServer
+                NetworkLogger.__Log__(
+                    $"Lite: The peer: {peer} is already disconnected!",
+                    NetworkLogger.LogType.Error
                 );
+            }
+            else
+            {
+                IReceive.Internal_OnServerPeerDisconnected(peer, info.Reason.ToString());
+            }
+        }
 
-                reader.Recycle(); // Important! avoid memory leaks.
-            };
+        private void OnPeerConnectedEvent(NetPeer peer) // server
+        {
+            if (!_peers.TryAdd(peer, peer))
+            {
+                NetworkLogger.__Log__(
+                    $"Lite: The peer: {peer} is already connected!",
+                    NetworkLogger.LogType.Error
+                );
+            }
+            else
+            {
+                IReceive.Internal_OnServerPeerConnected(
+                    peer,
+                    new NativePeer(
+                        () => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
+                        () => peer.Ping
+                    )
+                );
+            }
+        }
 
-            isRunning = true;
+        private void OnConnectionRequestEvent(ConnectionRequest request) // server
+        {
+            if (_manager.ConnectedPeersCount < m_MaxConnections)
+            {
+                if (request.AcceptIfKey(m_VersionName) == null)
+                {
+                    NetworkLogger.__Log__(
+                        "Lite: The connection was rejected! because the version is not the same.",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+            }
+            else
+            {
+                request.Reject();
+                NetworkLogger.__Log__(
+                    "Lite: Max connections reached! The connection was rejected!",
+                    NetworkLogger.LogType.Warning
+                );
+            }
         }
 
         private void Awake()
@@ -281,7 +285,7 @@ namespace Omni.Core.Modules.Connection
 
         private void Update()
         {
-            if (isRunning)
+            if (_isRunning)
             {
                 _manager.PollEvents(m_MaxEventsPerFrame);
             }
@@ -290,7 +294,7 @@ namespace Omni.Core.Modules.Connection
         public void Connect(string address, int port)
         {
             ThrowAnErrorIfNotInitialized();
-            if (isServer)
+            if (_isServer)
             {
                 throw new Exception("Connect() is not available for server!");
             }
@@ -301,7 +305,7 @@ namespace Omni.Core.Modules.Connection
         public void Disconnect(NetworkPeer peer)
         {
             ThrowAnErrorIfNotInitialized();
-            if (isServer)
+            if (_isServer)
             {
                 _manager.DisconnectPeer(_peers[peer.EndPoint]);
             }
@@ -316,7 +320,7 @@ namespace Omni.Core.Modules.Connection
             ThrowAnErrorIfNotInitialized();
             if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Udp, m_IPv6Enabled))
             {
-                if (isServer)
+                if (_isServer)
                 {
                     NetworkLogger.__Log__(
                         "Lite: Server is already initialized in another instance, only the client will be initialized.",
@@ -331,7 +335,7 @@ namespace Omni.Core.Modules.Connection
 
             if (_manager.Start(port))
             {
-                if (isServer && isRunning)
+                if (_isServer && _isRunning)
                 {
                     IReceive.Internal_OnServerInitialized();
                 }
@@ -356,7 +360,7 @@ namespace Omni.Core.Modules.Connection
         )
         {
             ThrowAnErrorIfNotInitialized();
-            if (isServer)
+            if (_isServer)
             {
                 if (_peers.TryGetValue(target, out NetPeer peer))
                 {
@@ -375,6 +379,7 @@ namespace Omni.Core.Modules.Connection
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private DeliveryMethod GetDeliveryMethod(DeliveryMode deliveryMode)
         {
             return deliveryMode switch
@@ -388,6 +393,7 @@ namespace Omni.Core.Modules.Connection
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private DeliveryMode GetDeliveryMode(DeliveryMethod deliveryMethod) // my*
         {
             return deliveryMethod switch
@@ -410,7 +416,7 @@ namespace Omni.Core.Modules.Connection
         [Conditional("OMNI_DEBUG")]
         private void ThrowAnErrorIfNotInitialized()
         {
-            if (!isRunning)
+            if (!_isRunning)
             {
                 throw new Exception("Low Level: Transporter is not initialized!");
             }
@@ -442,7 +448,7 @@ namespace Omni.Core.Modules.Connection
             LiteTransporter[] liteTransporters = GetComponentsInChildren<LiteTransporter>();
             foreach (LiteTransporter liteTransporter in liteTransporters)
             {
-                if (liteTransporter.isRunning)
+                if (liteTransporter._isRunning)
                 {
                     liteTransporter._manager.PingInterval = m_pingInterval;
                     liteTransporter._manager.SimulateLatency = m_SimulateLag;

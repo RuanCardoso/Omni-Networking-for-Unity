@@ -23,7 +23,7 @@ namespace Omni.Core
 
     internal interface IPropertyInfo<T>
     {
-        public Func<T> Invoke { get; set; }
+        Func<T> Invoke { get; set; }
     }
 
     internal class PropertyInfo<T> : IPropertyInfo, IPropertyInfo<T>
@@ -46,12 +46,24 @@ namespace Omni.Core
         internal DataBuffer CreateHeader<T>(T @object, byte id)
         {
             DataBuffer message = NetworkManager.Pool.Rent(); // disposed by the caller
-            message.FastWrite(id);
-            message.ToBinary(@object);
+            message.Write(id);
+
+            // If the object implements ISerializable, serialize it.
+            if (@object is ISerializable data)
+            {
+                using var serializedData = data.Serialize();
+                serializedData.CopyTo(message);
+                return message;
+            }
+
+            message.WriteAsBinary(@object);
             return message;
         }
 
-        internal IPropertyInfo GetPropertyInfoWithCallerName<T>(string callerName)
+        internal IPropertyInfo GetPropertyInfoWithCallerName<T>(
+            string callerName,
+            BindingFlags flags
+        )
         {
             if (!properties.TryGetValue(callerName, out IPropertyInfo memberInfo))
             {
@@ -59,11 +71,7 @@ namespace Omni.Core
                 // Delegates are used to avoid reflection overhead, it is much faster, like a direct call.
 
                 PropertyInfo propertyInfo =
-                    GetType()
-                        .GetProperty(
-                            callerName,
-                            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
-                        )
+                    GetType().GetProperty(callerName, (System.Reflection.BindingFlags)flags)
                     ?? throw new NullReferenceException(
                         $"NetworkVariable: Property not found: {callerName}. Use the other overload of this function(ManualSync)."
                     );
@@ -75,10 +83,23 @@ namespace Omni.Core
                         $"NetworkVariable: NetworkVariableAttribute not found on property: {name}. Ensure it has 'NetworkVariable' attribute."
                     );
 
+                MethodInfo getMethod = propertyInfo.GetMethod;
+                if (getMethod == null)
+                {
+                    throw new NullReferenceException(
+                        $"NetworkVariable: GetMethod not found on property: {name}. Ensure it has 'NetworkVariable' attribute."
+                    );
+                }
+
                 byte id = attribute.Id;
+                if (id <= 0)
+                {
+                    throw new ArgumentException($"NetworkVariable: Id must be greater than 0.");
+                }
+
                 memberInfo = new PropertyInfo<T>(name, id);
                 ((IPropertyInfo<T>)memberInfo).Invoke =
-                    propertyInfo.GetGetMethod().CreateDelegate(typeof(Func<T>), this) as Func<T>; // hack: performance optimization!
+                    getMethod.CreateDelegate(typeof(Func<T>), this) as Func<T>; // hack: performance optimization!
                 properties.Add(callerName, memberInfo);
                 return memberInfo;
             }

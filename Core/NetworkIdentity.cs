@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace Omni.Core
 {
-    public class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
+    public sealed class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
     {
         internal string _prefabName;
         private readonly Dictionary<string, object> m_Services = new(); // (Service Name, Service Instance) exclusively to identity
@@ -32,7 +32,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Owner of this object. Only available on server, returns LocalPeer on client.
+        /// Owner of this object. Only available on server, returns <c>LocalPeer</c> on client.
         /// </summary>
         public NetworkPeer Owner { get; internal set; }
 
@@ -297,7 +297,7 @@ namespace Omni.Core
             }
 
             using var message = NetworkManager.Pool.Rent();
-            message.FastWrite(_prefabName);
+            message.WriteString(_prefabName);
             message.WriteIdentity(this);
             NetworkManager.Server.SendMessage(
                 MessageType.Spawn,
@@ -354,7 +354,7 @@ namespace Omni.Core
             }
 
             using var message = NetworkManager.Pool.Rent();
-            message.FastWrite(m_Id);
+            message.Write(m_Id);
             NetworkManager.Server.SendMessage(
                 MessageType.Destroy,
                 Owner,

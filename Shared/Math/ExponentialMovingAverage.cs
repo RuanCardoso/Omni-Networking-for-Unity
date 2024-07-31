@@ -35,7 +35,7 @@ namespace Omni.Shared
         public void SetPeriods(int periods)
         {
             // standard N-day EMA alpha calculation
-            alpha = 2.0f / (periods + 1);
+            alpha = 2.0f / (periods + 1f);
             isInitialized = false;
             avg = 0;
         }

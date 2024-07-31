@@ -14,6 +14,10 @@ namespace Omni.Core
         [SerializeField]
         internal int m_Id;
 
+        [SerializeField]
+        internal BindingFlags m_BindingFlags =
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+
         private NbClient local;
         private NbServer remote;
         internal bool m_UnregisterOnLoad = true;
@@ -29,7 +33,7 @@ namespace Omni.Core
                 if (local == null)
                 {
                     throw new NullReferenceException(
-                        "The event behaviour has not been initialized. Call Awake() first or initialize manually."
+                        "This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
                     );
                 }
 
@@ -49,7 +53,7 @@ namespace Omni.Core
                 if (remote == null)
                 {
                     throw new NullReferenceException(
-                        "The event behaviour has not been initialized. Call Awake() first or initialize manually."
+                        "This property(Remote) is intended for server-side use only. It appears to be accessed from the client side. Or Call Awake() and Start() base first or initialize manually."
                     );
                 }
 

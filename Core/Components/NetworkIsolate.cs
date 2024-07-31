@@ -8,7 +8,7 @@ namespace Omni.Core.Components
 {
     [DefaultExecutionOrder(-10000)]
     [DisallowMultipleComponent]
-    public class NetworkIsolate : MonoBehaviour
+    public sealed class NetworkIsolate : MonoBehaviour
     {
         private Scene m_Scene;
 

@@ -133,8 +133,8 @@ namespace Omni.Core
             );
 
             var encryptedBuffer = NetworkManager.Pool.Rent();
-            encryptedBuffer.ToBinary(Iv);
-            encryptedBuffer.ToBinary(encryptedData);
+            encryptedBuffer.WriteAsBinary(Iv);
+            encryptedBuffer.WriteAsBinary(encryptedData);
             return encryptedBuffer;
         }
 
@@ -159,8 +159,8 @@ namespace Omni.Core
         public static DataBuffer Decrypt(this DataBuffer buffer, NetworkPeer peer)
         {
             peer ??= NetworkManager.LocalPeer;
-            byte[] iv = buffer.FromBinary<byte[]>();
-            byte[] encryptedData = buffer.FromBinary<byte[]>();
+            byte[] iv = buffer.ReadAsBinary<byte[]>();
+            byte[] encryptedData = buffer.ReadAsBinary<byte[]>();
             byte[] decryptedData = AesCryptography.Decrypt(
                 encryptedData,
                 0,
@@ -170,7 +170,7 @@ namespace Omni.Core
             );
 
             var decryptedBuffer = NetworkManager.Pool.Rent();
-            decryptedBuffer.Write(decryptedData);
+            BuffersExtensions.Write(decryptedBuffer, decryptedData);
             decryptedBuffer.SeekToBegin();
             return decryptedBuffer;
         }
@@ -189,33 +189,16 @@ namespace Omni.Core
             buffer.SeekToBegin();
         }
 
-        private static void SetNetworkSerializableOptions(
-            ISerializable message,
-            bool isServer,
-            NetworkPeer peer
-        )
-        {
-            if (message is ISerializableWithPeer withPeer)
-            {
-                withPeer.Peer = peer;
-                withPeer.IsServer = isServer;
-            }
-        }
-
         /// <summary>
         /// Serializes the given network serializable object into a new data buffer.
         /// </summary>
         /// <returns>
         /// A new data buffer containing the serialized data. The caller must ensure the buffer is disposed or used within a using statement.
         /// </returns>
-        public static DataBuffer Serialize(
-            this ISerializable message,
-            bool isServer = false,
-            NetworkPeer peer = null
-        )
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static DataBuffer Serialize(this ISerializable message)
         {
             var writer = NetworkManager.Pool.Rent();
-            SetNetworkSerializableOptions(message, isServer, peer);
             message.Serialize(writer);
             return writer;
         }
@@ -224,14 +207,9 @@ namespace Omni.Core
         /// Deserializes the contents of the given data buffer into the given network serializable object.
         /// </summary>
         /// <param name="reader">The data buffer containing the serialized data to deserialize.</param>
-        public static void Populate(
-            this ISerializable message,
-            DataBuffer reader,
-            bool isServer = false,
-            NetworkPeer peer = null
-        )
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Populate(this ISerializable message, DataBuffer reader)
         {
-            SetNetworkSerializableOptions(message, isServer, peer);
             message.Deserialize(reader);
         }
 
@@ -240,15 +218,24 @@ namespace Omni.Core
         /// </summary>
         /// <typeparam name="T">The type of the message to deserialize. Must be a network serializable object.</typeparam>
         /// <returns>The deserialized message.</returns>
-        public static T Deserialize<T>(
-            this DataBuffer reader,
-            bool isServer = false,
-            NetworkPeer peer = null
-        )
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T Deserialize<T>(this DataBuffer reader)
             where T : ISerializable, new()
         {
             T message = new();
-            SetNetworkSerializableOptions(message, isServer, peer);
+            message.Deserialize(reader);
+            return message;
+        }
+
+        /// <summary>
+        /// Deserializes the contents of the given data buffer into a new instance of the given type.
+        /// </summary>
+        /// <typeparam name="T">The type of the message to deserialize. Must be a network serializable object.</typeparam>
+        /// <returns>The deserialized message.</returns>
+        public static T Deserialize<T>(this DataBuffer reader, NetworkPeer peer, bool isServer)
+            where T : ISerializableWithPeer, new()
+        {
+            T message = new() { SharedPeer = peer, IsServer = isServer };
             message.Deserialize(reader);
             return message;
         }
@@ -279,50 +266,137 @@ namespace Omni.Core
             MemoryPackSerializerOptions.Default;
 
         /// <summary>
-        /// Use binary serialization for some types by default. Useful for types like as <see cref="Response"/>
+        /// Use binary serialization for some types by default. Useful for types like as <see cref="HttpResponse"/>
         /// </summary>
         public static bool UseBinarySerialization = false;
+
+        /// <summary>
+        /// Enable bandwidth optimization for data sent over the network.
+        /// </summary>
+        public static bool EnableBandwidthOptimization { get; set; } = true;
+
+        /// <summary>
+        /// Determines whether to use unaligned memory access when writing primitive types to the buffer.
+        /// </summary>
+        /// <remarks>
+        /// This property is set to true by default.
+        /// When set to true, the buffer writer will use unaligned memory access, which can improve performance
+        /// on some platforms. However, it may be slower on others.
+        /// </remarks>
+        public static bool UseUnalignedMemory { get; set; } = false;
+
+        // https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/MemoryMarshal.cs#L507
+        /// <summary>
+        /// Writes a structure of type T into a span of bytes.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static unsafe void Internal_UnsafeWrite<T>(DataBuffer buffer, in T value)
+            where T : unmanaged
+        {
+            int size_t = sizeof(T);
+            Span<byte> destination = buffer.Internal_GetSpan(size_t);
+#if OMNI_DEBUG
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                throw new InvalidOperationException(
+                    "The type T is either a reference type or contains references, which is not supported."
+                );
+            }
+
+            if (size_t > (uint)destination.Length)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(destination),
+                    "The size of type T exceeds the length of the destination span."
+                );
+            }
+#endif
+            fixed (byte* p = destination)
+            {
+                // When useUnalignedMemory is true, write the value to memory without assuming alignment.
+                if (UseUnalignedMemory)
+                {
+                    // Unsafe.WriteUnaligned is used to write the value to an unaligned memory location.
+                    // Advantages:
+                    // - Flexibility: Allows writing data to memory locations that are not aligned to the natural alignment of the data type.
+                    //   Useful in scenarios where data alignment cannot be guaranteed, such as certain network protocols or binary file formats.
+                    // - Compatibility: Ensures the code works correctly on systems where memory might not be aligned, preventing crashes or unexpected results.
+                    // Disadvantages:
+                    // - Performance: Unaligned memory operations can be slower, especially on CPU architectures that penalize unaligned accesses.
+                    //   May result in multiple memory reads/writes to handle the misalignment.
+                    // - Complexity: Increases code complexity when dealing with data that doesn't follow normal alignment rules.
+                    Unsafe.WriteUnaligned(p, value);
+                }
+                else
+                {
+                    // When useUnalignedMemory is false, write the value assuming it is aligned in memory.
+                    // Unsafe.Write is used to write the value to an aligned memory location.
+                    // Advantages:
+                    // - Performance: Aligned memory operations are generally faster, as most CPU architectures optimize for aligned accesses.
+                    //   Results in faster and more efficient memory reads/writes.
+                    // - Simplicity: Assumes memory is aligned, which can simplify code reasoning and maintenance as long as the memory is actually aligned.
+                    // Disadvantages:
+                    // - Alignment Restrictions: Requires memory to be aligned to the natural boundaries of the data type.
+                    //   Misaligned memory can cause exceptions or undefined behavior.
+                    // - Incompatibility: May not be suitable for scenarios where alignment cannot be guaranteed.
+                    Unsafe.Write(p, value);
+                }
+            }
+
+            buffer.Advance(size_t);
+        }
+
+        // Internal use for bandwidth optimization
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void Internal_Write(this DataBuffer buffer, int value)
+        {
+            if (!EnableBandwidthOptimization)
+            {
+                Write(buffer, value);
+            }
+            else
+            {
+                Write7BitEncodedInt(buffer, value);
+            }
+        }
 
         /// <summary>
         /// Converts an object to JSON and writes it to the buffer.<br/>
         /// By default, Newtonsoft.Json is used for serialization.
         /// </summary>
-        public static string ToJson<T>(
+        public static string WriteAsJson<T>(
             this DataBuffer buffer,
             T value,
             JsonSerializerSettings settings = null
         )
         {
             settings ??= DefaultJsonSettings;
-            string json = JsonConvert.SerializeObject(value, settings);
-            // The json string returned may be very large, so avoid using FastWrite which uses "stackalloc".
-            // Could cause a stack overflow.
-            Write(buffer, json);
-            return json;
+            string objectAsJson = JsonConvert.SerializeObject(value, settings);
+            WriteString(buffer, objectAsJson);
+            return objectAsJson;
         }
 
         /// <summary>
         /// Converts an object to binary and writes it to the buffer.<br/>
         /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for serialization.
         /// </summary>
-        public static void ToBinary<T>(
+        public static void WriteAsBinary<T>(
             this DataBuffer buffer,
             T value,
             MemoryPackSerializerOptions settings = null
         )
         {
             settings ??= DefaultMemoryPackSettings;
-            IBufferWriter<byte> writer = buffer;
-            byte[] data = MemoryPackSerializer.Serialize(value, settings);
+            ReadOnlySpan<byte> data = MemoryPackSerializer.Serialize(value, settings);
             Write7BitEncodedInt(buffer, data.Length);
-            writer.Write(data);
+            buffer.Write(data);
         }
 
         /// <summary>
         /// Asynchronously converts an object to binary and writes it to the buffer.<br/>
         /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for serialization.
         /// </summary>
-        public static async ValueTask ToBinaryAsync<T>(
+        public static async ValueTask WriteAsBinaryAsync<T>(
             this DataBuffer buffer,
             T value,
             MemoryPackSerializerOptions settings = null
@@ -348,11 +422,11 @@ namespace Omni.Core
         {
             if (!UseBinarySerialization)
             {
-                ToJson(buffer, response);
+                WriteAsJson(buffer, response);
                 return;
             }
 
-            ToBinary(buffer, response);
+            WriteAsBinary(buffer, response);
         }
 
         /// <summary>
@@ -365,11 +439,11 @@ namespace Omni.Core
         {
             if (!UseBinarySerialization)
             {
-                ToJson(buffer, response);
+                WriteAsJson(buffer, response);
                 return;
             }
 
-            ToBinary(buffer, response);
+            WriteAsBinary(buffer, response);
         }
 
         /// <summary>
@@ -377,6 +451,7 @@ namespace Omni.Core
         /// </summary>
         /// <param name="buffer">The buffer to write to.</param>
         /// <param name="data">The raw bytes to write.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void RawWrite(this DataBuffer buffer, ReadOnlySpan<byte> data)
         {
             BuffersExtensions.Write(buffer, data);
@@ -385,84 +460,45 @@ namespace Omni.Core
         /// <summary>
         /// Writes an primitive array to the buffer.<br/>
         /// </summary>
-        public static void FastWrite<T>(this DataBuffer buffer, T[] array)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void Write<T>(this DataBuffer buffer, T[] array)
             where T : unmanaged
         {
-            IBufferWriter<byte> writer = buffer;
-            int size_t = Unsafe.SizeOf<T>() * array.Length;
+            int size_t = sizeof(T) * array.Length;
             Write7BitEncodedInt(buffer, size_t);
 
             ReadOnlySpan<T> data = array.AsSpan();
-            writer.Write(MemoryMarshal.AsBytes(data));
+            buffer.Write(MemoryMarshal.AsBytes(data));
         }
 
         /// <summary>
-        /// Writes a string to the buffer.<br/>
-        /// Utilizes stackalloc to avoid allocations, offering high performance.
-        /// Note: May result in a StackOverflowException if the string is excessively long.
+        /// Writes a string to the buffer.
         /// </summary>
-        public static int FastWrite(
+        public static void WriteString(
             this DataBuffer buffer,
             ReadOnlySpan<char> input,
             Encoding encoding = null
         )
         {
             encoding ??= DefaultEncoding;
-            IBufferWriter<byte> writer = buffer;
-
             // Write a header with the length of the string.
             int byteCount = encoding.GetByteCount(input);
             Write7BitEncodedInt(buffer, byteCount);
 
             // Write the string data.
-            Span<byte> data = stackalloc byte[byteCount];
-            int encodedBytesCount = encoding.GetBytes(input, data);
-            writer.Write(data);
-            return encodedBytesCount;
-        }
-
-        /// <summary>
-        /// Writes a string to the buffer.<br/>
-        /// Allocates an array from the pool to avoid allocations.
-        /// </summary>
-        public static int Write(
-            this DataBuffer buffer,
-            ReadOnlySpan<char> input,
-            Encoding encoding = null
-        )
-        {
-            encoding ??= DefaultEncoding;
-            IBufferWriter<byte> writer = buffer;
-
-            // Write a header with the length of the string.
-            int byteCount = encoding.GetByteCount(input);
-            Write7BitEncodedInt(buffer, byteCount);
-
-            // rent an array from the pool to avoid allocations.
-            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(byteCount);
-
-            // Write the string data.
-            Span<byte> data = rentedArray;
-            int encodedBytesCount = encoding.GetBytes(input, data);
-            writer.Write(data[..encodedBytesCount]);
-
-            ArrayPool<byte>.Shared.Return(rentedArray);
-            return encodedBytesCount;
+            Span<byte> data = buffer.Internal_GetSpan(byteCount);
+            int length = encoding.GetBytes(input, data);
+            buffer.Advance(length);
         }
 
         /// <summary>
         /// Writes a primitive value to the buffer.<br/>
-        /// Utilizes stackalloc to avoid allocations, offering high performance.
         /// </summary>
-        public static void FastWrite<T>(this DataBuffer buffer, T value)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void Write<T>(this DataBuffer buffer, in T value)
             where T : unmanaged
         {
-            IBufferWriter<byte> writer = buffer;
-            int size_t = Unsafe.SizeOf<T>();
-
-            Span<byte> data = stackalloc byte[size_t];
-            MemoryMarshal.Write(data, ref value);
-            writer.Write(data);
+            Internal_UnsafeWrite(buffer, in value);
         }
 
         /// <summary>
@@ -472,8 +508,8 @@ namespace Omni.Core
         /// <param name="identity">The network identity to write.</param>
         public static void WriteIdentity(this DataBuffer buffer, NetworkIdentity identity)
         {
-            FastWrite(buffer, identity.IdentityId);
-            FastWrite(buffer, identity.Owner.Id);
+            Write(buffer, identity.IdentityId);
+            Write(buffer, identity.Owner.Id);
         }
 
         /// <summary>
@@ -482,33 +518,15 @@ namespace Omni.Core
         /// <param name="buffer">The buffer to write to.</param>
         public static void WriteIdentity(this DataBuffer buffer, int identityId, int peerId)
         {
-            FastWrite(buffer, identityId);
-            FastWrite(buffer, peerId);
-        }
-
-        /// <summary>
-        /// Writes a primitive value to the buffer.<br/>
-        /// Allocates an array from the pool to avoid allocations.
-        /// </summary>
-        public static void Write<T>(this DataBuffer buffer, T value)
-            where T : unmanaged
-        {
-            IBufferWriter<byte> writer = buffer;
-            int size_t = Unsafe.SizeOf<T>();
-
-            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(size_t);
-            Span<byte> data = rentedArray;
-
-            MemoryMarshal.Write(data, ref value);
-            writer.Write(data[..size_t]); // sliced, because the length of the rented array is not equal to the size_t, it may be larger.
-
-            ArrayPool<byte>.Shared.Return(rentedArray);
+            Write(buffer, identityId);
+            Write(buffer, peerId);
         }
 
         /// <summary>
         /// Writes an integer in a compact 7-bit encoded format to the buffer.
         /// https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/IO/BinaryWriter.cs#L473
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Write7BitEncodedInt(this DataBuffer buffer, int value)
         {
             uint uValue = (uint)value;
@@ -521,17 +539,18 @@ namespace Omni.Core
 
             while (uValue > 0x7Fu)
             {
-                FastWrite(buffer, (byte)(uValue | ~0x7Fu));
+                Write(buffer, (byte)(uValue | ~0x7Fu));
                 uValue >>= 7;
             }
 
-            FastWrite(buffer, (byte)uValue);
+            Write(buffer, (byte)uValue);
         }
 
         /// <summary>
         /// Writes an long in a compact 7-bit encoded format to the buffer.
         /// https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/IO/BinaryWriter.cs#L492
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Write7BitEncodedInt64(this DataBuffer buffer, long value)
         {
             ulong uValue = (ulong)value;
@@ -544,11 +563,11 @@ namespace Omni.Core
 
             while (uValue > 0x7Fu)
             {
-                FastWrite(buffer, (byte)((uint)uValue | ~0x7Fu));
+                Write(buffer, (byte)((uint)uValue | ~0x7Fu));
                 uValue >>= 7;
             }
 
-            FastWrite(buffer, (byte)uValue);
+            Write(buffer, (byte)uValue);
         }
 
         /// <summary>
@@ -560,10 +579,11 @@ namespace Omni.Core
         /// Min Values: -9999.99f / -9999.99f / -9999.99f<br/>
         /// Max Values: 9999.99f / 9999.99f / 9999.99f<br/>
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void WritePacked(this DataBuffer buffer, Vector3 vector)
         {
             long packedValue = VectorCompressor.Compress(vector);
-            FastWrite(buffer, packedValue);
+            Write(buffer, packedValue);
         }
 
         /// <summary>
@@ -572,16 +592,90 @@ namespace Omni.Core
         /// resulting in significant bandwidth savings during data transmission.
         /// The compressed size of the Quaternion is 4 bytes (uint).
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void WritePacked(this DataBuffer buffer, Quaternion quat)
         {
             uint packedValue = QuaternionCompressor.Compress(quat);
-            FastWrite(buffer, packedValue);
+            Write(buffer, packedValue);
         }
     }
 
     // Readers
     public static partial class BufferWriterExtensions
     {
+        // https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/MemoryMarshal.cs#L468
+        /// <summary>
+        /// Reads a structure of type T out of a read-only span of bytes.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static unsafe T Internal_UnsafeRead<T>(DataBuffer buffer)
+            where T : unmanaged
+        {
+            int size_t = sizeof(T);
+            Span<byte> source = buffer.Internal_GetSpan(size_t);
+#if OMNI_DEBUG
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+            {
+                throw new InvalidOperationException(
+                    "The type T is either a reference type or contains references, which is not supported."
+                );
+            }
+            if (size_t > source.Length)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(source),
+                    "The size of type T exceeds the length of the source span."
+                );
+            }
+#endif
+            buffer.Internal_Advance(size_t);
+            fixed (byte* p = source)
+            {
+                // If useUnalignedMemory is true, read the value from memory without assuming alignment.
+                if (UseUnalignedMemory)
+                {
+                    // Unsafe.ReadUnaligned is used to read the value from an unaligned memory location.
+                    // Advantages:
+                    // - Flexibility: Allows reading data from memory locations that are not aligned to the natural alignment of the data type.
+                    //   Useful in scenarios where data alignment cannot be guaranteed, such as certain network protocols or binary file formats.
+                    // - Compatibility: Ensures the code works correctly on systems where memory might not be aligned, preventing crashes or unexpected results.
+                    // Disadvantages:
+                    // - Performance: Unaligned memory operations can be slower, especially on CPU architectures that penalize unaligned accesses.
+                    //   May result in multiple memory reads/writes to handle the misalignment.
+                    // - Complexity: Increases code complexity when dealing with data that doesn't follow normal alignment rules.
+                    return Unsafe.ReadUnaligned<T>(p);
+                }
+                else
+                {
+                    // If useUnalignedMemory is false, read the value assuming it is aligned in memory.
+                    // Unsafe.Read is used to read the value from an aligned memory location.
+                    // Advantages:
+                    // - Performance: Aligned memory operations are generally faster, as most CPU architectures optimize for aligned accesses.
+                    //   Results in faster and more efficient memory reads/writes.
+                    // - Simplicity: Assumes memory is aligned, which can simplify code reasoning and maintenance as long as the memory is actually aligned.
+                    // Disadvantages:
+                    // - Alignment Restrictions: Requires memory to be aligned to the natural boundaries of the data type.
+                    //   Misaligned memory can cause exceptions or undefined behavior.
+                    // - Incompatibility: May not be suitable for scenarios where alignment cannot be guaranteed.
+                    return Unsafe.Read<T>(p);
+                }
+            }
+        }
+
+        // Internal use for bandwidth optimization
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int Internal_Read(this DataBuffer buffer)
+        {
+            if (!EnableBandwidthOptimization)
+            {
+                return Read<int>(buffer);
+            }
+            else
+            {
+                return Read7BitEncodedInt(buffer);
+            }
+        }
+
         /// <summary>
         /// Reads an HTTP response from the DataBuffer.
         /// </summary>
@@ -590,10 +684,10 @@ namespace Omni.Core
         {
             if (!UseBinarySerialization)
             {
-                return FromJson<HttpResponse>(buffer);
+                return ReadAsJson<HttpResponse>(buffer);
             }
 
-            return FromBinary<HttpResponse>(buffer);
+            return ReadAsBinary<HttpResponse>(buffer);
         }
 
         /// <summary>
@@ -605,17 +699,20 @@ namespace Omni.Core
         {
             if (!UseBinarySerialization)
             {
-                return FromJson<HttpResponse<T>>(buffer);
+                return ReadAsJson<HttpResponse<T>>(buffer);
             }
 
-            return FromBinary<HttpResponse<T>>(buffer);
+            return ReadAsBinary<HttpResponse<T>>(buffer);
         }
 
         /// <summary>
         /// Reads a JSON string from the buffer and converts it to an object.<br/>
         /// By default, Newtonsoft.Json is used for deserialization.
         /// </summary>
-        public static T FromJson<T>(this DataBuffer buffer, JsonSerializerSettings settings = null)
+        public static T ReadAsJson<T>(
+            this DataBuffer buffer,
+            JsonSerializerSettings settings = null
+        )
         {
             settings ??= DefaultJsonSettings;
             string json = ReadString(buffer);
@@ -626,7 +723,7 @@ namespace Omni.Core
         /// Reads a JSON string from the buffer and converts it to an object.<br/>
         /// By default, Newtonsoft.Json is used for deserialization.
         /// </summary>
-        public static T FromJson<T>(
+        public static T ReadAsJson<T>(
             this DataBuffer buffer,
             out string json,
             JsonSerializerSettings settings = null
@@ -641,7 +738,7 @@ namespace Omni.Core
         /// Reads binary data from the buffer and converts it to an object.<br/>
         /// By default, MemoryPack(https://github.com/Cysharp/MemoryPack) is used for deserialization.
         /// </summary>
-        public static T FromBinary<T>(
+        public static T ReadAsBinary<T>(
             this DataBuffer buffer,
             MemoryPackSerializerOptions settings = null
         )
@@ -656,7 +753,7 @@ namespace Omni.Core
         /// <summary>
         /// Reads a string from the buffer.<br/>
         /// </summary>
-        public static string FastReadString(this DataBuffer buffer, Encoding encoding = null)
+        public static string ReadString(this DataBuffer buffer, Encoding encoding = null)
         {
             encoding ??= DefaultEncoding;
             int byteCount = Read7BitEncodedInt(buffer);
@@ -666,20 +763,12 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads a string from the buffer.<br/>
-        /// Syntactic sugar for <see cref="FastReadString(DataBuffer, Encoding)"/>
-        /// </summary>
-        public static string ReadString(this DataBuffer buffer, Encoding encoding = null)
-        {
-            return FastReadString(buffer, encoding);
-        }
-
-        /// <summary>
         /// Reads a primitive array from the buffer, allocating a new array each time.
         /// </summary>
         /// <typeparam name="T">The type of elements in the array (must be unmanaged).</typeparam>
         /// <param name="buffer">The buffer to read from.</param>
         /// <returns>A new array containing the read data.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe T[] ReadArray<T>(this DataBuffer buffer)
             where T : unmanaged
         {
@@ -688,23 +777,24 @@ namespace Omni.Core
             buffer.Internal_Advance(size_t);
 
             // Allocate a new array.
-            int elementCount = size_t / Unsafe.SizeOf<T>();
+            int elementCount = size_t / sizeof(T);
             T[] array = new T[elementCount];
 
             // Fastest way to cast a byte[] to a T[].
-            ReadOnlySpan<T> arraySpan = MemoryMarshal.Cast<byte, T>(data);
-            arraySpan.CopyTo(array);
+            ReadOnlySpan<T> castedArray = MemoryMarshal.Cast<byte, T>(data);
+            castedArray.CopyTo(array);
             return array;
         }
 
         /// <summary>
-        /// Reads a primitive array from the buffer without allocating a new array(ArrayPool).
+        /// Reads a primitive array from the buffer without allocating a new array.
         /// </summary>
         /// <typeparam name="T">The type of elements in the array (must be unmanaged).</typeparam>
         /// <param name="buffer">The buffer to read from.</param>
         /// <param name="array">The array to store the read data. It must be preallocated with the correct size.</param>
         /// <returns>The size of the array.</returns>
-        public static unsafe int FastReadArray<T>(this DataBuffer buffer, T[] array)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe int ReadArray<T>(this DataBuffer buffer, T[] array)
             where T : unmanaged
         {
             int size_t = Read7BitEncodedInt(buffer);
@@ -712,43 +802,32 @@ namespace Omni.Core
             buffer.Internal_Advance(size_t);
 
             // Fastest way to cast a byte[] to a T[].
-            ReadOnlySpan<T> arraySpan = MemoryMarshal.Cast<byte, T>(data);
-            arraySpan.CopyTo(array);
+            ReadOnlySpan<T> castedArray = MemoryMarshal.Cast<byte, T>(data);
+            castedArray.CopyTo(array);
             return size_t;
         }
 
         /// <summary>
         /// Reads a primitive value from the buffer.
         /// </summary>
-        public static T FastRead<T>(this DataBuffer buffer)
-            where T : unmanaged
-        {
-            int size_t = Unsafe.SizeOf<T>();
-            ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
-            buffer.Internal_Advance(size_t);
-            return MemoryMarshal.Read<T>(data);
-        }
-
-        /// <summary>
-        /// Reads a primitive value from the buffer.
-        /// Syntactic sugar for <see cref="FastRead{T}(DataBuffer)"/>
-        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T Read<T>(this DataBuffer buffer)
             where T : unmanaged
         {
-            return FastRead<T>(buffer);
+            return Internal_UnsafeRead<T>(buffer);
         }
 
         public static void ReadIdentity(this DataBuffer buffer, out int peerId, out int identityId)
         {
-            identityId = FastRead<int>(buffer);
-            peerId = FastRead<int>(buffer);
+            identityId = Read<int>(buffer);
+            peerId = Read<int>(buffer);
         }
 
         /// <summary>
         /// Reads a 32-bit signed integer in a compressed format(7-bit encoded) from the buffer.
         /// </summary>
         /// <returns>The 32-bit signed integer read from the stream.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Read7BitEncodedInt(this DataBuffer buffer)
         {
             // Unlike writing, we can't delegate to the 64-bit read on
@@ -770,7 +849,7 @@ namespace Omni.Core
             for (int shift = 0; shift < MaxBytesWithoutOverflow * 7; shift += 7)
             {
                 // ReadByte handles end of stream cases for us.
-                byteReadJustNow = FastRead<byte>(buffer);
+                byteReadJustNow = Read<byte>(buffer);
                 result |= (byteReadJustNow & 0x7Fu) << shift;
 
                 if (byteReadJustNow <= 0x7Fu)
@@ -783,7 +862,7 @@ namespace Omni.Core
             // the value of this byte must fit within 4 bits (32 - 28),
             // and it must not have the high bit set.
 
-            byteReadJustNow = FastRead<byte>(buffer);
+            byteReadJustNow = Read<byte>(buffer);
             if (byteReadJustNow > 0b_1111u)
             {
                 throw new FormatException("SR.Format_Bad7BitInt");
@@ -797,6 +876,7 @@ namespace Omni.Core
         /// Reads a 64-bit signed integer in a compressed format(7-bit encoded) from the buffer.
         /// </summary>
         /// <returns>The 64-bit signed integer read from the stream.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static long Read7BitEncodedInt64(this DataBuffer buffer)
         {
             ulong result = 0;
@@ -814,7 +894,7 @@ namespace Omni.Core
             for (int shift = 0; shift < MaxBytesWithoutOverflow * 7; shift += 7)
             {
                 // ReadByte handles end of stream cases for us.
-                byteReadJustNow = FastRead<byte>(buffer);
+                byteReadJustNow = Read<byte>(buffer);
                 result |= (byteReadJustNow & 0x7Ful) << shift;
 
                 if (byteReadJustNow <= 0x7Fu)
@@ -827,7 +907,7 @@ namespace Omni.Core
             // the value of this byte must fit within 1 bit (64 - 63),
             // and it must not have the high bit set.
 
-            byteReadJustNow = FastRead<byte>(buffer);
+            byteReadJustNow = Read<byte>(buffer);
             if (byteReadJustNow > 0b_1u)
             {
                 throw new FormatException("SR.Format_Bad7BitInt");
@@ -841,9 +921,10 @@ namespace Omni.Core
         /// Reads and decompresses a Vector3 from the DataBuffer.
         /// This method expects the data to be in the compressed format written by WritePacked.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 ReadPackedVector3(this DataBuffer buffer)
         {
-            long packedValue = FastRead<long>(buffer);
+            long packedValue = Read<long>(buffer);
             return VectorCompressor.Decompress(packedValue);
         }
 
@@ -851,13 +932,17 @@ namespace Omni.Core
         /// Reads and decompresses a Quaternion from the DataBuffer.
         /// This method expects the data to be in the compressed format written by WritePacked.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Quaternion ReadPackedQuaternion(this DataBuffer buffer)
         {
-            uint packedValue = FastRead<uint>(buffer);
+            uint packedValue = Read<uint>(buffer);
             return QuaternionCompressor.Decompress(packedValue);
         }
     }
 
     // Syntactic sugar
-    public static partial class BufferWriterExtensions { }
+    public static partial class BufferWriterExtensions
+    {
+        // nothing, i finish this
+    }
 }

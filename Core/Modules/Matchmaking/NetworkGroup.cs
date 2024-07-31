@@ -247,8 +247,8 @@ namespace Omni.Core
                     value = key != "_AllKeys_" ? value : SerializedData;
                     ImmutableKeyValuePair keyValuePair = new(key, value);
                     using var message = Pool.Rent();
-                    message.FastWrite(Id);
-                    message.ToJson(keyValuePair);
+                    message.Write(Id);
+                    message.WriteAsJson(keyValuePair);
                     Server.SendMessage(
                         MessageType.SyncGroupSerializedData,
                         peer,

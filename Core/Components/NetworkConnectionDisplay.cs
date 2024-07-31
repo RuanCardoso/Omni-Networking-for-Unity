@@ -4,7 +4,8 @@ using UnityEngine;
 
 namespace Omni.Core
 {
-    public class NetworkHud : MonoBehaviour
+    [DisallowMultipleComponent]
+    public sealed class NetworkConnectionDisplay : MonoBehaviour
     {
         private string host = "127.0.0.1";
         private string port = "7777";
@@ -48,7 +49,7 @@ namespace Omni.Core
 
             if (GUILayout.Button("Start Server", buttonFontSize, width, height))
             {
-                NetworkManager.StartServer(NetworkManager.ServerListenPort);
+                NetworkManager.StartServer();
             }
 
             if (GUILayout.Button("Start Client", buttonFontSize, width, height))
@@ -58,7 +59,7 @@ namespace Omni.Core
 
             if (GUILayout.Button("Start Server & Client", buttonFontSize, width, height))
             {
-                NetworkManager.StartServer(NetworkManager.ServerListenPort);
+                NetworkManager.StartServer();
                 NetworkManager.Connect(host, hostPort);
             }
 

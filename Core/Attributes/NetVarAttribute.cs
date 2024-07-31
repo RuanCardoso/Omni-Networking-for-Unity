@@ -13,7 +13,7 @@ namespace Omni.Core
     [AttributeUsage(
         AttributeTargets.Property | AttributeTargets.Field,
         AllowMultiple = false,
-        Inherited = false
+        Inherited = true
     )]
     public class NetworkVariableAttribute : PropertyAttribute
     {

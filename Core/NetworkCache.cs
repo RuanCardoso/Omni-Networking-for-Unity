@@ -1,6 +1,6 @@
 namespace Omni.Core
 {
-    internal class NetworkCache
+    internal sealed class NetworkCache
     {
         internal int Id { get; }
         internal CacheMode Mode { get; }

@@ -20,11 +20,13 @@ namespace Omni.Core
             this.y = new Half(y);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator HalfVector2(Vector2 vector)
         {
             return new HalfVector2(vector.x, vector.y);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator Vector2(HalfVector2 vector)
         {
             return new Vector2(vector.x, vector.y);

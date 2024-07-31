@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 /**
@@ -18,6 +19,7 @@ namespace Omni.Core
     {
         private const long BigNumber = 1000000L * 1000000L * 1000000L;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static long Compress(Vector3 vector3)
         {
             return Compress(vector3.x, vector3.y, vector3.z);

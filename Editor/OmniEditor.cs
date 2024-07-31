@@ -18,14 +18,16 @@ namespace Omni.Editor
                 GameObject manager = new("Network Manager");
                 manager.AddComponent<NetworkManager>();
                 manager.AddComponent<LiteTransporter>();
+
                 var server = new GameObject(">> [Server Code Here] <<");
                 server.transform.parent = manager.transform;
+                
                 var client = new GameObject(">> [Client Code Here] <<");
                 client.transform.parent = manager.transform;
 
                 // Add logger prefab.
                 GameObject logger = Resources.Load<GameObject>("IngameDebugConsole");
-                Object.Instantiate(logger, manager.transform);
+                logger = Object.Instantiate(logger, manager.transform);
                 logger.name = "Console";
 
                 // Set dirty to save changes.

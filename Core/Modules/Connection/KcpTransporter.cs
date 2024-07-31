@@ -10,6 +10,8 @@ using Omni.Core.Interfaces;
 using Omni.Shared;
 using UnityEngine;
 
+//// EXPERIMENTAL
+
 // kcp implementation: https://github.com/MirrorNetworking/Mirror/blob/master/Assets/Mirror/Transports/KCP/KcpTransport.cs
 // kcp2k forked from: https://github.com/MirrorNetworking/kcp2k - fork was ported to .net standard 2.1 [Span<T>, Memory<T>, ArrayPool<T>, etc..] thanks..
 namespace Omni.Core.Modules.Connection

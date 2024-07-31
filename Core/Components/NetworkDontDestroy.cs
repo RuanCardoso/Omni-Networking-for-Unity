@@ -6,7 +6,8 @@ using UnityEngine;
 namespace Omni.Core.Components
 {
     [DefaultExecutionOrder(-15000)]
-    public class NetworkDontDestroy : MonoBehaviour
+    [DisallowMultipleComponent]
+    public sealed class NetworkDontDestroy : MonoBehaviour
     {
         [SerializeField, ReadOnly]
         private string m_Guid;

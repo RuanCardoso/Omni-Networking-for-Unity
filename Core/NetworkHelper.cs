@@ -15,7 +15,7 @@ namespace Omni.Core
 {
     public static class NetworkHelper
     {
-        private static int d_UniqueId = int.MinValue;
+        private static int d_UniqueId = 1; // 0 - is reserved for server
 
         // the chances of collision are low, so it's fine to use hashcode.
         // because... do you have billions of network objects in the scene?

@@ -136,6 +136,12 @@ namespace Omni.Core
         private bool m_UseBinarySerialization = false;
 
         [SerializeField]
+        private bool m_UseUnalignedMemory = false;
+
+        [SerializeField]
+        private bool m_EnableBandwidthOptimization = true;
+
+        [SerializeField]
         private bool m_RunInBackground = true;
 
         [Header("Permissions")]
@@ -287,11 +293,11 @@ namespace Omni.Core
 
         private bool DisableAutoStartIfHasHud()
         {
-            if (TryGetComponent<NetworkHud>(out _))
+            if (TryGetComponent<NetworkConnectionDisplay>(out _))
             {
                 m_AutoStartClient = false;
                 m_AutoStartServer = false;
-
+                NetworkHelper.EditorSaveObject(gameObject);
                 return true;
             }
 

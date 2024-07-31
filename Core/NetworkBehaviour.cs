@@ -1,6 +1,8 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
 using Omni.Core.Modules.Ntp;
@@ -60,7 +62,7 @@ namespace Omni.Core
             )
             {
                 using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
-                Invoke(255, message, deliveryMode, sequenceChannel);
+                Invoke(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
             }
 
             /// <summary>
@@ -87,7 +89,10 @@ namespace Omni.Core
                 [CallerMemberName] string ___ = ""
             )
             {
-                IPropertyInfo property = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(___);
+                IPropertyInfo property = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
+                    ___,
+                    m_NetworkBehaviour.m_BindingFlags
+                );
 
                 IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
 
@@ -98,7 +103,7 @@ namespace Omni.Core
                         property.Id
                     );
 
-                    Invoke(255, message, deliveryMode, sequenceChannel);
+                    Invoke(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
                 }
             }
 
@@ -106,6 +111,7 @@ namespace Omni.Core
             /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
             /// </summary>
             /// <param name="msgId">The ID of the message to be invoked.</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Invoke(byte msgId, SyncOptions options)
             {
                 Invoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
@@ -118,6 +124,7 @@ namespace Omni.Core
             /// <param name="buffer">The buffer containing the message data. Default is null.</param>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Invoke(
                 byte msgId,
                 DataBuffer buffer = null,
@@ -133,6 +140,90 @@ namespace Omni.Core
                     deliveryMode,
                     sequenceChannel
                 );
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke(byte msgId, ISerializable message, SyncOptions options = default)
+            {
+                using var _ = message.Serialize();
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
+                where T1 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, SyncOptions options = default)
+                where T1 : unmanaged
+                where T2 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2, T3>(
+                byte msgId,
+                T1 p1,
+                T2 p2,
+                T3 p3,
+                SyncOptions options = default
+            )
+                where T1 : unmanaged
+                where T2 : unmanaged
+                where T3 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2, p3);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2, T3, T4>(
+                byte msgId,
+                T1 p1,
+                T2 p2,
+                T3 p3,
+                T4 p4,
+                SyncOptions options = default
+            )
+                where T1 : unmanaged
+                where T2 : unmanaged
+                where T3 : unmanaged
+                where T4 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2, p3, p4);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2, T3, T4, T5>(
+                byte msgId,
+                T1 p1,
+                T2 p2,
+                T3 p3,
+                T4 p4,
+                T5 p5,
+                SyncOptions options = default
+            )
+                where T1 : unmanaged
+                where T2 : unmanaged
+                where T3 : unmanaged
+                where T4 : unmanaged
+                where T5 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2, p3, p4, p5);
+                options.Buffer = _;
+                Invoke(msgId, options);
             }
         }
 
@@ -196,7 +287,7 @@ namespace Omni.Core
             {
                 using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
                 Invoke(
-                    255,
+                    NetworkConstants.NET_VAR_RPC_ID,
                     message,
                     target,
                     deliveryMode,
@@ -254,8 +345,10 @@ namespace Omni.Core
             )
             {
                 IPropertyInfo propertyInfo = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
-                    ___
+                    ___,
+                    m_NetworkBehaviour.m_BindingFlags
                 );
+
                 IPropertyInfo<T> propertyInfoGeneric = propertyInfo as IPropertyInfo<T>;
 
                 if (propertyInfo != null)
@@ -266,7 +359,7 @@ namespace Omni.Core
                     );
 
                     Invoke(
-                        255,
+                        NetworkConstants.NET_VAR_RPC_ID,
                         message,
                         target,
                         deliveryMode,
@@ -289,6 +382,7 @@ namespace Omni.Core
             /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
             /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Invoke(byte msgId, SyncOptions options)
             {
                 Invoke(
@@ -314,6 +408,7 @@ namespace Omni.Core
             /// <param name="cacheId">The cache ID for the message. Default is 0.</param>
             /// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Invoke(
                 byte msgId,
                 DataBuffer buffer = null,
@@ -325,6 +420,7 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
+#if OMNI_DEBUG
                 if (m_NetworkBehaviour.Identity.Owner == null)
                 {
                     NetworkLogger.__Log__(
@@ -334,7 +430,7 @@ namespace Omni.Core
 
                     return;
                 }
-
+#endif
                 NetworkManager.Server.Invoke(
                     msgId,
                     m_NetworkBehaviour.Identity.Owner,
@@ -349,6 +445,90 @@ namespace Omni.Core
                     sequenceChannel
                 );
             }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke(byte msgId, ISerializable message, SyncOptions options = default)
+            {
+                using var _ = message.Serialize();
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
+                where T1 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, SyncOptions options = default)
+                where T1 : unmanaged
+                where T2 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2, T3>(
+                byte msgId,
+                T1 p1,
+                T2 p2,
+                T3 p3,
+                SyncOptions options = default
+            )
+                where T1 : unmanaged
+                where T2 : unmanaged
+                where T3 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2, p3);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2, T3, T4>(
+                byte msgId,
+                T1 p1,
+                T2 p2,
+                T3 p3,
+                T4 p4,
+                SyncOptions options = default
+            )
+                where T1 : unmanaged
+                where T2 : unmanaged
+                where T3 : unmanaged
+                where T4 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2, p3, p4);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void Invoke<T1, T2, T3, T4, T5>(
+                byte msgId,
+                T1 p1,
+                T2 p2,
+                T3 p3,
+                T4 p4,
+                T5 p5,
+                SyncOptions options = default
+            )
+                where T1 : unmanaged
+                where T2 : unmanaged
+                where T3 : unmanaged
+                where T4 : unmanaged
+                where T5 : unmanaged
+            {
+                using var _ = NetworkManager.FastWrite(p1, p2, p3, p4, p5);
+                options.Buffer = _;
+                Invoke(msgId, options);
+            }
         }
 
         // Hacky: DIRTY CODE!
@@ -357,16 +537,8 @@ namespace Omni.Core
         // Avoid refactoring as these techniques are crucial for optimizing execution speed.
         // Works with il2cpp.
 
-        private readonly InvokeBehaviour<DataBuffer, int, Null, Null, Null> clientEventBehaviour =
-            new();
-
-        private readonly InvokeBehaviour<
-            DataBuffer,
-            NetworkPeer,
-            int,
-            Null,
-            Null
-        > serverEventBehaviour = new();
+        private readonly InvokeBehaviour<DataBuffer, int, Null, Null, Null> cInvoker = new();
+        private readonly InvokeBehaviour<DataBuffer, NetworkPeer, int, Null, Null> sInvoker = new();
 
         [SerializeField]
         [Header("Service Settings")]
@@ -374,6 +546,10 @@ namespace Omni.Core
 
         [SerializeField]
         private byte m_Id = 0;
+
+        [SerializeField]
+        internal BindingFlags m_BindingFlags =
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 
         /// <summary>
         /// Gets or sets the identifier of this instance.
@@ -536,14 +712,15 @@ namespace Omni.Core
 
         protected internal void Register()
         {
+            CheckIfOverridden();
             if (Identity.IsServer)
             {
-                serverEventBehaviour.FindEvents<ServerAttribute>(this);
+                sInvoker.FindEvents<ServerAttribute>(this, m_BindingFlags);
                 Remote = new NbServer(this);
             }
             else
             {
-                clientEventBehaviour.FindEvents<ClientAttribute>(this);
+                cInvoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
                 Local = new NbClient(this);
             }
 
@@ -556,6 +733,24 @@ namespace Omni.Core
             }
 
             NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
+        }
+
+        [Conditional("OMNI_DEBUG")]
+        private void CheckIfOverridden() // Warning only.
+        {
+            Type type = GetType();
+            MethodInfo method = type.GetMethod(nameof(OnTick));
+
+            if (
+                method.DeclaringType.Name != nameof(NetworkBehaviour)
+                && !NetworkManager.TickSystemModuleEnabled
+            )
+            {
+                NetworkLogger.__Log__(
+                    "Tick System Module must be enabled to use OnTick. You can enable it in the inspector.",
+                    logType: NetworkLogger.LogType.Error
+                );
+            }
         }
 
         protected internal void Unregister()
@@ -619,34 +814,27 @@ namespace Omni.Core
 
         private void TryClientLocate(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            if (clientEventBehaviour.Exists(msgId, out int argsCount))
+            if (cInvoker.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        clientEventBehaviour.Invoke(msgId);
+                        cInvoker.Invoke(msgId);
                         break;
                     case 1:
-                        clientEventBehaviour.Invoke(msgId, buffer);
+                        cInvoker.Invoke(msgId, buffer);
                         break;
                     case 2:
-                        clientEventBehaviour.Invoke(msgId, buffer, seqChannel);
+                        cInvoker.Invoke(msgId, buffer, seqChannel);
                         break;
                     case 3:
-                        clientEventBehaviour.Invoke(msgId, buffer, seqChannel, default);
+                        cInvoker.Invoke(msgId, buffer, seqChannel, default);
                         break;
                     case 4:
-                        clientEventBehaviour.Invoke(msgId, buffer, seqChannel, default, default);
+                        cInvoker.Invoke(msgId, buffer, seqChannel, default, default);
                         break;
                     case 5:
-                        clientEventBehaviour.Invoke(
-                            msgId,
-                            buffer,
-                            seqChannel,
-                            default,
-                            default,
-                            default
-                        );
+                        cInvoker.Invoke(msgId, buffer, seqChannel, default, default, default);
                         break;
                 }
             }
@@ -659,34 +847,27 @@ namespace Omni.Core
             int seqChannel
         )
         {
-            if (serverEventBehaviour.Exists(msgId, out int argsCount))
+            if (sInvoker.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        serverEventBehaviour.Invoke(msgId);
+                        sInvoker.Invoke(msgId);
                         break;
                     case 1:
-                        serverEventBehaviour.Invoke(msgId, buffer);
+                        sInvoker.Invoke(msgId, buffer);
                         break;
                     case 2:
-                        serverEventBehaviour.Invoke(msgId, buffer, peer);
+                        sInvoker.Invoke(msgId, buffer, peer);
                         break;
                     case 3:
-                        serverEventBehaviour.Invoke(msgId, buffer, peer, seqChannel);
+                        sInvoker.Invoke(msgId, buffer, peer, seqChannel);
                         break;
                     case 4:
-                        serverEventBehaviour.Invoke(msgId, buffer, peer, seqChannel, default);
+                        sInvoker.Invoke(msgId, buffer, peer, seqChannel, default);
                         break;
                     case 5:
-                        serverEventBehaviour.Invoke(
-                            msgId,
-                            buffer,
-                            peer,
-                            seqChannel,
-                            default,
-                            default
-                        );
+                        sInvoker.Invoke(msgId, buffer, peer, seqChannel, default, default);
                         break;
                 }
             }
@@ -716,7 +897,7 @@ namespace Omni.Core
         protected virtual void OnValidate()
         {
             if (_identity != null && _identity.IsRegistered)
-                ___NotifyChange___(); // Override by the source generator.
+                ___NotifyChange___(); // Overriden by the source generator.
 
             if (m_Id < 0)
             {
@@ -767,9 +948,14 @@ namespace Omni.Core
 
         public bool Equals(NetworkBehaviour other)
         {
-            bool isTheSameBehaviour = m_Id == other.m_Id;
-            bool isTheSameIdentity = Identity.Equals(other.Identity);
-            return isTheSameBehaviour && isTheSameIdentity && IsServer == other.IsServer;
+            if (Application.isPlaying)
+            {
+                bool isTheSameBehaviour = m_Id == other.m_Id;
+                bool isTheSameIdentity = Identity.Equals(other.Identity);
+                return isTheSameBehaviour && isTheSameIdentity && IsServer == other.IsServer;
+            }
+
+            return false;
         }
     }
 }

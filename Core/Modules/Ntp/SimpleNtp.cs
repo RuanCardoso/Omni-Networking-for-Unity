@@ -107,8 +107,8 @@ namespace Omni.Core.Modules.Ntp
             internal void Query()
             {
                 using var message = Pool.Rent();
-                message.FastWrite(ClockTime);
-                message.FastWrite(DeltaTime);
+                message.Write(ClockTime);
+                message.Write(DeltaTime);
 
                 // Query the server.
                 NetworkManager.Client.SendMessage(
@@ -163,8 +163,8 @@ namespace Omni.Core.Modules.Ntp
                 double x = ClockTime; // server time
 
                 using var message = Pool.Rent();
-                message.FastWrite(a);
-                message.FastWrite(x);
+                message.Write(a);
+                message.Write(x);
 
                 // A method is used to obtain a small delay to obtain the instant Y.
                 SendWithYInstant(peer, message);
@@ -182,8 +182,8 @@ namespace Omni.Core.Modules.Ntp
                     t = DeltaTime;
                 }
 
-                message.FastWrite(y);
-                message.FastWrite(t);
+                message.Write(y);
+                message.Write(t);
                 // Send NTP response
                 NetworkManager.Server.SendMessage(
                     MessageType.NtpQuery,

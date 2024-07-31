@@ -112,9 +112,9 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            invoker.FindEvents<ClientAttribute>(this);
+            invoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
             Client.AddEventBehaviour(m_Id, this);
-            Local = new NbClient(this);
+            Local = new NbClient(this, m_BindingFlags);
         }
 
         protected void RegisterSystemEvents()

@@ -20,6 +20,7 @@ using System.Collections;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using BindingFlags = System.Reflection.BindingFlags;
 
 namespace Omni.Editor
 {
@@ -77,7 +78,7 @@ namespace Omni.Editor
                     BindingFlags.Instance
                         | BindingFlags.NonPublic
                         | BindingFlags.Public
-                        | BindingFlags.DeclaredOnly
+                        // | BindingFlags.DeclaredOnly // Find property in base classes
                 ); // ??= Optimization.
 
                 if (propertyInfo != null)

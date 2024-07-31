@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 
 namespace Omni.Core
 {
-    public class HalfJsonConverter : JsonConverter<Half>
+    public sealed class HalfJsonConverter : JsonConverter<Half>
     {
         // Deserialization
         public override Half ReadJson(
