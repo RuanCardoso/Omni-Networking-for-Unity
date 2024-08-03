@@ -735,6 +735,20 @@ namespace Omni.Core
                 Connection.Server.Send(message, sender.EndPoint, deliveryMode, sequenceChannel);
             }
 
+            NetworkCache GetCache(ReadOnlySpan<byte> message)
+            {
+                return new NetworkCache(
+                    cacheId,
+                    cacheMode,
+                    message.ToArray(),
+                    sender,
+                    deliveryMode,
+                    target,
+                    sequenceChannel,
+                    destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
+                );
+            }
+
             void CreateCache(ReadOnlySpan<byte> message, NetworkGroup _group)
             {
                 if (cacheMode != CacheMode.None || cacheId != 0)
@@ -756,18 +770,7 @@ namespace Omni.Core
                                 == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
-                            Server.CACHES_APPEND_GLOBAL.Add(
-                                new NetworkCache(
-                                    cacheId,
-                                    cacheMode,
-                                    message.ToArray(),
-                                    sender,
-                                    deliveryMode,
-                                    target,
-                                    sequenceChannel,
-                                    destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
-                                )
-                            );
+                            Server.CACHES_APPEND_GLOBAL.Add(GetCache(message));
                         }
                         else if (
                             cacheMode == (CacheMode.Group | CacheMode.New)
@@ -777,20 +780,7 @@ namespace Omni.Core
                         {
                             if (_group != null)
                             {
-                                _group.CACHES_APPEND.Add(
-                                    new NetworkCache(
-                                        cacheId,
-                                        cacheMode,
-                                        message.ToArray(),
-                                        sender,
-                                        deliveryMode,
-                                        target,
-                                        sequenceChannel,
-                                        destroyOnDisconnect: cacheMode.HasFlag(
-                                            CacheMode.AutoDestroy
-                                        )
-                                    )
-                                );
+                                _group.CACHES_APPEND.Add(GetCache(message));
                             }
                             else
                             {
@@ -806,17 +796,7 @@ namespace Omni.Core
                                 == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
-                            NetworkCache newCache = new NetworkCache(
-                                cacheId,
-                                cacheMode,
-                                message.ToArray(),
-                                sender,
-                                deliveryMode,
-                                target,
-                                sequenceChannel,
-                                destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
-                            );
-
+                            NetworkCache newCache = GetCache(message);
                             if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(cacheId))
                             {
                                 Server.CACHES_OVERWRITE_GLOBAL[cacheId] = newCache;
@@ -834,17 +814,7 @@ namespace Omni.Core
                         {
                             if (_group != null)
                             {
-                                NetworkCache newCache = new NetworkCache(
-                                    cacheId,
-                                    cacheMode,
-                                    message.ToArray(),
-                                    sender,
-                                    deliveryMode,
-                                    target,
-                                    sequenceChannel,
-                                    destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
-                                );
-
+                                NetworkCache newCache = GetCache(message);
                                 if (_group.CACHES_OVERWRITE.ContainsKey(cacheId))
                                 {
                                     _group.CACHES_OVERWRITE[cacheId] = newCache;
@@ -861,6 +831,29 @@ namespace Omni.Core
                                     NetworkLogger.LogType.Error
                                 );
                             }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Peer | CacheMode.Overwrite)
+                            || cacheMode
+                                == (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
+                        )
+                        {
+                            NetworkCache newCache = GetCache(message);
+                            if (sender.CACHES_OVERWRITE.ContainsKey(cacheId))
+                            {
+                                sender.CACHES_OVERWRITE[cacheId] = newCache;
+                            }
+                            else
+                            {
+                                sender.CACHES_OVERWRITE.Add(cacheId, newCache);
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Peer | CacheMode.New)
+                            || cacheMode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
+                        )
+                        {
+                            sender.CACHES_APPEND.Add(GetCache(message));
                         }
                         else
                         {
@@ -1300,6 +1293,7 @@ namespace Omni.Core
 
                     // All resources should be released at this point.
                     Server.DestroyAllCaches(currentPeer);
+                    currentPeer.DestroyAllCaches();
                     currentPeer.IsConnected = false;
 
                     // Finished disconnection
