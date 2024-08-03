@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using MemoryPack;
 using Newtonsoft.Json;
@@ -44,6 +45,12 @@ namespace Omni.Core
 
         [MemoryPackIgnore, JsonProperty("Data")]
         public ObservableDictionary<string, object> SerializedData { get; internal set; } = new();
+
+        [MemoryPackIgnore]
+        internal List<NetworkCache> CACHES_APPEND { get; } = new();
+
+        [MemoryPackIgnore]
+        internal Dictionary<int, NetworkCache> CACHES_OVERWRITE { get; } = new();
 
         [MemoryPackIgnore]
         public double Time => _nativePeer.Time;
@@ -193,6 +200,54 @@ namespace Omni.Core
                     NetworkLogger.LogType.Error
                 );
             }
+        }
+
+        public void DeleteCache(CacheMode cacheMode, int cacheId)
+        {
+            if (
+                cacheMode == (CacheMode.Peer | CacheMode.New)
+                || cacheMode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
+            )
+            {
+                CACHES_APPEND.RemoveAll(x => x.Mode == cacheMode && x.Id == cacheId);
+            }
+            else if (
+                cacheMode == (CacheMode.Peer | CacheMode.Overwrite)
+                || cacheMode == (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
+            )
+            {
+                CACHES_OVERWRITE.Remove(cacheId);
+            }
+            else
+            {
+                NetworkLogger.__Log__(
+                    "Delete Cache Error: Unsupported cache mode set.",
+                    NetworkLogger.LogType.Error
+                );
+            }
+        }
+
+        public void DestroyAllCaches()
+        {
+            CACHES_APPEND.RemoveAll(x => x.AutoDestroyCache);
+            var caches = CACHES_OVERWRITE.Values.Where(x => x.AutoDestroyCache).ToList();
+
+            foreach (var cache in caches)
+            {
+                if (!CACHES_OVERWRITE.Remove(cache.Id))
+                {
+                    NetworkLogger.__Log__(
+                        $"Destroy All Cache Error: Failed to remove cache {cache.Id} from peer {Id}.",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+            }
+        }
+
+        public void ClearCaches()
+        {
+            CACHES_APPEND.Clear();
+            CACHES_OVERWRITE.Clear();
         }
 
         [Conditional("OMNI_DEBUG")]

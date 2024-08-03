@@ -517,7 +517,7 @@ namespace Omni.Core
                 using DataBuffer message = Pool.Rent();
                 message.Internal_Write(identityId);
                 message.Write(instanceId);
-                message.Write(msgId);
+                message.Write(msgId); // rpc id
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(
                     MessageType.LocalInvoke,
@@ -531,7 +531,7 @@ namespace Omni.Core
                     sequenceChannel
                 );
 
-                // byte count per empty message: 4 + 1 + 1 = 6 + header;
+                // byte count per empty message: 1 + 1 + 1 + 1 = 4;
                 // TODO: reduce bandwidth usage
             }
 
@@ -939,6 +939,57 @@ namespace Omni.Core
                                 );
                             }
                         }
+                        else if (
+                            cacheMode == (CacheMode.Peer | CacheMode.New)
+                            || cacheMode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
+                        )
+                        {
+                            List<NetworkCache> caches = peer
+                                .CACHES_APPEND.Where(x => x.Mode == cacheMode && x.Id == cacheId)
+                                .ToList();
+
+                            foreach (NetworkCache cache in caches)
+                            {
+                                if (!sendMyOwnCacheToMe)
+                                {
+                                    if (cache.Peer.Id == peer.Id)
+                                    {
+                                        continue;
+                                    }
+                                }
+
+                                Connection.Server.Send(
+                                    cache.Data,
+                                    peer.EndPoint,
+                                    cache.DeliveryMode,
+                                    cache.SequenceChannel
+                                );
+                            }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Peer | CacheMode.Overwrite)
+                            || cacheMode
+                                == (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
+                        )
+                        {
+                            if (peer.CACHES_OVERWRITE.TryGetValue(cacheId, out NetworkCache cache))
+                            {
+                                if (!sendMyOwnCacheToMe)
+                                {
+                                    if (cache.Peer.Id == peer.Id)
+                                    {
+                                        return;
+                                    }
+                                }
+
+                                Connection.Server.Send(
+                                    cache.Data,
+                                    peer.EndPoint,
+                                    cache.DeliveryMode,
+                                    cache.SequenceChannel
+                                );
+                            }
+                        }
                         else
                         {
                             NetworkLogger.__Log__(
@@ -1119,6 +1170,23 @@ namespace Omni.Core
                                     NetworkLogger.LogType.Error
                                 );
                             }
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Peer | CacheMode.New)
+                            || cacheMode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
+                        )
+                        {
+                            peer.CACHES_APPEND.RemoveAll(x =>
+                                x.Mode == cacheMode && x.Id == cacheId
+                            );
+                        }
+                        else if (
+                            cacheMode == (CacheMode.Peer | CacheMode.Overwrite)
+                            || cacheMode
+                                == (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
+                        )
+                        {
+                            peer.CACHES_OVERWRITE.Remove(cacheId);
                         }
                         else
                         {
