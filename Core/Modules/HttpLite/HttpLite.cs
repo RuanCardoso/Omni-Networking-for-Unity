@@ -31,10 +31,9 @@ namespace Omni.Core
     {
         public class HttpFetch
         {
-            private int routeId = int.MinValue;
-            internal readonly Dictionary<int, UniTaskCompletionSource<DataBuffer>> asyncTasks =
-                new();
-            internal readonly Dictionary<(string, int), Action<DataBuffer>> events = new(); // 0: Get, 1: Post
+            private int m_RouteId = 1;
+            internal readonly Dictionary<int, UniTaskCompletionSource<DataBuffer>> m_Tasks = new();
+            internal readonly Dictionary<(string, int), Action<DataBuffer>> m_Events = new(); // 0: Get, 1: Post
 
             /// <summary>
             /// Registers a GET route and its associated callback function.
@@ -52,9 +51,9 @@ namespace Omni.Core
             public void AddGetHandler(string routeName, Action<DataBuffer> callback)
             {
                 var routeKey = (routeName, 0);
-                if (!events.TryAdd(routeKey, callback))
+                if (!m_Events.TryAdd(routeKey, callback))
                 {
-                    events[routeKey] = callback;
+                    m_Events[routeKey] = callback;
                 }
             }
 
@@ -74,9 +73,9 @@ namespace Omni.Core
             public void AddPostHandler(string routeName, Action<DataBuffer> callback)
             {
                 var routeKey = (routeName, 1);
-                if (!events.TryAdd((routeName, 1), callback))
+                if (!m_Events.TryAdd((routeName, 1), callback))
                 {
-                    events[routeKey] = callback;
+                    m_Events[routeKey] = callback;
                 }
             }
 
@@ -96,9 +95,9 @@ namespace Omni.Core
                 byte sequenceChannel = 0
             )
             {
-                int lastId = routeId;
+                int lastId = m_RouteId;
                 using DataBuffer message = DefaultHeader(routeName, lastId);
-                routeId++;
+                m_RouteId++;
 
                 return Send(
                     MessageType.HttpGetFetchAsync,
@@ -187,12 +186,12 @@ namespace Omni.Core
                 message.SuppressTracking();
                 await callback(message);
 
-                int lastId = routeId;
+                int lastId = m_RouteId;
                 using DataBuffer header = DefaultHeader(routeName, lastId);
                 header.Write(message.BufferAsSpan);
 
                 // Next request id
-                routeId++;
+                m_RouteId++;
 
                 return await Send(
                     MessageType.HttpPostFetchAsync,
@@ -225,12 +224,12 @@ namespace Omni.Core
                 using var message = Pool.Rent();
                 callback(message);
 
-                int lastId = routeId;
+                int lastId = m_RouteId;
                 using var header = DefaultHeader(routeName, lastId);
                 header.Write(message.BufferAsSpan);
 
                 // Next request id
-                routeId++;
+                m_RouteId++;
 
                 return Send(
                     MessageType.HttpPostFetchAsync,
@@ -252,9 +251,8 @@ namespace Omni.Core
             )
             {
                 Client.SendMessage(msgId, message, deliveryMode, sequenceChannel);
-
                 UniTaskCompletionSource<DataBuffer> source = CreateTask(timeout);
-                asyncTasks.Add(lastId, source);
+                m_Tasks.Add(lastId, source);
                 return source.Task;
             }
 
@@ -291,29 +289,27 @@ namespace Omni.Core
             {
                 var message = Pool.Rent(); // disposed by the caller
                 message.WriteString(routeName);
-                message.Write(lastId);
+                message.Internal_Write(lastId);
                 return message;
             }
         }
 
         public class HttpExpress
         {
-            internal readonly Dictionary<
-                string,
-                Func<DataBuffer, NetworkPeer, UniTask>
-            > asyncGetTasks = new();
+            internal readonly Dictionary<string, Func<DataBuffer, NetworkPeer, UniTask>> m_g_Tasks =
+                new(); // Get tasks async
 
             internal readonly Dictionary<
                 string,
                 Func<DataBuffer, DataBuffer, NetworkPeer, UniTask>
-            > asyncPostTasks = new();
+            > m_p_Tasks = new(); // Post tasks async
 
-            internal readonly Dictionary<string, Action<DataBuffer, NetworkPeer>> getTasks = new();
+            internal readonly Dictionary<string, Action<DataBuffer, NetworkPeer>> m_Tasks = new(); // get tasks
 
             internal readonly Dictionary<
                 string,
                 Action<DataBuffer, DataBuffer, NetworkPeer>
-            > postTasks = new();
+            > m_a_Tasks = new(); // post tasks
 
             /// <summary>
             /// Registers an POST route and its associated callback function.
@@ -372,9 +368,9 @@ namespace Omni.Core
             /// <param name="callback">The callback function to be executed when the GET request is received.</param>
             public void GetAsync(string routeName, Func<DataBuffer, NetworkPeer, UniTask> callback)
             {
-                if (!asyncGetTasks.TryAdd(routeName, callback) || getTasks.ContainsKey(routeName))
+                if (!m_g_Tasks.TryAdd(routeName, callback) || m_Tasks.ContainsKey(routeName))
                 {
-                    asyncGetTasks[routeName] = callback;
+                    m_g_Tasks[routeName] = callback;
                 }
             }
 
@@ -395,9 +391,9 @@ namespace Omni.Core
             /// <param name="callback">The callback function to be executed when the GET request is received.</param>
             public void GetAsync(string routeName, Action<DataBuffer, NetworkPeer> callback)
             {
-                if (!getTasks.TryAdd(routeName, callback) || asyncGetTasks.ContainsKey(routeName))
+                if (!m_Tasks.TryAdd(routeName, callback) || m_g_Tasks.ContainsKey(routeName))
                 {
-                    getTasks[routeName] = callback;
+                    m_Tasks[routeName] = callback;
                 }
             }
 
@@ -421,9 +417,9 @@ namespace Omni.Core
                 Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> callback
             )
             {
-                if (!asyncPostTasks.TryAdd(routeName, callback) || postTasks.ContainsKey(routeName))
+                if (!m_p_Tasks.TryAdd(routeName, callback) || m_a_Tasks.ContainsKey(routeName))
                 {
-                    asyncPostTasks[routeName] = callback;
+                    m_p_Tasks[routeName] = callback;
                 }
             }
 
@@ -447,9 +443,9 @@ namespace Omni.Core
                 Action<DataBuffer, DataBuffer, NetworkPeer> callback
             )
             {
-                if (!postTasks.TryAdd(routeName, callback) || asyncPostTasks.ContainsKey(routeName))
+                if (!m_a_Tasks.TryAdd(routeName, callback) || m_p_Tasks.ContainsKey(routeName))
                 {
-                    postTasks[routeName] = callback;
+                    m_a_Tasks[routeName] = callback;
                 }
             }
         }
@@ -480,11 +476,11 @@ namespace Omni.Core
         {
             buffer.SeekToBegin();
             string routeName = buffer.ReadString();
-            int routeId = buffer.Read<int>();
+            int routeId = buffer.Internal_Read();
             if (msgId == MessageType.HttpGetFetchAsync)
             {
                 if (
-                    Http.asyncGetTasks.TryGetValue(
+                    Http.m_g_Tasks.TryGetValue(
                         routeName,
                         out Func<DataBuffer, NetworkPeer, UniTask> asyncCallback
                     )
@@ -496,7 +492,7 @@ namespace Omni.Core
                     Send(MessageType.HttpGetResponseAsync, response);
                 }
                 else if (
-                    Http.getTasks.TryGetValue(
+                    Http.m_Tasks.TryGetValue(
                         routeName,
                         out Action<DataBuffer, NetworkPeer> callback
                     )
@@ -517,7 +513,7 @@ namespace Omni.Core
             else if (msgId == MessageType.HttpPostFetchAsync)
             {
                 if (
-                    Http.asyncPostTasks.TryGetValue(
+                    Http.m_p_Tasks.TryGetValue(
                         routeName,
                         out Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> asyncCallback
                     )
@@ -534,7 +530,7 @@ namespace Omni.Core
                     Send(MessageType.HttpPostResponseAsync, response);
                 }
                 else if (
-                    Http.postTasks.TryGetValue(
+                    Http.m_a_Tasks.TryGetValue(
                         routeName,
                         out Action<DataBuffer, DataBuffer, NetworkPeer> callback
                     )
@@ -561,13 +557,13 @@ namespace Omni.Core
             {
                 using var header = Pool.Rent();
                 header.WriteString(routeName);
-                header.Write(routeId);
+                header.Internal_Write(routeId);
                 header.Write(response.BufferAsSpan);
 
                 if (!response.SendEnabled)
                 {
                     NetworkLogger.__Log__(
-                        "Http Lite: Maybe you're forgetting to call Send().",
+                        $"Http Lite: Maybe you're forgetting to call Send(). Ensure that you call Send() before sending the response -> Route: '{routeName}'",
                         NetworkLogger.LogType.Error
                     );
 
@@ -623,11 +619,9 @@ namespace Omni.Core
             )
             {
                 string routeName = buffer.ReadString();
-                int routeId = buffer.Read<int>();
+                int routeId = buffer.Internal_Read();
 
-                if (
-                    Fetch.asyncTasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source)
-                )
+                if (Fetch.m_Tasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source))
                 {
                     var message = Pool.Rent(); // Disposed by the caller!
                     message.Write(buffer.Internal_GetSpan(buffer.Length));
@@ -645,7 +639,7 @@ namespace Omni.Core
                     if (msgId == MessageType.HttpGetResponseAsync)
                     {
                         if (
-                            Fetch.events.TryGetValue(
+                            Fetch.m_Events.TryGetValue(
                                 (routeName, 0),
                                 out Action<DataBuffer> callback
                             )
@@ -657,7 +651,7 @@ namespace Omni.Core
                     else if (msgId == MessageType.HttpPostResponseAsync)
                     {
                         if (
-                            Fetch.events.TryGetValue(
+                            Fetch.m_Events.TryGetValue(
                                 (routeName, 1),
                                 out Action<DataBuffer> callback
                             )
