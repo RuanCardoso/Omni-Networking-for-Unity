@@ -42,7 +42,7 @@ namespace Omni.Core
 
         public DbCredentials([CallerMemberName] string _ = "")
         {
-            if (_ != "Awake" && _ != "Start")
+            if (_ != "Awake" && _ != "Start" && _ != "OnAwake" && _ != "OnStart")
             {
                 throw new InvalidOperationException(
                     $"DbCredentials constructor should be called from within a method (Awake or Start), not directly within the class scope. {_}"
