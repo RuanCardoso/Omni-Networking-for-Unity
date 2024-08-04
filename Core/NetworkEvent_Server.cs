@@ -121,7 +121,7 @@ namespace Omni.Core
         {
             NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnServerInitialized += OnServerInitialized;
-            NetworkManager.OnServerPeerConnected += OnServerPeerConnectedAsync;
+            NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
             Server.OnMessage += OnMessage;
         }
@@ -142,7 +142,7 @@ namespace Omni.Core
         {
             NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
             NetworkManager.OnServerInitialized -= OnServerInitialized;
-            NetworkManager.OnServerPeerConnected -= OnServerPeerConnectedAsync;
+            NetworkManager.OnServerPeerConnected -= OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
             Server.OnMessage -= OnMessage;
 
@@ -176,7 +176,7 @@ namespace Omni.Core
         /// Called when a new peer has successfully connected to the server.
         /// </summary>
         /// <param name="peer">The network peer that connected.</param>
-        protected virtual void OnServerPeerConnectedAsync(NetworkPeer peer, Phase phase) { }
+        protected virtual void OnServerPeerConnected(NetworkPeer peer, Phase phase) { }
 
         /// <summary>
         /// Called when a peer has disconnected from the server.
