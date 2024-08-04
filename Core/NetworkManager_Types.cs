@@ -190,6 +190,33 @@ namespace Omni.Core
         ReliableSequenced
     }
 
+    public class CacheOp
+    {
+        public const CacheMode PEER_NEW = CacheMode.Peer | CacheMode.New;
+        public const CacheMode PEER_NEW_DESTROY =
+            CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy;
+
+        public const CacheMode PEER_OVERWRITE = CacheMode.Peer | CacheMode.Overwrite;
+        public const CacheMode PEER_OVERWRITE_DESTROY =
+            CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy;
+
+        public const CacheMode GROUP_NEW = CacheMode.Group | CacheMode.New;
+        public const CacheMode GROUP_NEW_DESTROY =
+            CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy;
+
+        public const CacheMode GROUP_OVERWRITE = CacheMode.Group | CacheMode.Overwrite;
+        public const CacheMode GROUP_OVERWRITE_DESTROY =
+            CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy;
+
+        public const CacheMode GLOBAL_NEW = CacheMode.Global | CacheMode.New;
+        public const CacheMode GLOBAL_NEW_DESTROY =
+            CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy;
+
+        public const CacheMode GLOBAL_OVERWRITE = CacheMode.Global | CacheMode.Overwrite;
+        public const CacheMode GLOBAL_OVERWRITE_DESTROY =
+            CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy;
+    }
+
     [JsonObject(MemberSerialization.OptIn)]
     internal class ImmutableKeyValuePair
     {

@@ -765,6 +765,34 @@ namespace Omni.Core
             /// <summary>
             /// Sends cached data to a specified network peer based on the provided cache mode and cache ID.
             /// </summary>
+            /// <param name="toPeer">The network peer to whom the cache data will be sent from the originating peer.</param>
+            /// <param name="cacheId">The identifier of the cache to be sent.</param>
+            /// <param name="cacheMode">The mode of the cache, indicating whether it is global, group, new, or overwrite.</param>
+            /// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
+            /// <param name="sendMyOwnCacheToMe">A flag indicating whether to send the cache data to the originating peer (optional, default is false).</param>
+            /// <exception cref="Exception">Thrown when required cacheId and cacheMode are not set together or an unsupported cache mode is set.</exception>
+            public static void SendPeerCache(
+                NetworkPeer fromPeer,
+                NetworkPeer toPeer,
+                int cacheId,
+                CacheMode cacheMode,
+                int groupId = 0,
+                bool sendMyOwnCacheToMe = false
+            )
+            {
+                Internal_SendCache(
+                    fromPeer,
+                    toPeer,
+                    cacheId,
+                    cacheMode,
+                    groupId,
+                    sendMyOwnCacheToMe
+                );
+            }
+
+            /// <summary>
+            /// Sends cached data to a specified network peer based on the provided cache mode and cache ID.
+            /// </summary>
             /// <param name="peer">The network peer to whom the cache data will be sent.</param>
             /// <param name="cacheId">The identifier of the cache to be sent.</param>
             /// <param name="cacheMode">The mode of the cache, indicating whether it is global, group, new, or overwrite.</param>
@@ -777,6 +805,18 @@ namespace Omni.Core
                 CacheMode cacheMode,
                 int groupId = 0,
                 bool sendMyOwnCacheToMe = false
+            )
+            {
+                Internal_SendCache(peer, peer, cacheId, cacheMode, groupId, sendMyOwnCacheToMe);
+            }
+
+            internal static void Internal_SendCache(
+                NetworkPeer fromPeer,
+                NetworkPeer toPeer,
+                int cacheId,
+                CacheMode cacheMode,
+                int groupId,
+                bool sendMyOwnCacheToMe
             )
             {
                 if (cacheMode != CacheMode.None || cacheId != 0)
@@ -806,7 +846,7 @@ namespace Omni.Core
                             {
                                 if (!sendMyOwnCacheToMe)
                                 {
-                                    if (cache.Peer.Id == peer.Id)
+                                    if (cache.Peer.Id == toPeer.Id)
                                     {
                                         continue;
                                     }
@@ -814,7 +854,7 @@ namespace Omni.Core
 
                                 Connection.Server.Send(
                                     cache.Data,
-                                    peer.EndPoint,
+                                    toPeer.EndPoint,
                                     cache.DeliveryMode,
                                     cache.SequenceChannel
                                 );
@@ -838,7 +878,7 @@ namespace Omni.Core
                                 {
                                     if (!sendMyOwnCacheToMe)
                                     {
-                                        if (cache.Peer.Id == peer.Id)
+                                        if (cache.Peer.Id == toPeer.Id)
                                         {
                                             continue;
                                         }
@@ -846,7 +886,7 @@ namespace Omni.Core
 
                                     Connection.Server.Send(
                                         cache.Data,
-                                        peer.EndPoint,
+                                        toPeer.EndPoint,
                                         cache.DeliveryMode,
                                         cache.SequenceChannel
                                     );
@@ -872,7 +912,7 @@ namespace Omni.Core
                             {
                                 if (!sendMyOwnCacheToMe)
                                 {
-                                    if (cache.Peer.Id == peer.Id)
+                                    if (cache.Peer.Id == toPeer.Id)
                                     {
                                         return;
                                     }
@@ -880,7 +920,7 @@ namespace Omni.Core
 
                                 Connection.Server.Send(
                                     cache.Data,
-                                    peer.EndPoint,
+                                    toPeer.EndPoint,
                                     cache.DeliveryMode,
                                     cache.SequenceChannel
                                 );
@@ -910,7 +950,7 @@ namespace Omni.Core
                                 {
                                     if (!sendMyOwnCacheToMe)
                                     {
-                                        if (cache.Peer.Id == peer.Id)
+                                        if (cache.Peer.Id == toPeer.Id)
                                         {
                                             return;
                                         }
@@ -918,7 +958,7 @@ namespace Omni.Core
 
                                     Connection.Server.Send(
                                         cache.Data,
-                                        peer.EndPoint,
+                                        toPeer.EndPoint,
                                         cache.DeliveryMode,
                                         cache.SequenceChannel
                                     );
@@ -944,7 +984,7 @@ namespace Omni.Core
                             || cacheMode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
                         )
                         {
-                            List<NetworkCache> caches = peer
+                            List<NetworkCache> caches = fromPeer
                                 .CACHES_APPEND.Where(x => x.Mode == cacheMode && x.Id == cacheId)
                                 .ToList();
 
@@ -952,7 +992,7 @@ namespace Omni.Core
                             {
                                 if (!sendMyOwnCacheToMe)
                                 {
-                                    if (cache.Peer.Id == peer.Id)
+                                    if (cache.Peer.Id == toPeer.Id)
                                     {
                                         continue;
                                     }
@@ -960,7 +1000,7 @@ namespace Omni.Core
 
                                 Connection.Server.Send(
                                     cache.Data,
-                                    peer.EndPoint,
+                                    toPeer.EndPoint,
                                     cache.DeliveryMode,
                                     cache.SequenceChannel
                                 );
@@ -972,11 +1012,16 @@ namespace Omni.Core
                                 == (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
                         )
                         {
-                            if (peer.CACHES_OVERWRITE.TryGetValue(cacheId, out NetworkCache cache))
+                            if (
+                                fromPeer.CACHES_OVERWRITE.TryGetValue(
+                                    cacheId,
+                                    out NetworkCache cache
+                                )
+                            )
                             {
                                 if (!sendMyOwnCacheToMe)
                                 {
-                                    if (cache.Peer.Id == peer.Id)
+                                    if (cache.Peer.Id == toPeer.Id)
                                     {
                                         return;
                                     }
@@ -984,7 +1029,7 @@ namespace Omni.Core
 
                                 Connection.Server.Send(
                                     cache.Data,
-                                    peer.EndPoint,
+                                    toPeer.EndPoint,
                                     cache.DeliveryMode,
                                     cache.SequenceChannel
                                 );
