@@ -106,6 +106,11 @@ namespace Omni.Core
                 }
             }
 
+            public static bool TryGetIdentity(int identityId, out NetworkIdentity identity)
+            {
+                return Identities.TryGetValue(identityId, out identity);
+            }
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SendMessage(byte msgId, SyncOptions options)
             {
@@ -332,6 +337,11 @@ namespace Omni.Core
 
                     return null;
                 }
+            }
+
+            public static bool TryGetIdentity(int identityId, out NetworkIdentity identity)
+            {
+                return Identities.TryGetValue(identityId, out identity);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
