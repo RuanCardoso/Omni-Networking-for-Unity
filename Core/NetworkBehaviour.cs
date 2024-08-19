@@ -937,8 +937,12 @@ namespace Omni.Core
 
         public override bool Equals(object obj)
         {
-            NetworkBehaviour other = obj as NetworkBehaviour;
-            return Equals(other);
+            if (obj is NetworkBehaviour other)
+            {
+                return Equals(other);
+            }
+
+            return false;
         }
 
         public override int GetHashCode()
@@ -948,7 +952,7 @@ namespace Omni.Core
 
         public bool Equals(NetworkBehaviour other)
         {
-            if (Application.isPlaying)
+            if (Application.isPlaying && _identity != null)
             {
                 bool isTheSameBehaviour = m_Id == other.m_Id;
                 bool isTheSameIdentity = Identity.Equals(other.Identity);
