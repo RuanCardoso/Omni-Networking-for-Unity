@@ -45,7 +45,11 @@ namespace Omni.Core
             GUILayout.Label("Port:", labelFontSize);
             port = GUILayout.TextField(port, textFieldFontSize, width, height);
 
-            int hostPort = int.Parse(port);
+            if (!int.TryParse(port, out int hostPort))
+            {
+                GUILayout.EndArea();
+                return;
+            }
 
             if (GUILayout.Button("Start Server", buttonFontSize, width, height))
             {
