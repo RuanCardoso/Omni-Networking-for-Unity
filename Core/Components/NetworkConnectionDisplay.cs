@@ -49,7 +49,7 @@ namespace Omni.Core
 
             if (GUILayout.Button("Start Server", buttonFontSize, width, height))
             {
-                NetworkManager.StartServer();
+                NetworkManager.StartServer(hostPort);
             }
 
             if (GUILayout.Button("Start Client", buttonFontSize, width, height))
@@ -59,7 +59,7 @@ namespace Omni.Core
 
             if (GUILayout.Button("Start Server & Client", buttonFontSize, width, height))
             {
-                NetworkManager.StartServer();
+                NetworkManager.StartServer(hostPort);
                 NetworkManager.Connect(host, hostPort);
             }
 
