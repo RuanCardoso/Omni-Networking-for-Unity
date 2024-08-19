@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Omni.Core.Attributes;
+using Omni.Core.Interfaces;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -255,6 +256,83 @@ namespace Omni.Core
             return m_Services.Remove(serviceName);
         }
 
+        public void GetAsComponent<T>(out T service)
+            where T : class
+        {
+            GetAsComponent<T>(typeof(T).Name, out service);
+        }
+
+        public void GetAsComponent<T>(string componentName, out T service)
+            where T : class
+        {
+            service = Get<INetworkComponentService>(componentName).Component as T;
+        }
+
+        public T GetAsComponent<T>()
+            where T : class
+        {
+            return GetAsComponent<T>(typeof(T).Name);
+        }
+
+        public T GetAsComponent<T>(string componentName)
+            where T : class
+        {
+            return Get<INetworkComponentService>(componentName).Component as T;
+        }
+
+        public bool TryGetAsComponent<T>(out T service)
+            where T : class
+        {
+            return TryGetAsComponent<T>(typeof(T).Name, out service);
+        }
+
+        public bool TryGetAsComponent<T>(string componentName, out T service)
+            where T : class
+        {
+            service = null;
+            bool success =
+                TryGet<INetworkComponentService>(componentName, out var componentService)
+                && componentService.Component is T;
+
+            if (success)
+            {
+                service = componentService.Component as T;
+            }
+
+            return success;
+        }
+
+        public GameObject GetAsGameObject<T>()
+        {
+            return GetAsGameObject(typeof(T).Name);
+        }
+
+        public GameObject GetAsGameObject(string gameObjectName)
+        {
+            return Get<INetworkComponentService>(gameObjectName).GameObject;
+        }
+
+        public bool TryGetAsGameObject<T>(out GameObject service)
+        {
+            return TryGetAsGameObject(typeof(T).Name, out service);
+        }
+
+        public bool TryGetAsGameObject(string gameObjectName, out GameObject service)
+        {
+            service = null;
+            bool success = TryGet<INetworkComponentService>(
+                gameObjectName,
+                out var componentService
+            );
+
+            if (success)
+            {
+                service = componentService.GameObject;
+            }
+
+            return success;
+        }
+
         /// <summary>
         /// Automatic instantiates a network identity on the client.
         /// </summary>
@@ -372,8 +450,12 @@ namespace Omni.Core
 
         public override bool Equals(object obj)
         {
-            NetworkIdentity other = (NetworkIdentity)obj;
-            return IdentityId == other.IdentityId;
+            if (obj is NetworkIdentity other)
+            {
+                return IdentityId == other.IdentityId;
+            }
+
+            return false;
         }
 
         public override int GetHashCode()
@@ -383,7 +465,12 @@ namespace Omni.Core
 
         public bool Equals(NetworkIdentity other)
         {
-            return IdentityId == other.IdentityId;
+            if (Application.isPlaying)
+            {
+                return IdentityId == other.IdentityId;
+            }
+
+            return false;
         }
     }
 }

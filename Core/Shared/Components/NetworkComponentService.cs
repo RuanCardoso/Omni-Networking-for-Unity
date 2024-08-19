@@ -26,14 +26,15 @@ namespace Omni.Core.Components
                 );
             }
 
-#if OMNI_DEBUG
-            if (transform.root.TryGetComponent<NetworkIdentity>(out var _))
+            if (transform.root.TryGetComponent(out NetworkIdentity identity))
             {
-                throw new NotSupportedException(
-                    "'Network Component Service' is not supported on NetworkIdentity"
-                );
+                Unregister(); // Unregister globally if it's already registered and register locally(Identity);
+                if (!identity.TryRegister(this, ServiceName))
+                {
+                    // Update the old reference to the new one.
+                    identity.UpdateService(this, ServiceName);
+                }
             }
-#endif
         }
 
         protected override void OnValidate()
