@@ -43,7 +43,7 @@ namespace Omni.Core
             UseTickTiming ? TickSystem.ElapsedTicks : _stopwatch.Elapsed.TotalSeconds; // does not depend on frame rate.
 
         public static int MainThreadId { get; private set; }
-        public static IObjectPooling<DataBuffer> Pool { get; } = new DataBufferPool();
+        public static IObjectPooling<DataBuffer> Pool { get; private set; }
 
         public static event Action<Scene, LoadSceneMode> OnSceneLoaded;
         public static event Action<Scene> OnSceneUnloaded;
@@ -277,6 +277,7 @@ namespace Omni.Core
                 return;
             }
 
+            Pool = new DataBufferPool(m_PoolCapacity, m_PoolSize);
             BufferWriterExtensions.UseBinarySerialization = m_UseBinarySerialization;
             BufferWriterExtensions.EnableBandwidthOptimization = m_EnableBandwidthOptimization;
             BufferWriterExtensions.UseUnalignedMemory = m_UseUnalignedMemory;

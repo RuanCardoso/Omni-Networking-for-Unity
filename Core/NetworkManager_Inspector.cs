@@ -113,6 +113,14 @@ namespace Omni.Core
 
         [SerializeField]
         [Min(1)]
+        private int m_PoolCapacity = 32768;
+
+        [SerializeField]
+        [Min(1)]
+        private int m_PoolSize = 32;
+
+        [SerializeField]
+        [Min(1)]
         private int m_MaxFpsOnClient = 60;
 
         [SerializeField]
