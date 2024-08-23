@@ -33,7 +33,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Owner of this object. Only available on server, returns <c>LocalPeer</c> on client.
+        /// Owner of this object. Only available on server, returns <c>NetworkManager.LocalPeer</c> on client.
         /// </summary>
         public NetworkPeer Owner { get; internal set; }
 
@@ -452,9 +452,41 @@ namespace Omni.Core
         /// Sets the owner of the network identity to the specified peer.
         /// </summary>
         /// <param name="peer">The new owner of the network identity.</param>
-        public void SetOwner(NetworkPeer peer)
+        public void SetOwner(
+            NetworkPeer peer,
+            Target target = Target.All,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0,
+            int cacheId = 0,
+            CacheMode cacheMode = CacheMode.None,
+            byte sequenceChannel = 0
+        )
         {
-            Owner = peer;
+            if (IsServer)
+            {
+                Owner = peer;
+                // Send the new owner to the client's
+                using var message = NetworkManager.Pool.Rent();
+                message.Write(m_Id);
+                message.Write(peer.Id);
+                NetworkManager.Server.SendMessage(
+                    MessageType.SetOwner,
+                    Owner,
+                    message,
+                    target,
+                    deliveryMode,
+                    groupId,
+                    cacheId,
+                    cacheMode,
+                    sequenceChannel
+                );
+            }
+            else
+            {
+                throw new Exception(
+                    $"Only server can set the owner of the game object -> '{name}'."
+                );
+            }
         }
 
         public override bool Equals(object obj)

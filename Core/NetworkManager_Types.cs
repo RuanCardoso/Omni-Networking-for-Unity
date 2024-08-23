@@ -17,6 +17,7 @@ namespace Omni.Core
 
     internal class MessageType // not a enum to avoid casting
     {
+        internal const byte SetOwner = 240;
         internal const byte Destroy = 241;
         internal const byte Spawn = 242;
         internal const byte SyncGroupSerializedData = 243;

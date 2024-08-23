@@ -1737,6 +1737,31 @@ namespace Omni.Core
                             }
                         }
                         break;
+                    case MessageType.SetOwner:
+                        {
+                            int identityId = header.Read<int>();
+                            int peerId = header.Read<int>();
+                            if (!isServer)
+                            {
+                                if (
+                                    NetworkManager.Client.TryGetIdentity(
+                                        identityId,
+                                        out var identity
+                                    )
+                                )
+                                {
+                                    identity.IsLocalPlayer = LocalPeer.Id == peerId;
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"SetOwner: Identity with ID: [{identityId}] not found. Please ensure it is spawned.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+                            }
+                        }
+                        break;
                     case MessageType.Destroy:
                         {
                             if (!isServer)
