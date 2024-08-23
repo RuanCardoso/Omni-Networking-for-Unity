@@ -46,6 +46,14 @@ namespace Omni.Core
 
             if (identities.Remove(identityId, out var identity))
             {
+                if (!isServer && NetworkIdentity.LocalPlayer != null)
+                {
+                    if (NetworkIdentity.LocalPlayer.IdentityId == identityId)
+                    {
+                        NetworkIdentity.LocalPlayer = null;
+                    }
+                }
+
                 NetworkBehaviour[] networkBehaviours =
                     identity.GetComponentsInChildren<NetworkBehaviour>(true);
 

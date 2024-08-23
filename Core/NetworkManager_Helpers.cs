@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Omni.Shared;
 
 namespace Omni.Core
 {
@@ -70,6 +71,11 @@ namespace Omni.Core
         )
         {
             bool isLocalPlayer = LocalPeer.Id == peerId;
+            if (isLocalPlayer && (prefab.name.Contains("Player") || prefab.tag.Contains("Player")))
+            {
+                NetworkIdentity.LocalPlayer = prefab;
+            }
+
             return NetworkHelper.Instantiate(prefab, LocalPeer, identityId, false, isLocalPlayer);
         }
 

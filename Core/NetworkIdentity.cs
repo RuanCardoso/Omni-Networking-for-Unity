@@ -33,6 +33,11 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// The local player instance. Set on the client(only).
+        /// </summary>
+        public static NetworkIdentity LocalPlayer { get; internal set; }
+
+        /// <summary>
         /// Owner of this object. Only available on server, returns <c>NetworkManager.LocalPeer</c> on client.
         /// </summary>
         public NetworkPeer Owner { get; internal set; }
