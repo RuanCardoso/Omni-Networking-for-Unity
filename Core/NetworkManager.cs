@@ -1268,6 +1268,16 @@ namespace Omni.Core
                                 "Leave event called by disconnect event."
                             );
 
+                            // Change the current master client if the disconnected client was the master client
+                            if (currentPeer.Id == group.MasterClientId)
+                            {
+                                var nextPeer = group._peersById.Values.FirstOrDefault();
+                                if (nextPeer != null)
+                                {
+                                    group.SetMasterClient(nextPeer);
+                                }
+                            }
+
                             if (group.DestroyWhenEmpty)
                             {
                                 Server.DestroyGroup(group);
@@ -1367,7 +1377,7 @@ namespace Omni.Core
                             var groups = Client.Groups;
                             if (!groups.ContainsKey(groupId))
                             {
-                                groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!")); // group name is not valid in this case!
+                                groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!")); // This group is invalid!, Used only for data sync.
                             }
 
                             NetworkGroup fGroup = groups[groupId];

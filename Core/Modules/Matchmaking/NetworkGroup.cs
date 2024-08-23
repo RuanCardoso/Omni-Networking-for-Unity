@@ -29,7 +29,7 @@ namespace Omni.Core
         public string Name { get; }
 
         [MemoryPackIgnore]
-        public int MasterClientId { get; set; } = -1;
+        public int MasterClientId { get; private set; } = NetworkConstants.INVALID_MASTER_CLIENT_ID;
 
         [MemoryPackIgnore]
         public int PeerCount => _peersById.Count;
@@ -152,6 +152,11 @@ namespace Omni.Core
             return true;
         }
 
+        public void SetMasterClient(NetworkPeer peer)
+        {
+            MasterClientId = peer.Id;
+        }
+
         public void SyncSerializedData(SyncOptions options)
         {
             SyncSerializedData(
@@ -233,7 +238,7 @@ namespace Omni.Core
                 throw new Exception("Can't use this method on client.");
             }
 
-            if (MasterClientId <= -1)
+            if (MasterClientId <= NetworkConstants.INVALID_MASTER_CLIENT_ID)
             {
                 throw new Exception(
                     "MasterClientId is not set. Please set it before using this method."

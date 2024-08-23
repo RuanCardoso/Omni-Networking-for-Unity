@@ -448,6 +448,15 @@ namespace Omni.Core
             NetworkHelper.Destroy(m_Id, IsServer);
         }
 
+        /// <summary>
+        /// Sets the owner of the network identity to the specified peer.
+        /// </summary>
+        /// <param name="peer">The new owner of the network identity.</param>
+        public void SetOwner(NetworkPeer peer)
+        {
+            Owner = peer;
+        }
+
         public override bool Equals(object obj)
         {
             if (obj is NetworkIdentity other)

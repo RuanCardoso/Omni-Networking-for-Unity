@@ -653,6 +653,12 @@ namespace Omni.Core
                         return;
                     }
 
+                    // Set the master client if it's the first player in the group.
+                    if (group.MasterClientId <= NetworkConstants.INVALID_MASTER_CLIENT_ID)
+                    {
+                        group.SetMasterClient(peer);
+                    }
+
                     _allowZeroGroupForInternalMessages = true;
                     SendResponseToClient();
                     OnPlayerJoinedGroup?.Invoke(buffer, group, peer);
