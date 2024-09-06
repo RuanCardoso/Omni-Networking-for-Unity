@@ -418,7 +418,46 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Automatic destroys a network identity on the client.
+		/// Automatic destroys a network identity on the client and server for a specific peer.
+		/// </summary>
+		/// <returns>The instantiated network identity.</returns>
+		public void DestroyByPeer(NetworkPeer peer,
+			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+			int cacheId = 0,
+			CacheMode cacheMode = CacheMode.None,
+			byte sequenceChannel = 0)
+		{
+			if (!IsRegistered)
+			{
+				throw new Exception(
+					$"The game object '{name}' is not registered. Please register it first."
+				);
+			}
+
+			if (!IsServer)
+			{
+				throw new Exception($"Only server can destroy the game object '{name}'.");
+			}
+
+			using var message = NetworkManager.Pool.Rent();
+			message.Write(m_Id);
+			NetworkManager.Server.SendMessage(
+				MessageType.Destroy,
+				peer,
+				message,
+				Target.Self,
+				deliveryMode,
+				0,
+				cacheId,
+				cacheMode,
+				sequenceChannel
+			);
+
+			NetworkHelper.Destroy(m_Id, IsServer);
+		}
+
+		/// <summary>
+		/// Automatic destroys a network identity on the client and server.
 		/// </summary>
 		/// <returns>The instantiated network identity.</returns>
 		public void Destroy(
@@ -457,6 +496,26 @@ namespace Omni.Core
 			);
 
 			NetworkHelper.Destroy(m_Id, IsServer);
+		}
+
+		/// <summary>
+		/// Destroys a network identity only on the client, but the object will be destroyed only for you.
+		/// </summary>
+		public void DestroyOnClient()
+		{
+			if (!IsRegistered)
+			{
+				throw new Exception(
+					$"The game object '{name}' is not registered. Please register it first."
+				);
+			}
+
+			if (IsServer)
+			{
+				throw new Exception($"Only client can destroy the game object '{name}'. But the object will be destroyed only for you.");
+			}
+
+			NetworkHelper.Destroy(IdentityId, false);
 		}
 
 		/// <summary>
