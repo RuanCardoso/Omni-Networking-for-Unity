@@ -196,7 +196,7 @@ namespace Omni.Core
         /// A new data buffer containing the serialized data. The caller must ensure the buffer is disposed or used within a using statement.
         /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static DataBuffer Serialize(this ISerializable message)
+        public static DataBuffer Serialize(this IMessage message)
         {
             var writer = NetworkManager.Pool.Rent();
             message.Serialize(writer);
@@ -208,7 +208,7 @@ namespace Omni.Core
         /// </summary>
         /// <param name="reader">The data buffer containing the serialized data to deserialize.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Populate(this ISerializable message, DataBuffer reader)
+        public static void Populate(this IMessage message, DataBuffer reader)
         {
             message.Deserialize(reader);
         }
@@ -220,7 +220,7 @@ namespace Omni.Core
         /// <returns>The deserialized message.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T Deserialize<T>(this DataBuffer reader)
-            where T : ISerializable, new()
+            where T : IMessage, new()
         {
             T message = new();
             message.Deserialize(reader);
@@ -233,7 +233,7 @@ namespace Omni.Core
         /// <typeparam name="T">The type of the message to deserialize. Must be a network serializable object.</typeparam>
         /// <returns>The deserialized message.</returns>
         public static T Deserialize<T>(this DataBuffer reader, NetworkPeer peer, bool isServer)
-            where T : ISerializableWithPeer, new()
+            where T : IMessageWithPeer, new()
         {
             T message = new() { SharedPeer = peer, IsServer = isServer };
             message.Deserialize(reader);

@@ -143,7 +143,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, ISerializable message, SyncOptions options = default)
+			public void Invoke(byte msgId, IMessage message, SyncOptions options = default)
 			{
 				using var _ = message.Serialize();
 				options.Buffer = _;
@@ -467,7 +467,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, ISerializable message, SyncOptions options = default)
+			public void Invoke(byte msgId, IMessage message, SyncOptions options = default)
 			{
 				using var _ = message.Serialize();
 				options.Buffer = _;

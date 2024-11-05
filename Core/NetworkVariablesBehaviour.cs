@@ -49,7 +49,7 @@ namespace Omni.Core
             message.Write(id);
 
             // If the object implements ISerializable, serialize it.
-            if (@object is ISerializable data)
+            if (@object is IMessage data)
             {
                 using var serializedData = data.Serialize();
                 serializedData.CopyTo(message);
