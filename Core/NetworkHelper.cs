@@ -140,10 +140,13 @@ namespace Omni.Core
 
 			if (!identities.TryAdd(identity.IdentityId, identity))
 			{
-				NetworkLogger.__Log__(
-					$"Instantiation Error: Failed to add identity with ID '{identity.IdentityId}' to {(isServer ? "server" : "client")} identities. The identity might already exist.",
-					NetworkLogger.LogType.Error
-				);
+				NetworkIdentity oldRef = identities[identity.IdentityId];
+				MonoBehaviour.Destroy(oldRef.gameObject);
+				// Update the reference.....
+				identities[identity.IdentityId] = identity;
+
+				NetworkLogger.__Log__($"A NetworkIdentity with ID {identity.IdentityId} already exists. The old reference has been destroyed and replaced with the new one.",
+					NetworkLogger.LogType.Warning);
 			}
 
 			prefab.gameObject.SetActive(true); // After registration, enable the prefab again.
