@@ -175,6 +175,7 @@ namespace Omni.Core
 		public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
 			where T1 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
 			using var _ = FastWrite(p1);
 			options.Buffer = _;
 			Invoke(msgId, options);
@@ -185,6 +186,8 @@ namespace Omni.Core
 			where T1 : unmanaged
 			where T2 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
 			using var _ = FastWrite(p1, p2);
 			options.Buffer = _;
 			Invoke(msgId, options);
@@ -202,6 +205,9 @@ namespace Omni.Core
 			where T2 : unmanaged
 			where T3 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
 			using var _ = FastWrite(p1, p2, p3);
 			options.Buffer = _;
 			Invoke(msgId, options);
@@ -221,6 +227,10 @@ namespace Omni.Core
 			where T3 : unmanaged
 			where T4 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
 			using var _ = FastWrite(p1, p2, p3, p4);
 			options.Buffer = _;
 			Invoke(msgId, options);
@@ -242,6 +252,11 @@ namespace Omni.Core
 			where T4 : unmanaged
 			where T5 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
 			using var _ = FastWrite(p1, p2, p3, p4, p5);
 			options.Buffer = _;
 			Invoke(msgId, options);
@@ -540,6 +555,7 @@ namespace Omni.Core
 		public void Invoke<T1>(byte msgId, NetworkPeer peer, T1 p1, SyncOptions options = default)
 			where T1 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
 			using var _ = FastWrite(p1);
 			options.Buffer = _;
 			Invoke(msgId, peer, options);
@@ -556,6 +572,8 @@ namespace Omni.Core
 			where T1 : unmanaged
 			where T2 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
 			using var _ = FastWrite(p1, p2);
 			options.Buffer = _;
 			Invoke(msgId, peer, options);
@@ -574,6 +592,9 @@ namespace Omni.Core
 			where T2 : unmanaged
 			where T3 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
 			using var _ = FastWrite(p1, p2, p3);
 			options.Buffer = _;
 			Invoke(msgId, peer, options);
@@ -594,6 +615,10 @@ namespace Omni.Core
 			where T3 : unmanaged
 			where T4 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
 			using var _ = FastWrite(p1, p2, p3, p4);
 			options.Buffer = _;
 			Invoke(msgId, peer, options);
@@ -616,6 +641,11 @@ namespace Omni.Core
 			where T4 : unmanaged
 			where T5 : unmanaged
 		{
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
+			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
 			using var _ = FastWrite(p1, p2, p3, p4, p5);
 			options.Buffer = _;
 			Invoke(msgId, peer, options);

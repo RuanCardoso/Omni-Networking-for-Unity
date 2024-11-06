@@ -15,6 +15,12 @@ namespace Omni.Core
 		Mono
 	}
 
+	public enum SceneOperationMode
+	{
+		Load,
+		Unload
+	}
+
 	internal class MessageType // not a enum to avoid casting
 	{
 		internal const byte SetOwner = 240;

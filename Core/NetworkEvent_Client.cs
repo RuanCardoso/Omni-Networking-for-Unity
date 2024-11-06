@@ -151,7 +151,7 @@ namespace Omni.Core
             OnStop();
         }
 
-        protected virtual void OnBeforeSceneLoad(Scene scene)
+        protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
         {
             if (m_UnregisterOnLoad)
             {

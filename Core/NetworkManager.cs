@@ -47,7 +47,7 @@ namespace Omni.Core
 
 		public static event Action<Scene, LoadSceneMode> OnSceneLoaded;
 		public static event Action<Scene> OnSceneUnloaded;
-		public static event Action<Scene> OnBeforeSceneLoad;
+		public static event Action<Scene, SceneOperationMode> OnBeforeSceneLoad;
 
 		public static event Action OnServerInitialized;
 		public static event Action<NetworkPeer, Phase> OnServerPeerConnected;
@@ -1794,7 +1794,7 @@ namespace Omni.Core
 			}
 		}
 
-		private static void DestroyScene(LoadSceneMode mode, Scene scene)
+		private static void DestroyScene(LoadSceneMode mode, Scene scene, SceneOperationMode op)
 		{
 			if (_allowLoadScene)
 			{
@@ -1809,13 +1809,13 @@ namespace Omni.Core
 				// This event is used to perform some operations before the scene is loaded.
 				// for example: removing registered events, destroying objects, etc.
 				// Only single mode, because the additive does not destroy/unregister anything.
-				OnBeforeSceneLoad?.Invoke(scene);
+				OnBeforeSceneLoad?.Invoke(scene, op);
 			}
 		}
 
 		public static void LoadScene(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
 		{
-			DestroyScene(mode, SceneManager.GetSceneByName(sceneName));
+			DestroyScene(mode, SceneManager.GetSceneByName(sceneName), SceneOperationMode.Load);
 			SceneManager.LoadScene(sceneName, mode);
 		}
 
@@ -1824,13 +1824,13 @@ namespace Omni.Core
 			LoadSceneMode mode = LoadSceneMode.Single
 		)
 		{
-			DestroyScene(mode, SceneManager.GetSceneByName(sceneName));
+			DestroyScene(mode, SceneManager.GetSceneByName(sceneName), SceneOperationMode.Load);
 			return SceneManager.LoadSceneAsync(sceneName, mode);
 		}
 
 		public static void LoadScene(int index, LoadSceneMode mode = LoadSceneMode.Single)
 		{
-			DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index));
+			DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index), SceneOperationMode.Load);
 			SceneManager.LoadScene(index, mode);
 		}
 
@@ -1839,7 +1839,7 @@ namespace Omni.Core
 			LoadSceneMode mode = LoadSceneMode.Single
 		)
 		{
-			DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index));
+			DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index), SceneOperationMode.Load);
 			return SceneManager.LoadSceneAsync(index, mode);
 		}
 
@@ -1848,7 +1848,7 @@ namespace Omni.Core
 			UnloadSceneOptions options = UnloadSceneOptions.None
 		)
 		{
-			DestroyScene(LoadSceneMode.Single, SceneManager.GetSceneByName(sceneName));
+			DestroyScene(LoadSceneMode.Single, SceneManager.GetSceneByName(sceneName), SceneOperationMode.Unload);
 			return SceneManager.UnloadSceneAsync(sceneName, options);
 		}
 
@@ -1862,7 +1862,7 @@ namespace Omni.Core
 				LoadSceneMode.Single,
 				useBuildIndex
 					? SceneManager.GetSceneByBuildIndex(index)
-					: SceneManager.GetSceneAt(index)
+					: SceneManager.GetSceneAt(index), SceneOperationMode.Unload
 			);
 
 			return SceneManager.UnloadSceneAsync(index, options);

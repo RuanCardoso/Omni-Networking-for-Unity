@@ -154,6 +154,7 @@ namespace Omni.Core
 			public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
 				where T1 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
 				using var _ = NetworkManager.FastWrite(p1);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -164,6 +165,8 @@ namespace Omni.Core
 				where T1 : unmanaged
 				where T2 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
 				using var _ = NetworkManager.FastWrite(p1, p2);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -181,6 +184,9 @@ namespace Omni.Core
 				where T2 : unmanaged
 				where T3 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -200,6 +206,10 @@ namespace Omni.Core
 				where T3 : unmanaged
 				where T4 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -221,6 +231,11 @@ namespace Omni.Core
 				where T4 : unmanaged
 				where T5 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4, p5);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -478,6 +493,7 @@ namespace Omni.Core
 			public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
 				where T1 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
 				using var _ = NetworkManager.FastWrite(p1);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -488,6 +504,8 @@ namespace Omni.Core
 				where T1 : unmanaged
 				where T2 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
 				using var _ = NetworkManager.FastWrite(p1, p2);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -505,6 +523,9 @@ namespace Omni.Core
 				where T2 : unmanaged
 				where T3 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -524,6 +545,10 @@ namespace Omni.Core
 				where T3 : unmanaged
 				where T4 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -545,6 +570,11 @@ namespace Omni.Core
 				where T4 : unmanaged
 				where T5 : unmanaged
 			{
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
+				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4, p5);
 				options.Buffer = _;
 				Invoke(msgId, options);
@@ -706,7 +736,6 @@ namespace Omni.Core
 		/// Override this method to perform any initialization that needs to happen
 		/// before the object becomes active.
 		/// </remarks>
-		/// <param name="buffer">The buffer containing data associated with the instantiation process.</param>
 		protected internal virtual void OnAwake() { }
 
 		/// <summary>
@@ -716,8 +745,25 @@ namespace Omni.Core
 		/// Override this method to perform any initialization or setup that needs to happen
 		/// after the object has become active.
 		/// </remarks>
-		/// <param name="buffer">The buffer containing data associated with the instantiation process.</param>
 		protected internal virtual void OnStart() { }
+
+		/// <summary>
+		/// Called after the local player object is instantiated and becomes active on the client.
+		/// </summary>
+		/// <remarks>
+		/// Override this method to perform any initialization or setup specific to the local player
+		/// that needs to happen after it becomes active on the client.
+		/// </remarks>
+		protected internal virtual void OnStartLocalPlayer() { }
+
+		/// <summary>
+		/// Called after a remote player object is instantiated and becomes active on the client.
+		/// </summary>
+		/// <remarks>
+		/// Override this method to perform any initialization or setup specific to remote players
+		/// that needs to happen after they become active on the client.
+		/// </remarks>
+		protected internal virtual void OnStartRemotePlayer() { }
 
 		/// <summary>
 		/// Called on each update tick.
@@ -753,6 +799,8 @@ namespace Omni.Core
 			}
 
 			NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
+			NetworkManager.OnSceneLoaded += OnSceneLoaded;
+			NetworkManager.OnSceneUnloaded += OnSceneUnloaded;
 		}
 
 		[Conditional("OMNI_DEBUG")]
@@ -802,12 +850,21 @@ namespace Omni.Core
 			}
 
 			OnDestroy();
-			NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
 		}
 
-		protected virtual void OnBeforeSceneLoad(Scene scene)
+		protected virtual void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 		{
-			Unregister();
+			NetworkManager.OnSceneLoaded -= OnSceneLoaded;
+		}
+
+		protected virtual void OnSceneUnloaded(Scene scene)
+		{
+			NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
+		}
+
+		protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
+		{
+			NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
 		}
 
 		private void InitializeServiceLocator()
