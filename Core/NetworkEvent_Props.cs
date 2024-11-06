@@ -282,12 +282,6 @@ namespace Omni.Core
 		/// <typeparam name="T">The type of the property to synchronize.</typeparam>
 		/// <param name="property">The property value to synchronize.</param>
 		/// <param name="propertyId">The ID of the property being synchronized.</param>
-		/// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
-		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-		/// <param name="groupId">The group ID for the message. Default is 0.</param>
-		/// <param name="cacheId">The cache ID for the message. Default is 0.</param>
-		/// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
-		/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 		public void ManualSync<T>(
 			T property,
 			byte propertyId,
@@ -302,8 +296,7 @@ namespace Omni.Core
 				options.Target,
 				options.DeliveryMode,
 				options.GroupId,
-				options.CacheId,
-				options.CacheMode,
+				options.DataCache,
 				options.SequenceChannel
 			);
 		}
@@ -317,8 +310,7 @@ namespace Omni.Core
 		/// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
-		/// <param name="cacheId">The cache ID for the message. Default is 0.</param>
-		/// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 		/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 		public void ManualSync<T>(
 			T property,
@@ -327,12 +319,13 @@ namespace Omni.Core
 			Target target = Target.All,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0
 		)
 		{
+			dataCache ??= DataCache.None;
 			peer ??= Server.ServerPeer;
+
 			using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(
 				property,
 				propertyId
@@ -345,8 +338,7 @@ namespace Omni.Core
 				target,
 				deliveryMode,
 				groupId,
-				cacheId,
-				cacheMode,
+				dataCache,
 				sequenceChannel
 			);
 		}
@@ -366,8 +358,7 @@ namespace Omni.Core
 				options.Target,
 				options.DeliveryMode,
 				options.GroupId,
-				options.CacheId,
-				options.CacheMode,
+			    options.DataCache,
 				options.SequenceChannel,
 				___
 			);
@@ -380,20 +371,19 @@ namespace Omni.Core
 		/// <param name="target">The target for the message. Default is <see cref="Target.All"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
-		/// <param name="cacheId">The cache ID for the message. Default is 0.</param>
-		/// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 		/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 		public void AutoSync<T>(
 			NetworkPeer peer = null,
 			Target target = Target.All,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0,
 			[CallerMemberName] string ___ = ""
 		)
 		{
+			dataCache ??= DataCache.None;
 			IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(
 				___,
 				m_BindingFlags
@@ -416,8 +406,7 @@ namespace Omni.Core
 					target,
 					deliveryMode,
 					groupId,
-					cacheId,
-					cacheMode,
+					dataCache,
 					sequenceChannel
 				);
 			}
@@ -437,8 +426,7 @@ namespace Omni.Core
 				options.Target,
 				options.DeliveryMode,
 				options.GroupId,
-				options.CacheId,
-				options.CacheMode,
+				options.DataCache,
 				options.SequenceChannel
 			);
 		}
@@ -451,8 +439,7 @@ namespace Omni.Core
 		/// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
-		/// <param name="cacheId">The cache ID for the message. Default is 0.</param>
-		/// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 		/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void GlobalInvoke(
@@ -462,11 +449,11 @@ namespace Omni.Core
 			Target target = Target.Self,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+		DataCache dataCache = default,
 			byte sequenceChannel = 0
 		)
 		{
+			dataCache ??= DataCache.None;
 			Server.GlobalInvoke(
 				msgId,
 				peer,
@@ -474,8 +461,7 @@ namespace Omni.Core
 				target,
 				deliveryMode,
 				groupId,
-				cacheId,
-				cacheMode,
+				dataCache,
 				sequenceChannel
 			);
 		}
@@ -494,8 +480,7 @@ namespace Omni.Core
 				options.Target,
 				options.DeliveryMode,
 				options.GroupId,
-				options.CacheId,
-				options.CacheMode,
+				options.DataCache,
 				options.SequenceChannel
 			);
 		}
@@ -508,8 +493,7 @@ namespace Omni.Core
 		/// <param name="target">The target(s) for the message. Default is <see cref="Target.All"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
-		/// <param name="cacheId">The cache ID for the message. Default is 0.</param>
-		/// <param name="cacheMode">The cache mode for the message. Default is <see cref="CacheMode.None"/>.</param>
+		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 		/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Invoke(
@@ -519,11 +503,11 @@ namespace Omni.Core
 			Target target = Target.All,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0
 		)
 		{
+			dataCache ??= DataCache.None;
 			Server.Invoke(
 				msgId,
 				peer,
@@ -532,8 +516,7 @@ namespace Omni.Core
 				target,
 				deliveryMode,
 				groupId,
-				cacheId,
-				cacheMode,
+				dataCache,
 				sequenceChannel
 			);
 		}

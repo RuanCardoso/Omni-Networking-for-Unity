@@ -605,8 +605,7 @@ namespace Omni.Core
 					Target.Self,
 					response.DeliveryMode,
 					0,
-					response.CacheId,
-					response.CacheMode,
+					response.DataCache,
 					response.SequenceChannel
 				);
 
@@ -629,8 +628,7 @@ namespace Omni.Core
 						target,
 						response.DeliveryMode,
 						response.GroupId,
-						response.CacheId,
-						response.CacheMode,
+						response.DataCache,
 						response.SequenceChannel
 					);
 				}

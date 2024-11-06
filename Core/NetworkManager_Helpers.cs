@@ -71,12 +71,12 @@ namespace Omni.Core
 		)
 		{
 			bool isLocalPlayer = LocalPeer.Id == peerId;
-			var inst = NetworkHelper.Instantiate(prefab, LocalPeer, identityId, false, isLocalPlayer);
+			NetworkIdentity @obj = NetworkHelper.Instantiate(prefab, LocalPeer, identityId, false, isLocalPlayer);
 			if (isLocalPlayer && (prefab.name.Contains("Player") || prefab.tag.Contains("Player")))
 			{
-				NetworkIdentity.LocalPlayer = inst;
+				NetworkIdentity.LocalPlayer = @obj;
 			}
-			return inst;
+			return @obj;
 		}
 
 		/// <summary>

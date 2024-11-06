@@ -249,8 +249,7 @@ namespace Omni.Core
 	/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
 	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-	/// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
-	/// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
 	/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
 	/// </summary>
 	public class NetworkVariableOptions
@@ -258,8 +257,7 @@ namespace Omni.Core
 		public Target Target { get; set; }
 		public DeliveryMode DeliveryMode { get; set; }
 		public int GroupId { get; set; }
-		public int CacheId { get; set; }
-		public CacheMode CacheMode { get; set; }
+		public DataCache DataCache { get; set; }
 		public byte SequenceChannel { get; set; }
 
 		public NetworkVariableOptions()
@@ -267,8 +265,7 @@ namespace Omni.Core
 			Target = Target.All;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
-			CacheId = 0;
-			CacheMode = CacheMode.None;
+			DataCache = DataCache.None;
 			SequenceChannel = 0;
 		}
 	}
@@ -278,8 +275,7 @@ namespace Omni.Core
 	/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
 	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-	/// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
-	/// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
 	/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
 	/// </summary>
 	public ref struct SyncOptions
@@ -287,8 +283,7 @@ namespace Omni.Core
 		public Target Target { get; set; }
 		public DeliveryMode DeliveryMode { get; set; }
 		public int GroupId { get; set; }
-		public int CacheId { get; set; }
-		public CacheMode CacheMode { get; set; }
+		public DataCache DataCache { get; set; }
 		public byte SequenceChannel { get; set; }
 		public DataBuffer Buffer { get; set; }
 
@@ -297,8 +292,7 @@ namespace Omni.Core
 		/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-		/// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
-		/// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
 		/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
 		/// </summary>
 		public SyncOptions(DataBuffer buffer)
@@ -307,8 +301,7 @@ namespace Omni.Core
 			Target = Target.All;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
-			CacheId = 0;
-			CacheMode = CacheMode.None;
+			DataCache = DataCache.None;
 			SequenceChannel = 0;
 		}
 
@@ -320,8 +313,7 @@ namespace Omni.Core
 			Target target,
 			DeliveryMode deliveryMode,
 			int groupId,
-			int cacheId,
-			CacheMode cacheMode,
+			DataCache dataCache,
 			byte sequenceChannel
 		)
 		{
@@ -329,8 +321,7 @@ namespace Omni.Core
 			Target = target;
 			DeliveryMode = deliveryMode;
 			GroupId = groupId;
-			CacheId = cacheId;
-			CacheMode = cacheMode;
+			DataCache = dataCache;
 			SequenceChannel = sequenceChannel;
 		}
 
@@ -341,8 +332,7 @@ namespace Omni.Core
 			Target target,
 			DeliveryMode deliveryMode,
 			int groupId,
-			int cacheId,
-			CacheMode cacheMode,
+			DataCache dataCache,
 			byte sequenceChannel
 		)
 		{
@@ -350,8 +340,7 @@ namespace Omni.Core
 			Target = target;
 			DeliveryMode = deliveryMode;
 			GroupId = groupId;
-			CacheId = cacheId;
-			CacheMode = cacheMode;
+			DataCache = dataCache;
 			SequenceChannel = sequenceChannel;
 		}
 
@@ -360,8 +349,7 @@ namespace Omni.Core
 		/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-		/// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
-		/// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
 		/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
 		/// </summary>
 		public SyncOptions(bool useDefaultOptions)
@@ -370,8 +358,7 @@ namespace Omni.Core
 			Target = Target.All;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
-			CacheId = 0;
-			CacheMode = CacheMode.None;
+			DataCache = DataCache.None;
 			SequenceChannel = 0;
 		}
 
@@ -380,8 +367,7 @@ namespace Omni.Core
 		/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-		/// - <c>CacheId</c>: 0 - Indicates no specific cache identifier.<br/>
-		/// - <c>CacheMode</c>: <see cref="CacheMode.None"/> - Specifies that no caching is used.<br/>
+		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
 		/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
 		/// </summary>
 		public static SyncOptions Default => new SyncOptions(true);

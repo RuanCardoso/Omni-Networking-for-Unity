@@ -354,8 +354,7 @@ namespace Omni.Core
 				options.Target,
 				options.DeliveryMode,
 				options.GroupId,
-				options.CacheId,
-				options.CacheMode,
+				options.DataCache,
 				options.SequenceChannel
 			);
 		}
@@ -368,11 +367,11 @@ namespace Omni.Core
 			Target target = Target.All,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0
 		)
 		{
+			dataCache ??= DataCache.None;
 			if (!IsRegistered)
 			{
 				throw new Exception(
@@ -395,8 +394,7 @@ namespace Omni.Core
 				target,
 				deliveryMode,
 				groupId,
-				cacheId,
-				cacheMode,
+				dataCache,
 				sequenceChannel
 			);
 		}
@@ -411,8 +409,7 @@ namespace Omni.Core
 				options.Target,
 				options.DeliveryMode,
 				options.GroupId,
-				options.CacheId,
-				options.CacheMode,
+				options.DataCache,
 				options.SequenceChannel
 			);
 		}
@@ -423,10 +420,10 @@ namespace Omni.Core
 		/// <returns>The instantiated network identity.</returns>
 		public void DestroyByPeer(NetworkPeer peer,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0)
 		{
+			dataCache ??= DataCache.None;
 			if (!IsRegistered)
 			{
 				throw new Exception(
@@ -448,8 +445,7 @@ namespace Omni.Core
 				Target.Self,
 				deliveryMode,
 				0,
-				cacheId,
-				cacheMode,
+				dataCache,
 				sequenceChannel
 			);
 
@@ -464,11 +460,11 @@ namespace Omni.Core
 			Target target = Target.All,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0
 		)
 		{
+			dataCache ??= DataCache.None;
 			if (!IsRegistered)
 			{
 				throw new Exception(
@@ -490,8 +486,7 @@ namespace Omni.Core
 				target,
 				deliveryMode,
 				groupId,
-				cacheId,
-				cacheMode,
+				dataCache,
 				sequenceChannel
 			);
 
@@ -527,11 +522,11 @@ namespace Omni.Core
 			Target target = Target.All,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0
 		)
 		{
+			dataCache ??= DataCache.None;
 			if (IsServer)
 			{
 				Owner = peer;
@@ -546,8 +541,7 @@ namespace Omni.Core
 					target,
 					deliveryMode,
 					groupId,
-					cacheId,
-					cacheMode,
+					dataCache,
 					sequenceChannel
 				);
 			}

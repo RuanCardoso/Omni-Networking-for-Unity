@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Omni.Core
 {
@@ -39,12 +40,12 @@ namespace Omni.Core
 		public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, Target target = Target.All,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-			int cacheId = 0,
-			CacheMode cacheMode = CacheMode.None,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0)
 		{
+			dataCache ??= DataCache.None;
 			var identity = NetworkManager.SpawnOnServer(prefab, peer);
-			identity.SpawnOnClient(target, deliveryMode, groupId, cacheId, cacheMode, sequenceChannel);
+			identity.SpawnOnClient(target, deliveryMode, groupId, dataCache, sequenceChannel);
 			return identity;
 		}
 
@@ -138,6 +139,32 @@ namespace Omni.Core
 			}
 
 			return string.Format("{0:n" + decimalPlaces + "} {1}", adjustedSize, SizeSuffixes[mag]);
+		}
+
+		/// <summary>
+		/// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
+		/// impacted by the 3D raycast hit.
+		/// </summary>
+		/// <returns>
+		/// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
+		/// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
+		/// </returns>
+		public static NetworkIdentity GetIdentity(this RaycastHit hit)
+		{
+			return hit.transform.root.GetComponent<NetworkIdentity>();
+		}
+
+		/// <summary>
+		/// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
+		/// impacted by the 2D raycast hit.
+		/// </summary>
+		/// <returns>
+		/// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
+		/// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
+		/// </returns>
+		public static NetworkIdentity GetIdentity(this RaycastHit2D hit)
+		{
+			return hit.transform.root.GetComponent<NetworkIdentity>();
 		}
 	}
 }

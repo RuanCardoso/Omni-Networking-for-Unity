@@ -660,8 +660,7 @@ namespace Omni.Core
 			Target target,
 			DeliveryMode deliveryMode,
 			int groupId,
-			int cacheId,
-			CacheMode cacheMode,
+			DataCache dataCache,
 			byte sequenceChannel
 		)
 		{
@@ -672,8 +671,7 @@ namespace Omni.Core
 				target,
 				deliveryMode,
 				groupId,
-				cacheId,
-				cacheMode,
+				dataCache,
 				sequenceChannel
 			);
 		}
@@ -725,8 +723,7 @@ namespace Omni.Core
 			Target target,
 			DeliveryMode deliveryMode,
 			int groupId,
-			int cacheId,
-			CacheMode cacheMode,
+			DataCache dataCache,
 			byte sequenceChannel
 		)
 		{
@@ -739,43 +736,43 @@ namespace Omni.Core
 			NetworkCache GetCache(ReadOnlySpan<byte> message)
 			{
 				return new NetworkCache(
-					cacheId,
-					cacheMode,
+					dataCache.Id,
+					dataCache.Mode,
 					message.ToArray(),
 					sender,
 					deliveryMode,
 					target,
 					sequenceChannel,
-					destroyOnDisconnect: cacheMode.HasFlag(CacheMode.AutoDestroy)
+					destroyOnDisconnect: dataCache.Mode.HasFlag(CacheMode.AutoDestroy)
 				);
 			}
 
 			void CreateCache(ReadOnlySpan<byte> message, NetworkGroup _group)
 			{
-				if (cacheMode != CacheMode.None || cacheId != 0)
+				if (dataCache.Mode != CacheMode.None || dataCache.Id != 0)
 				{
 					if (
-						(cacheId != 0 && cacheMode == CacheMode.None)
-						|| (cacheMode != CacheMode.None && cacheId == 0)
+						(dataCache.Id != 0 && dataCache.Mode == CacheMode.None)
+						|| (dataCache.Mode != CacheMode.None && dataCache.Id == 0)
 					)
 					{
 						throw new Exception(
-							"Cache Error: Both cacheId and cacheMode must be set together."
+							"Cache Error: Both dataCache.Id and dataCache.Mode must be set together."
 						);
 					}
 					else
 					{
 						if (
-							cacheMode == (CacheMode.Global | CacheMode.New)
-							|| cacheMode
+							dataCache.Mode == (CacheMode.Global | CacheMode.New)
+							|| dataCache.Mode
 								== (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
 						)
 						{
 							Server.CACHES_APPEND_GLOBAL.Add(GetCache(message));
 						}
 						else if (
-							cacheMode == (CacheMode.Group | CacheMode.New)
-							|| cacheMode
+							dataCache.Mode == (CacheMode.Group | CacheMode.New)
+							|| dataCache.Mode
 								== (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
 						)
 						{
@@ -792,37 +789,37 @@ namespace Omni.Core
 							}
 						}
 						else if (
-							cacheMode == (CacheMode.Global | CacheMode.Overwrite)
-							|| cacheMode
+							dataCache.Mode == (CacheMode.Global | CacheMode.Overwrite)
+							|| dataCache.Mode
 								== (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
 						)
 						{
 							NetworkCache newCache = GetCache(message);
-							if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(cacheId))
+							if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(dataCache.Id))
 							{
-								Server.CACHES_OVERWRITE_GLOBAL[cacheId] = newCache;
+								Server.CACHES_OVERWRITE_GLOBAL[dataCache.Id] = newCache;
 							}
 							else
 							{
-								Server.CACHES_OVERWRITE_GLOBAL.Add(cacheId, newCache);
+								Server.CACHES_OVERWRITE_GLOBAL.Add(dataCache.Id, newCache);
 							}
 						}
 						else if (
-							cacheMode == (CacheMode.Group | CacheMode.Overwrite)
-							|| cacheMode
+							dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite)
+							|| dataCache.Mode
 								== (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
 						)
 						{
 							if (_group != null)
 							{
 								NetworkCache newCache = GetCache(message);
-								if (_group.CACHES_OVERWRITE.ContainsKey(cacheId))
+								if (_group.CACHES_OVERWRITE.ContainsKey(dataCache.Id))
 								{
-									_group.CACHES_OVERWRITE[cacheId] = newCache;
+									_group.CACHES_OVERWRITE[dataCache.Id] = newCache;
 								}
 								else
 								{
-									_group.CACHES_OVERWRITE.Add(cacheId, newCache);
+									_group.CACHES_OVERWRITE.Add(dataCache.Id, newCache);
 								}
 							}
 							else
@@ -834,24 +831,24 @@ namespace Omni.Core
 							}
 						}
 						else if (
-							cacheMode == (CacheMode.Peer | CacheMode.Overwrite)
-							|| cacheMode
+							dataCache.Mode == (CacheMode.Peer | CacheMode.Overwrite)
+							|| dataCache.Mode
 								== (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
 						)
 						{
 							NetworkCache newCache = GetCache(message);
-							if (sender.CACHES_OVERWRITE.ContainsKey(cacheId))
+							if (sender.CACHES_OVERWRITE.ContainsKey(dataCache.Id))
 							{
-								sender.CACHES_OVERWRITE[cacheId] = newCache;
+								sender.CACHES_OVERWRITE[dataCache.Id] = newCache;
 							}
 							else
 							{
-								sender.CACHES_OVERWRITE.Add(cacheId, newCache);
+								sender.CACHES_OVERWRITE.Add(dataCache.Id, newCache);
 							}
 						}
 						else if (
-							cacheMode == (CacheMode.Peer | CacheMode.New)
-							|| cacheMode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
+							dataCache.Mode == (CacheMode.Peer | CacheMode.New)
+							|| dataCache.Mode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
 						)
 						{
 							sender.CACHES_APPEND.Add(GetCache(message));
@@ -868,7 +865,7 @@ namespace Omni.Core
 			}
 
 			ReadOnlySpan<byte> message = PrepareServerMessageForSending(msgType, _data);
-			bool cacheIsEnabled = cacheMode != CacheMode.None || cacheId != 0;
+			bool cacheIsEnabled = dataCache.Mode != CacheMode.None || dataCache.Id != 0;
 
 			if (IsServerActive)
 			{
@@ -1213,8 +1210,7 @@ namespace Omni.Core
 						Target.Self,
 						DeliveryMode.ReliableOrdered,
 						0,
-						0,
-						CacheMode.None,
+						DataCache.None,
 						0
 					);
 
@@ -1527,8 +1523,7 @@ namespace Omni.Core
 									Target.Self,
 									DeliveryMode.ReliableOrdered,
 									0,
-									0,
-									CacheMode.None,
+									DataCache.None,
 									0
 								);
 							}
