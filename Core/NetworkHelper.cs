@@ -1,3 +1,6 @@
+using Newtonsoft.Json;
+using Omni.Core.Components;
+using Omni.Shared;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -6,9 +9,6 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Omni.Core.Components;
-using Omni.Shared;
 using UnityEngine;
 
 namespace Omni.Core
@@ -89,7 +89,9 @@ namespace Omni.Core
 			identity.Owner = peer;
 			identity.IsServer = isServer;
 			identity.IsLocalPlayer = isLocalPlayer;
+			identity.IsServerOwner = identity.Owner.Id == NetworkManager.Server.ServerPeer.Id;
 			identity._prefabName = prefab.name;
+			identity.name = $"{prefab.name}(On {(isServer ? "Server" : "Client")})";
 
 			NetworkBehaviour[] networkBehaviours =
 				identity.GetComponentsInChildren<NetworkBehaviour>(true);
@@ -108,32 +110,6 @@ namespace Omni.Core
 				networkBehaviour.OnAwake();
 			}
 
-#if UNITY_EDITOR || !UNITY_SERVER
-			identity.name = $"{prefab.name}(On {(isServer ? "Server" : "Client")})";
-			if (!isServer)
-			{
-				NetworkIsolate[] _ = identity.GetComponentsInChildren<NetworkIsolate>(true);
-				foreach (NetworkIsolate isolate in _)
-				{
-					UnityEngine.Object.Destroy(isolate);
-				}
-			}
-			else
-			{
-				NetworkIsolate[] _ = identity.GetComponentsInChildren<NetworkIsolate>(true);
-				foreach (NetworkIsolate isolate in _)
-				{
-					if (!isolate.DestroyOnInstantiate)
-					{
-						if (!IsDontDestroyOnLoad(identity.gameObject))
-						{
-							MonoBehaviour.DontDestroyOnLoad(identity.gameObject);
-						}
-					}
-				}
-			}
-#endif
-
 			var identities = isServer
 				? NetworkManager.Server.Identities
 				: NetworkManager.Client.Identities;
@@ -145,7 +121,7 @@ namespace Omni.Core
 				// Update the reference.....
 				identities[identity.IdentityId] = identity;
 
-				NetworkLogger.__Log__($"A NetworkIdentity with ID {identity.IdentityId} already exists. The old reference has been destroyed and replaced with the new one.",
+				NetworkLogger.__Log__($"A Identity with Id: '{identity.IdentityId}' already exists. The old reference has been destroyed and replaced with the new one.",
 					NetworkLogger.LogType.Warning);
 			}
 

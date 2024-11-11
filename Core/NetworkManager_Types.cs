@@ -1,5 +1,5 @@
-using System;
 using Newtonsoft.Json;
+using System;
 
 namespace Omni.Core
 {
@@ -23,6 +23,7 @@ namespace Omni.Core
 
 	internal class MessageType // not a enum to avoid casting
 	{
+		internal const byte RequestEntityAction = 239;
 		internal const byte SetOwner = 240;
 		internal const byte Destroy = 241;
 		internal const byte Spawn = 242;
@@ -198,31 +199,28 @@ namespace Omni.Core
 		ReliableSequenced
 	}
 
-	public class CacheOp
+	public class CachePresets
 	{
-		public const CacheMode PEER_NEW = CacheMode.Peer | CacheMode.New;
-		public const CacheMode PEER_NEW_DESTROY =
-			CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy;
+		// Peer-scoped cache operations
+		public const CacheMode PeerNew = CacheMode.Peer | CacheMode.New;
+		public const CacheMode PeerNewWithAutoDestroy = CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy;
 
-		public const CacheMode PEER_OVERWRITE = CacheMode.Peer | CacheMode.Overwrite;
-		public const CacheMode PEER_OVERWRITE_DESTROY =
-			CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy;
+		public const CacheMode PeerOverwrite = CacheMode.Peer | CacheMode.Overwrite;
+		public const CacheMode PeerOverwriteWithAutoDestroy = CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy;
 
-		public const CacheMode GROUP_NEW = CacheMode.Group | CacheMode.New;
-		public const CacheMode GROUP_NEW_DESTROY =
-			CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy;
+		// Group-scoped cache operations
+		public const CacheMode GroupNew = CacheMode.Group | CacheMode.New;
+		public const CacheMode GroupNewWithAutoDestroy = CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy;
 
-		public const CacheMode GROUP_OVERWRITE = CacheMode.Group | CacheMode.Overwrite;
-		public const CacheMode GROUP_OVERWRITE_DESTROY =
-			CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy;
+		public const CacheMode GroupOverwrite = CacheMode.Group | CacheMode.Overwrite;
+		public const CacheMode GroupOverwriteWithAutoDestroy = CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy;
 
-		public const CacheMode GLOBAL_NEW = CacheMode.Global | CacheMode.New;
-		public const CacheMode GLOBAL_NEW_DESTROY =
-			CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy;
+		// Global-scoped cache operations
+		public const CacheMode ServerNew = CacheMode.Global | CacheMode.New;
+		public const CacheMode ServerNewWithAutoDestroy = CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy;
 
-		public const CacheMode GLOBAL_OVERWRITE = CacheMode.Global | CacheMode.Overwrite;
-		public const CacheMode GLOBAL_OVERWRITE_DESTROY =
-			CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy;
+		public const CacheMode ServerOverwrite = CacheMode.Global | CacheMode.Overwrite;
+		public const CacheMode ServerOverwriteWithAutoDestroy = CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy;
 	}
 
 	[JsonObject(MemberSerialization.OptIn)]

@@ -1,13 +1,3 @@
-using System;
-using System.Buffers;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading;
 using MemoryPack;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,6 +10,16 @@ using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
 using Omni.Shared.Collections;
+using System;
+using System.Buffers;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -54,6 +54,8 @@ namespace Omni.Core
 		public static event Action<NetworkPeer, Phase> OnServerPeerDisconnected;
 		public static event Action OnClientConnected;
 		public static event Action<string> OnClientDisconnected;
+
+		public static event Action<NetworkIdentity> OnClientIdentitySpawned;
 
 		private static event Action<byte, DataBuffer, NetworkPeer, int> OnServerCustomMessage;
 		private static event Action<byte, DataBuffer, int> OnClientCustomMessage;
@@ -941,7 +943,7 @@ namespace Omni.Core
 								if (!peer.IsAuthenticated)
 								{
 									NetworkLogger.__Log__(
-										"Fatal: Server is trying to send a message to a peer that is not authenticated.",
+										"Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
 										NetworkLogger.LogType.Warning
 									);
 
@@ -1002,7 +1004,7 @@ namespace Omni.Core
 									if (!peer.IsAuthenticated)
 									{
 										NetworkLogger.__Log__(
-											"Fatal: Server is trying to send a message to a peer that is not authenticated.",
+											"Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
 											NetworkLogger.LogType.Warning
 										);
 
@@ -1030,7 +1032,7 @@ namespace Omni.Core
 								if (!peer.IsAuthenticated)
 								{
 									NetworkLogger.__Log__(
-										"Fatal: Server is trying to send a message to a peer that is not authenticated.",
+										"Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
 										NetworkLogger.LogType.Warning
 									);
 
@@ -1051,7 +1053,7 @@ namespace Omni.Core
 								if (!peer.IsAuthenticated)
 								{
 									NetworkLogger.__Log__(
-										"Fatal: Server is trying to send a message to a peer that is not authenticated.",
+										"Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
 										NetworkLogger.LogType.Warning
 									);
 
@@ -1730,6 +1732,18 @@ namespace Omni.Core
 								NetworkIdentity prefab = GetPrefab(prefabName);
 								prefab.SpawnOnClient(peerId, identityId);
 							}
+							else
+							{
+								int identityId = header.Read<int>();
+								if (
+									NetworkManager.Server.TryGetIdentity(
+										identityId,
+										out var identity
+									))
+								{
+									identity.OnSpawn?.Invoke();
+								}
+							}
 						}
 						break;
 					case MessageType.SetOwner:
@@ -1763,6 +1777,24 @@ namespace Omni.Core
 							{
 								int identityId = header.Read<int>();
 								NetworkHelper.Destroy(identityId, isServer);
+							}
+						}
+						break;
+					case MessageType.RequestEntityAction:
+						{
+							if (isServer)
+							{
+								int identityId = header.Read<int>();
+								using var message = EndOfHeader();
+
+								if (
+									NetworkManager.Server.TryGetIdentity(
+										identityId,
+										out var identity
+									))
+								{
+									identity.OnRequestAction?.Invoke(message);
+								}
 							}
 						}
 						break;
@@ -1864,13 +1896,25 @@ namespace Omni.Core
 		}
 
 		/// <summary>
+		/// Adds a prefab to the registration list.
+		/// </summary>
+		/// <param name="prefab"></param>
+		public static void AddPrefab(NetworkIdentity prefab)
+		{
+			if (Manager.m_Prefabs.Any(x => x != null && x.name == prefab.name))
+				return;
+
+			Manager.m_Prefabs.Add(prefab);
+		}
+
+		/// <summary>
 		/// Retrieves a prefab by its name.
 		/// </summary>
 		/// <param name="prefabName">The name of the prefab to retrieve.</param>
 		/// <returns>The prefab with the specified name.</returns>
 		public static NetworkIdentity GetPrefab(string prefabName)
 		{
-			return Manager.m_Prefabs.FirstOrDefault(x => x.name == prefabName)
+			return Manager.m_Prefabs.FirstOrDefault(x => x != null && x.name == prefabName)
 				?? throw new Exception(
 					$"Could not find prefab with name: \"{prefabName}\". Ensure the prefab is added to the registration list."
 				);

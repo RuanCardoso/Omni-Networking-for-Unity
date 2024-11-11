@@ -1,12 +1,12 @@
+using Omni.Core.Interfaces;
+using Omni.Core.Modules.Ntp;
+using Omni.Shared;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Omni.Core.Interfaces;
-using Omni.Core.Modules.Ntp;
-using Omni.Shared;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -726,22 +726,37 @@ namespace Omni.Core
 		protected internal virtual void OnStart() { }
 
 		/// <summary>
-		/// Called after the local player object is instantiated and becomes active on the client.
+		/// Called after the local player object is instantiated.
 		/// </summary>
 		/// <remarks>
 		/// Override this method to perform any initialization or setup specific to the local player
-		/// that needs to happen after it becomes active on the client.
 		/// </remarks>
 		protected internal virtual void OnStartLocalPlayer() { }
 
 		/// <summary>
-		/// Called after a remote player object is instantiated and becomes active on the client.
+		/// Called after a remote player object is instantiated.
 		/// </summary>
 		/// <remarks>
 		/// Override this method to perform any initialization or setup specific to remote players
-		/// that needs to happen after they become active on the client.
 		/// </remarks>
 		protected internal virtual void OnStartRemotePlayer() { }
+
+		/// <summary>
+		/// Called on the server once the client-side object has been fully spawned and registered. 
+		/// This method ensures that all initializations on the client have been completed before 
+		/// allowing the server to perform any post-spawn actions or setups specific to the client. 
+		/// 
+		/// Override this method to implement server-side logic that depends on the client object's 
+		/// full availability and readiness. Typical use cases may include initializing server-side 
+		/// resources linked to the client or sending initial data packets to the client after 
+		/// confirming it has been completely registered on the network.
+		/// </summary>
+		protected internal virtual void OnSpawned()
+		{
+			// Synchronizes all network variables with the client to ensure that the client has 
+			// the most up-to-date data from the server immediately after the spawning process.
+			SyncNetworkState();
+		}
 
 		/// <summary>
 		/// Called on each update tick.
@@ -775,6 +790,9 @@ namespace Omni.Core
 			{
 				NetworkManager.TickSystem.Register(this);
 			}
+
+			Identity.OnRequestAction += OnRequestedAction;
+			Identity.OnSpawn += OnSpawned;
 
 			NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
 			NetworkManager.OnSceneLoaded += OnSceneLoaded;
@@ -819,6 +837,9 @@ namespace Omni.Core
 				NetworkManager.TickSystem.Unregister(this);
 			}
 
+			Identity.OnRequestAction -= OnRequestedAction;
+			Identity.OnSpawn -= OnSpawned;
+
 			if (!Identity.Unregister(m_ServiceName))
 			{
 				NetworkLogger.__Log__(
@@ -829,6 +850,13 @@ namespace Omni.Core
 
 			OnDestroy();
 		}
+
+		/// <summary>
+		/// Invokes a remote action on the server-side entity, triggered by a client-side entity. 
+		/// This method should be overridden to define the specific action that will be performed 
+		/// by the server in response to a client request.
+		/// </summary>
+		protected virtual void OnRequestedAction(DataBuffer data) { }
 
 		protected virtual void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 		{

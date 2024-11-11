@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -12,6 +12,9 @@ namespace Omni.Core
 	public sealed class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
 	{
 		internal string _prefabName;
+		internal Action OnSpawn;
+		internal Action<DataBuffer> OnRequestAction;
+
 		private readonly Dictionary<string, object> m_Services = new(); // (Service Name, Service Instance) exclusively to identity
 
 		[SerializeField]
@@ -25,6 +28,10 @@ namespace Omni.Core
 		[SerializeField]
 		[ReadOnly]
 		private bool m_IsLocalPlayer;
+
+		[SerializeField]
+		[ReadOnly]
+		private bool isServerOwner;
 
 		public int IdentityId
 		{
@@ -43,8 +50,8 @@ namespace Omni.Core
 		public NetworkPeer Owner { get; internal set; }
 
 		/// <summary>
-		/// Indicates whether this object is obtained from the server or checked on the client.
-		/// True if the object is obtained from the server, false if it is checked on the client.
+		/// Indicates whether this object is obtained from the server side or checked on the client side.
+		/// True if the object is obtained from the server side, false if it is checked on the client side.
 		/// </summary>
 		public bool IsServer
 		{
@@ -53,9 +60,9 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Gets a value indicating whether this instance is on the client.
+		/// Gets a value indicating whether this instance is on the client side.
 		/// </summary>
-		/// <value><c>true</c> if this instance is on the client; otherwise, <c>false</c>.</value>
+		/// <value><c>true</c> if this instance is on the client side; otherwise, <c>false</c>.</value>
 		public bool IsClient => !IsServer;
 
 		/// <summary>
@@ -73,6 +80,15 @@ namespace Omni.Core
 		public bool IsRegistered
 		{
 			get { return Owner != null && m_Id != 0; }
+		}
+
+		/// <summary>
+		/// Indicates whether this identity is owned by the server.
+		/// </summary>
+		public bool IsServerOwner
+		{
+			get { return isServerOwner; }
+			internal set { isServerOwner = value; }
 		}
 
 		/// <summary>
@@ -551,6 +567,23 @@ namespace Omni.Core
 					$"Only server can set the owner of the game object -> '{name}'."
 				);
 			}
+		}
+
+		/// <summary>
+		/// Invokes a remote action on the server-side entity, triggered by a client-side entity. 
+		/// </summary>
+		public void RequestAction(DataBuffer data = default, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
+		{
+			if (IsServer)
+			{
+				throw new NotSupportedException("Only the client can request this action. Obs: Invokes a remote action on the server-side entity, triggered by a client-side entity.");
+			}
+
+			data ??= DataBuffer.Empty;
+			using var message = NetworkManager.Pool.Rent();
+			message.Write(m_Id);
+			message.RawWrite(data.BufferAsSpan);
+			NetworkManager.Client.SendMessage(MessageType.RequestEntityAction, message, deliveryMode, sequenceChannel);
 		}
 
 		public override bool Equals(object obj)

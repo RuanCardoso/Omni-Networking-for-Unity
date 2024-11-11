@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using Omni.Shared;
 
 namespace Omni.Core
 {
@@ -71,11 +70,14 @@ namespace Omni.Core
 		)
 		{
 			bool isLocalPlayer = LocalPeer.Id == peerId;
-			NetworkIdentity @obj = NetworkHelper.Instantiate(prefab, LocalPeer, identityId, false, isLocalPlayer);
+			NetworkIdentity @obj = NetworkHelper.Instantiate(prefab, peerId != 0 ? LocalPeer : Server.ServerPeer, identityId, false, isLocalPlayer);
 			if (isLocalPlayer && (prefab.name.Contains("Player") || prefab.tag.Contains("Player")))
 			{
 				NetworkIdentity.LocalPlayer = @obj;
 			}
+
+			// Notify the server that this identity has been spawned on the client side.
+			Client.SendSpawnNotification(@obj);
 			return @obj;
 		}
 

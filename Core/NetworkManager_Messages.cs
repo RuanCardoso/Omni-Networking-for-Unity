@@ -1,12 +1,12 @@
+using Omni.Core.Cryptography;
+using Omni.Core.Interfaces;
+using Omni.Shared;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
-using Omni.Core.Cryptography;
-using Omni.Core.Interfaces;
-using Omni.Shared;
 
 namespace Omni.Core
 {
@@ -69,22 +69,16 @@ namespace Omni.Core
 			internal static string RsaServerPublicKey { get; set; }
 
 			internal static Dictionary<int, NetworkGroup> Groups { get; } = new();
-			internal static Dictionary<int, NetworkIdentity> Identities { get; } = new();
 			internal static Dictionary<int, IInvokeMessage> GlobalEventBehaviours { get; } = new(); // int: identifier(identity id)
-			internal static Dictionary<(int, byte), IInvokeMessage> LocalEventBehaviours { get; } =
-				new();
+			internal static Dictionary<(int, byte), IInvokeMessage> LocalEventBehaviours { get; } = new();
 
+			public static Dictionary<int, NetworkIdentity> Identities { get; } = new();
 			public static Dictionary<int, NetworkPeer> Peers { get; } = new();
 
 			public static event Action<byte, DataBuffer, int> OnMessage
 			{
 				add => OnClientCustomMessage += value;
 				remove => OnClientCustomMessage -= value;
-			}
-
-			public static Dictionary<int, NetworkIdentity> GetIdentities()
-			{
-				return Identities;
 			}
 
 			public static NetworkIdentity GetIdentity(int identityId)
@@ -263,6 +257,15 @@ namespace Omni.Core
 				{
 					GlobalEventBehaviours[identityId] = behaviour;
 				}
+			}
+
+			internal static void SendSpawnNotification(NetworkIdentity identity)
+			{
+				// Notifies the server that the spawn has completed.
+				using var message = Pool.Rent();
+				message.Write(identity.IdentityId);
+				SendMessage(MessageType.Spawn, message, DeliveryMode.ReliableOrdered, 0);
+				OnClientIdentitySpawned?.Invoke(identity);
 			}
 		}
 
@@ -779,7 +782,7 @@ namespace Omni.Core
 			/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 			/// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
 			/// <param name="sendMyOwnCacheToMe">A flag indicating whether to send the cache data to the originating peer (optional, default is false).</param>
-			public static void SendPeerCache(
+			internal static void Internal_SendPeerCache(
 				NetworkPeer fromPeer,
 				NetworkPeer toPeer,
 				DataCache dataCache,
@@ -797,13 +800,13 @@ namespace Omni.Core
 			}
 
 			/// <summary>
-			/// Sends cached data to a specified network peer based on the provided cache mode and cache ID.
+			/// Sends cached data to a specified network peer based on the provided data cache.
 			/// </summary>
 			/// <param name="peer">The network peer to whom the cache data will be sent.</param>
 			/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 			/// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
 			/// <param name="sendMyOwnCacheToMe">A flag indicating whether to send the cache data to the originating peer (optional, default is false).</param>
-			public static void SendCache(
+			internal static void Internal_SendCache(
 				NetworkPeer peer,
 				DataCache dataCache,
 				int groupId = 0,
