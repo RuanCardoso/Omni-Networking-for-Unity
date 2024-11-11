@@ -135,7 +135,6 @@ namespace Omni.Core
 		// never override this method!
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		[Obsolete("Don't override this method! The source generator will override it.")]
-		[Conditional("UNITY_EDITOR")]
 		protected virtual void ___NotifyChange___() { }
 
 		/// <summary>
@@ -157,9 +156,12 @@ namespace Omni.Core
 		{ }
 
 		/// <summary>
-		/// Synchronizes all network variables, notifying any registered listeners of changes.
+		/// Synchronizes the current state of all network variables and other relevant states, 
+		/// ensuring that any updates are transmitted to connected clients. This method triggers 
+		/// notifications for registered listeners, allowing clients to receive and apply the 
+		/// latest server-side data and changes.
 		/// </summary>
-		protected void SyncAllNetworkVariables()
+		protected void SyncNetworkState()
 		{
 			___NotifyChange___();
 		}
