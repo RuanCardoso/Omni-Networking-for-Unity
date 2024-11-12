@@ -4,31 +4,7 @@ using UnityEngine;
 
 namespace Omni.Core.Components
 {
-	public sealed class SetupOnSpawn : NetworkBehaviour
-	{
-		protected internal override void OnAwake()
-		{
-			bool m_Enabled = true;
-			//if (TryGetComponent<NetworkIsolate>(out var isolate) && IsServer)
-			//{
-			//	m_Enabled = !isolate.DisableRenderer;
-			//}
-
-			Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
-			foreach (Renderer renderer in renderers)
-			{
-				renderer.enabled = m_Enabled;
-			}
-
-			NetworkBehaviour[] behaviours = GetComponentsInChildren<NetworkBehaviour>(true);
-			foreach (NetworkBehaviour behaviour in behaviours)
-			{
-				behaviour.enabled = true;
-			}
-		}
-	}
-
-	public sealed class NetworkObjectSpawn : DualBehaviour
+	public sealed class NetworkObjectSpawn : ServerBehaviour
 	{
 		[SerializeField]
 		private NetworkIdentity m_LocalPlayer;
@@ -93,20 +69,9 @@ namespace Omni.Core.Components
 			bool isPrefab = obj.scene.name == null || obj.scene.name.ToLower() == "null";
 			if (!isPrefab)
 			{
-				Renderer[] renderers = obj.GetComponentsInChildren<Renderer>(true);
-				foreach (Renderer renderer in renderers)
-				{
-					renderer.enabled = false;
-				}
-
-				NetworkBehaviour[] behaviours = obj.GetComponentsInChildren<NetworkBehaviour>(true);
-				foreach (NetworkBehaviour behaviour in behaviours)
-				{
-					behaviour.enabled = false;
-				}
-
+				// Disable the original scene object, enabled after instantiation.
+				obj.SetActive(false);
 				obj.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
-				obj.AddComponent<SetupOnSpawn>();
 			}
 		}
 
