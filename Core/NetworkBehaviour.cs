@@ -1020,17 +1020,25 @@ namespace Omni.Core
 
 		public override bool Equals(object obj)
 		{
-			if (obj is NetworkBehaviour other)
+			if (Application.isPlaying)
 			{
-				return Equals(other);
+				if (obj is NetworkBehaviour other)
+				{
+					return Equals(other);
+				}
 			}
 
-			return false;
+			return base.Equals(obj);
 		}
 
 		public override int GetHashCode()
 		{
-			return HashCode.Combine(IdentityId, m_Id, IsServer);
+			if (Application.isPlaying && _identity != null)
+			{
+				return HashCode.Combine(IdentityId, m_Id, IsServer);
+			}
+
+			return base.GetHashCode();
 		}
 
 		public bool Equals(NetworkBehaviour other)
