@@ -23,13 +23,13 @@ using static Omni.Core.NetworkManager;
 namespace Omni.Core
 {
 	/// <summary>
-	/// The HttpLite class serves as a container for HTTP simulation functionalities.
+	/// The RouteX class serves as a container for HTTP simulation functionalities.
 	/// It provides an inner implementation, which is responsible for simulating
 	/// HTTP GET and POST requests similar to Express.js through the transporter(Sockets).
 	/// </summary>
-	public static class HttpLite
+	public static class RouteX
 	{
-		public class HttpFetch
+		public class RouteXClient
 		{
 			private int m_RouteId = 1;
 			internal readonly Dictionary<int, UniTaskCompletionSource<DataBuffer>> m_Tasks = new();
@@ -186,7 +186,7 @@ namespace Omni.Core
 				message.SuppressTracking();
 				await callback(message);
 
-				if (UseSecureHttpLite)
+				if (UseSecureRouteX)
 				{
 					message.EncryptRaw(SharedPeer);
 				}
@@ -229,7 +229,7 @@ namespace Omni.Core
 				using var message = Pool.Rent();
 				callback(message);
 
-				if (UseSecureHttpLite)
+				if (UseSecureRouteX)
 				{
 					message.EncryptRaw(SharedPeer);
 				}
@@ -304,7 +304,7 @@ namespace Omni.Core
 			}
 		}
 
-		public class HttpExpress
+		public class RouteXServer
 		{
 			internal readonly Dictionary<string, Func<DataBuffer, NetworkPeer, UniTask>> m_g_Tasks =
 				new(); // Get tasks async
@@ -463,13 +463,13 @@ namespace Omni.Core
 		/// <summary>
 		/// Provides methods to simulate HTTP GET and POST requests on the client side.
 		/// </summary>
-		public static HttpFetch Fetch { get; } = new();
+		public static RouteXClient XClient { get; } = new();
 
 		/// <summary>
 		/// Handles asynchronous GET and POST requests by maintaining lists of routes on the server side.
 		/// and their associated callback functions, simulating an Express.js-like behavior.
 		/// </summary>
-		public static HttpExpress Http { get; } = new();
+		public static RouteXServer XServer { get; } = new();
 
 		internal static void Initialize()
 		{
@@ -490,7 +490,7 @@ namespace Omni.Core
 			if (msgId == MessageType.HttpGetFetchAsync)
 			{
 				if (
-					Http.m_g_Tasks.TryGetValue(
+					XServer.m_g_Tasks.TryGetValue(
 						routeName,
 						out Func<DataBuffer, NetworkPeer, UniTask> asyncCallback
 					)
@@ -502,7 +502,7 @@ namespace Omni.Core
 					Send(MessageType.HttpGetResponseAsync, response);
 				}
 				else if (
-					Http.m_Tasks.TryGetValue(
+					XServer.m_Tasks.TryGetValue(
 						routeName,
 						out Action<DataBuffer, NetworkPeer> callback
 					)
@@ -523,7 +523,7 @@ namespace Omni.Core
 			else if (msgId == MessageType.HttpPostFetchAsync)
 			{
 				if (
-					Http.m_p_Tasks.TryGetValue(
+					XServer.m_p_Tasks.TryGetValue(
 						routeName,
 						out Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> asyncCallback
 					)
@@ -534,7 +534,7 @@ namespace Omni.Core
 					request.Write(buffer.Internal_GetSpan(buffer.Length));
 					request.SeekToBegin();
 
-					if (UseSecureHttpLite)
+					if (UseSecureRouteX)
 					{
 						request.DecryptRaw(SharedPeer);
 					}
@@ -546,7 +546,7 @@ namespace Omni.Core
 					Send(MessageType.HttpPostResponseAsync, response);
 				}
 				else if (
-					Http.m_a_Tasks.TryGetValue(
+					XServer.m_a_Tasks.TryGetValue(
 						routeName,
 						out Action<DataBuffer, DataBuffer, NetworkPeer> callback
 					)
@@ -556,7 +556,7 @@ namespace Omni.Core
 					request.Write(buffer.Internal_GetSpan(buffer.Length));
 					request.SeekToBegin();
 
-					if (UseSecureHttpLite)
+					if (UseSecureRouteX)
 					{
 						request.DecryptRaw(SharedPeer);
 					}
@@ -576,7 +576,7 @@ namespace Omni.Core
 
 			void Send(byte msgId, DataBuffer response)
 			{
-				if (UseSecureHttpLite)
+				if (UseSecureRouteX)
 				{
 					// Let's just encrypt the response without including the header.
 					response.EncryptRaw(SharedPeer);
@@ -646,14 +646,14 @@ namespace Omni.Core
 				string routeName = buffer.ReadString();
 				int routeId = buffer.Internal_Read();
 
-				if (Fetch.m_Tasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source))
+				if (XClient.m_Tasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source))
 				{
 					var message = Pool.Rent(); // Disposed by the caller!
 					message.Write(buffer.Internal_GetSpan(buffer.Length));
 					message.SeekToBegin();
 
 					// Set task as completed
-					if (UseSecureHttpLite)
+					if (UseSecureRouteX)
 					{
 						message.DecryptRaw(SharedPeer);
 					}
@@ -665,7 +665,7 @@ namespace Omni.Core
 					eventMessage.Write(buffer.Internal_GetSpan(buffer.Length));
 					eventMessage.SeekToBegin();
 
-					if (UseSecureHttpLite)
+					if (UseSecureRouteX)
 					{
 						eventMessage.DecryptRaw(SharedPeer);
 					}
@@ -673,7 +673,7 @@ namespace Omni.Core
 					if (msgId == MessageType.HttpGetResponseAsync)
 					{
 						if (
-							Fetch.m_Events.TryGetValue(
+							XClient.m_Events.TryGetValue(
 								(routeName, 0),
 								out Action<DataBuffer> callback
 							)
@@ -685,7 +685,7 @@ namespace Omni.Core
 					else if (msgId == MessageType.HttpPostResponseAsync)
 					{
 						if (
-							Fetch.m_Events.TryGetValue(
+							XClient.m_Events.TryGetValue(
 								(routeName, 1),
 								out Action<DataBuffer> callback
 							)

@@ -330,7 +330,7 @@ namespace Omni.Core
 			// This module should be initialized last, as it needs the other modules to be initialized.
 			if (m_Connection)
 			{
-				HttpLite.Initialize();
+				RouteX.Initialize();
 				InitializeModule(Module.Connection);
 			}
 

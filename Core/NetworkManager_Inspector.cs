@@ -141,7 +141,7 @@ namespace Omni.Core
 		private bool m_UseUtf8 = false;
 
 		[SerializeField]
-		private bool m_UseSecureHttpLite = false;
+		private bool m_UseSecureRouteX = false;
 
 		[SerializeField]
 		private bool m_UseBinarySerialization = false;
@@ -177,7 +177,7 @@ namespace Omni.Core
 
 		internal static bool MatchmakingModuleEnabled => Manager.m_MatchModule;
 		internal static bool TickSystemModuleEnabled => Manager.m_TickModule;
-		internal static bool UseSecureHttpLite => Manager.m_UseSecureHttpLite;
+		internal static bool UseSecureRouteX => Manager.m_UseSecureRouteX;
 
 		public static int ServerListenPort => Manager.m_ServerListenPort;
 		public static int ClientListenPort => Manager.m_ClientListenPort;
