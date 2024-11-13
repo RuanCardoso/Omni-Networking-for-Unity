@@ -166,5 +166,71 @@ namespace Omni.Core
 		{
 			return hit.transform.root.GetComponent<NetworkIdentity>();
 		}
+
+		/// <summary>
+		/// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
+		/// impacted by the 2D raycast hit.
+		/// </summary>
+		/// <returns>
+		/// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
+		/// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
+		/// </returns>
+		public static NetworkIdentity GetIdentity(this Collision hit)
+		{
+			return hit.transform.root.GetComponent<NetworkIdentity>();
+		}
+
+		/// <summary>
+		/// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
+		/// impacted by the 2D raycast hit.
+		/// </summary>
+		/// <returns>
+		/// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
+		/// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
+		/// </returns>
+		public static NetworkIdentity GetIdentity(this Collider hit)
+		{
+			return hit.transform.root.GetComponent<NetworkIdentity>();
+		}
+
+		/// <summary>
+		/// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
+		/// impacted by the 2D raycast hit.
+		/// </summary>
+		/// <returns>
+		/// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
+		/// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
+		/// </returns>
+		public static NetworkIdentity GetIdentity(this Collision2D hit)
+		{
+			return hit.transform.root.GetComponent<NetworkIdentity>();
+		}
+
+		/// <summary>
+		/// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
+		/// impacted by the 2D raycast hit.
+		/// </summary>
+		/// <returns>
+		/// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
+		/// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
+		/// </returns>
+		public static NetworkIdentity GetIdentity(this Collider2D hit)
+		{
+			return hit.transform.root.GetComponent<NetworkIdentity>();
+		}
+
+		/// <summary>
+		/// Scales the input value by the specified multiplier and <see cref="Time.deltaTime"/>.
+		/// </summary>
+		/// <param name="input">The initial value to be scaled.</param>
+		/// <param name="multiplier">Multiplier applied to the input.</param>
+		/// <returns>The input value scaled over time.</returns>
+		/// <remarks>
+		/// Useful for making transformations consistent across frame rates.
+		/// </remarks>
+		public static float ScaleDelta(this float input, float multiplier)
+		{
+			return input * multiplier * Time.deltaTime;
+		}
 	}
 }

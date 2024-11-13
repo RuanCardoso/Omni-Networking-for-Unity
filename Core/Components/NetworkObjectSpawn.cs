@@ -66,8 +66,7 @@ namespace Omni.Core.Components
 
 		private void DisableSceneObject(GameObject obj)
 		{
-			bool isPrefab = obj.scene.name == null || obj.scene.name.ToLower() == "null";
-			if (!isPrefab)
+			if (!NetworkHelper.IsPrefab(obj))
 			{
 				// Disable the original scene object, enabled after instantiation.
 				obj.SetActive(false);

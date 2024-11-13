@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using Omni.Core.Components;
 using Omni.Shared;
 using System;
 using System.Diagnostics;
@@ -125,10 +124,13 @@ namespace Omni.Core
 					NetworkLogger.LogType.Warning);
 			}
 
-			prefab.gameObject.SetActive(true); // After registration, enable the prefab again.
-			identity.gameObject.SetActive(true); // Enable instantiated object!
+			if (IsPrefab(prefab.gameObject))
+			{
+				prefab.gameObject.SetActive(true); // After registration, enable the prefab again.
+			}
 
-			// After Start
+			identity.gameObject.SetActive(true); // Enable instantiated object!
+												 // After Start
 			foreach (var behaviour in networkBehaviours)
 			{
 				behaviour.OnStart();
@@ -265,6 +267,16 @@ namespace Omni.Core
 			GameObject root = gameObject.transform.root.gameObject;
 			return root.scene.name == "DontDestroyOnLoad"
 				|| root.TryGetComponent<NetworkManager>(out _);
+		}
+
+		/// <summary>
+		/// Checks if the given GameObject is a prefab.
+		/// </summary>
+		/// <param name="obj">The GameObject to check.</param>
+		/// <returns>True if the GameObject is a prefab, false otherwise.</returns>
+		public static bool IsPrefab(GameObject obj)
+		{
+			return obj.scene.name == null || obj.scene.name.ToLower() == "null";
 		}
 
 		/// <summary>
