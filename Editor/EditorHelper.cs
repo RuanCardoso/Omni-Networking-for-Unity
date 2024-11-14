@@ -24,7 +24,7 @@ namespace Omni.Editor
             }
         }
 
-        private static List<string> GetDefines()
+        internal static List<string> GetDefines()
         {
             return PlayerSettings
                 .GetScriptingDefineSymbols(GetCurrentNamedBuildTarget())

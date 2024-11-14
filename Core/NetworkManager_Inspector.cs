@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Text;
 using Omni.Core.Attributes;
 using UnityEngine;
 #if OMNI_DEBUG
@@ -45,6 +44,10 @@ namespace Omni.Core
 		private static Dictionary<int, NetworkGroup> GroupsById { get; } = new();
 		private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
 		private static Dictionary<int, NetworkPeer> PeersById { get; } = new();
+
+		[SerializeField]
+		[ReadOnly]
+		private string m_CurrentVersion = "v2.0.9";
 
 		[SerializeField]
 		[Label("Public IPv4")]

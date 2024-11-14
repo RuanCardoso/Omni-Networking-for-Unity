@@ -1,6 +1,6 @@
 #if UNITY_EDITOR
-using System.IO;
 using Newtonsoft.Json;
+using System.IO;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -20,7 +20,7 @@ namespace Omni.Editor
 			IActiveBuildTargetChanged,
 			IPreprocessBuildWithReport
 	{
-		private const string OMNI_VERSION = "2.0.8"; // VERY VERY IMPORTANT!
+		private const string OMNI_VERSION = "2.0.9"; // VERY VERY IMPORTANT!
 		public int callbackOrder => 0;
 
 		public void OnPreprocessBuild(BuildReport report)
@@ -97,7 +97,10 @@ namespace Omni.Editor
 			{
 				if (EditorHelper.SetDefines(false))
 				{
-					using FileStream _ = File.Create(fileName);
+					using FileStream fileStream = File.Create(fileName);
+					using StreamWriter writer = new(fileStream);
+					writer.Write(string.Join("\n", EditorHelper.GetDefines()));
+					// Warn the user that the macros have been imported.
 					ShowDialog();
 				}
 			}
