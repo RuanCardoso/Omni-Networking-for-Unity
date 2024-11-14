@@ -42,7 +42,13 @@ namespace Omni.Core
 		public static double ClockTime =>
 			UseTickTiming ? TickSystem.ElapsedTicks : _stopwatch.Elapsed.TotalSeconds; // does not depend on frame rate.
 
+		/// <summary>
+		/// Gets the ID of the main thread.
+		/// </summary>
 		public static int MainThreadId { get; private set; }
+		/// <summary>
+		/// Gets the pool of <see cref="DataBuffer"/> instances. This pool is used to allocate and deallocate <see cref="DataBuffer"/> instances.
+		/// </summary>
 		public static IObjectPooling<DataBuffer> Pool { get; private set; }
 
 		public static event Action<Scene, LoadSceneMode> OnSceneLoaded;
@@ -409,6 +415,11 @@ namespace Omni.Core
 			System.Console.Write("\n");
 		}
 
+		/// <summary>
+		/// Initializes a network module based on the provided module type.
+		/// </summary>
+		/// <param name="module">The type of module to initialize.</param>
+		/// <returns>None</returns>
 		public static void InitializeModule(Module module)
 		{
 			NetworkHelper.EnsureRunningOnMainThread();
@@ -1989,6 +2000,12 @@ namespace Omni.Core
 			return MemoryPackSerializer.Deserialize<T>(data, settings);
 		}
 
+		/// <summary>
+		/// Splits the provided data into blocks of a specified size.
+		/// </summary>
+		/// <param name="data">The data to be split.</param>
+		/// <param name="blockSize">The size of each block. Defaults to 128.</param>
+		/// <returns>A list of byte arrays, each representing a block of the original data.</returns>
 		public static List<byte[]> Split(ReadOnlySpan<byte> data, int blockSize = 128)
 		{
 			if (data.Length <= blockSize)

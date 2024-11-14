@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Omni.Core.Components
 {
-	public sealed class NetworkObjectSpawn : ServerBehaviour
+	public sealed class NetworkObjectSpawner : ServerBehaviour
 	{
 		[SerializeField]
 		private NetworkIdentity m_LocalPlayer;

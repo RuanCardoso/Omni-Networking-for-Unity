@@ -75,6 +75,9 @@ namespace Omni.Core
 			public static Dictionary<int, NetworkIdentity> Identities { get; } = new();
 			public static Dictionary<int, NetworkPeer> Peers { get; } = new();
 
+			/// <summary>
+			/// Represents an event that is triggered when a message is received.
+			/// </summary>
 			public static event Action<byte, DataBuffer, int> OnMessage
 			{
 				add => OnClientCustomMessage += value;
@@ -339,6 +342,12 @@ namespace Omni.Core
 				}
 			}
 
+			/// <summary>
+			/// Attempts to retrieve a NetworkIdentity instance by its unique identity ID.
+			/// </summary>
+			/// <param name="identityId">The unique ID of the NetworkIdentity to retrieve.</param>
+			/// <param name="identity">The retrieved NetworkIdentity instance, or null if not found.</param>
+			/// <returns>True if the NetworkIdentity was found, false otherwise.</returns>
 			public static bool TryGetIdentity(int identityId, out NetworkIdentity identity)
 			{
 				return Identities.TryGetValue(identityId, out identity);
@@ -1057,6 +1066,11 @@ namespace Omni.Core
 				}
 			}
 
+			/// <summary>
+			/// Deletes a cache based on the provided data cache and group ID.
+			/// </summary>
+			/// <param name="dataCache">The data cache to be deleted.</param>
+			/// <param name="groupId">The ID of the group to which the cache belongs (optional, default is 0).</param>
 			public static void DeleteCache(DataCache dataCache, int groupId = 0)
 			{
 				if (dataCache.Mode != CacheMode.None || dataCache.Id != 0)
@@ -1145,6 +1159,12 @@ namespace Omni.Core
 				}
 			}
 
+			/// <summary>
+			/// Deletes a cache based on the provided data cache and network peer.
+			/// </summary>
+			/// <param name="dataCache">The data cache to be deleted.</param>
+			/// <param name="peer">The network peer associated with the cache.</param>
+			/// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
 			public static void DeleteCache(
 				DataCache dataCache,
 				NetworkPeer peer,
@@ -1254,6 +1274,10 @@ namespace Omni.Core
 				}
 			}
 
+			/// <summary>
+			/// Destroys all caches associated with the specified network peer.
+			/// </summary>
+			/// <param name="peer">The network peer for which to destroy all caches.</param>
 			public static void DestroyAllCaches(NetworkPeer peer)
 			{
 				CACHES_APPEND_GLOBAL.RemoveAll(x => x.Peer.Id == peer.Id && x.AutoDestroyCache);
@@ -1273,6 +1297,9 @@ namespace Omni.Core
 				}
 			}
 
+			/// <summary>
+			/// Clears all global caches.
+			/// </summary>
 			public static void ClearCaches()
 			{
 				CACHES_APPEND_GLOBAL.Clear();
