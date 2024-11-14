@@ -895,6 +895,15 @@ namespace Omni.Core
 			}
 		}
 
+		/// <summary>
+		/// Rents a data buffer from the network manager's pool. The caller must ensure the buffer is disposed or used within a using statement.
+		/// </summary>
+		/// <returns>A rented data buffer.</returns>
+		protected DataBuffer Rent()
+		{
+			return NetworkManager.Pool.Rent();
+		}
+
 		private void TryClientLocate(byte msgId, DataBuffer buffer, int seqChannel)
 		{
 			if (cInvoker.Exists(msgId, out int argsCount))

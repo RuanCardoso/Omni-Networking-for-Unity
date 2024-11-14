@@ -77,7 +77,16 @@ namespace Omni.Core
         /// </summary>
         protected virtual void OnStop() { }
 
-        protected virtual void Reset()
+		/// <summary>
+		/// Rents a data buffer from the network manager's pool. The caller must ensure the buffer is disposed or used within a using statement.
+		/// </summary>
+		/// <returns>A rented data buffer.</returns>
+		protected DataBuffer Rent()
+		{
+			return NetworkManager.Pool.Rent();
+		}
+
+		protected virtual void Reset()
         {
             OnValidate();
         }
