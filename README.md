@@ -4,3 +4,5 @@
 ### Doc
 
 https://ruancardoso.github.io/Omni-Networking-Doc/
+
+Developed by Ruan Cardoso and Antonio Junior
