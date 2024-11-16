@@ -1,8 +1,19 @@
-- Network API, construído e desenvolvido para grandes jogos escaláveis.
-- MIT, projeto usado para o desenvolvimento de Super Teams, porém não é de exlusividade para Super Teams, projeto livre para uso e desenvolvimento em quaisquer jogos.
+OmniNet - Networking at the Subatomic Level in Unity.
 
-### Doc
+<img src="omniman.png" alt="omniman" width="400" height="400">
+
+---
+
+# OmniNet - A Unity Framework for Multiplayer Game Development
+
+OmniNet is a Unity framework created with a strong focus on achieving high-performance in the development of multiplayer games.
+
+**Requirements**: OmniNet requires Unity version 2021.3 or later. This dependency arises from Unity's integration of .NET Standard 2.1, which enhances Network Socket capabilities and introduces valuable features such as Span, Memory, ArrayPool, and more. I decided to leverage these new features to create a high-performance networking framework.
+
+# Documentation
 
 https://ruancardoso.github.io/Omni-Networking-Doc/
+
+---
 
 Developed by Ruan Cardoso and Antonio Junior
