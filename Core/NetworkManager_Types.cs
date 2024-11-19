@@ -23,6 +23,7 @@ namespace Omni.Core
 
 	internal class MessageType // not a enum to avoid casting
 	{
+		internal const byte KCP_PING_REQUEST_RESPONSE = 238;
 		internal const byte RequestEntityAction = 239;
 		internal const byte SetOwner = 240;
 		internal const byte Destroy = 241;

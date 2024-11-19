@@ -1,13 +1,13 @@
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
 using kcp2k;
 using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
 using Omni.Shared;
+using Omni.Threading.Tasks;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using UnityEngine;
 
 //// EXPERIMENTAL
@@ -16,414 +16,440 @@ using UnityEngine;
 // kcp2k forked from: https://github.com/MirrorNetworking/kcp2k - fork was ported to .net standard 2.1 [Span<T>, Memory<T>, ArrayPool<T>, etc..] thanks..
 namespace Omni.Core.Modules.Connection
 {
-    [DefaultExecutionOrder(-1100)]
-    [DisallowMultipleComponent]
-    [AddComponentMenu("Omni/Transporters/Kcp Transporter")]
-    internal class KcpTransporter : TransporterBehaviour, ITransporter
-    {
-        private const int MTU = Kcp.MTU_DEF;
+	[DefaultExecutionOrder(-1100)]
+	[DisallowMultipleComponent]
+	[AddComponentMenu("Omni/Transporters/Kcp Transporter")]
+	internal class KcpTransporter : TransporterBehaviour, ITransporter
+	{
+		private const double PING_TIME_PRECISION = 0.025d;
+		private const int MTU = Kcp.MTU_DEF;
 
-        [Tooltip(
-            "DualMode listens to IPv6 and IPv4 simultaneously. Disable if the platform only supports IPv4."
-        )]
-        [SerializeField]
-        private bool m_DualMode = false;
+		private readonly SimpleMovingAverage m_PingAvg = new(10);
 
-        [Tooltip(
-            "NoDelay is recommended to reduce latency. This also scales better without buffers getting full."
-        )]
-        [SerializeField]
-        private bool m_NoDelay = true;
+		[Tooltip(
+			"DualMode listens to IPv6 and IPv4 simultaneously. Disable if the platform only supports IPv4."
+		)]
+		[SerializeField]
+		private bool m_DualMode = false;
 
-        [Tooltip(
-            "KCP internal update interval. 100ms is KCP default, but a lower interval is recommended to minimize latency and to scale to more networked entities."
-        )]
-        [SerializeField]
-        private uint m_Interval = 10;
+		[Tooltip(
+			"NoDelay is recommended to reduce latency. This also scales better without buffers getting full."
+		)]
+		[SerializeField]
+		private bool m_NoDelay = true;
 
-        [Tooltip("KCP timeout in milliseconds. Note that KCP sends a ping automatically.")]
-        [SerializeField]
-        private int m_Timeout = 10000;
+		[Tooltip(
+			"KCP internal update interval. 100ms is KCP default, but a lower interval is recommended to minimize latency and to scale to more networked entities."
+		)]
+		[SerializeField]
+		private uint m_Interval = 10;
 
-        [Tooltip(
-            "Socket receive buffer size. Large buffer helps support more connections. Increase operating system socket buffer size limits if needed."
-        )]
-        [SerializeField]
-        private int m_RecvBufferSize = 1024 * 1027 * 7;
+		[Tooltip("KCP timeout in milliseconds. Note that KCP sends a ping automatically.")]
+		[SerializeField]
+		private int m_Timeout = 10000;
 
-        [Tooltip(
-            "Socket send buffer size. Large buffer helps support more connections. Increase operating system socket buffer size limits if needed."
-        )]
-        [SerializeField]
-        private int m_SendBufferSize = 1024 * 1027 * 7;
+		[Tooltip(
+			"Socket receive buffer size. Large buffer helps support more connections. Increase operating system socket buffer size limits if needed."
+		)]
+		[SerializeField]
+		private int m_RecvBufferSize = 1024 * 1027 * 7;
 
-        [Header("Advanced")]
-        [Tooltip(
-            "KCP fastresend parameter. Faster resend for the cost of higher bandwidth. 0 in normal mode, 2 in turbo mode."
-        )]
-        [SerializeField]
-        private int m_FastResend = 2;
+		[Tooltip(
+			"Socket send buffer size. Large buffer helps support more connections. Increase operating system socket buffer size limits if needed."
+		)]
+		[SerializeField]
+		private int m_SendBufferSize = 1024 * 1027 * 7;
 
-        [Tooltip(
-            "KCP window size can be modified to support higher loads. This also increases max message size."
-        )]
-        [SerializeField]
-        private uint m_ReceiveWindowSize = 4096; //Kcp.WND_RCV; 128 by default. Mirror sends a lot, so we need a lot more.
+		[Header("Advanced")]
+		[Tooltip(
+			"KCP fastresend parameter. Faster resend for the cost of higher bandwidth. 0 in normal mode, 2 in turbo mode."
+		)]
+		[SerializeField]
+		private int m_FastResend = 2;
 
-        [Tooltip("KCP window size can be modified to support higher loads.")]
-        [SerializeField]
-        private uint m_SendWindowSize = 4096; //Kcp.WND_SND; 32 by default. Mirror sends a lot, so we need a lot more.
+		[Tooltip(
+			"KCP window size can be modified to support higher loads. This also increases max message size."
+		)]
+		[SerializeField]
+		private uint m_ReceiveWindowSize = 4096; //Kcp.WND_RCV; 128 by default. sends a lot, so we need a lot more.
 
-        [Tooltip(
-            "KCP will try to retransmit lost messages up to MaxRetransmit (aka dead_link) before disconnecting."
-        )]
-        [SerializeField]
-        private uint m_MaxRetransmit = Kcp.DEADLINK * 2; // default prematurely disconnects a lot of people (#3022). use 2x.
+		[Tooltip("KCP window size can be modified to support higher loads.")]
+		[SerializeField]
+		private uint m_SendWindowSize = 4096; //Kcp.WND_SND; 32 by default. sends a lot, so we need a lot more.
 
-        [Tooltip(
-            "KCP congestion window. Restricts window size to reduce congestion. Results in only 2-3 MTU messages per Flush even on loopback. Best to keept his disabled."
-        )]
-        [SerializeField]
-        [ReadOnly]
-        private bool m_CongestionWindow = false; // KCP 'NoCongestionWindow' is false by default. here we negate it for ease of use.
+		[Tooltip(
+			"KCP will try to retransmit lost messages up to MaxRetransmit (aka dead_link) before disconnecting."
+		)]
+		[SerializeField]
+		private uint m_MaxRetransmit = Kcp.DEADLINK * 2; // default prematurely disconnects a lot of people (#3022). use 2x.
 
-        [Tooltip(
-            "Enable to automatically set client & server send/recv buffers to OS limit. Avoids issues with too small buffers under heavy load, potentially dropping connections. Increase the OS limit if this is still too small."
-        )]
-        [SerializeField]
-        private bool m_MaximizeSocketBuffers = true;
+		[Tooltip(
+			"KCP congestion window. Restricts window size to reduce congestion. Results in only 2-3 MTU messages per Flush even on loopback. Best to keept his disabled."
+		)]
+		[SerializeField]
+		[ReadOnly]
+		private bool m_CongestionWindow = false; // KCP 'NoCongestionWindow' is false by default. here we negate it for ease of use.
 
-        private KcpServer kcpServer;
-        private KcpClient kcpClient;
+		[Tooltip(
+			"Enable to automatically set client & server send/recv buffers to OS limit. Avoids issues with too small buffers under heavy load, potentially dropping connections. Increase the OS limit if this is still too small."
+		)]
+		[SerializeField]
+		private bool m_MaximizeSocketBuffers = true;
 
-        private bool isServer;
-        private bool isRunning;
+		private KcpServer kcpServer;
+		private KcpClient kcpClient;
 
-        private ITransporterReceive IReceive;
-        private readonly Dictionary<IPEndPoint, int> _peers = new();
+		private uint kcpClientConnectTime = 0;
 
-        public void Initialize(ITransporterReceive IReceive, bool isServer)
-        {
-            this.isServer = isServer;
-            this.IReceive = IReceive;
+		private bool isServer;
+		private bool isRunning;
 
-            if (isRunning)
-            {
-                throw new Exception("Transporter is already initialized!");
-            }
+		private ITransporterReceive IManager;
+		private readonly Dictionary<IPEndPoint, int> _peers = new();
 
-            KcpConfig config = new KcpConfig(
-                m_DualMode,
-                m_RecvBufferSize,
-                m_SendBufferSize,
-                MTU,
-                m_NoDelay,
-                m_Interval,
-                m_FastResend,
-                m_CongestionWindow,
-                m_SendWindowSize,
-                m_ReceiveWindowSize,
-                m_Timeout,
-                m_MaxRetransmit
-            );
+		public void Initialize(ITransporterReceive IManager, bool isServer)
+		{
+			this.isServer = isServer;
+			this.IManager = IManager;
 
-            if (isServer)
-            {
-                kcpServer = new(
-                    (connId) =>
-                    {
-                        var conn = kcpServer.connections[connId];
-                        if (!_peers.TryAdd(conn.remoteEndPoint, connId))
-                        {
-                            NetworkLogger.__Log__(
-                                $"Kcp: The peer: {conn.remoteEndPoint} is already connected!",
-                                NetworkLogger.LogType.Error
-                            );
-                        }
-                        else
-                        {
-                            IReceive.Internal_OnServerPeerConnected(
-                                conn.remoteEndPoint,
-                                new NativePeer(
-                                    () => conn.time,
-                                    () =>
-                                        throw new NotImplementedException(
-                                            "[KCP] Individual ping not implemented! Use SNTP clock."
-                                        )
-                                )
-                            );
-                        }
-                    },
-                    (connId, data, channel) =>
-                    {
-                        var conn = kcpServer.connections[connId];
-                        IReceive.Internal_OnDataReceived(
-                            data,
-                            GetDeliveryMode(channel),
-                            conn.remoteEndPoint,
-                            0,
-                            isServer
-                        );
-                    },
-                    (connId) =>
-                    {
-                        var conn = kcpServer.connections[connId];
-                        if (!_peers.Remove(conn.remoteEndPoint))
-                        {
-                            NetworkLogger.__Log__(
-                                $"Kcp: The peer: {conn.remoteEndPoint} is already disconnected!",
-                                NetworkLogger.LogType.Error
-                            );
-                        }
-                        else
-                        {
-                            IReceive.Internal_OnServerPeerDisconnected(
-                                conn.remoteEndPoint,
-                                "[Normally Disconnected]"
-                            );
-                        }
-                    },
-                    (connId, error, reason) =>
-                    {
-                        var conn = kcpServer.connections[connId];
-                        IReceive.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, reason);
+			if (isRunning)
+			{
+				throw new InvalidOperationException("The Kcp Transporter has already been initialized.");
+			}
 
-                        NetworkLogger.__Log__(
-                            $"[KCP] OnServerError({connId}, {error}, {reason}",
-                            NetworkLogger.LogType.Error
-                        );
-                    },
-                    config
-                );
-            }
-            else
-            {
-                kcpClient = new(
-                    () =>
-                        IReceive.Internal_OnClientConnected(
-                            kcpClient.remoteEndPoint,
-                            new NativePeer(
-                                () => kcpClient.time,
-                                () =>
-                                    throw new NotImplementedException(
-                                        "[KCP] Individual ping not implemented! Use SNTP clock."
-                                    )
-                            )
-                        ),
-                    (data, channel) =>
-                        IReceive.Internal_OnDataReceived(
-                            data,
-                            GetDeliveryMode(channel),
-                            kcpClient.remoteEndPoint,
-                            0,
-                            isServer
-                        ),
-                    () =>
-                        IReceive.Internal_OnClientDisconnected(
-                            kcpClient.remoteEndPoint,
-                            "Disconnected!"
-                        ),
-                    (error, reason) =>
-                    {
-                        IReceive.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, reason);
+			KcpConfig kcpConf = new KcpConfig(
+				m_DualMode,
+				m_RecvBufferSize,
+				m_SendBufferSize,
+				MTU,
+				m_NoDelay,
+				m_Interval,
+				m_FastResend,
+				m_CongestionWindow,
+				m_SendWindowSize,
+				m_ReceiveWindowSize,
+				m_Timeout,
+				m_MaxRetransmit
+			);
 
-                        NetworkLogger.__Log__(
-                            $"[KCP] OnServerError({error}, {reason}",
-                            NetworkLogger.LogType.Error
-                        );
-                    },
-                    config
-                );
-            }
+			if (isServer)
+			{
+				kcpServer = new(
+					(connId) =>
+					{
+						var conn = kcpServer.connections[connId];
+						if (!_peers.TryAdd(conn.remoteEndPoint, connId))
+						{
+							NetworkLogger.__Log__(
+								$"Kcp: The peer: {conn.remoteEndPoint} is already connected!",
+								NetworkLogger.LogType.Error
+							);
+						}
+						else
+						{
+							IManager.Internal_OnServerPeerConnected(
+								conn.remoteEndPoint,
+								new NativePeer(
+									() => conn.time,
+									() =>
+										throw new NotImplementedException(
+											"[KCP] Individual ping not implemented! Use SNTP clock."
+										)
+								)
+							);
+						}
+					},
+					(connId, data, channel) =>
+					{
+						var conn = kcpServer.connections[connId];
+						IManager.Internal_OnDataReceived(
+							data,
+							GetDeliveryMode(channel),
+							conn.remoteEndPoint,
+							0,
+							isServer,
+							out byte msgType
+						);
 
-            isRunning = true;
-        }
+						if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
+						{
+							Send(data, conn.remoteEndPoint, DeliveryMode.ReliableOrdered, 0);
+						}
+					},
+					(connId) =>
+					{
+						var conn = kcpServer.connections[connId];
+						if (!_peers.Remove(conn.remoteEndPoint))
+						{
+							NetworkLogger.__Log__(
+								$"Kcp: The peer: {conn.remoteEndPoint} is already disconnected!",
+								NetworkLogger.LogType.Error
+							);
+						}
+						else
+						{
+							IManager.Internal_OnServerPeerDisconnected(
+								conn.remoteEndPoint,
+								"[Normally Disconnected]"
+							);
+						}
+					},
+					(connId, error, reason) =>
+					{
+						var conn = kcpServer.connections[connId];
+						IManager.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, reason);
 
-        private void Awake()
-        {
-            ITransporter = this;
-        }
+						NetworkLogger.__Log__(
+							$"[KCP] OnServerError({connId}, {error}, {reason}",
+							NetworkLogger.LogType.Error
+						);
+					},
+					kcpConf
+				);
+			}
+			else
+			{
+				kcpClient = new(
+					() =>
+					{
+						kcpClientConnectTime = kcpClient.time;
+						IManager.Internal_OnClientConnected(kcpClient.remoteEndPoint, new NativePeer(
+							() => (kcpClient.time - kcpClientConnectTime) / 1000d,
+							() => (int)Math.Round(m_PingAvg.Average * 1000d, 0)));
 
-        // [DefaultExecutionOrder(-1100)] // before the world because has priority.
-        private void Update()
-        {
-            if (isRunning)
-            {
-                if (isServer)
-                {
-                    kcpServer.TickIncoming();
-                }
-                else
-                {
-                    kcpClient.TickIncoming();
-                }
-            }
-        }
+						SendPingRequest();
+					},
+					(data, channel) =>
+					{
+						IManager.Internal_OnDataReceived(
+							data,
+							GetDeliveryMode(channel),
+							kcpClient.remoteEndPoint,
+							0,
+							isServer,
+							out byte msgType
+						);
 
-        private void LateUpdate()
-        {
-            if (isRunning)
-            {
-                if (isServer)
-                {
-                    kcpServer.TickOutgoing();
-                }
-                else
-                {
-                    kcpClient.TickOutgoing();
-                }
-            }
-        }
+						if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
+						{
+							uint time = BitConverter.ToUInt32(data[1..5]); // 1: Skip MessageType
+							double halfRtt = (kcpClient.time - time) / 2d / 1000d;
+							m_PingAvg.Add(NetworkHelper.MinMax(halfRtt, PING_TIME_PRECISION));
+						}
+					},
+					() =>
+						IManager.Internal_OnClientDisconnected(
+							kcpClient.remoteEndPoint,
+							"Disconnected!"
+						),
+					(error, reason) =>
+					{
+						IManager.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, reason);
 
-        public void Listen(int port)
-        {
-            ThrowAnErrorIfNotInitialized();
-            if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Udp, m_DualMode))
-            {
-                if (isServer)
-                {
-                    NetworkLogger.__Log__(
-                        "Kcp: Server is already initialized in another instance, only the client will be initialized.",
-                        NetworkLogger.LogType.Warning
-                    );
+						NetworkLogger.__Log__(
+							$"[KCP] OnServerError({error}, {reason}",
+							NetworkLogger.LogType.Error
+						);
+					},
+					kcpConf
+				);
+			}
 
-                    return;
-                }
+			isRunning = true;
+		}
 
-                port = NetworkHelper.GetAvailablePort(port, m_DualMode);
-            }
+		[ClientOnly]
+		private async void SendPingRequest()
+		{
+			while (Application.isPlaying)
+			{
+				if (kcpClient.connected && NetworkManager.IsClientActive && NetworkManager.LocalPeer.IsAuthenticated)
+				{
+					using var pingRequest = NetworkManager.Pool.Rent();
+					pingRequest.Write(MessageType.KCP_PING_REQUEST_RESPONSE);
+					pingRequest.Write(kcpClient.time);
+					pingRequest.SuppressTracking();
+					Send(pingRequest.BufferAsSpan, default, DeliveryMode.ReliableOrdered, 0);
+				}
 
-            if (isServer && isRunning)
-            {
-                kcpServer.Start((ushort)port);
-                IReceive.Internal_OnServerInitialized();
-            }
-        }
+				await UniTask.Delay(1000);
+			}
+		}
 
-        public void Connect(string address, int port)
-        {
-            ThrowAnErrorIfNotInitialized();
-            if (isServer)
-            {
-                throw new Exception("Connect() is not available for server!");
-            }
+		private void Awake()
+		{
+			ITransporter = this;
+		}
 
-            kcpClient.Connect(address, (ushort)port);
-        }
+		// [DefaultExecutionOrder(-1100)] // before the world because has priority.
+		private void Update()
+		{
+			if (isRunning)
+			{
+				if (isServer)
+				{
+					kcpServer.TickIncoming();
+				}
+				else
+				{
+					kcpClient.TickIncoming();
+				}
+			}
+		}
 
-        public void Disconnect(NetworkPeer peer)
-        {
-            ThrowAnErrorIfNotInitialized();
-            if (isServer)
-            {
-                int connId = _peers[peer.EndPoint];
-                kcpServer.connections[connId].Disconnect();
-            }
-            else
-            {
-                kcpClient.Disconnect();
-            }
-        }
+		private void LateUpdate()
+		{
+			if (isRunning)
+			{
+				if (isServer)
+				{
+					kcpServer.TickOutgoing();
+				}
+				else
+				{
+					kcpClient.TickOutgoing();
+				}
+			}
+		}
 
-        public void Send(
-            ReadOnlySpan<byte> data,
-            IPEndPoint target,
-            DeliveryMode deliveryMode,
-            byte channel
-        )
-        {
-            ThrowAnErrorIfNotInitialized();
-            if (isServer)
-            {
-                if (_peers.TryGetValue(target, out int peer))
-                {
-                    byte[] segment = ArrayPool<byte>.Shared.Rent(data.Length);
-                    data.CopyTo(segment);
-                    kcpServer.Send(
-                        peer,
-                        new ArraySegment<byte>(segment, 0, data.Length),
-                        GetKcpChannel(deliveryMode)
-                    );
+		public void Listen(int port)
+		{
+			ThrowAnErrorIfNotInitialized();
+			if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Udp, m_DualMode))
+			{
+				if (isServer)
+				{
+					NetworkLogger.__Log__(
+						"Kcp: Server is already initialized in another instance, only the client will be initialized.",
+						NetworkLogger.LogType.Warning
+					);
 
-                    ArrayPool<byte>.Shared.Return(segment);
-                }
-            }
-            else
-            {
-                byte[] segment = ArrayPool<byte>.Shared.Rent(data.Length);
-                data.CopyTo(segment);
-                kcpClient.Send(
-                    new ArraySegment<byte>(segment, 0, data.Length),
-                    GetKcpChannel(deliveryMode)
-                );
+					return;
+				}
 
-                ArrayPool<byte>.Shared.Return(segment);
-            }
-        }
+				port = NetworkHelper.GetAvailablePort(port, m_DualMode);
+			}
 
-        public void Stop()
-        {
-            ThrowAnErrorIfNotInitialized();
-            if (isServer)
-            {
-                kcpServer.Stop();
-            }
-            else
-            {
-                kcpClient.Disconnect();
-            }
-        }
+			if (isServer && isRunning)
+			{
+				kcpServer.Start((ushort)port);
+				IManager.Internal_OnServerInitialized();
+			}
+		}
 
-        private KcpChannel GetKcpChannel(DeliveryMode deliveryMode)
-        {
-            return deliveryMode switch
-            {
-                DeliveryMode.Unreliable => KcpChannel.Unreliable,
-                DeliveryMode.ReliableOrdered => KcpChannel.Reliable,
-                _
-                    => throw new NotImplementedException(
-                        "Unknown delivery mode! this mode is not supported!"
-                    ),
-            };
-        }
+		public void Connect(string address, int port)
+		{
+			ThrowAnErrorIfNotInitialized();
+			if (isServer)
+			{
+				throw new Exception("The Connect() is not available for server.");
+			}
 
-        private DeliveryMode GetDeliveryMode(KcpChannel deliveryMethod)
-        {
-            return deliveryMethod switch
-            {
-                KcpChannel.Unreliable => DeliveryMode.Unreliable,
-                KcpChannel.Reliable => DeliveryMode.ReliableOrdered,
-                _
-                    => throw new NotImplementedException(
-                        "Unknown delivery method! this mode is not supported!"
-                    ),
-            };
-        }
+			kcpClient.Connect(address, (ushort)port);
+		}
 
-        [Conditional("OMNI_DEBUG")]
-        private void ThrowAnErrorIfNotInitialized()
-        {
-            if (!isRunning)
-            {
-                throw new Exception("Low Level: Transporter is not initialized!");
-            }
-        }
+		public void Disconnect(NetworkPeer peer)
+		{
+			ThrowAnErrorIfNotInitialized();
+			if (isServer)
+			{
+				int connId = _peers[peer.EndPoint];
+				kcpServer.connections[connId].Disconnect();
+			}
+			else
+			{
+				kcpClient.Disconnect();
+			}
+		}
 
-        public void CopyTo(ITransporter ITransporter)
-        {
-            KcpTransporter kcpTransporter = ITransporter as KcpTransporter;
-            kcpTransporter.m_DualMode = m_DualMode;
-            kcpTransporter.m_NoDelay = m_NoDelay;
-            kcpTransporter.m_Interval = m_Interval;
-            kcpTransporter.m_Timeout = m_Timeout;
-            kcpTransporter.m_RecvBufferSize = m_RecvBufferSize;
-            kcpTransporter.m_SendBufferSize = m_SendBufferSize;
-            kcpTransporter.m_FastResend = m_FastResend;
-            kcpTransporter.m_CongestionWindow = m_CongestionWindow;
-            kcpTransporter.m_ReceiveWindowSize = m_ReceiveWindowSize;
-            kcpTransporter.m_SendWindowSize = m_SendWindowSize;
-            kcpTransporter.m_MaxRetransmit = m_MaxRetransmit;
-            kcpTransporter.m_MaximizeSocketBuffers = m_MaximizeSocketBuffers;
-        }
-    }
+		// Span to array is very fast!
+		public void Send(
+			ReadOnlySpan<byte> data,
+			IPEndPoint target,
+			DeliveryMode deliveryMode,
+			byte channel
+		)
+		{
+			ThrowAnErrorIfNotInitialized();
+			if (isServer)
+			{
+				if (_peers.TryGetValue(target, out int peer))
+				{
+					byte[] dataArray = data.ToArray();
+					kcpServer.Send(peer, dataArray, GetKcpChannel(deliveryMode));
+
+				}
+			}
+			else
+			{
+				byte[] dataArray = data.ToArray();
+				kcpClient.Send(dataArray, GetKcpChannel(deliveryMode));
+			}
+		}
+
+		public void Stop()
+		{
+			ThrowAnErrorIfNotInitialized();
+			if (isServer)
+			{
+				kcpServer.Stop();
+			}
+			else
+			{
+				kcpClient.Disconnect();
+			}
+		}
+
+		private KcpChannel GetKcpChannel(DeliveryMode deliveryMode)
+		{
+			return deliveryMode switch
+			{
+				DeliveryMode.Unreliable => KcpChannel.Unreliable,
+				DeliveryMode.ReliableOrdered => KcpChannel.Reliable,
+				_
+					=> throw new NotSupportedException(
+						"Unknown delivery mode! this mode is not supported!"
+					),
+			};
+		}
+
+		private DeliveryMode GetDeliveryMode(KcpChannel deliveryMethod)
+		{
+			return deliveryMethod switch
+			{
+				KcpChannel.Unreliable => DeliveryMode.Unreliable,
+				KcpChannel.Reliable => DeliveryMode.ReliableOrdered,
+				_
+					=> throw new NotSupportedException(
+						"Unknown delivery method! this mode is not supported!"
+					),
+			};
+		}
+
+		[Conditional("OMNI_DEBUG")]
+		private void ThrowAnErrorIfNotInitialized()
+		{
+			if (!isRunning)
+			{
+				throw new Exception("The KcpTransporter is not initialized.");
+			}
+		}
+
+		public void CopyTo(ITransporter ITransporter)
+		{
+			KcpTransporter kcpTransporter = ITransporter as KcpTransporter;
+			kcpTransporter.m_DualMode = m_DualMode;
+			kcpTransporter.m_NoDelay = m_NoDelay;
+			kcpTransporter.m_Interval = m_Interval;
+			kcpTransporter.m_Timeout = m_Timeout;
+			kcpTransporter.m_RecvBufferSize = m_RecvBufferSize;
+			kcpTransporter.m_SendBufferSize = m_SendBufferSize;
+			kcpTransporter.m_FastResend = m_FastResend;
+			kcpTransporter.m_CongestionWindow = m_CongestionWindow;
+			kcpTransporter.m_ReceiveWindowSize = m_ReceiveWindowSize;
+			kcpTransporter.m_SendWindowSize = m_SendWindowSize;
+			kcpTransporter.m_MaxRetransmit = m_MaxRetransmit;
+			kcpTransporter.m_MaximizeSocketBuffers = m_MaximizeSocketBuffers;
+		}
+	}
 }

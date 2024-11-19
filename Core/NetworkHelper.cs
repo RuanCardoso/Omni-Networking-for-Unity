@@ -280,6 +280,18 @@ namespace Omni.Core
 		}
 
 		/// <summary>
+		/// Returns the minimum value between the given value and the specified minimum value.
+		/// If the given value is less than the minimum value, returns 0; otherwise, returns the difference between the given value and the minimum value.
+		/// </summary>
+		/// <param name="value">The value to be compared with the minimum value.</param>
+		/// <param name="min">The minimum value to compare with.</param>
+		/// <returns>The minimum value or the difference between the given value and the minimum value.</returns>
+		internal static double MinMax(double value, double min)
+		{
+			return value < min ? 0 : value - min;
+		}
+
+		/// <summary>
 		/// Saves the configuration of a given component to a file in JSON format.
 		/// This method is intended to be used only on the server side.
 		/// </summary>

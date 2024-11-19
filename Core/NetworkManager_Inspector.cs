@@ -123,7 +123,7 @@ namespace Omni.Core
 		private int m_PoolSize = 32;
 
 		[SerializeField]
-		[Min(1)]
+		[Min(0)]
 		private int m_MaxFpsOnClient = 60;
 
 		[SerializeField]
@@ -146,7 +146,8 @@ namespace Omni.Core
 		[SerializeField]
 		private bool m_UseSecureRouteX = false;
 
-		[SerializeField]
+		//[SerializeField]
+		[ReadOnly]
 		private bool m_UseBinarySerialization = false;
 
 		[SerializeField]
@@ -167,7 +168,7 @@ namespace Omni.Core
 		[Label("Allow Across-Group Message")]
 		private bool m_AllowAcrossGroupMessage = false;
 
-		[SerializeField]
+		//[SerializeField]
 		[ReadOnly]
 		[Label("Allow Zero-Group Message")]
 		private bool m_AllowZeroGroupMessage = true;

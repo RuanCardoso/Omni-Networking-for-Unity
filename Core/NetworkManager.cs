@@ -10,6 +10,9 @@ using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
 using Omni.Shared.Collections;
+#if UNITY_EDITOR
+using ParrelSync;
+#endif
 using System;
 using System.Buffers;
 using System.Collections;
@@ -46,10 +49,23 @@ namespace Omni.Core
 		/// Gets the ID of the main thread.
 		/// </summary>
 		public static int MainThreadId { get; private set; }
+		static IObjectPooling<DataBuffer> m_Pool;
 		/// <summary>
 		/// Gets the pool of <see cref="DataBuffer"/> instances. This pool is used to allocate and deallocate <see cref="DataBuffer"/> instances.
 		/// </summary>
-		public static IObjectPooling<DataBuffer> Pool { get; private set; }
+		public static IObjectPooling<DataBuffer> Pool
+		{
+			get
+			{
+				if (m_Pool == null)
+				{
+					throw new NullReferenceException("The object pool has not been initialized and is not ready for use. This may occur if it is being accessed in Awake or OnAwake. Obtain the object pool in the Start method instead.");
+				}
+
+				return m_Pool;
+			}
+			private set => m_Pool = value;
+		}
 
 		public static event Action<Scene, LoadSceneMode> OnSceneLoaded;
 		public static event Action<Scene> OnSceneUnloaded;
@@ -303,6 +319,11 @@ namespace Omni.Core
 				QualitySettings.vSyncCount = 0;
 				Application.targetFrameRate = m_MaxFpsOnClient;
 			}
+			else if (m_MaxFpsOnClient <= 0)
+			{
+				QualitySettings.vSyncCount = 0;
+				Application.targetFrameRate = -1;
+			}
 #else
             NetworkLogger.__Log__(
                 $"MaxFpsOnClient is set to {m_MaxFpsOnClient}. This setting is ignored on server build.",
@@ -378,6 +399,14 @@ namespace Omni.Core
 			if (m_TickModule && _tickSystem != null)
 			{
 				TickSystem.OnTick();
+			}
+
+			if (!UseTickTiming)
+			{
+				if (!IsServerActive && !IsClientActive)
+				{
+					_stopwatch.Restart();
+				}
 			}
 
 			UpdateFrameAndCpuMetrics();
@@ -461,8 +490,8 @@ namespace Omni.Core
 							)
 						)
 						{
-							throw new Exception(
-								"No transporter found on NetworkManager. Please add one."
+							throw new NullReferenceException(
+								"No transporter instance found on NetworkManager. Please ensure a transporter is added and properly configured."
 							);
 						}
 
@@ -530,7 +559,17 @@ namespace Omni.Core
 
 						if (Manager.m_AutoStartServer)
 						{
-							StartServer(Manager.m_ServerListenPort);
+							bool isClone = false;
+#if UNITY_EDITOR
+							if (ClonesManager.IsClone())
+							{
+								isClone = true;
+							}
+#endif
+							if (!isClone)
+							{
+								StartServer(Manager.m_ServerListenPort);
+							}
 						}
 
 						if (Manager.m_AutoStartClient)
@@ -1166,6 +1205,11 @@ namespace Omni.Core
 			// Set the server as active.
 			IsServerActive = true;
 			OnServerInitialized?.Invoke();
+
+			// Log
+			NetworkLogger.__Log__(
+				"Omni Server successfully initialized. All systems are operational, and the server is now ready to accept connections.", NetworkLogger.LogType.Log
+			);
 		}
 
 		public virtual void Internal_OnClientConnected(IPEndPoint peer, NativePeer nativePeer)
@@ -1214,6 +1258,7 @@ namespace Omni.Core
 					using var message = Pool.Rent();
 					message.Write(newPeer.Id);
 					// Write the server's RSA public key to the buffer
+					// If the public key were modified (MITM) the connection would fail because the public key is validated by the server.
 					message.WriteString(Server.RsaPublicKey);
 
 					SendToClient(
@@ -1327,7 +1372,8 @@ namespace Omni.Core
 			DeliveryMode deliveryMethod,
 			IPEndPoint endPoint,
 			byte sequenceChannel,
-			bool isServer
+			bool isServer,
+			out byte msgType
 		)
 		{
 			NetworkHelper.EnsureRunningOnMainThread();
@@ -1338,7 +1384,7 @@ namespace Omni.Core
 				header.SeekToBegin();
 
 				// Note: On Message event
-				byte msgType = header.Read<byte>();
+				msgType = header.Read<byte>();
 #if OMNI_DEBUG || (UNITY_SERVER && !UNITY_EDITOR)
 				if (isServer)
 				{
@@ -1377,6 +1423,11 @@ namespace Omni.Core
 
 				switch (msgType)
 				{
+					case MessageType.KCP_PING_REQUEST_RESPONSE:
+						{
+							// Implemented By KCP Transporter.
+						}
+						break;
 					case MessageType.SyncGroupSerializedData:
 						{
 							int groupId = header.Read<int>();
@@ -1830,6 +1881,10 @@ namespace Omni.Core
 						break;
 				}
 			}
+			else
+			{
+				msgType = 0;
+			}
 		}
 
 		private static void DestroyScene(LoadSceneMode mode, Scene scene, SceneOperationMode op)
@@ -2037,14 +2092,23 @@ namespace Omni.Core
 
 		void OnGUI()
 		{
+			bool isClone = false;
+#if UNITY_EDITOR
+			if (ClonesManager.IsClone())
+			{
+				isClone = true;
+			}
+#endif
 #if UNITY_EDITOR && OMNI_DEBUG
 			GUI.Label(
 				new Rect(10, Screen.height - 60, 350, 30),
-				"Debug Mode (Very Slow on Editor)\r\nUse in development only. For heavy testing or performance, use release mode.",
+				!isClone ?
+				"Debug Mode (Very Slow on Editor)\r\nUse in development mode only. For heavy testing or performance testing, use Release Mode." :
+				"Debug Mode (Very Slow on Editor)\r\nUse in development mode only. For heavy testing or performance testing, use Release Mode[ParrelSync(Clone) Mode]",
 				new GUIStyle()
 				{
-					fontSize = 22,
-					normal = new GUIStyleState() { textColor = Color.red }
+					fontSize = 20,
+					normal = new GUIStyleState() { textColor = Color.black }
 				}
 			);
 #endif
@@ -2053,11 +2117,11 @@ namespace Omni.Core
 			GUI.Label(
 				new Rect(10, 10, 100, 30),
 				m_SntpModule
-					? $"FPS: {Framerate:F0}\r\nCpu: {CpuTimeMs:F0} ms\r\nPing: {(IsClientActive ? LocalPeer.Ping : 0):F0}({Sntp.Client.Ping}:F0)"
-					: $"FPS: {Framerate:F0}\r\nCpu: {CpuTimeMs:F0} ms\r\nPing: {(IsClientActive ? LocalPeer.Ping : 0):F0}",
+					? $"Fps: {Framerate:F0} | Cpu Time: {CpuTimeMs:F0} ms\r\nPing(Latency): {(IsClientActive ? LocalPeer.Ping : 0):F0} ms - ({Sntp.Client.Ping:F0} ms)\r\nTime: {(IsClientActive ? LocalPeer.Time : 0):F0} Sec\r\nSynced Time: {(!UseTickTiming ? Math.Round(Sntp.Client.Time, 3) : Math.Round(Sntp.Client.Time, 0))}"
+					: $"Fps: {Framerate:F0} | Cpu Time: {CpuTimeMs:F0} ms\r\nPing(Latency): {(IsClientActive ? LocalPeer.Ping : 0):F0} ms\r\nTime: {(IsClientActive ? LocalPeer.Time : 0):F0} Sec",
 				new GUIStyle()
 				{
-					fontSize = 23,
+					fontSize = 20,
 					normal = new GUIStyleState() { textColor = Color.white }
 				}
 			);
