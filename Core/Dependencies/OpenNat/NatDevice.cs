@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace OpenNat
 {
@@ -167,6 +168,15 @@ namespace OpenNat
 			{
 				var m = mapping;
 				await RenewMapping(m);
+
+				UnityEngine.Debug.LogFormat(
+				UnityEngine.LogType.Log,
+				LogOption.NoStacktrace,
+				null,
+				"{0}",
+				$"[Port Forwarding] Renewed mapping {m.Description} ({m.Protocol}:{m.PublicPort} -> {m.Protocol}:{m.PrivatePort})"
+				);
+
 			}
 		}
 
