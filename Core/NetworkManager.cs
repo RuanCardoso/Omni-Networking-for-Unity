@@ -10,6 +10,8 @@ using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
 using Omni.Shared.Collections;
+using Omni.Threading.Tasks;
+
 #if UNITY_EDITOR
 using ParrelSync;
 #endif
@@ -324,11 +326,6 @@ namespace Omni.Core
 				QualitySettings.vSyncCount = 0;
 				Application.targetFrameRate = -1;
 			}
-#else
-            NetworkLogger.__Log__(
-                $"MaxFpsOnClient is set to {m_MaxFpsOnClient}. This setting is ignored on server build.",
-                NetworkLogger.LogType.Warning
-            );
 #endif
 			AotHelper.EnsureDictionary<string, object>();
 			MainThreadId = Thread.CurrentThread.ManagedThreadId;
@@ -386,12 +383,15 @@ namespace Omni.Core
 			SceneManager.sceneUnloaded += (scene) => OnSceneUnloaded?.Invoke(scene);
 		}
 
-		protected virtual void Start()
+		protected virtual async void Start()
 		{
 #if OMNI_SERVER && !UNITY_EDITOR
             SkipDefaultUnityLog();
             ShowDefaultOmniLog();
 #endif
+
+			await UniTask.WaitUntil(() => IsServerActive);
+			NetworkLogger.__Log__("[Omni] -> Server successfully initialized. The server is now ready to accept connections.", NetworkLogger.LogType.Log);
 		}
 
 		private void Update()
@@ -410,6 +410,12 @@ namespace Omni.Core
 			}
 
 			UpdateFrameAndCpuMetrics();
+
+			if (IsClientActive && Input.GetKeyDown(KeyCode.Space))
+			{
+				print(LocalEndPoint);
+				Connection.Client.SendP2P(new byte[] { 1, 2 }, LocalEndPoint);
+			}
 		}
 
 		private void UpdateFrameAndCpuMetrics()
@@ -441,7 +447,6 @@ namespace Omni.Core
 #else
             NetworkLogger.Log("You are in Release Mode.");
 #endif
-			System.Console.Write("\n");
 		}
 
 		/// <summary>
@@ -537,7 +542,7 @@ namespace Omni.Core
 							Manager
 						);
 
-#if OMNI_RELEASE
+#if OMNI_RELEASE || (UNITY_SERVER && !UNITY_EDITOR)
                         Manager.m_AutoStartServer = true;
                         Manager.m_AutoStartClient = true;
 #else
@@ -667,7 +672,7 @@ namespace Omni.Core
 				Connection.Client.Listen(listenPort);
 				Connection.Client.Connect(address, port);
 #elif UNITY_SERVER && !UNITY_EDITOR
-                NetworkLogger.__Log__("Client is not available in a server build.");
+                NetworkLogger.__Log__("Client functionality is not available in a server build.");
 #endif
 			}
 			else
@@ -1205,11 +1210,6 @@ namespace Omni.Core
 			// Set the server as active.
 			IsServerActive = true;
 			OnServerInitialized?.Invoke();
-
-			// Log
-			NetworkLogger.__Log__(
-				"Omni Server successfully initialized. All systems are operational, and the server is now ready to accept connections.", NetworkLogger.LogType.Log
-			);
 		}
 
 		public virtual void Internal_OnClientConnected(IPEndPoint peer, NativePeer nativePeer)
