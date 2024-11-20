@@ -362,6 +362,11 @@ namespace Omni.Core.Modules.Connection
 			}
 		}
 
+		public void SendP2P(ReadOnlySpan<byte> data, IPEndPoint target)
+		{
+			throw new NotImplementedException();
+		}
+
 		// Span to array is very fast!
 		public void Send(
 			ReadOnlySpan<byte> data,
