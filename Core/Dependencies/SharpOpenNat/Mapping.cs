@@ -31,7 +31,7 @@
 using System;
 using System.Net;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	/// <summary>
 	/// Represents a port forwarding entry in the NAT translation table.

@@ -34,7 +34,7 @@ using System.Collections;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal sealed class UpnpNatDevice : NatDevice
 	{

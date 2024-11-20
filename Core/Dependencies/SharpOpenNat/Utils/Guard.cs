@@ -1,6 +1,6 @@
 using System;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal class Guard
 	{

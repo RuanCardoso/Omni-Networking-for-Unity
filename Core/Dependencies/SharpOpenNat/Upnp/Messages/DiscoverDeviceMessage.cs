@@ -28,7 +28,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal static class DiscoverDeviceMessage
 	{

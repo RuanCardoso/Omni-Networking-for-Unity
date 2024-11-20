@@ -32,7 +32,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal static class StreamExtensions
 	{

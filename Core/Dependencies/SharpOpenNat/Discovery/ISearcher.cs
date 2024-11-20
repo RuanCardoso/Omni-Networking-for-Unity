@@ -28,7 +28,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal interface ISearcher
 	{

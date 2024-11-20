@@ -28,7 +28,7 @@
 
 using System.Collections.Generic;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal abstract class RequestMessageBase
 	{

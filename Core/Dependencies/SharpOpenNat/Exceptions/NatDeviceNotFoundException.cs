@@ -27,7 +27,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	/// <summary>
 	/// 

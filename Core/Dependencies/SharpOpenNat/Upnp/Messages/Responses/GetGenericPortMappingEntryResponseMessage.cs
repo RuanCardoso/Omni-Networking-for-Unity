@@ -29,7 +29,7 @@
 using System;
 using System.Xml;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal class GetPortMappingEntryResponseMessage : ResponseMessageBase
 	{

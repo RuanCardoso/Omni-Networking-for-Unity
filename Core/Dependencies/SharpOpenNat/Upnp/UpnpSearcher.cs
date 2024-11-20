@@ -36,7 +36,7 @@ using System.Threading;
 using System.Linq;
 using System.IO;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal class UpnpSearcher : Searcher
 	{

@@ -1,6 +1,6 @@
 using System;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	/// <summary>
 	/// Protocol that should be used for searching a NAT device. 

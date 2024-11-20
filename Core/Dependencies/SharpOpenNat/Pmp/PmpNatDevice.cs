@@ -33,7 +33,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal sealed class PmpNatDevice : NatDevice
 	{

@@ -29,7 +29,7 @@
 using System.Collections.Generic;
 using System.Net;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal class CreatePortMappingRequestMessage : RequestMessageBase
 	{

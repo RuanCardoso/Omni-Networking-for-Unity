@@ -27,7 +27,7 @@
 using System.Collections.Generic;
 using System.Net;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal interface IIPAddressesProvider
 	{

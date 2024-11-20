@@ -26,7 +26,7 @@
 
 using System.Net;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal static class WellKnownConstants
 	{

@@ -29,7 +29,7 @@
 using System.Net;
 using System.Xml;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	internal class GetExternalIPAddressResponseMessage : ResponseMessageBase
 	{

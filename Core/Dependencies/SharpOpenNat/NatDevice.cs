@@ -34,7 +34,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Linq;
 
-namespace SharpOpenNat
+namespace OpenNat
 {
 	/// <summary>
 	/// Represents a NAT device and provides access to the operation set that allows
