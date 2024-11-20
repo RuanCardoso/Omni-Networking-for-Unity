@@ -34,6 +34,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
+#pragma warning disable
+
 namespace OpenNat
 {
 	internal abstract class Searcher

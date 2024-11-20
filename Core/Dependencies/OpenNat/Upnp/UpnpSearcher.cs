@@ -26,6 +26,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#pragma warning disable
 using System.Text;
 using System.Net;
 using System.Net.Sockets;
