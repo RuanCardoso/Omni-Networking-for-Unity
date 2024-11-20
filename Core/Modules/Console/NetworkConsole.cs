@@ -1,3 +1,4 @@
+using Omni.Shared;
 using System;
 using System.Threading.Tasks;
 #if OMNI_SERVER && !UNITY_EDITOR
@@ -9,14 +10,18 @@ using System.Threading;
 
 namespace Omni.Core.Modules.UConsole
 {
-    public class NetworkConsole
-    {
-        private double _receivedBytes;
-        private double _sentBytes;
-        public event Action<string> OnInput;
+	public class NetworkConsole
+	{
+		private double _receivedBytes;
+		private double _sentBytes;
 
-        internal void Initialize()
-        {
+		/// <summary>
+		/// Triggered when the user provides an input, passing it as a string.
+		/// </summary>
+		public event Action<string> OnInput;
+
+		internal void Initialize()
+		{
 #if OMNI_SERVER && !UNITY_EDITOR
             Thread thread =
                 new(() => Read())
@@ -35,57 +40,78 @@ namespace Omni.Core.Modules.UConsole
                 NetworkManager.Server.SentBandwidth.OnAverageChanged += (avg) => _sentBytes = avg;
             };
 #endif
-        }
+		}
 
-        private async void Read()
-        {
-            while (true)
-            {
-                string input = Console.ReadLine().Trim();
-                OnInput?.Invoke(input);
+		private async void Read()
+		{
+			while (true)
+			{
+				string input = Console.ReadLine().Trim();
+				OnInput?.Invoke(input);
 
-                // Internal commands
-                if (input.ToLower() == "stats")
-                {
-                    PrintServerStats();
-                }
-                else if (input.ToLower() == "stats -l")
-                {
-                    while (true)
-                    {
-                        if (Console.KeyAvailable)
-                        {
-                            if (Console.ReadKey(true).Key == ConsoleKey.Escape)
-                            {
-                                break;
-                            }
-                        }
+				// Internal commands
+				if (input.ToLower() == "stats")
+				{
+					PrintServerStats();
+				}
+				else if (input.ToLower() == "stats -l")
+				{
+					while (true)
+					{
+						if (EscapeIsPressed())
+						{
+							break;
+						}
 
-                        PrintServerStats();
-                        await Task.Delay(500);
-                    }
-                }
-                else if (input.ToLower() == "clear")
-                {
-                    Console.Clear();
-                    Console.SetCursorPosition(0, 0);
-                }
-            }
-        }
+						PrintServerStats();
+						await Task.Delay(500);
+					}
+				}
+				else if (input.ToLower() == "clear")
+				{
+					Console.Clear();
+					Console.SetCursorPosition(0, 0);
+				}
+				else if (input.ToLower() == "printlog")
+				{
+					NetworkLogger.PrintPlayerLog();
+				}
+			}
+		}
 
-        private void PrintServerStats()
-        {
-            // Date
-            Console.WriteLine($"\r\nDate: {DateTime.Now}\r\n");
+		/// <summary>
+		/// Checks if the Escape key has been pressed.
+		/// </summary>
+		/// <returns>
+		/// Returns true if the Escape key has been pressed, otherwise false.
+		/// </returns>
+		public bool EscapeIsPressed()
+		{
+			if (Console.KeyAvailable)
+			{
+				if (Console.ReadKey(true).Key == ConsoleKey.Escape)
+				{
+					Console.WriteLine("[ESC] Pressed. The loop has been stopped.");
+					return true;
+				}
+			}
 
-            // Fps and Cpu Ms
-            Console.WriteLine(
-                $"Fps: {NetworkManager.Framerate} | Cpu Ms: {NetworkManager.CpuTimeMs}\r\n"
-            );
+			return false;
+		}
 
-            // Bandwidth Rec and Sent
-            Console.WriteLine($"Received: {_receivedBytes.ToSizeSuffix()}\r\n");
-            Console.WriteLine($"Sent: {_sentBytes.ToSizeSuffix()}\r\n");
-        }
-    }
+		private void PrintServerStats()
+		{
+			// Date
+			Console.WriteLine($"\r\nDate: {DateTime.Now}");
+
+			// Fps and Cpu Ms
+			Console.WriteLine(
+				$"Fps: {NetworkManager.Framerate} | Cpu Ms: {NetworkManager.CpuTimeMs}"
+			);
+
+			// Bandwidth Rec and Sent
+			Console.WriteLine($"Received: {_receivedBytes.ToSizeSuffix()}");
+			Console.WriteLine($"Sent: {_sentBytes.ToSizeSuffix()}");
+		}
+	}
 }
