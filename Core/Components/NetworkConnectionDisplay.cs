@@ -26,6 +26,9 @@ namespace Omni.Core
 		{
 			host = NetworkManager.ConnectAddress;
 			port = NetworkManager.ConnectPort.ToString();
+#if UNITY_SERVER && !UNITY_EDITOR
+			Destroy(this);
+#endif
 		}
 
 #if OMNI_DEBUG
