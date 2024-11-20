@@ -176,7 +176,7 @@ namespace OpenNat
 				LogOption.NoStacktrace,
 				null,
 				"{0}",
-				$"[Port Forwarding] Renewed mapping {m.Description} ({m.Protocol}:{m.PublicPort} -> {m.Protocol}:{m.PrivatePort})"
+				$"[Port Forwarding] Renewed mapping - ({m.Description}) | ({m.Protocol}:{m.PublicPort} -> {m.Protocol}:{m.PrivatePort})"
 				);
 
 			}
