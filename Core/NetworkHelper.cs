@@ -53,9 +53,8 @@ namespace Omni.Core
 				// Return true if the port is open.
 				return true;
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
-				UnityEngine.Debug.LogException(ex);
 				return false;
 			}
 		}
