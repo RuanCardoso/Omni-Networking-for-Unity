@@ -162,42 +162,5 @@ namespace OpenNat
 		{
 			ReleaseMapping(_openedMapping);
 		}
-
-		internal async Task RenewMappings()
-		{
-			var mappings = _openedMapping.Where(x => x.IsExpired());
-			foreach (var mapping in mappings.ToArray())
-			{
-				var m = mapping;
-				await RenewMapping(m);
-
-				UnityEngine.Debug.LogFormat(
-				UnityEngine.LogType.Log,
-				LogOption.NoStacktrace,
-				null,
-				"{0}",
-				$"[Port Forwarding] Renewed mapping - ({m.Description}) | ({m.Protocol}:{m.PublicPort} -> {m.Protocol}:{m.PrivatePort})"
-				);
-
-			}
-		}
-
-		private async Task RenewMapping(Mapping mapping)
-		{
-			var renewMapping = new Mapping(mapping);
-			try
-			{
-				renewMapping.Expiration = DateTime.UtcNow.AddSeconds(mapping.Lifetime);
-
-				NatDiscoverer.TraceSource.LogInfo("Renewing mapping {0}", renewMapping);
-				await CreatePortMapAsync(renewMapping);
-				NatDiscoverer.TraceSource.LogInfo("Next renew scheduled at: {0}",
-												  renewMapping.Expiration.ToLocalTime().TimeOfDay);
-			}
-			catch (Exception)
-			{
-				NatDiscoverer.TraceSource.LogWarn("Renew {0} failed", mapping);
-			}
-		}
 	}
 }

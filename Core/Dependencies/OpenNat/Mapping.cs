@@ -106,7 +106,7 @@ namespace OpenNat
 		public DateTime Expiration
 		{
 			get { return _expiration; }
-			internal set
+			set
 			{
 				_expiration = value;
 				_lifetime = (int)(_expiration - DateTime.UtcNow).TotalSeconds;
