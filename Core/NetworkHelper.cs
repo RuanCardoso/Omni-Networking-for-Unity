@@ -1,5 +1,7 @@
 using Newtonsoft.Json;
 using Omni.Shared;
+using Omni.Threading.Tasks;
+using OpenNat;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -15,6 +17,48 @@ namespace Omni.Core
 	public static class NetworkHelper
 	{
 		private static int d_UniqueId = 1; // 0 - is reserved for server
+
+		internal static async Task<bool> OpenPortAsync(int port, Protocol protocol)
+		{
+			const int lifetime = 86400; // Seconds - 86400(1 day/24 hours).
+
+			try
+			{
+				using CancellationTokenSource cts = new CancellationTokenSource(2500);
+				NatDevice device = await NatDiscoverer.DiscoverDeviceAsync(PortMapper.Upnp | PortMapper.Pmp, cts);
+
+				if (device == null)
+					return false;
+
+				var mapping = new Mapping(protocol, port, port, lifetime, "Omni Networking");
+				await device.CreatePortMapAsync(mapping);
+
+				// Automatic renewal of mappings every N seconds.
+				UniTask.Void(async () =>
+				{
+					while (Application.isPlaying)
+					{
+						if (mapping.IsExpired())
+						{
+							mapping.Expiration = DateTime.UtcNow.AddSeconds(mapping.Lifetime);
+							await device.CreatePortMapAsync(mapping);
+							NetworkLogger.Print($"[Port Forwarding] Renewed mapping - ({mapping.Description}) | ({mapping.Protocol}:{mapping.PublicPort} -> {mapping.Protocol}:{mapping.PrivatePort})", NetworkLogger.LogType.Log);
+						}
+
+						// Check if the port has is expired every.....
+						await UniTask.Delay(500);
+					}
+				});
+
+				// Return true if the port is open.
+				return true;
+			}
+			catch (Exception ex)
+			{
+				UnityEngine.Debug.LogException(ex);
+				return false;
+			}
+		}
 
 		// the chances of collision are low, so it's fine to use hashcode.
 		// because... do you have billions of network objects in the scene?
