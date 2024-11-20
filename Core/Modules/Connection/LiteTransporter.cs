@@ -2,12 +2,14 @@ using LiteNetLib;
 using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
 using Omni.Shared;
+using OpenNat;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Omni.Core.Modules.Connection
@@ -62,6 +64,10 @@ namespace Omni.Core.Modules.Connection
 		[Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
 		[Label("IPv6 Enabled")]
 		private bool m_IPv6Enabled = false;
+
+		[SerializeField]
+		[Tooltip("Specifies whether port forwarding is enabled with PMP or UPnP protocols.")]
+		private bool m_UsePortForwarding = false;
 
 		[SerializeField]
 		[Tooltip(
@@ -163,7 +169,8 @@ namespace Omni.Core.Modules.Connection
 				SimulatePacketLoss = m_SimulateLag,
 				SimulationMinLatency = m_MinLatency,
 				SimulationMaxLatency = m_MaxLatency,
-				SimulationPacketLossChance = m_LossPercent
+				SimulationPacketLossChance = m_LossPercent,
+				UnconnectedMessagesEnabled = true, // P2P
 			};
 
 			if (isServer)
@@ -196,10 +203,19 @@ namespace Omni.Core.Modules.Connection
 						$"code: {info.SocketErrorCode} | reason: {info.Reason}"
 					);
 				};
+
+				_listener.NetworkReceiveUnconnectedEvent += OnP2PMessage;
 			}
 
 			_listener.NetworkReceiveEvent += OnReceiveEvent;
 			isRunning = true;
+		}
+
+		[ClientOnly]
+		private void OnP2PMessage(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
+		{
+			NetworkLogger.Print("Received a P2P Message from: " + remoteEndPoint);
+			reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
 		}
 
 		private void OnReceiveEvent(
@@ -332,6 +348,11 @@ namespace Omni.Core.Modules.Connection
 				port = NetworkHelper.GetAvailablePort(port, m_IPv6Enabled);
 			}
 
+			if (m_UsePortForwarding)
+			{
+				TryPortForwarding(port);
+			}
+
 			if (_manager.Start(port))
 			{
 				if (isServer && isRunning)
@@ -348,6 +369,38 @@ namespace Omni.Core.Modules.Connection
 					);
 				}
 #endif
+			}
+		}
+
+		private async void TryPortForwarding(int port)
+		{
+			if (!isServer)
+			{
+				// Wait 500ms before attempting to open the port.
+				// Avoid opening server and client ports simultaneously, which will cause an error.
+				await Task.Delay(500);
+			}
+
+			if (await NetworkHelper.OpenPortAsync(port, Protocol.Udp))
+			{
+				NetworkLogger.Print("[Port Forwarding] Successfully opened UDP port forwarding on port " + port + ".", NetworkLogger.LogType.Log);
+			}
+			else
+			{
+				NetworkLogger.Print("[Port Forwarding] Failed to open UDP port forwarding on port " + port + ".", NetworkLogger.LogType.Error);
+			}
+		}
+
+		public void SendP2P(ReadOnlySpan<byte> data, IPEndPoint target)
+		{
+			if (isRunning)
+			{
+				print("send unconnected msg");
+				_manager.SendUnconnectedMessage(data, target);
+			}
+			else
+			{
+				throw new InvalidOperationException("Lite Transporter: The transporter is not initialized. Ensure that the transporter is properly initialized before attempting this operation.");
 			}
 		}
 
@@ -433,6 +486,7 @@ namespace Omni.Core.Modules.Connection
 			liteTransporter.m_useNativeSockets = m_useNativeSockets;
 			liteTransporter.m_useSafeMtu = m_useSafeMtu;
 			liteTransporter.m_ChannelsCount = m_ChannelsCount;
+			liteTransporter.m_UsePortForwarding = m_UsePortForwarding;
 
 			// Lag properties
 			liteTransporter.m_SimulateLag = m_SimulateLag;
