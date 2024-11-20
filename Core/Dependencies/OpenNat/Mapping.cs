@@ -40,8 +40,6 @@ namespace OpenNat
 	{
 		private DateTime _expiration;
 		private int _lifetime;
-		internal MappingLifetime LifetimeType { get; set; }
-
 
 		/// <summary>
 		/// Gets the mapping's description. It is the value stored in the NewPortMappingDescription parameter. 
@@ -95,24 +93,8 @@ namespace OpenNat
 			get { return _lifetime; }
 			internal set
 			{
-				switch (value)
-				{
-					case int.MaxValue:
-						LifetimeType = MappingLifetime.Session;
-						_lifetime = 10 * 60; // ten minutes
-						_expiration = DateTime.UtcNow.AddSeconds(_lifetime); ;
-						break;
-					case 0:
-						LifetimeType = MappingLifetime.Permanent;
-						_lifetime = 0;
-						_expiration = DateTime.UtcNow;
-						break;
-					default:
-						LifetimeType = MappingLifetime.Manual;
-						_lifetime = value;
-						_expiration = DateTime.UtcNow.AddSeconds(_lifetime);
-						break;
-				}
+				_lifetime = value;
+				_expiration = DateTime.UtcNow.AddSeconds(_lifetime);
 			}
 		}
 
@@ -209,7 +191,6 @@ namespace OpenNat
 			Protocol = mapping.Protocol;
 			PublicIP = mapping.PublicIP;
 			PublicPort = mapping.PublicPort;
-			LifetimeType = mapping.LifetimeType;
 			Description = mapping.Description;
 			_lifetime = mapping._lifetime;
 			_expiration = mapping._expiration;
@@ -223,14 +204,7 @@ namespace OpenNat
 		/// </remarks>
 		public bool IsExpired()
 		{
-			return LifetimeType != MappingLifetime.Permanent
-				&& LifetimeType != MappingLifetime.ForcedSession
-				&& Expiration < DateTime.UtcNow;
-		}
-
-		internal bool ShoundRenew()
-		{
-			return LifetimeType == MappingLifetime.Session && IsExpired();
+			return Expiration < DateTime.UtcNow;
 		}
 
 		/// <inheritdoc/>

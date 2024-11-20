@@ -159,14 +159,6 @@ namespace OpenNat
 			}
 		}
 
-		internal static void ReleaseSessionMappings()
-		{
-			foreach (var device in Devices.Values)
-			{
-				device.ReleaseSessionMappings();
-			}
-		}
-
 		public static async void RenewMappings()
 		{
 			foreach (var device in Devices.Values)
