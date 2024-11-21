@@ -1,3 +1,4 @@
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -137,6 +138,19 @@ namespace Omni.Core
 		[Obsolete("Don't override this method! The source generator will override it.")]
 		protected virtual void ___NotifyChange___() { }
 
+		// This property is intended to be used by the source generator to determine if the method has been called from the editor.
+		protected bool ___NotifyEditorChange___Called { get; set; } = false;
+		// This method is intended to be overridden by the caller using source generators and reflection techniques. Magic wow!
+		// https://github.com/RuanCardoso/OmniNetSourceGenerator
+		// never override this method!
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		[Obsolete("Don't override this method! The source generator will override it.")]
+		[Conditional("UNITY_EDITOR")]
+		protected virtual void ___NotifyEditorChange___()
+		{
+			___NotifyEditorChange___Called = false;
+		}
+
 		/// <summary>
 		/// Handles property changes on the client side based on the provided property ID.
 		/// </summary>
@@ -164,6 +178,50 @@ namespace Omni.Core
 		protected void SyncNetworkState()
 		{
 			___NotifyChange___();
+		}
+
+		/// <summary>
+		/// Compares two values of type T for deep equality.
+		/// </summary>
+		/// <typeparam name="T">The type of the values to compare.</typeparam>
+		/// <param name="oldValue">The old value to compare.</param>
+		/// <param name="newValue">The new value to compare.</param>
+		/// <returns>True if the values are deeply equal; otherwise, false.</returns>
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		[Obsolete("Don't use this method! The source generator will use it.")]
+		protected bool DeepEquals<T>(T oldValue, T newValue, string name)
+		{
+#if UNITY_EDITOR
+			if (!___NotifyEditorChange___Called)
+			{
+				return false;
+			}
+
+			string oldJson = NetworkManager.ToJson(new ValueWrapper<T>(name, oldValue));
+			string newJson = NetworkManager.ToJson(new ValueWrapper<T>(name, newValue));
+
+			print(oldJson);
+			print(newJson);
+
+			JObject oldObject = JObject.Parse(oldJson);
+			JObject newObject = JObject.Parse(newJson);
+
+			return JToken.DeepEquals(oldObject, newObject);
+#else
+            return false;
+#endif
+		}
+
+		private class ValueWrapper<T>
+		{
+			public string Name { get; }
+			public T Value { get; }
+
+			public ValueWrapper(string name, T value)
+			{
+				Name = name;
+				Value = value;
+			}
 		}
 	}
 }

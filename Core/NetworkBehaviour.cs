@@ -989,7 +989,7 @@ namespace Omni.Core
 		protected virtual void OnValidate()
 		{
 			if (_identity != null && _identity.IsRegistered)
-				___NotifyChange___(); // Overriden by the source generator.
+				___NotifyEditorChange___(); // Overriden by the source generator.
 
 			if (m_Id < 0)
 			{

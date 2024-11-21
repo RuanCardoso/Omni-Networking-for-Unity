@@ -411,11 +411,11 @@ namespace Omni.Core
 
 			UpdateFrameAndCpuMetrics();
 
-			if (IsClientActive && Input.GetKeyDown(KeyCode.Space))
-			{
-				print(LocalEndPoint);
-				Connection.Client.SendP2P(new byte[] { 1, 2 }, LocalEndPoint);
-			}
+			//if (IsClientActive && Input.GetKeyDown(KeyCode.Space))
+			//{
+			//	print(LocalEndPoint);
+			//	Connection.Client.SendP2P(new byte[] { 1, 2 }, new IPEndPoint(IPAddress.Parse("189.71.166.236"), 5054));
+			//}
 		}
 
 		private void UpdateFrameAndCpuMetrics()
