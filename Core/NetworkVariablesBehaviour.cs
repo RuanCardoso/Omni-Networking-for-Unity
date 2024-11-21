@@ -1,4 +1,4 @@
-using Newtonsoft.Json.Linq;
+using Omni.Shared;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -183,45 +183,38 @@ namespace Omni.Core
 		/// <summary>
 		/// Compares two values of type T for deep equality.
 		/// </summary>
-		/// <typeparam name="T">The type of the values to compare.</typeparam>
-		/// <param name="oldValue">The old value to compare.</param>
-		/// <param name="newValue">The new value to compare.</param>
 		/// <returns>True if the values are deeply equal; otherwise, false.</returns>
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		[Obsolete("Don't use this method! The source generator will use it.")]
 		protected bool DeepEquals<T>(T oldValue, T newValue, string name)
 		{
-#if UNITY_EDITOR
 			if (!___NotifyEditorChange___Called)
 			{
-				return false;
+				return OnNetworkVariableDeepEquals(oldValue, newValue, name);
 			}
 
-			string oldJson = NetworkManager.ToJson(new ValueWrapper<T>(name, oldValue));
-			string newJson = NetworkManager.ToJson(new ValueWrapper<T>(name, newValue));
-
-			print(oldJson);
-			print(newJson);
-
-			JObject oldObject = JObject.Parse(oldJson);
-			JObject newObject = JObject.Parse(newJson);
-
-			return JToken.DeepEquals(oldObject, newObject);
+#if OMNI_DEBUG
+			NetworkLogger.__Log__($"[NetworkVariable({name})] -> Editing network variables through the Unity Editor (Inspector) is not fully allowed. " +
+				"Any modifications made in this manner will cause all network variables to synchronize automatically. " +
+				"Network variables should only be updated via scripts to ensure consistency and prevent unintended behavior." +
+				"Editing via the Unity Editor (Inspector) is permitted solely for debugging purposes; however, be aware that this will synchronize all network variables, including those that have not been changed.", NetworkLogger.LogType.Warning);
 #else
-            return false;
+			throw new NotSupportedException("[NetworkVariable] -> Editing network variables through the Unity Editor (Inspector) is not supported.");
 #endif
+			return false;
 		}
 
-		private class ValueWrapper<T>
+		/// <summary>
+		/// Compares two values of type T for deep equality for network variables.
+		/// </summary>
+		/// <typeparam name="T">The type of the values to compare.</typeparam>
+		/// <param name="oldValue">The old value to compare.</param>
+		/// <param name="newValue">The new value to compare.</param>
+		/// <param name="name">The name of the network variable.</param>
+		/// <returns>True if the values are deeply equal; otherwise, false.</returns>
+		protected virtual bool OnNetworkVariableDeepEquals<T>(T oldValue, T newValue, string name)
 		{
-			public string Name { get; }
-			public T Value { get; }
-
-			public ValueWrapper(string name, T value)
-			{
-				Name = name;
-				Value = value;
-			}
+			return typeof(T).IsPrimitive && oldValue.Equals(newValue);
 		}
 	}
 }
