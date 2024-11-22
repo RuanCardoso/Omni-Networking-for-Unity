@@ -148,13 +148,19 @@ namespace Omni.Core
 					networkBehaviour.Id = (byte)(i + 1);
 				}
 
+				// Register on the network and add to the service locator.
 				networkBehaviour.Register();
-				networkBehaviour.OnAwake();
+			}
+
+			// After register all behaviours, call the OnAwake method.
+			foreach (var behaviour in networkBehaviours)
+			{
+				behaviour.OnAwake();
 			}
 
 			var identities = isServer
-				? NetworkManager.Server.Identities
-				: NetworkManager.Client.Identities;
+			? NetworkManager.Server.Identities
+			: NetworkManager.Client.Identities;
 
 			if (!identities.TryAdd(identity.IdentityId, identity))
 			{
