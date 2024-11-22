@@ -12,6 +12,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
+#pragma warning disable
+
 namespace Omni.Core
 {
 	public static class NetworkHelper
@@ -155,6 +157,7 @@ namespace Omni.Core
 			// After register all behaviours, call the OnAwake method.
 			foreach (var behaviour in networkBehaviours)
 			{
+				behaviour.___InjectServices___();
 				behaviour.OnAwake();
 			}
 

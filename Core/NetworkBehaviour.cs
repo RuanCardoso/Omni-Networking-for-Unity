@@ -707,6 +707,13 @@ namespace Omni.Core
 			private set => _remote = value;
 		}
 
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		[Obsolete("Don't override this method! The source generator will override it.")]
+		protected internal virtual void ___InjectServices___()
+		{
+
+		}
+
 		/// <summary>
 		/// Called after the object is instantiated and registered, but before it is active.
 		/// </summary>
