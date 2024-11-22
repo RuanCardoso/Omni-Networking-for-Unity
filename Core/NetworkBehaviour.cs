@@ -751,7 +751,8 @@ namespace Omni.Core
 		/// resources linked to the client or sending initial data packets to the client after 
 		/// confirming it has been completely registered on the network.
 		/// </summary>
-		protected internal virtual void OnSpawned()
+		protected internal virtual void OnSpawned() { }
+		private void Internal_OnSpawned()
 		{
 			// Synchronizes all network variables with the client to ensure that the client has 
 			// the most up-to-date data from the server immediately after the spawning process.
@@ -792,6 +793,7 @@ namespace Omni.Core
 			}
 
 			Identity.OnRequestAction += OnRequestedAction;
+			Identity.OnSpawn += Internal_OnSpawned;
 			Identity.OnSpawn += OnSpawned;
 
 			NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
@@ -838,6 +840,7 @@ namespace Omni.Core
 			}
 
 			Identity.OnRequestAction -= OnRequestedAction;
+			Identity.OnSpawn -= Internal_OnSpawned;
 			Identity.OnSpawn -= OnSpawned;
 
 			if (!Identity.Unregister(m_ServiceName))
