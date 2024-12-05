@@ -14,11 +14,7 @@ using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
-	public class NetworkBehaviour
-		: NetworkVariablesBehaviour,
-			IInvokeMessage,
-			ITickSystem,
-			IEquatable<NetworkBehaviour>
+	public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem, IEquatable<NetworkBehaviour>
 	{
 		// Hacky: DIRTY CODE!
 		// This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.
@@ -26,11 +22,11 @@ namespace Omni.Core
 		// Avoid refactoring as these techniques are crucial for optimizing execution speed.
 		// Works with il2cpp.
 
-		public class NbClient
+		public class NetworkBehaviourClient
 		{
 			private readonly NetworkBehaviour m_NetworkBehaviour;
 
-			internal NbClient(NetworkBehaviour networkBehaviour)
+			internal NetworkBehaviourClient(NetworkBehaviour networkBehaviour)
 			{
 				m_NetworkBehaviour = networkBehaviour;
 			}
@@ -242,11 +238,11 @@ namespace Omni.Core
 			}
 		}
 
-		public class NbServer
+		public class NetworkBehaviourServer
 		{
 			private readonly NetworkBehaviour m_NetworkBehaviour;
 
-			internal NbServer(NetworkBehaviour networkBehaviour)
+			internal NetworkBehaviourServer(NetworkBehaviour networkBehaviour)
 			{
 				m_NetworkBehaviour = networkBehaviour;
 			}
@@ -580,9 +576,9 @@ namespace Omni.Core
 			BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 
 		/// <summary>
-		/// Gets or sets the identifier of this instance.
+		/// Gets the unique identifier for this instance.
 		/// </summary>
-		/// <value>The identifier as a byte.</value>
+		/// <value>A <see cref="byte"/> representing the identifier of the instance.</value>
 		public byte Id
 		{
 			get { return m_Id; }
@@ -590,9 +586,18 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Gets or sets the <see cref="NetworkIdentity"/> associated with this instance.
+		/// Gets the <see cref="NetworkIdentity"/> associated with this instance.
 		/// </summary>
-		/// <value>The <see cref="NetworkIdentity"/> associated with this instance.</value>
+		/// <value>
+		/// The <see cref="NetworkIdentity"/> associated with this instance.
+		/// </value>
+		/// <exception cref="InvalidOperationException">
+		/// Thrown if the <see cref="NetworkIdentity"/> has not been assigned before accessing this property.
+		/// </exception>
+		/// <remarks>
+		/// The <see cref="NetworkIdentity"/> represents the unique identity of this object within the network.
+		/// Ensure the property is properly assigned before attempting to access it, especially during object initialization.
+		/// </remarks>
 		public NetworkIdentity Identity
 		{
 			get
@@ -610,65 +615,89 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Gets the identifier of the associated <see cref="NetworkIdentity"/>.
+		/// Gets the unique identifier of the associated <see cref="NetworkIdentity"/>.
 		/// </summary>
-		/// <value>The identifier of the associated <see cref="NetworkIdentity"/> as an integer.</value>
+		/// <value>
+		/// An integer representing the identifier of the associated <see cref="NetworkIdentity"/>.
+		/// </value>
 		public int IdentityId => Identity.IdentityId;
 
 		/// <summary>
-		/// Gets a value indicating whether this instance represents the local player.
+		/// Indicates whether this instance represents the local player.
 		/// </summary>
 		/// <value><c>true</c> if this instance represents the local player; otherwise, <c>false</c>.</value>
 		public bool IsLocalPlayer => Identity.IsLocalPlayer;
 
 		/// <summary>
-		/// Gets a value indicating whether this instance represents the local player.
+		/// Indicates whether this instance represents the local player.
 		/// </summary>
 		/// <value><c>true</c> if this instance represents the local player; otherwise, <c>false</c>.</value>
-		/// <remarks>This property is an alias for <see cref="IsLocalPlayer"/>.</remarks>
+		/// <remarks>
+		/// This property is an alias for <see cref="IsLocalPlayer"/> to improve code readability.
+		/// </remarks>
 		public bool IsMine => IsLocalPlayer;
 
 		/// <summary>
-		/// Gets a value indicating whether this instance is on the server.
+		/// Indicates whether this instance exists on the server.
 		/// </summary>
-		/// <value><c>true</c> if this instance is on the server; otherwise, <c>false</c>.</value>
+		/// <value><c>true</c> if this instance exists on the server; otherwise, <c>false</c>.</value>
 		public bool IsServer => Identity.IsServer;
 
 		/// <summary>
-		/// Gets a value indicating whether this instance is on the client.
+		/// Indicates whether this instance exists on the client.
 		/// </summary>
-		/// <value><c>true</c> if this instance is on the client; otherwise, <c>false</c>.</value>
+		/// <value><c>true</c> if this instance exists on the client; otherwise, <c>false</c>.</value>
 		public bool IsClient => Identity.IsClient;
 
 		/// <summary>
-		/// Gets the <see cref="SimpleNtp"/> instance that provides access to the server and client time.
+		/// Provides access to the synchronized network time protocol (NTP) instance used by the server and clients.
 		/// </summary>
 		/// <value>
-		/// The <see cref="SimpleNtp"/> instance that provides the server and client time.
+		/// The <see cref="SimpleNtp"/> instance that synchronizes the server and client time.
 		/// </value>
 		protected SimpleNtp Sntp => NetworkManager.Sntp;
 
 		/// <summary>
-		/// Gets the synchronized time between the server and the clients as a <see cref="double"/>.
-		/// This property returns the current synchronized time, providing a consistent reference point across all clients and the server.
-		/// Although the time is not exactly the same due to precision differences, it is synchronized to be as close as possible between the server and the clients.
+		/// Gets the synchronized time between the server and the clients.
 		/// </summary>
+		/// <value>
+		/// A <see cref="double"/> representing the current synchronized time across all clients and the server.
+		/// </value>
+		/// <remarks>
+		/// The synchronized time provides a consistent reference point between the server and clients. 
+		/// While not perfectly identical due to precision differences, it is as close as possible between all nodes.
+		/// </remarks>
 		protected double SynchronizedTime => IsServer ? Sntp.Server.Time : Sntp.Client.Time;
 
 		/// <summary>
-		/// Gets the synchronized time between the client and the server as a <see cref="double"/>.
-		/// This property returns the current synchronized time as perceived by the client, providing a reference point that is consistent between that client and the server.
-		/// Unlike the <see cref="SynchronizedTime"/> property, <see cref="PeerTime"/> represents the time from the perspective of the individual client and may differ between clients.
+		/// Gets the synchronized time between the client and the server from the perspective of the current peer.
 		/// </summary>
+		/// <value>
+		/// A <see cref="double"/> representing the synchronized time for the specific client relative to the server.
+		/// </value>
+		/// <remarks>
+		/// Unlike <see cref="SynchronizedTime"/>, this property reflects the perspective of the individual client. 
+		/// The value may differ slightly between clients due to network latency or other factors.
+		/// </remarks>
 		protected double PeerTime => Identity.Owner.Time;
 
-		private NbClient _local;
+		private NetworkBehaviourClient _local;
 
 		// public api: allow send from other object
 		/// <summary>
-		/// Gets the <see cref="NbClient"/> instance used to invoke messages on the server from the client.
+		/// Gets the <see cref="NetworkBehaviourClient"/> instance used to send messages from the client to the server.
 		/// </summary>
-		public NbClient Local
+		/// <value>
+		/// The <see cref="NetworkBehaviourClient"/> instance for client-to-server communication.
+		/// </value>
+		/// <exception cref="Exception">
+		/// Thrown if this property is accessed from the server side. It is intended for client-side use only.
+		/// </exception>
+		/// <remarks>
+		/// Use this property to invoke server-side operations from the client.
+		/// Ensure it is not accessed on the server side, as it is strictly for client functionality.
+		/// </remarks>
+		public NetworkBehaviourClient Local
 		{
 			get
 			{
@@ -684,14 +713,24 @@ namespace Omni.Core
 			private set => _local = value;
 		}
 
-		private NbServer _remote;
+		private NetworkBehaviourServer _remote;
 		private NetworkIdentity _identity;
 
 		// public api: allow send from other object
 		/// <summary>
-		/// Gets the <see cref="NbServer"/> instance used to invoke messages on the client from the server.
+		/// Gets the <see cref="NetworkBehaviourServer"/> instance used to send messages from the server to the client.
 		/// </summary>
-		public NbServer Remote
+		/// <value>
+		/// The <see cref="NetworkBehaviourServer"/> instance for server-to-client communication.
+		/// </value>
+		/// <exception cref="Exception">
+		/// Thrown if this property is accessed from the client side. It is intended for server-side use only.
+		/// </exception>
+		/// <remarks>
+		/// Use this property to invoke client-side operations from the server.
+		/// Ensure it is not accessed on the client side, as it is strictly for server functionality.
+		/// </remarks>
+		public NetworkBehaviourServer Remote
 		{
 			get
 			{
@@ -709,26 +748,23 @@ namespace Omni.Core
 
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		[Obsolete("Don't override this method! The source generator will override it.")]
-		protected internal virtual void ___InjectServices___()
-		{
-
-		}
+		protected internal virtual void ___InjectServices___() { }
 
 		/// <summary>
-		/// Called after the object is instantiated and registered, but before it is active.
+		/// Called after the object is instantiated and registered, but before it becomes active.
 		/// </summary>
 		/// <remarks>
-		/// Override this method to perform any initialization that needs to happen
-		/// before the object becomes active.
+		/// Override this method to perform any setup or initialization that must occur before the object is active.
+		/// Common use cases include preparing resources or initializing state that does not depend on active functionality.
 		/// </remarks>
 		protected internal virtual void OnAwake() { }
 
 		/// <summary>
-		/// Called after the object is instantiated and after it becomes active.
+		/// Called after the object is instantiated and has become active.
 		/// </summary>
 		/// <remarks>
-		/// Override this method to perform any initialization or setup that needs to happen
-		/// after the object has become active.
+		/// Override this method to perform setup or initialization tasks that require the object to be active.
+		/// Typical use cases include registering the object in systems that depend on its active state.
 		/// </remarks>
 		protected internal virtual void OnStart() { }
 
@@ -736,7 +772,8 @@ namespace Omni.Core
 		/// Called after the local player object is instantiated.
 		/// </summary>
 		/// <remarks>
-		/// Override this method to perform any initialization or setup specific to the local player
+		/// Override this method to perform initialization or setup specific to the local player's instance.
+		/// Common use cases include setting up UI or initializing local player-specific data.
 		/// </remarks>
 		protected internal virtual void OnStartLocalPlayer() { }
 
@@ -744,7 +781,8 @@ namespace Omni.Core
 		/// Called after a remote player object is instantiated.
 		/// </summary>
 		/// <remarks>
-		/// Override this method to perform any initialization or setup specific to remote players
+		/// Override this method to perform initialization or setup specific to remote players.
+		/// Typical use cases include initializing visual indicators for remote players or handling network synchronization.
 		/// </remarks>
 		protected internal virtual void OnStartRemotePlayer() { }
 
@@ -769,12 +807,12 @@ namespace Omni.Core
 		/// <summary>
 		/// Called on each update tick.
 		/// </summary>
-		/// <remarks>
-		/// Override this method to perform any per-tick processing that needs to occur
-		/// during the object's active state. This method is called on a regular interval
-		/// determined by the system's tick rate.
-		/// </remarks>
 		/// <param name="data">The data associated with the current tick.</param>
+		/// <remarks>
+		/// Override this method to perform per-tick processing during the object's active state.
+		/// This method is called at regular intervals defined by the system's tick rate, making it suitable
+		/// for time-sensitive logic such as physics updates or state synchronization.
+		/// </remarks>
 		public virtual void OnTick(ITickInfo data) { }
 
 		protected internal void Register()
@@ -783,12 +821,12 @@ namespace Omni.Core
 			if (Identity.IsServer)
 			{
 				sInvoker.FindEvents<ServerAttribute>(this, m_BindingFlags);
-				Remote = new NbServer(this);
+				Remote = new NetworkBehaviourServer(this);
 			}
 			else
 			{
 				cInvoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
-				Local = new NbClient(this);
+				Local = new NetworkBehaviourClient(this);
 			}
 
 			InitializeServiceLocator();
@@ -858,8 +896,17 @@ namespace Omni.Core
 				);
 			}
 
-			OnDestroy();
+			OnNetworkDestroy();
 		}
+
+		/// <summary>
+		/// Called when the object is unregistered from the network.
+		/// </summary>
+		/// <remarks>
+		/// Override this method to implement custom cleanup logic that needs to run when the object is unregistered from
+		/// all network-related systems. Typical use cases include releasing resources, unsubscribing from events, or resetting state.
+		/// </remarks>
+		protected virtual void OnNetworkDestroy() { }
 
 		/// <summary>
 		/// Invokes a remote action on the server-side entity, triggered by a client-side entity. 
@@ -868,16 +915,44 @@ namespace Omni.Core
 		/// </summary>
 		protected virtual void OnRequestedAction(DataBuffer data) { }
 
+		/// <summary>
+		/// Called after a scene has been loaded.
+		/// </summary>
+		/// <param name="scene">The <see cref="Scene"/> that was loaded.</param>
+		/// <param name="mode">The <see cref="LoadSceneMode"/> used to load the scene.</param>
+		/// <remarks>
+		/// Override this method to perform any initialization or setup that needs to occur 
+		/// after a new scene is loaded. This method is invoked automatically by the network manager.
+		/// The default implementation unsubscribes this method from the scene load event to avoid duplicate invocations.
+		/// </remarks>
 		protected virtual void OnSceneLoaded(Scene scene, LoadSceneMode mode)
 		{
 			NetworkManager.OnSceneLoaded -= OnSceneLoaded;
 		}
 
+		/// <summary>
+		/// Called after a scene has been unloaded.
+		/// </summary>
+		/// <param name="scene">The <see cref="Scene"/> that was unloaded.</param>
+		/// <remarks>
+		/// Override this method to clean up or release resources related to the unloaded scene. 
+		/// The default implementation unsubscribes this method from the scene unload event to avoid duplicate invocations.
+		/// </remarks>
 		protected virtual void OnSceneUnloaded(Scene scene)
 		{
 			NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
 		}
 
+		/// <summary>
+		/// Called before a scene begins to load.
+		/// </summary>
+		/// <param name="scene">The <see cref="Scene"/> that is about to be loaded.</param>
+		/// <param name="op">The <see cref="SceneOperationMode"/> indicating the type of operation being performed.</param>
+		/// <remarks>
+		/// Override this method to prepare for the loading of a new scene. Typical use cases include saving the current state,
+		/// unloading unnecessary resources, or initializing data required for the new scene.
+		/// The default implementation unsubscribes this method from the scene preparation event to avoid duplicate invocations.
+		/// </remarks>
 		protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
 		{
 			NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
@@ -906,9 +981,13 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Rents a data buffer from the network manager's pool. The caller must ensure the buffer is disposed or used within a using statement.
+		/// Rents a <see cref="DataBuffer"/> from the network manager's buffer pool.
 		/// </summary>
-		/// <returns>A rented data buffer.</returns>
+		/// <remarks>
+		/// The rented buffer is a reusable instance aimed at reducing memory allocations. 
+		/// It must be disposed of properly or used within a <c>using</c> statement to ensure it is returned to the pool.
+		/// </remarks>
+		/// <returns>A rented <see cref="DataBuffer"/> instance from the pool.</returns>
 		protected DataBuffer Rent()
 		{
 			return NetworkManager.Pool.Rent();
@@ -974,8 +1053,6 @@ namespace Omni.Core
 				}
 			}
 		}
-
-		protected virtual void OnDestroy() { }
 
 		[EditorBrowsable(EditorBrowsableState.Never)]
 		public void OnMessageInvoked(
