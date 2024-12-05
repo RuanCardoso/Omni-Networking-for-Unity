@@ -17,7 +17,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
-using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace Omni.Shared
@@ -25,6 +24,7 @@ namespace Omni.Shared
 	public static class NetworkLogger
 	{
 		private const string LogPath = "omni_player_log.txt";
+		public static StreamWriter fileStream = null;
 
 		public enum LogType
 		{
@@ -33,50 +33,45 @@ namespace Omni.Shared
 			Log = 3,
 		}
 
-		/// <summary>
-		/// Indicates whether buffer tracking is enabled. If true, additional tracking is performed to ensure
-		/// that buffers are properly disposed of and returned to the pool. <c>Debug mode only.</c>
-		/// </summary>
-		public static bool EnableTracking { get; set; } = true;
-
 #pragma warning disable IDE1006
 #if OMNI_DEBUG
 		/// <summary>
-		/// Logs a message to the console and the log file. This method is available only in debug builds.
+		/// Logs a message to both the console and the log file (debug builds only).
 		/// </summary>
-		/// <param name="message">The message to be logged.</param>
-		/// <param name="logType">The type of log message. Default is <see cref="LogType.Log"/>.</param>
+		/// <param name="message">The message to log.</param>
+		/// <param name="logType">The log message type (default: <see cref="LogType.Log"/>).</param>
 		public static void __Log__(string message, LogType logType = LogType.Log)
 		{
 			Log(message, true, logType);
 		}
 #else
-        /// <summary>
-        /// Logs a message to the console or to a file depending on the build configuration.
-        /// </summary>
-        /// <remarks>
-        /// In the Unity Editor, the message is logged to the console. In other builds, the message is logged to a file.
-        /// </remarks>
-        /// <param name="message">The message to be logged.</param>
-        /// <param name="logType">The type of log message. Default is <see cref="LogType.Log"/>.</param>
-        public static void __Log__(string message, LogType logType = LogType.Log)
-        {
+		/// <summary>
+		/// Logs a message to both the console and the log file (release builds only).
+		/// </summary>
+		/// <remarks>
+		/// In the Unity Editor, the message is logged to the console. In other builds, the message is logged to a file.
+		/// </remarks>
+		/// <param name="message">The message to log.</param>
+		/// <param name="logType">The log message type (default: <see cref="LogType.Log"/>).</param>
+		public static void __Log__(string message, LogType logType = LogType.Log)
+		{
 #if UNITY_EDITOR
-            Log(message, true, logType);
+			Log(message, true, logType);
 #else
             LogToFile(message, logType);
 #endif
-        }
+		}
 #endif
 #pragma warning restore IDE1006
-
+		/// <summary>
+		/// Prints the contents of the player's log file to the log output.
+		/// </summary>
 		public static void PrintPlayerLog()
 		{
-			string path = Path.Combine(Application.persistentDataPath, LogPath);
-			if (File.Exists(path))
+			if (File.Exists(LogPath))
 			{
-				Log($"Log Path: {path}");
-				Log($"Player Log:\n\r{File.ReadAllText(path)}");
+				Log($"Log Path: {Path.GetFullPath(LogPath)}");
+				Log($"Player Log:\n\r{File.ReadAllText(LogPath)}");
 			}
 			else
 			{
@@ -85,24 +80,46 @@ namespace Omni.Shared
 		}
 
 		/// <summary>
-		/// Logs a message to the log file.<br/>
-		/// Includes the current local date and time, thread ID, and log type.
+		/// Logs a message to a persistent log file, keeping the file stream open for better performance.
 		/// </summary>
+		/// <param name="message">The message to be logged.</param>
+		/// <param name="logType">
+		/// The type of log message, indicating its severity and category. Default is <see cref="LogType.Log"/>.
+		/// </param>
+		/// <remarks>
+		/// This method appends the log message to a file, maintaining an open stream for improved performance when writing multiple log entries.
+		/// </remarks>
 		public static void LogToFile(object message, LogType logType = LogType.Log)
 		{
-			string path = Path.Combine(Application.persistentDataPath, LogPath);
-			using StreamWriter file = new(path, true);
+			fileStream ??= new(LogPath, append: true); // Keep the stream open for better performance.
 			string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 			int threadId = Thread.CurrentThread.ManagedThreadId;
-			file.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
+			fileStream.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
 		}
 
 		/// <summary>
-		/// Logs a message to the console and optionally to a log file.
+		/// Logs a message to the console and optionally writes it to a log file.
 		/// </summary>
 		/// <param name="message">The message to be logged.</param>
-		/// <param name="writeToLogFile">Specifies whether to write the message to a log file (default is false).</param>
-		/// <param name="logType">The type of log message (default is LogType.Log).</param>
+		/// <param name="writeToLogFile">
+		/// Indicates whether the message should also be written to a log file. Default is <c>false</c>.
+		/// </param>
+		/// <param name="logType">
+		/// The type of log message, determining its severity and appearance. Default is <see cref="LogType.Log"/>.
+		/// </param>
+		/// <remarks>
+		/// <para>
+		/// This method provides a flexible logging mechanism, supporting console output, optional file logging, and enhanced debug information.
+		/// </para>
+		/// <para>
+		/// In server builds:
+		/// <list type="bullet">
+		/// <item><see cref="LogType.Error"/> messages are displayed in red.</item>
+		/// <item><see cref="LogType.Warning"/> messages are displayed in yellow.</item>
+		/// <item>Other messages are displayed in white.</item>
+		/// </list>
+		/// </para>
+		/// </remarks>
 		public static void Log(
 			object message,
 			bool writeToLogFile = false,
@@ -127,34 +144,43 @@ namespace Omni.Shared
             Console.WriteLine(new string('-', Console.WindowWidth - 1));
 #else
 #if OMNI_DEBUG
-			Debug.LogFormat((UnityEngine.LogType)logType, LogOption.None, null, "{0}", message);
+			Debug.LogFormat((UnityEngine.LogType)logType, UnityEngine.LogOption.None, null, "{0}", message);
 #else
             Debug.LogFormat(
                 (UnityEngine.LogType)logType,
-                LogOption.NoStacktrace,
+                UnityEngine.LogOption.NoStacktrace,
                 null,
                 "{0}",
                 message
             );
 #endif
 #endif
-
-#if OMNI_DEBUG
-			if (logType == LogType.Error && EnableTracking)
-			{
-				string _message = GetStackTrace();
-
-				// Print the stack trace only in debug mode.
-				Print(_message, logType);
-			}
-#endif
 		}
 
 		/// <summary>
-		/// Prints a message to the console without a stack trace. not logging to a file.
+		/// Prints a message to the console or debug output without a stack trace. This method does not log to a file.
 		/// </summary>
 		/// <param name="message">The message to be printed.</param>
-		/// <param name="logType">The type of log message. Default is <see cref="LogType.Error"/>.</param>
+		/// <param name="logType">
+		/// The type of log message, determining its severity and appearance.
+		/// Defaults to <see cref="LogType.Error"/>.
+		/// </param>
+		/// <remarks>
+		/// <para>
+		/// In a server build, the message is printed to the console with a color indicating its log type:
+		/// <list type="bullet">
+		/// <item><see cref="LogType.Error"/> messages are displayed in red.</item>
+		/// <item><see cref="LogType.Warning"/> messages are displayed in yellow.</item>
+		/// <item>Other messages are displayed in white.</item>
+		/// </list>
+		/// </para>
+		/// <para>
+		/// In non-server builds, the message is output using Unity's debug system without a stack trace.
+		/// </para>
+		/// <para>
+		/// This method is designed for quick and lightweight logging and should not be used for persistent logs.
+		/// </para>
+		/// </remarks>
 		public static void Print(string message, LogType logType = LogType.Error)
 		{
 #if OMNI_SERVER && !UNITY_EDITOR
@@ -171,7 +197,7 @@ namespace Omni.Shared
 #else
 			Debug.LogFormat(
 				(UnityEngine.LogType)logType,
-				LogOption.NoStacktrace,
+				UnityEngine.LogOption.NoStacktrace,
 				null,
 				"{0}",
 				message
@@ -180,12 +206,23 @@ namespace Omni.Shared
 		}
 
 		/// <summary>
-		/// Retrieves the stack trace information.
+		/// Retrieves detailed stack trace information, including class, method, and line number, for debugging purposes.
 		/// </summary>
-		/// <returns>The stack trace information as a string.</returns>
-		public static string GetStackTrace()
+		/// <param name="exception">
+		/// An optional <see cref="Exception"/> object. If provided, the stack trace for the exception is used.
+		/// If <c>null</c>, the current call stack is retrieved.
+		/// </param>
+		/// <returns>
+		/// A string containing the stack trace details, including class name, method name, and line number.
+		/// </returns>
+		/// <remarks>
+		/// This method is useful for debugging scenarios to provide insights into the call stack.
+		/// It performs a detailed analysis of the stack frames, which can be computationally expensive.
+		/// Use this method primarily in debug builds or for diagnostic purposes.
+		/// </remarks>
+		public static string GetStackTrace(Exception exception = null)
 		{
-			var frames = CreateStackTrace();
+			var frames = CreateStackTrace(exception);
 			var _message = "";
 
 			// Very slow operation, but useful for debugging. Debug mode only.
@@ -201,12 +238,23 @@ namespace Omni.Shared
 		}
 
 		/// <summary>
-		/// Creates a sequence of <see cref="StackFrame"/>s representing the call stack.
+		/// Creates a sequence of <see cref="StackFrame"/> objects representing the call stack.
 		/// </summary>
-		/// <returns>A sequence of <see cref="StackFrame"/>s.</returns>
-		public static IEnumerable<StackFrame> CreateStackTrace()
+		/// <param name="exception">
+		/// An optional <see cref="Exception"/> object. If provided, the stack trace for the exception is analyzed.
+		/// If <c>null</c>, the current call stack is analyzed.
+		/// </param>
+		/// <returns>
+		/// An enumerable sequence of <see cref="StackFrame"/> objects, representing the frames in the call stack.
+		/// </returns>
+		/// <remarks>
+		/// This method generates a detailed representation of the call stack for diagnostic purposes.
+		/// Each <see cref="StackFrame"/> includes file information such as line numbers and method details,
+		/// which may require the application to be compiled with debug symbols for complete accuracy.
+		/// </remarks>
+		public static IEnumerable<StackFrame> CreateStackTrace(Exception exception = null)
 		{
-			StackTrace stack = new(true);
+			StackTrace stack = exception == null ? new StackTrace(fNeedFileInfo: true) : new StackTrace(exception, fNeedFileInfo: true);
 			for (int i = stack.FrameCount - 1; i >= 0; i--)
 			{
 				StackFrame frame = stack.GetFrame(i);
