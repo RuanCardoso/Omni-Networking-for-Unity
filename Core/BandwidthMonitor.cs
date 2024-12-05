@@ -1,6 +1,6 @@
-using System;
 using Omni.Shared;
 using Omni.Threading.Tasks;
+using System;
 using UnityEngine;
 
 public sealed class BandwidthMonitor
