@@ -1,7 +1,7 @@
-using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
 using System;
 using System.Collections.Generic;
+using TriInspector;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 
 namespace Omni.Core
 {
+	[DeclareBoxGroup("Infor")]
 	public sealed class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
 	{
 		internal string _prefabName;
@@ -23,15 +24,21 @@ namespace Omni.Core
 
 		[SerializeField]
 		[ReadOnly]
+		[LabelWidth(150)]
+		[Group("Infor")]
 		private bool m_IsServer;
 
 		[SerializeField]
 		[ReadOnly]
+		[LabelWidth(150)]
+		[Group("Infor")]
 		private bool m_IsLocalPlayer;
 
 		[SerializeField]
 		[ReadOnly]
-		private bool isServerOwner;
+		[LabelWidth(150)]
+		[Group("Infor")]
+		private bool isOwnedByTheServer;
 
 		public int IdentityId
 		{
@@ -87,8 +94,8 @@ namespace Omni.Core
 		/// </summary>
 		public bool IsServerOwner
 		{
-			get { return isServerOwner; }
-			internal set { isServerOwner = value; }
+			get { return isOwnedByTheServer; }
+			internal set { isOwnedByTheServer = value; }
 		}
 
 		/// <summary>

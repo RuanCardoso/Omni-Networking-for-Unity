@@ -16,6 +16,7 @@ using UnityEngine.SceneManagement;
 namespace Omni.Core
 {
 	[DeclareFoldoutGroup("Network Variables", Expanded = true)]
+	[DeclareBoxGroup("Service Settings")]
 	public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem, IEquatable<NetworkBehaviour>
 	{
 		// Hacky: DIRTY CODE!
@@ -567,13 +568,15 @@ namespace Omni.Core
 		private readonly InvokeBehaviour<DataBuffer, NetworkPeer, int, Null, Null> sInvoker = new();
 
 		[SerializeField]
-		[Header("Service Settings")]
+		[Group("Service Settings")]
 		private string m_ServiceName;
 
 		[SerializeField]
+		[Group("Service Settings")]
 		private byte m_Id = 0;
 
 		[SerializeField]
+		[Group("Service Settings")]
 		internal BindingFlags m_BindingFlags =
 			BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
 
