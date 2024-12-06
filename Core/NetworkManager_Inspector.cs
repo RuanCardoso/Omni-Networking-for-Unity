@@ -110,8 +110,8 @@ namespace Omni.Core
 
 		[SerializeField]
 		[Group("Connection")]
-		[LabelText("Host Address")]
-		private string m_ConnectAddress = "127.0.0.1";
+		[LabelText("Hosts")]
+		private List<string> m_ConnectAddresses = new List<string>() { "127.0.0.1", };
 
 		[SerializeField]
 		[Group("Connection")]
@@ -202,7 +202,7 @@ namespace Omni.Core
 		[SerializeField]
 		private List<NetworkIdentity> m_NetworkPrefabs = new();
 
-		public static string ConnectAddress => Manager.m_ConnectAddress;
+		public static string ConnectAddress => Manager.m_ConnectAddresses[0];
 
 		internal static bool MatchmakingModuleEnabled => Manager.m_MatchModule;
 		internal static bool TickSystemModuleEnabled => Manager.m_TickModule;
@@ -217,6 +217,7 @@ namespace Omni.Core
 
 		public virtual void Reset()
 		{
+			PlayerPrefs.DeleteKey("IPLastReceiveDate");
 			OnValidate();
 		}
 
@@ -240,9 +241,11 @@ namespace Omni.Core
 				StripComponents();
 			}
 
-			Application.runInBackground = m_RunInBackground;
-			m_ConnectAddress = m_ConnectAddress.Trim();
 			DisableAutoStartIfHasHud();
+			Application.runInBackground = m_RunInBackground;
+			// Trim the list.
+			for (int i = 0; i < m_ConnectAddresses.Count; i++)
+				m_ConnectAddresses[i] = m_ConnectAddresses[i].Trim();
 		}
 
 		[ContextMenu("Strip Components")]
@@ -294,7 +297,7 @@ namespace Omni.Core
 			writer.Write(ToJson(scriptingBackends));
 		}
 
-		[ContextMenu("Get External IP")]
+		[ContextMenu("Force Get Public IP")]
 		private void ForceGetExternalIp()
 		{
 			PlayerPrefs.DeleteKey("IPLastReceiveDate");
@@ -314,8 +317,48 @@ namespace Omni.Core
 			// Check if the last call was successful or if an {minutes} time has passed since the last call to avoid spamming.
 			if (timeLeft.TotalMinutes >= minutes)
 			{
-				PublicIPv4 = (await NetworkHelper.GetExternalIp(useIPv6: false)).ToString();
-				PublicIPv6 = (await NetworkHelper.GetExternalIp(useIPv6: true)).ToString();
+				string publicIPv4 = (await NetworkHelper.GetExternalIpAsync(useIPv6: false)).ToString();
+				string publicIPv6 = (await NetworkHelper.GetExternalIpAsync(useIPv6: true)).ToString();
+
+				// Check if the IP has changed and update it.
+				if (publicIPv4 != PublicIPv4)
+				{
+					// Remove the old addresses.
+					if (m_ConnectAddresses.Contains(PublicIPv4) && (PublicIPv4.ToLower() != "localhost" && PublicIPv4 != "127.0.0.1"))
+						m_ConnectAddresses.Remove(PublicIPv4);
+
+					PublicIPv4 = publicIPv4;
+					NetworkHelper.EditorSaveObject(gameObject);
+				}
+
+				if (publicIPv6 != PublicIPv6)
+				{
+					// Remove the old addresses.
+					if (m_ConnectAddresses.Contains(PublicIPv6) && (PublicIPv6.ToLower() != "localhost" && PublicIPv6 != "::1"))
+						m_ConnectAddresses.Remove(PublicIPv6);
+
+					PublicIPv6 = publicIPv6;
+					NetworkHelper.EditorSaveObject(gameObject);
+				}
+
+				// Add the new addresses.
+				if (PublicIPv4.ToLower() != "localhost" || PublicIPv4 != "127.0.0.1")
+				{
+					if (!m_ConnectAddresses.Contains(PublicIPv4))
+					{
+						m_ConnectAddresses.Add(PublicIPv4);
+						NetworkHelper.EditorSaveObject(gameObject);
+					}
+				}
+
+				if (PublicIPv6.ToLower() != "localhost" || PublicIPv6 != "::1")
+				{
+					if (!m_ConnectAddresses.Contains(PublicIPv6))
+					{
+						m_ConnectAddresses.Add(PublicIPv6);
+						NetworkHelper.EditorSaveObject(gameObject);
+					}
+				}
 
 				// Update the player preference with the current timestamp.
 				PlayerPrefs.SetString("IPLastReceiveDate", DateTime.Now.ToString());

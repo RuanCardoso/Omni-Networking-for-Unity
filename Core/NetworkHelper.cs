@@ -272,7 +272,7 @@ namespace Omni.Core
 			}
 		}
 
-		public static async Task<IPAddress> GetExternalIp(bool useIPv6)
+		public static async Task<IPAddress> GetExternalIpAsync(bool useIPv6)
 		{
 			try
 			{
@@ -289,14 +289,14 @@ namespace Omni.Core
 
 				if (!IPAddress.TryParse(externalIp, out var ipAddress))
 				{
-					return IPAddress.Loopback;
+					return !useIPv6 ? IPAddress.Loopback : IPAddress.IPv6Loopback;
 				}
 
 				return ipAddress;
 			}
 			catch
 			{
-				return IPAddress.Loopback;
+				return !useIPv6 ? IPAddress.Loopback : IPAddress.IPv6Loopback;
 			}
 		}
 

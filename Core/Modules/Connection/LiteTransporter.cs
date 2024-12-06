@@ -2,6 +2,7 @@ using LiteNetLib;
 using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
 using Omni.Shared;
+using Omni.Threading.Tasks;
 using OpenNat;
 using System;
 using System.Collections.Generic;
@@ -9,7 +10,6 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using TriInspector;
 using UnityEngine;
 
@@ -384,7 +384,7 @@ namespace Omni.Core.Modules.Connection
 			{
 				// Wait 500ms before attempting to open the port.
 				// Avoid opening server and client ports simultaneously, which will cause an error.
-				await Task.Delay(500);
+				await UniTask.Delay(500);
 			}
 
 			if (await NetworkHelper.OpenPortAsync(port, Protocol.Udp))
