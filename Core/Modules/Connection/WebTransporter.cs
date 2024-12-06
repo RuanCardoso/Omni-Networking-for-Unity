@@ -1,4 +1,3 @@
-using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using System;
@@ -6,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
+using TriInspector;
 using UnityEngine;
 using WebClient = NativeWebSocket;
 using WebServer = WebSocketSharp.Server;
@@ -17,6 +17,7 @@ namespace Omni.Core.Modules.Connection
 	[DefaultExecutionOrder(-1100)]
 	[DisallowMultipleComponent]
 	[AddComponentMenu("Omni/Transporters/Web Transporter")]
+	[DeclareBoxGroup("SSL Settings")]
 	internal class WebTransporter : TransporterBehaviour, ITransporter
 	{
 		private class WebServerListener : WebServer.WebSocketBehavior
@@ -104,10 +105,12 @@ namespace Omni.Core.Modules.Connection
 		private readonly Dictionary<IPEndPoint, WebServerListener> _peers = new();
 
 		[SerializeField]
+		[Group("SSL Settings")]
 		[ReadOnly]
 		private string certificateConfig = "cert_conf.json";
 
 		[SerializeField]
+		[Group("SSL Settings")]
 		private bool enableSsl = false;
 
 		public void Initialize(ITransporterReceive IManager, bool isServer)

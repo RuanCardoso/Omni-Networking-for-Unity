@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using TriInspector;
 using UnityEngine;
 
 //// EXPERIMENTAL
@@ -19,6 +20,8 @@ namespace Omni.Core.Modules.Connection
 	[DefaultExecutionOrder(-1100)]
 	[DisallowMultipleComponent]
 	[AddComponentMenu("Omni/Transporters/Kcp Transporter")]
+	[DeclareBoxGroup("Basic")]
+	[DeclareBoxGroup("Advanced")]
 	internal class KcpTransporter : TransporterBehaviour, ITransporter
 	{
 		private const double PING_TIME_PRECISION = 0.025d;
@@ -26,6 +29,7 @@ namespace Omni.Core.Modules.Connection
 
 		private readonly SimpleMovingAverage m_PingAvg = new(10);
 
+		[GroupNext("Basic")]
 		[Tooltip(
 			"DualMode listens to IPv6 and IPv4 simultaneously. Disable if the platform only supports IPv4."
 		)]
@@ -60,7 +64,7 @@ namespace Omni.Core.Modules.Connection
 		[SerializeField]
 		private int m_SendBufferSize = 1024 * 1027 * 7;
 
-		[Header("Advanced")]
+		[GroupNext("Advanced")]
 		[Tooltip(
 			"KCP fastresend parameter. Faster resend for the cost of higher bandwidth. 0 in normal mode, 2 in turbo mode."
 		)]

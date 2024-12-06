@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using TriInspector;
 using UnityEngine;
 
 namespace Omni.Core.Modules.Connection
@@ -17,6 +18,8 @@ namespace Omni.Core.Modules.Connection
 	[DefaultExecutionOrder(-1100)]
 	[DisallowMultipleComponent]
 	[AddComponentMenu("Omni/Transporters/Lite Transporter")]
+	[DeclareBoxGroup("Settings")]
+	[DeclareBoxGroup("Lag Simulator [Debug only!]")]
 	internal class LiteTransporter : TransporterBehaviour, ITransporter
 	{
 		private EventBasedNetListener _listener;
@@ -25,7 +28,7 @@ namespace Omni.Core.Modules.Connection
 		private bool isServer;
 		private bool isRunning;
 
-		[Header("Settings")]
+		[GroupNext("Settings")]
 		[Tooltip(
 			"Specifies the version of the game. The server rejects older or different versions."
 		)]
@@ -62,7 +65,7 @@ namespace Omni.Core.Modules.Connection
 
 		[SerializeField]
 		[Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
-		[Label("IPv6 Enabled")]
+		[LabelText("IPv6 Enabled")]
 		private bool m_IPv6Enabled = false;
 
 		[SerializeField]
@@ -81,19 +84,22 @@ namespace Omni.Core.Modules.Connection
 		)]
 		private bool m_useSafeMtu = false;
 
-		[Header("Lag Simulator [Debug only!]")]
+		[GroupNext("Lag Simulator [Debug only!]")]
 		[SerializeField]
 		private bool m_SimulateLag = false;
 
 		[SerializeField]
+		[EnableIf("m_SimulateLag")]
 		[Min(0)]
 		private int m_MinLatency = 60;
 
 		[SerializeField]
+		[EnableIf("m_SimulateLag")]
 		[Min(0)]
 		private int m_MaxLatency = 60;
 
 		[SerializeField]
+		[EnableIf("m_SimulateLag")]
 		[Range(0, 100)]
 		private int m_LossPercent = 0;
 
