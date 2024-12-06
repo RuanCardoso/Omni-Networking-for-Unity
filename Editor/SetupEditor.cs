@@ -20,7 +20,7 @@ namespace Omni.Editor
 			IActiveBuildTargetChanged,
 			IPreprocessBuildWithReport
 	{
-		private const string OMNI_VERSION = "3.0.0"; // VERY VERY IMPORTANT!
+		private const string OMNI_VERSION = "3.0.1"; // VERY VERY IMPORTANT!
 		public int callbackOrder => 0;
 
 		public void OnPreprocessBuild(BuildReport report)
