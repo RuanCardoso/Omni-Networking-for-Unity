@@ -6,11 +6,13 @@ using Omni.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TriInspector;
 using UnityEngine;
 using static Omni.Core.NetworkManager;
 
 namespace Omni.Core.Components
 {
+	[DeclareBoxGroup("Service Settings")]
 	public class NetworkPhysicsIsolate : MonoBehaviour
 	{
 		private static NetworkPhysicsIsolate m_Instance;
@@ -22,6 +24,7 @@ namespace Omni.Core.Components
 		private readonly List<Collider[]> m_ClientColliders = new();
 
 		[SerializeField]
+		[GroupNext("Material Settings")]
 		private Color m_Color;
 
 		[SerializeField]

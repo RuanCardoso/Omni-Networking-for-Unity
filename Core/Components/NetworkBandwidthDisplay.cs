@@ -1,7 +1,9 @@
 using Omni.Core;
+using TriInspector;
 using UnityEngine;
 
 [DisallowMultipleComponent]
+[DeclareBoxGroup("GUI Settings")]
 public sealed class NetworkBandwidthDisplay : MonoBehaviour
 {
     private const float m_Padding = 10f;
@@ -16,6 +18,7 @@ public sealed class NetworkBandwidthDisplay : MonoBehaviour
 
     // GUI
     [SerializeField]
+    [GroupNext("GUI Settings")]
     private float m_Width = 300f;
 
     [SerializeField]

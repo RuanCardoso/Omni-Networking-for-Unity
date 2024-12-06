@@ -8,9 +8,10 @@ using UnityEngine;
 namespace Omni.Core
 {
 	[DeclareFoldoutGroup("Network Variables", Expanded = true)]
+	[DeclareBoxGroup("Service Settings")]
 	public class NetworkEventBase : NetworkVariablesBehaviour
 	{
-		[Header("Service Settings")]
+		[GroupNext("Service Settings")]
 		[SerializeField]
 		internal string m_ServiceName;
 

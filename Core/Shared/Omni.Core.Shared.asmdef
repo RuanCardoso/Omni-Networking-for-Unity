@@ -4,7 +4,8 @@
     "references": [
         "Omni.Shared",
         "Omni.Core",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "TriInspector"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

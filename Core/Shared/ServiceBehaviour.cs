@@ -1,6 +1,7 @@
 using Omni.Core.Interfaces;
 using System;
 using System.ComponentModel;
+using TriInspector;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -9,9 +10,10 @@ using UnityEngine.SceneManagement;
 namespace Omni.Core
 {
 	[DefaultExecutionOrder(-10500)]
+	[DeclareBoxGroup("Service Settings")]
 	public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
 	{
-		[Header("Service Settings")]
+		[GroupNext("Service Settings")]
 		[SerializeField]
 		private string m_ServiceName;
 

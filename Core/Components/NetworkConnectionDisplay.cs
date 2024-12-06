@@ -1,4 +1,6 @@
 using UnityEngine;
+using TriInspector;
+
 #if UNITY_EDITOR
 using ParrelSync;
 #endif
@@ -8,12 +10,14 @@ using ParrelSync;
 namespace Omni.Core
 {
 	[DisallowMultipleComponent]
+	[DeclareBoxGroup("GUI Settings")]
 	public sealed class NetworkConnectionDisplay : MonoBehaviour
 	{
 		private string host = "127.0.0.1";
 		private string port = "7777";
 
 		[SerializeField]
+		[GroupNext("GUI Settings")]
 		private float m_Width = 200;
 
 		[SerializeField]
