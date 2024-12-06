@@ -188,7 +188,7 @@ namespace Omni.Core
 
 				if (UseSecureRouteX)
 				{
-					message.EncryptRaw(SharedPeer);
+					message.EncryptInPlace(SharedPeer);
 				}
 
 				int lastId = m_RouteId;
@@ -231,7 +231,7 @@ namespace Omni.Core
 
 				if (UseSecureRouteX)
 				{
-					message.EncryptRaw(SharedPeer);
+					message.EncryptInPlace(SharedPeer);
 				}
 
 				int lastId = m_RouteId;
@@ -536,7 +536,7 @@ namespace Omni.Core
 
 					if (UseSecureRouteX)
 					{
-						request.DecryptRaw(SharedPeer);
+						request.DecryptInPlace(SharedPeer);
 					}
 
 					using var response = Pool.Rent();
@@ -558,7 +558,7 @@ namespace Omni.Core
 
 					if (UseSecureRouteX)
 					{
-						request.DecryptRaw(SharedPeer);
+						request.DecryptInPlace(SharedPeer);
 					}
 
 					using var response = Pool.Rent();
@@ -579,7 +579,7 @@ namespace Omni.Core
 				if (UseSecureRouteX)
 				{
 					// Let's just encrypt the response without including the header.
-					response.EncryptRaw(SharedPeer);
+					response.EncryptInPlace(SharedPeer);
 				}
 
 				using var header = Pool.Rent();
@@ -590,7 +590,7 @@ namespace Omni.Core
 				if (!response.SendEnabled)
 				{
 					NetworkLogger.__Log__(
-						$"Http Lite: Maybe you're forgetting to call Send(). Ensure that you call Send() before sending the response -> Route: '{routeName}'",
+						$"RouteX: Maybe you're forgetting to call Send(). Ensure that you call Send() before sending the response -> Route: '{routeName}'",
 						NetworkLogger.LogType.Error
 					);
 
@@ -655,7 +655,7 @@ namespace Omni.Core
 					// Set task as completed
 					if (UseSecureRouteX)
 					{
-						message.DecryptRaw(SharedPeer);
+						message.DecryptInPlace(SharedPeer);
 					}
 					source.TrySetResult(message);
 				}
@@ -667,7 +667,7 @@ namespace Omni.Core
 
 					if (UseSecureRouteX)
 					{
-						eventMessage.DecryptRaw(SharedPeer);
+						eventMessage.DecryptInPlace(SharedPeer);
 					}
 
 					if (msgId == MessageType.HttpGetResponseAsync)
