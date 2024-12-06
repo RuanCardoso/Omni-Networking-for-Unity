@@ -582,7 +582,7 @@ namespace Omni.Core
 			data ??= DataBuffer.Empty;
 			using var message = NetworkManager.Pool.Rent();
 			message.Write(m_Id);
-			message.RawWrite(data.BufferAsSpan);
+			message.WriteRawBytes(data.BufferAsSpan);
 			NetworkManager.Client.SendMessage(MessageType.RequestEntityAction, message, deliveryMode, sequenceChannel);
 		}
 
