@@ -16,10 +16,10 @@ namespace Omni.Core
 {
 	[DeclareFoldoutGroup("Modules")]
 	[DeclareFoldoutGroup("Infor", Expanded = true)]
+	[DeclareFoldoutGroup("Permissions")]
 	[DeclareTabGroup("MiscTabs")]
 	[DeclareBoxGroup("Listen")]
 	[DeclareBoxGroup("Connection")]
-	[DeclareBoxGroup("Permissions")]
 	public partial class NetworkManager
 	{
 		private TransporterBehaviour m_ServerTransporter;
