@@ -1,11 +1,13 @@
 using System;
 using System.ComponentModel;
+using TriInspector;
 using UnityEngine;
 
 #pragma warning disable
 
 namespace Omni.Core
 {
+	[DeclareFoldoutGroup("Network Variables", Expanded = true)]
 	public class NetworkEventBase : NetworkVariablesBehaviour
 	{
 		[Header("Service Settings")]
@@ -98,8 +100,8 @@ namespace Omni.Core
 
 		protected virtual void OnValidate()
 		{
-			if (remote != null || local != null)
-				___NotifyEditorChange___(); // Override by the source generator.
+			//if (remote != null || local != null)
+			//	___NotifyEditorChange___(); // Override by the source generator.
 
 			if (m_Id == 0)
 			{

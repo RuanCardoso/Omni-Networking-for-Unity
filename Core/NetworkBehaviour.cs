@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using TriInspector;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -14,6 +15,7 @@ using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
+	[DeclareFoldoutGroup("Network Variables", Expanded = true)]
 	public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem, IEquatable<NetworkBehaviour>
 	{
 		// Hacky: DIRTY CODE!
@@ -1075,8 +1077,8 @@ namespace Omni.Core
 
 		protected virtual void OnValidate()
 		{
-			if (_identity != null && _identity.IsRegistered)
-				___NotifyEditorChange___(); // Overriden by the source generator.
+			//if (_identity != null && _identity.IsRegistered)
+			//	___NotifyEditorChange___(); // Overriden by the source generator.
 
 			if (m_Id < 0)
 			{
