@@ -76,16 +76,12 @@ namespace Omni.Core
 		[Label("Server Backend")]
 		private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
 
-		private bool m_Connection = true;
+		private bool m_ConnectionModule = true;
+		private bool m_ConsoleModule = true;
+		private bool m_MatchModule = true;
 
 		[SerializeField]
 		[Header("Modules")]
-		private bool m_ConsoleModule = false;
-
-		[SerializeField]
-		private bool m_MatchModule = false;
-
-		[SerializeField]
 		private bool m_TickModule = false;
 
 		[SerializeField]
@@ -201,7 +197,7 @@ namespace Omni.Core
 			m_ClientScriptingBackend = ScriptingBackend.Mono;
 			m_ServerScriptingBackend = ScriptingBackend.Mono;
 #endif
-			m_Connection = true;
+			m_ConnectionModule = true;
 			if (!Application.isPlaying)
 			{
 				if (m_ClientTransporter != null || m_ServerTransporter != null)
@@ -318,12 +314,6 @@ namespace Omni.Core
 			}
 
 			return false;
-		}
-
-		public virtual void OnApplicationQuit()
-		{
-			Connection.Server.Stop();
-			Connection.Client.Stop();
 		}
 	}
 }
