@@ -33,7 +33,7 @@ namespace Omni.Editor
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
 			label.text = $" {property.displayName}";
-			label.image = GetTexture(Color.green);
+			label.image = GetTexture(Color.red);
 			EditorGUI.PropertyField(position, property, label, true);
 		}
 
