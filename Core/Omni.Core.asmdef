@@ -2,9 +2,10 @@
     "name": "Omni.Core",
     "rootNamespace": "",
     "references": [
-        "GUID:5662d6c161a4f14c18e4c4db0e92654c",
-        "GUID:b786b742b47b24234b3ad1f1b6d86de4",
-        "GUID:894a6cc6ed5cd2645bb542978cbed6a9"
+        "Omni.Shared",
+        "Omni.Deps",
+        "ParrelSync",
+        "TriInspector"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
