@@ -181,8 +181,10 @@ namespace Omni.Core
 				prefab.gameObject.SetActive(true); // After registration, enable the prefab again.
 			}
 
-			identity.gameObject.SetActive(true); // Enable instantiated object!
-												 // After Start
+			// Enable instantiated object!
+			identity.gameObject.SetActive(true);
+
+			// After Start
 			foreach (var behaviour in networkBehaviours)
 			{
 				behaviour.OnStart();
@@ -298,11 +300,47 @@ namespace Omni.Core
 			}
 		}
 
+		public static void RunOnMainThread(Action action)
+		{
+			UniTask.Void(async () =>
+			{
+				await UniTask.SwitchToMainThread();
+				// Run on main thread
+				action();
+			});
+		}
+
+		public static async UniTask<T> RunOnMainThread<T>(Func<T> func)
+		{
+			T result = default;
+			bool isCompleted = false;
+			// Run on main thread and wait until the result is available.
+			UniTask.Void(async () =>
+			{
+				await UniTask.SwitchToMainThread();
+				// Run on main thread
+				result = func();
+				isCompleted = true;
+			});
+
+			// Wait until the result is available
+			await UniTask.WaitUntil(() => isCompleted);
+			return result;
+		}
+
+		public static bool IsRunningOnMainThread()
+		{
+			return NetworkManager.MainThreadId == Thread.CurrentThread.ManagedThreadId;
+		}
+
 		[Conditional("OMNI_DEBUG")]
 		internal static void EnsureRunningOnMainThread()
 		{
-			if (NetworkManager.MainThreadId != Thread.CurrentThread.ManagedThreadId)
+			if (!IsRunningOnMainThread())
 			{
+				NetworkLogger.__Log__("This operation must be performed on the main thread. Omni does not support multithreaded operations. " +
+					"Tip: Dispatch the events to the main thread.", NetworkLogger.LogType.Error);
+
 				throw new Exception(
 					"This operation must be performed on the main thread. Omni does not support multithreaded operations. Tip: Dispatch the events to the main thread."
 				);
