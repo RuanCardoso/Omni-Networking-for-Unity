@@ -1,9 +1,11 @@
+using Omni.Core.Interfaces;
 using System.Collections;
 using System.ComponentModel;
-using Omni.Core.Interfaces;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
+
+#pragma warning disable
 
 namespace Omni.Core
 {
@@ -60,6 +62,7 @@ namespace Omni.Core
 		/// </summary>
 		public virtual void Start()
 		{
+			___InjectServices___();
 			InitStart();
 		}
 
@@ -126,8 +129,6 @@ namespace Omni.Core
 			Client.OnMessage += OnMessage;
 		}
 
-
-
 		protected void RegisterMatchmakingEvents()
 		{
 			if (MatchmakingModuleEnabled)
@@ -155,9 +156,7 @@ namespace Omni.Core
 			OnStop();
 		}
 
-		protected virtual void OnClientIdentitySpawned(NetworkIdentity identity)
-		{
-		}
+		protected virtual void OnClientIdentitySpawned(NetworkIdentity identity) { }
 
 		protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
 		{

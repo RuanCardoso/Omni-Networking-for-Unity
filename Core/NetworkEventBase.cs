@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using UnityEngine;
 
 #pragma warning disable
@@ -85,6 +86,10 @@ namespace Omni.Core
 		{
 			return NetworkManager.Pool.Rent();
 		}
+
+		[EditorBrowsable(EditorBrowsableState.Never)]
+		[Obsolete("Don't override this method! The source generator will override it.")]
+		protected internal virtual void ___InjectServices___() { }
 
 		protected virtual void Reset()
 		{
