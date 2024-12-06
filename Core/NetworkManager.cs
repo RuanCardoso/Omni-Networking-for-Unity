@@ -314,12 +314,12 @@ namespace Omni.Core
 
 			_manager = this;
 #if !UNITY_SERVER || UNITY_EDITOR
-			if (m_MaxFpsOnClient > 0)
+			if (m_LockClientFps > 0)
 			{
 				QualitySettings.vSyncCount = 0;
-				Application.targetFrameRate = m_MaxFpsOnClient;
+				Application.targetFrameRate = m_LockClientFps;
 			}
-			else if (m_MaxFpsOnClient <= 0)
+			else if (m_LockClientFps <= 0)
 			{
 				QualitySettings.vSyncCount = 0;
 				Application.targetFrameRate = -1;
@@ -1971,10 +1971,10 @@ namespace Omni.Core
 		/// <param name="prefab"></param>
 		public static void AddPrefab(NetworkIdentity prefab)
 		{
-			if (Manager.m_Prefabs.Any(x => x != null && x.name == prefab.name))
+			if (Manager.m_NetworkPrefabs.Any(x => x != null && x.name == prefab.name))
 				return;
 
-			Manager.m_Prefabs.Add(prefab);
+			Manager.m_NetworkPrefabs.Add(prefab);
 		}
 
 		/// <summary>
@@ -1984,7 +1984,7 @@ namespace Omni.Core
 		/// <returns>The prefab with the specified name.</returns>
 		public static NetworkIdentity GetPrefab(string prefabName)
 		{
-			return Manager.m_Prefabs.FirstOrDefault(x => x != null && x.name == prefabName)
+			return Manager.m_NetworkPrefabs.FirstOrDefault(x => x != null && x.name == prefabName)
 				?? throw new Exception(
 					$"Could not find prefab with name: \"{prefabName}\". Ensure the prefab is added to the registration list."
 				);
@@ -1997,9 +1997,9 @@ namespace Omni.Core
 		/// <returns>The prefab at the specified index or null if index is out of bounds.</returns>
 		public static NetworkIdentity GetPrefab(int index)
 		{
-			if (index >= 0 && index < Manager.m_Prefabs.Count)
+			if (index >= 0 && index < Manager.m_NetworkPrefabs.Count)
 			{
-				return Manager.m_Prefabs[index];
+				return Manager.m_NetworkPrefabs[index];
 			}
 
 			throw new IndexOutOfRangeException(

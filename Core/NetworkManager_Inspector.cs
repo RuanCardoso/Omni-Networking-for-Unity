@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using Omni.Core.Attributes;
 using UnityEngine;
+using TriInspector;
+
 #if OMNI_DEBUG
 using Omni.Shared;
 #endif
@@ -13,6 +14,12 @@ using Omni.Shared;
 
 namespace Omni.Core
 {
+	[DeclareFoldoutGroup("Modules")]
+	[DeclareFoldoutGroup("Infor", Expanded = true)]
+	[DeclareTabGroup("MiscTabs")]
+	[DeclareBoxGroup("Listen")]
+	[DeclareBoxGroup("Connection")]
+	[DeclareBoxGroup("Permissions")]
 	public partial class NetworkManager
 	{
 		private TransporterBehaviour m_ServerTransporter;
@@ -47,16 +54,19 @@ namespace Omni.Core
 
 		[SerializeField]
 		[ReadOnly]
+		[Group("Infor")]
 		private string m_CurrentVersion = "v2.0.9";
 
 		[SerializeField]
-		[Label("Public IPv4")]
+		[LabelText("Public IPv4")]
 		[ReadOnly]
+		[Group("Infor")]
 		private string PublicIPv4 = "127.0.0.1";
 
 		[SerializeField]
-		[Label("Public IPv6")]
+		[LabelText("Public IPv6")]
 		[ReadOnly]
+		[Group("Infor")]
 		private string PublicIPv6 = "127.0.0.1";
 
 		[Header("Scripting Backend")]
@@ -65,7 +75,7 @@ namespace Omni.Core
 		[ReadOnly]
 		[HideInInspector]
 #endif
-		[Label("Client Backend")]
+		[LabelText("Client Backend")]
 		private ScriptingBackend m_ClientScriptingBackend = ScriptingBackend.Mono;
 
 		[SerializeField]
@@ -73,7 +83,7 @@ namespace Omni.Core
 		[ReadOnly]
 		[HideInInspector]
 #endif
-		[Label("Server Backend")]
+		[LabelText("Server Backend")]
 		private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
 
 		private bool m_ConnectionModule = true;
@@ -81,97 +91,116 @@ namespace Omni.Core
 		private bool m_MatchModule = true;
 
 		[SerializeField]
-		[Header("Modules")]
+		[Group("Modules")]
 		private bool m_TickModule = false;
 
 		[SerializeField]
+		[Group("Modules")]
 		private bool m_SntpModule = false;
 
 		[SerializeField]
-		[Header("Listen")]
-		[Label("Server Port")]
+		[Group("Listen")]
+		[LabelText("Server Port")]
 		private int m_ServerListenPort = 7777;
 
 		[SerializeField]
-		[Label("Client Port")]
+		[Group("Listen")]
+		[LabelText("Client Port")]
 		private int m_ClientListenPort = 7778;
 
-		[Header("Connection")]
 		[SerializeField]
-		[Label("Host Address")]
+		[Group("Connection")]
+		[LabelText("Host Address")]
 		private string m_ConnectAddress = "127.0.0.1";
 
 		[SerializeField]
-		[Label("Port")]
+		[Group("Connection")]
+		[LabelText("Port")]
 		private int m_ConnectPort = 7777;
 
 		[SerializeField]
-		[Header("Misc")]
-		[Min(1)]
-		private int m_TickRate = 15;
-
-		[SerializeField]
-		[Min(1)]
-		private int m_PoolCapacity = 32768;
-
-		[SerializeField]
-		[Min(1)]
-		private int m_PoolSize = 32;
-
-		[SerializeField]
-		[Min(0)]
-		private int m_MaxFpsOnClient = 60;
-
-		[SerializeField]
+		[Group("MiscTabs"), Tab("Basic")]
+		[LabelWidth(140)]
 #if OMNI_RELEASE
         [ReadOnly]
 #endif
 		private bool m_AutoStartClient = true;
 
 		[SerializeField]
+		[Group("MiscTabs"), Tab("Basic")]
+		[LabelWidth(140)]
 #if OMNI_RELEASE
         [ReadOnly]
 #endif
 		private bool m_AutoStartServer = true;
 
-		[Header("Misc +")]
 		[SerializeField]
-		[Label("Use UTF-8 Encoding")]
+		[Group("MiscTabs"), Tab("Basic")]
+		[LabelText("Use UTF-8 Encoding")]
+		[LabelWidth(140)]
 		private bool m_UseUtf8 = false;
 
 		[SerializeField]
+		[Group("MiscTabs"), Tab("Basic")]
+		[Range(10, 120)]
+		private int m_TickRate = 15;
+
+		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+		[Min(1)]
+		private int m_PoolCapacity = 32768;
+
+		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+		[Min(1)]
+		private int m_PoolSize = 32;
+
+		[SerializeField]
+		[Group("MiscTabs"), Tab("Basic")]
+		[Min(0)]
+		private int m_LockClientFps = 60;
+
+		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+		[LabelWidth(190)]
 		private bool m_UseSecureRouteX = false;
 
-		//[SerializeField]
-		[ReadOnly]
+		// [SerializeField]
+		// [ReadOnly]
 		private bool m_UseBinarySerialization = false;
 
 		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+		[LabelWidth(190)]
 		private bool m_UseUnalignedMemory = false;
 
 		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+		[LabelWidth(190)]
 		private bool m_EnableBandwidthOptimization = true;
 
 		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+		[LabelWidth(190)]
 		private bool m_RunInBackground = true;
 
-		[Header("Permissions")]
 		[SerializeField]
-		[Label("Allow NetVar's From Clients")]
+		[Group("Permissions")]
+		[LabelWidth(230)]
 		private bool m_AllowNetworkVariablesFromClients = false;
 
 		[SerializeField]
-		[Label("Allow Across-Group Message")]
+		[Group("Permissions")]
+		[LabelWidth(230)]
 		private bool m_AllowAcrossGroupMessage = false;
 
-		//[SerializeField]
-		[ReadOnly]
-		[Label("Allow Zero-Group Message")]
+		// [SerializeField]
+		// [ReadOnly]
+		// [LabelText("Allow Zero-Group Message")]
 		private bool m_AllowZeroGroupMessage = true;
 
-		[Header("Registered Prefabs")]
 		[SerializeField]
-		private List<NetworkIdentity> m_Prefabs = new();
+		private List<NetworkIdentity> m_NetworkPrefabs = new();
 
 		public static string ConnectAddress => Manager.m_ConnectAddress;
 
