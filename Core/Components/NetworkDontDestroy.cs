@@ -1,11 +1,11 @@
-using System;
-using Omni.Core.Attributes;
 using Omni.Shared;
+using System;
+using TriInspector;
 using UnityEngine;
 
 namespace Omni.Core.Components
 {
-    [DefaultExecutionOrder(-15000)]
+	[DefaultExecutionOrder(-15000)]
     [DisallowMultipleComponent]
     public sealed class NetworkDontDestroy : MonoBehaviour
     {
