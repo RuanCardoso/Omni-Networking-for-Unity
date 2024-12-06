@@ -7,6 +7,7 @@
   "author": "Ruan Cardoso (https://github.com/RuanCardoso)",
   "homepage": "https://github.com/RuanCardoso/Omni-Networking-for-Unity",
   "dependencies": {
-    "com.codewriter.triinspector": "1.14.1"
+    "com.codewriter.triinspector": "1.14.1",
+    "com.unity.nuget.newtonsoft-json" : "3.2.1"
   }
 }
