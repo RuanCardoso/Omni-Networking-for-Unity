@@ -10,7 +10,6 @@ using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
 using Omni.Shared.Collections;
-using Omni.Threading.Tasks;
 #if UNITY_EDITOR
 using ParrelSync;
 #endif
@@ -50,11 +49,11 @@ namespace Omni.Core
 		/// Gets the ID of the main thread.
 		/// </summary>
 		public static int MainThreadId { get; private set; }
-		static IObjectPooling<DataBuffer> m_Pool;
+		static IBufferPooling<DataBuffer> m_Pool;
 		/// <summary>
 		/// Gets the pool of <see cref="DataBuffer"/> instances. This pool is used to allocate and deallocate <see cref="DataBuffer"/> instances.
 		/// </summary>
-		public static IObjectPooling<DataBuffer> Pool
+		public static IBufferPooling<DataBuffer> Pool
 		{
 			get
 			{
@@ -351,7 +350,7 @@ namespace Omni.Core
 			}
 
 			// This module should be initialized last, as it needs the other modules to be initialized.
-			if (m_Connection)
+			if (m_ConnectionModule)
 			{
 				RouteX.Initialize();
 				InitializeModule(Module.Connection);
@@ -382,15 +381,12 @@ namespace Omni.Core
 			SceneManager.sceneUnloaded += (scene) => OnSceneUnloaded?.Invoke(scene);
 		}
 
-		protected virtual async void Start()
+		protected virtual void Start()
 		{
 #if OMNI_SERVER && !UNITY_EDITOR
             SkipDefaultUnityLog();
             ShowDefaultOmniLog();
 #endif
-
-			await UniTask.WaitUntil(() => IsServerActive);
-			NetworkLogger.__Log__("[Omni] -> Server successfully initialized. The server is now ready to accept connections.", NetworkLogger.LogType.Log);
 		}
 
 		private void Update()
@@ -545,19 +541,32 @@ namespace Omni.Core
                         Manager.m_AutoStartServer = true;
                         Manager.m_AutoStartClient = true;
 #else
-						if (
-							ConnectAddress.ToLower() != "localhost"
-							&& ConnectAddress != "127.0.0.1"
-							&& ConnectAddress != Manager.PublicIPv4
-							&& ConnectAddress != Manager.PublicIPv6
-						)
+						if (Manager.m_AutoStartServer)
 						{
-							Manager.m_AutoStartServer = false;
-							NetworkLogger.__Log__(
-								"Server auto-start has been disabled as the client address is not a recognized localhost or public IPv4/IPv6 address. "
-									+ "Starting a server in this case does not make sense because the client cannot connect to it. But you can start it manually.",
-								NetworkLogger.LogType.Warning
-							);
+							if (
+								ConnectAddress.ToLower() != "localhost"
+								&& ConnectAddress != "127.0.0.1"
+								&& ConnectAddress != Manager.PublicIPv4
+								&& ConnectAddress != Manager.PublicIPv6
+							)
+							{
+								bool isMe = false;
+								if (!IPAddress.TryParse(ConnectAddress, out _))
+								{
+									IPAddress[] addresses = Dns.GetHostAddresses(ConnectAddress);
+									isMe = addresses.Any(x => x.ToString() == Manager.PublicIPv4 || x.ToString() == Manager.PublicIPv6);
+								}
+
+								if (!isMe)
+								{
+									Manager.m_AutoStartServer = false;
+									NetworkLogger.__Log__(
+										"Server auto-start has been disabled as the client address is not a recognized localhost or public IPv4/IPv6 address. "
+											+ "Starting a server in this case does not make sense because the client cannot connect to it. But you can start it manually.",
+										NetworkLogger.LogType.Warning
+									);
+								}
+							}
 						}
 #endif
 
@@ -572,17 +581,13 @@ namespace Omni.Core
 #endif
 							if (!isClone)
 							{
-								StartServer(Manager.m_ServerListenPort);
+								StartServer();
 							}
 						}
 
 						if (Manager.m_AutoStartClient)
 						{
-							Connect(
-								Manager.m_ConnectAddress,
-								Manager.m_ConnectPort,
-								Manager.m_ClientListenPort
-							);
+							Connect();
 						}
 					}
 					break;
@@ -649,6 +654,7 @@ namespace Omni.Core
 			if (IsServerActive)
 			{
 				Connection.Server.Stop();
+				IsServerActive = false;
 			}
 			else
 			{
@@ -656,6 +662,11 @@ namespace Omni.Core
 					"Server is not initialized. Ensure to call StartServer() before calling StopServer()."
 				);
 			}
+		}
+
+		public static void Connect()
+		{
+			Connect(Manager.m_ConnectAddress, Manager.m_ConnectPort, Manager.m_ClientListenPort);
 		}
 
 		public static void Connect(string address, int port)
@@ -687,6 +698,7 @@ namespace Omni.Core
 			if (IsClientActive)
 			{
 				Connection.Client.Disconnect(LocalPeer);
+				IsClientActive = false;
 			}
 			else
 			{
@@ -699,6 +711,7 @@ namespace Omni.Core
 			if (IsClientActive)
 			{
 				Connection.Client.Stop();
+				IsClientActive = false;
 			}
 			else
 			{
@@ -1271,10 +1284,6 @@ namespace Omni.Core
 						0
 					);
 
-					NetworkLogger.__Log__(
-						$"Connection Info: Peer '{peer}' added to the server successfully."
-					);
-
 					OnServerPeerConnected?.Invoke(newPeer, Phase.Normal);
 				}
 			}
@@ -1344,10 +1353,6 @@ namespace Omni.Core
 							);
 						}
 					}
-
-					NetworkLogger.__Log__(
-						$"Disconnection Info: Peer '{peer}' removed from the server. Reason: {reason}."
-					);
 
 					OnServerPeerDisconnected?.Invoke(currentPeer, Phase.Normal);
 
@@ -2089,6 +2094,21 @@ namespace Omni.Core
 			return blocks;
 		}
 
+		public virtual void OnApplicationQuit()
+		{
+			Connection.Server.Stop();
+			Connection.Client.Stop();
+
+			// Dispose the log file stream
+			if (NetworkLogger.fileStream != null)
+			{
+				NetworkLogger.fileStream.Dispose();
+			}
+
+			IsClientActive = false;
+			IsServerActive = false;
+		}
+
 		void OnGUI()
 		{
 			bool isClone = false;
@@ -2107,7 +2127,7 @@ namespace Omni.Core
 				new GUIStyle()
 				{
 					fontSize = 20,
-					normal = new GUIStyleState() { textColor = Color.black }
+					normal = new GUIStyleState() { textColor = Color.red }
 				}
 			);
 #endif
