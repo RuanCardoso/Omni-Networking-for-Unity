@@ -1,12 +1,12 @@
+using MemoryPack;
+using Newtonsoft.Json;
+using Omni.Shared;
+using Omni.Shared.Collections;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using MemoryPack;
-using Newtonsoft.Json;
-using Omni.Shared;
-using Omni.Shared.Collections;
 using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
@@ -39,6 +39,9 @@ namespace Omni.Core
 
 		[MemoryPackIgnore]
 		public bool IsAuthenticated { get; internal set; }
+
+		[MemoryPackIgnore]
+		public bool IsInAnyGroup => _groups.Count > 0;
 
 		[MemoryPackIgnore]
 		public ObservableDictionary<string, object> Data { get; } = new();

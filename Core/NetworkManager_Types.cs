@@ -261,7 +261,7 @@ namespace Omni.Core
 
 	/// <summary>
 	/// Provides default synchronization options with the following settings:<br/>
-	/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
+	/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
 	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -277,7 +277,7 @@ namespace Omni.Core
 
 		public NetworkVariableOptions()
 		{
-			Target = Target.AllPlayers;
+			Target = Target.Auto;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
 			DataCache = DataCache.None;
@@ -287,7 +287,7 @@ namespace Omni.Core
 
 	/// <summary>
 	/// Provides default synchronization options with the following settings:<br/>
-	/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
+	/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
 	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -304,7 +304,7 @@ namespace Omni.Core
 
 		/// <summary>
 		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
+		/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -313,7 +313,7 @@ namespace Omni.Core
 		public SyncOptions(DataBuffer buffer)
 		{
 			Buffer = buffer;
-			Target = Target.AllPlayers;
+			Target = Target.Auto;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
 			DataCache = DataCache.None;
@@ -361,7 +361,7 @@ namespace Omni.Core
 
 		/// <summary>
 		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
+		/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -370,7 +370,7 @@ namespace Omni.Core
 		public SyncOptions(bool useDefaultOptions)
 		{
 			Buffer = null;
-			Target = Target.AllPlayers;
+			Target = Target.Auto;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
 			DataCache = DataCache.None;
@@ -379,7 +379,7 @@ namespace Omni.Core
 
 		/// <summary>
 		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
+		/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>

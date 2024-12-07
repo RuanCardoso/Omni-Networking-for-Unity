@@ -477,7 +477,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <returns>The instantiated network identity.</returns>
 		public void SpawnOnClient(
-			Target target = Target.AllPlayers,
+			Target target = Target.Auto,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,
@@ -570,7 +570,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <returns>The instantiated network identity.</returns>
 		public void Destroy(
-			Target target = Target.AllPlayers,
+			Target target = Target.Auto,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,
@@ -632,7 +632,7 @@ namespace Omni.Core
 		/// <param name="peer">The new owner of the network identity.</param>
 		public void SetOwner(
 			NetworkPeer peer,
-			Target target = Target.AllPlayers,
+			Target target = Target.Auto,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,

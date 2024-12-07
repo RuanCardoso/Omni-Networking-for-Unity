@@ -798,6 +798,27 @@ namespace Omni.Core
 		)
 		{
 			NetworkHelper.EnsureRunningOnMainThread();
+
+			// Auto-Target
+			if (target == Target.Auto)
+			{
+				if (groupId <= 0)
+				{
+					if (sender.IsInAnyGroup)
+					{
+						target = Target.GroupOnly;
+					}
+					else
+					{
+						target = Target.AllPlayers;
+					}
+				}
+				else
+				{
+					target = Target.AllPlayers;
+				}
+			}
+
 			void Send(ReadOnlySpan<byte> message, NetworkPeer sender)
 			{
 				Connection.Server.Send(message, sender.EndPoint, deliveryMode, sequenceChannel);
@@ -935,7 +956,7 @@ namespace Omni.Core
 			}
 
 			ReadOnlySpan<byte> message = PrepareServerMessageForSending(msgType, _data);
-			bool cacheIsEnabled = dataCache.Mode != CacheMode.None || dataCache.Id != 0;
+			bool cacheIsEnabled = dataCache.Mode != CacheMode.None || dataCache.Id != 0; // ||(or) - Id is not required for 'append' flag.
 
 			if (IsServerActive)
 			{

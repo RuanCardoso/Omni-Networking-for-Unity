@@ -307,7 +307,7 @@ namespace Omni.Core
 		/// <typeparam name="T">The type of the property to synchronize.</typeparam>
 		/// <param name="property">The property value to synchronize.</param>
 		/// <param name="propertyId">The ID of the property being synchronized.</param>
-		/// <param name="target">The target for the message. Default is <see cref="Target.AllPlayers"/>.</param>
+		/// <param name="target">The target for the message. Default is <see cref="Target.Auto"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
 		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
@@ -316,7 +316,7 @@ namespace Omni.Core
 			T property,
 			byte propertyId,
 			NetworkPeer peer = null,
-			Target target = Target.AllPlayers,
+			Target target = Target.Auto,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,
@@ -368,14 +368,14 @@ namespace Omni.Core
 		/// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
 		/// </summary>
 		/// <typeparam name="T">The type of the property to synchronize.</typeparam>
-		/// <param name="target">The target for the message. Default is <see cref="Target.AllPlayers"/>.</param>
+		/// <param name="target">The target for the message. Default is <see cref="Target.Auto"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
 		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 		/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 		public void AutoSync<T>(
 			NetworkPeer peer = null,
-			Target target = Target.AllPlayers,
+			Target target = Target.Auto,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,
@@ -436,7 +436,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <param name="msgId">The ID of the message to be invoked.</param>
 		/// <param name="buffer">The buffer containing the message data. Default is null.</param>
-		/// <param name="target">The target(s) for the message. Default is <see cref="Target.AllPlayers"/>.</param>
+		/// <param name="target">The target(s) for the message. Default is <see cref="Target.Auto"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
 		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
@@ -490,7 +490,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <param name="msgId">The ID of the message to be invoked.</param>
 		/// <param name="buffer">The buffer containing the message data. Default is null.</param>
-		/// <param name="target">The target(s) for the message. Default is <see cref="Target.AllPlayers"/>.</param>
+		/// <param name="target">The target(s) for the message. Default is <see cref="Target.Auto"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The group ID for the message. Default is 0.</param>
 		/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
@@ -500,7 +500,7 @@ namespace Omni.Core
 			byte msgId,
 			NetworkPeer peer,
 			DataBuffer buffer = null,
-			Target target = Target.AllPlayers,
+			Target target = Target.Auto,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,
