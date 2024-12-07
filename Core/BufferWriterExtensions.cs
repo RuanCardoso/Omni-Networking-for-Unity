@@ -1051,6 +1051,19 @@ namespace Omni.Core
 		}
 
 		/// <summary>
+		/// Deserializes a JSON string from the specified <see cref="DataBuffer"/> and populates the target object with the deserialized data.
+		/// </summary>
+		/// <param name="buffer">The <see cref="DataBuffer"/> containing the JSON string to read.</param>
+		/// <param name="target">The object to populate with the deserialized data.</param>
+		/// <param name="settings">Optional <see cref="JsonSerializerSettings"/> to customize the deserialization behavior.</param>
+		public static void ReadAsJson(this DataBuffer buffer, object target, JsonSerializerSettings settings = null)
+		{
+			settings ??= DefaultJsonSettings;
+			string json = ReadString(buffer);
+			JsonConvert.PopulateObject(json, target, settings);
+		}
+
+		/// <summary>
 		/// Reads a JSON string from the specified <see cref="DataBuffer"/> and deserializes it into an object of type <typeparamref name="T"/>.
 		/// </summary>
 		/// <typeparam name="T">The type of the object to deserialize.</typeparam>

@@ -2048,6 +2048,18 @@ namespace Omni.Core
 		}
 
 		/// <summary>
+		/// Populates the properties of the target object from the provided JSON string.
+		/// </summary>
+		/// <param name="json">The JSON string to populate the target object from.</param>
+		/// <param name="target">The object to populate with the JSON data.</param>
+		/// <param name="settings">Optional settings for JSON deserialization (default is null).</param>
+		public static void FromJson(string json, object target, JsonSerializerSettings settings = null)
+		{
+			settings ??= BufferWriterExtensions.DefaultJsonSettings;
+			JsonConvert.PopulateObject(json, target, settings);
+		}
+
+		/// <summary>
 		/// Deserializes an object from binary format using MemoryPackSerializer.
 		/// </summary>
 		/// <typeparam name="T">The type of the object to deserialize.</typeparam>
