@@ -239,6 +239,32 @@ namespace Omni.Core
 		/// <exception cref="Exception">
 		/// Thrown if a service with the specified name already exists.
 		/// </exception>
+		public static void Register<T>(T service)
+		{
+			Register<T>(service, typeof(T).Name);
+		}
+
+		/// <summary>
+		/// Attempts to retrieve adds a new service instance to the service locator with a specified name.
+		/// </summary>
+		/// <typeparam name="T">The type of the service to add.</typeparam>
+		/// <param name="service">The service instance to add.</param>
+		/// <param name="serviceName">The name to associate with the service instance.</param>
+		public static bool TryRegister<T>(T service)
+		{
+			return TryRegister<T>(service, typeof(T).Name);
+		}
+
+		/// <summary>
+		/// Adds a new service instance to the service locator with a specified name.
+		/// Throws an exception if a service with the same name already exists.
+		/// </summary>
+		/// <typeparam name="T">The type of the service to add.</typeparam>
+		/// <param name="service">The service instance to add.</param>
+		/// <param name="serviceName">The name to associate with the service instance.</param>
+		/// <exception cref="Exception">
+		/// Thrown if a service with the specified name already exists.
+		/// </exception>
 		public static void Register<T>(T service, string serviceName)
 		{
 			if (!m_Services.TryAdd(serviceName, service))
@@ -258,6 +284,21 @@ namespace Omni.Core
 		public static bool TryRegister<T>(T service, string serviceName)
 		{
 			return m_Services.TryAdd(serviceName, service);
+		}
+
+		/// <summary>
+		/// Updates an existing service instance in the service locator with a specified name.
+		/// Throws an exception if a service with the specified name does not exist.
+		/// </summary>
+		/// <typeparam name="T">The type of the service to update.</typeparam>
+		/// <param name="service">The new service instance to associate with the specified name.</param>
+		/// <param name="serviceName">The name associated with the service instance to update.</param>
+		/// <exception cref="Exception">
+		/// Thrown if a service with the specified name does not exist in the.
+		/// </exception>
+		public static void Update<T>(T service)
+		{
+			Update<T>(service, typeof(T).Name);
 		}
 
 		/// <summary>
@@ -290,6 +331,17 @@ namespace Omni.Core
 		/// <typeparam name="T">The type of the service to update.</typeparam>
 		/// <param name="service">The new service instance to associate with the specified name.</param>
 		/// <param name="serviceName">The name associated with the service instance to update.</param>
+		public static bool TryUpdate<T>(T service)
+		{
+			return TryUpdate<T>(service);
+		}
+
+		/// <summary>
+		/// Attempts to retrieve updates an existing service instance in the service locator with a specified name.
+		/// </summary>
+		/// <typeparam name="T">The type of the service to update.</typeparam>
+		/// <param name="service">The new service instance to associate with the specified name.</param>
+		/// <param name="serviceName">The name associated with the service instance to update.</param>
 		public static bool TryUpdate<T>(T service, string serviceName)
 		{
 			if (m_Services.ContainsKey(serviceName))
@@ -306,9 +358,29 @@ namespace Omni.Core
 		/// </summary>
 		/// <param name="serviceName">The name of the service to delete.</param>
 		/// <returns>True if the service was successfully removed; otherwise, false.</returns>
+		public static bool Unregister<T>()
+		{
+			return Unregister(typeof(T).Name);
+		}
+
+		/// <summary>
+		/// Deletes a service instance from the service locator by its name.
+		/// </summary>
+		/// <param name="serviceName">The name of the service to delete.</param>
+		/// <returns>True if the service was successfully removed; otherwise, false.</returns>
 		public static bool Unregister(string serviceName)
 		{
 			return m_Services.Remove(serviceName);
+		}
+
+		/// <summary>
+		/// Determines whether a service with the specified name exists in the service locator.
+		/// </summary>
+		/// <param name="serviceName"></param>
+		/// <returns></returns>
+		public static bool Exists<T>()
+		{
+			return Exists(typeof(T).Name);
 		}
 
 		/// <summary>
