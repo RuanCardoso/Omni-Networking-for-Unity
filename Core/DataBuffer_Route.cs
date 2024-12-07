@@ -5,7 +5,7 @@ namespace Omni.Core
 	{
 		internal bool SendEnabled { get; set; }
 		internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
-		internal HttpTarget Target { get; private set; } = HttpTarget.Self;
+		internal HttpTarget Target { get; private set; } = HttpTarget.SelfOnly;
 		internal int GroupId { get; private set; }
 		internal DataCache DataCache { get; private set; } = DataCache.None;
 		internal byte SequenceChannel { get; private set; }
@@ -32,7 +32,7 @@ namespace Omni.Core
 		/// <summary>
 		/// Sends a GET/POST response from the server with specified delivery and target settings.
 		/// </summary>
-		/// <param name="target">The target of the response, defaulting to <see cref="HttpTarget.Self"/>.</param>
+		/// <param name="target">The target of the response, defaulting to <see cref="HttpTarget.SelfOnly"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the response, defaulting to <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The ID of the target group for the response, defaulting to 0 (no group).</param>
 		/// <param name="dataCache">The data cache configuration, defaulting to <see cref="DataCache.None"/>.</param>
@@ -42,7 +42,7 @@ namespace Omni.Core
 		/// Defaults are provided for common scenarios, ensuring ease of use for typical use cases.
 		/// </remarks>
 		public void Send(
-			HttpTarget target = HttpTarget.Self,
+			HttpTarget target = HttpTarget.SelfOnly,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,

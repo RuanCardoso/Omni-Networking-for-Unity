@@ -949,7 +949,7 @@ namespace Omni.Core
 					return;
 				}
 
-				if (target == Target.Self && groupId != 0 && !cacheIsEnabled)
+				if (target == Target.SelfOnly && groupId != 0 && !cacheIsEnabled)
 				{
 					NetworkLogger.__Log__(
 						"Target.Self cannot be used with groups. Note that this is not a limitation, it just doesn't make sense.",
@@ -1002,8 +1002,8 @@ namespace Omni.Core
 				// Send message to peers
 				switch (target)
 				{
-					case Target.NonGroupMembers:
-					case Target.NonGroupMembersExceptSelf:
+					case Target.UngroupedPlayers:
+					case Target.UngroupedPlayersExceptSelf:
 						{
 							var peers = peersById.Values.Where(p => p._groups.Count == 0);
 							foreach (var peer in peers)
@@ -1023,7 +1023,7 @@ namespace Omni.Core
 
 								if (
 									peer.Equals(sender)
-									&& target == Target.NonGroupMembersExceptSelf
+									&& target == Target.UngroupedPlayersExceptSelf
 								)
 									continue;
 
@@ -1031,8 +1031,8 @@ namespace Omni.Core
 							}
 						}
 						break;
-					case Target.GroupMembersExceptSelf:
-					case Target.GroupMembers:
+					case Target.GroupExceptSelf:
+					case Target.GroupOnly:
 						{
 							if (groupId != 0 && !cacheIsEnabled)
 							{
@@ -1084,7 +1084,7 @@ namespace Omni.Core
 
 									if (
 										peer.Equals(sender)
-										&& target == Target.GroupMembersExceptSelf
+										&& target == Target.GroupExceptSelf
 									)
 										continue;
 
@@ -1093,7 +1093,7 @@ namespace Omni.Core
 							}
 						}
 						break;
-					case Target.All:
+					case Target.AllPlayers:
 						{
 							foreach (var (_, peer) in peersById)
 							{
@@ -1114,7 +1114,7 @@ namespace Omni.Core
 							}
 						}
 						break;
-					case Target.AllExceptSelf:
+					case Target.AllPlayersExceptSelf:
 						{
 							foreach (var (_, peer) in peersById)
 							{
@@ -1138,7 +1138,7 @@ namespace Omni.Core
 							}
 						}
 						break;
-					case Target.Self:
+					case Target.SelfOnly:
 						{
 							if (!sender.IsAuthenticated)
 								return;
@@ -1278,7 +1278,7 @@ namespace Omni.Core
 						MessageType.BeginHandshake,
 						message,
 						newPeer,
-						Target.Self,
+						Target.SelfOnly,
 						DeliveryMode.ReliableOrdered,
 						0,
 						DataCache.None,
@@ -1589,7 +1589,7 @@ namespace Omni.Core
 									MessageType.EndHandshake,
 									message,
 									peer,
-									Target.Self,
+									Target.SelfOnly,
 									DeliveryMode.ReliableOrdered,
 									0,
 									DataCache.None,

@@ -602,7 +602,7 @@ namespace Omni.Core
 					msgId,
 					peer,
 					header,
-					Target.Self,
+					Target.SelfOnly,
 					response.DeliveryMode,
 					0,
 					response.DataCache,
@@ -611,15 +611,15 @@ namespace Omni.Core
 
 				Target target = response.Target switch
 				{
-					HttpTarget.Self => Target.Self,
-					HttpTarget.All => Target.AllExceptSelf,
-					HttpTarget.GroupMembers => Target.GroupMembersExceptSelf,
-					HttpTarget.NonGroupMembers => Target.NonGroupMembersExceptSelf,
-					_ => Target.Self,
+					HttpTarget.SelfOnly => Target.SelfOnly,
+					HttpTarget.AllPlayers => Target.AllPlayersExceptSelf,
+					HttpTarget.GroupOnly => Target.GroupExceptSelf,
+					HttpTarget.UngroupedPlayers => Target.UngroupedPlayersExceptSelf,
+					_ => Target.SelfOnly,
 				};
 
 				// Send the response, except for Self
-				if (target != Target.Self)
+				if (target != Target.SelfOnly)
 				{
 					Server.SendMessage(
 						msgId,

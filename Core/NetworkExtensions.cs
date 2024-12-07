@@ -37,7 +37,7 @@ namespace Omni.Core
 		/// <param name="prefab">The prefab to instantiate.</param>
 		/// <param name="peer">The peer who will receive the instantiated object.</param>
 		/// <returns>The instantiated network identity on the server.</returns>
-		public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, Target target = Target.All,
+		public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, Target target = Target.AllPlayers,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,

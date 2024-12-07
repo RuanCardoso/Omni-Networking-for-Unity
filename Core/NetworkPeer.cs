@@ -105,7 +105,7 @@ namespace Omni.Core
 		}
 
 		public void SyncSerializedData(
-			Target target = Target.Self,
+			Target target = Target.SelfOnly,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,
@@ -137,7 +137,7 @@ namespace Omni.Core
 
 		public void SyncSerializedData(
 			string key,
-			Target target = Target.Self,
+			Target target = Target.SelfOnly,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,
@@ -157,7 +157,7 @@ namespace Omni.Core
 
 		private void Internal_SyncSerializedData(
 			string key = "_AllKeys_",
-			Target target = Target.Self,
+			Target target = Target.SelfOnly,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,

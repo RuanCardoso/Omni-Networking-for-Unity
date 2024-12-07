@@ -80,23 +80,26 @@ namespace Omni.Core
 		TickSystem
 	}
 
+	/// <summary>
+	/// Represents the phase or stage of a network-related event, such as connection, disconnection, or destruction.
+	/// </summary>
 	public enum Phase
 	{
 		/// <summary>
-		/// Indicates the initial phase of an event.
-		/// Typically used to signal the start of a process.
+		/// The initial phase of the event, typically signaling the start of a process.
+		/// For example, this phase may occur when a connection or object is being initialized.
 		/// </summary>
 		Begin,
 
 		/// <summary>
-		/// Represents the intermediate phase of an event.
-		/// This status is used when the main actions or operations are being performed.
+		/// The intermediate phase of the event, representing its active or ongoing state.
+		/// During this phase, main operations, processing, or interactions are performed.
 		/// </summary>
 		Normal,
 
 		/// <summary>
-		/// Marks the final phase of an event.
-		/// It signifies the completion and cleanup of the process.
+		/// The final phase of the event, indicating its conclusion and cleanup.
+		/// This phase is triggered when a connection is closed, an object is destroyed, or processes are finalized.
 		/// </summary>
 		End
 	}
@@ -107,24 +110,25 @@ namespace Omni.Core
 	public enum HttpTarget
 	{
 		/// <summary>
-		/// Sends the message to the current client itself. If the peer ID is 0 (server), the message is not executed.
+		/// Sends the message to the current client only. If the peer ID is 0 (server), the message is ignored.
 		/// </summary>
-		Self,
+		SelfOnly,
 
 		/// <summary>
-		/// Broadcasts the message to all connected players.
+		/// Broadcasts the message to all connected players, including the sender.
 		/// </summary>
-		All,
+		AllPlayers,
 
 		/// <summary>
-		/// Sends the message to all players who are members of the same groups as the sender.
+		/// Sends the message to all players who belong to the same group(s) as the sender.
+		/// Sub-groups are not included.
 		/// </summary>
-		GroupMembers,
+		GroupOnly,
 
 		/// <summary>
-		/// Sends the message to all players who are not members of any groups.
+		/// Sends the message to all players who do not belong to any group.
 		/// </summary>
-		NonGroupMembers,
+		UngroupedPlayers,
 	}
 
 	/// <summary>
@@ -133,39 +137,46 @@ namespace Omni.Core
 	public enum Target : byte
 	{
 		/// <summary>
-		/// Broadcasts the message to all connected players.
+		/// Automatically determines the target recipients for the network message based on the context.
 		/// </summary>
-		All,
+		Auto,
 
 		/// <summary>
-		/// Sends the message to the current client itself. If the peer ID is 0 (server), the message is not executed.
+		/// Broadcasts the message to all connected players, including the sender.
 		/// </summary>
-		Self,
+		AllPlayers,
 
 		/// <summary>
-		/// Sends the message to all players except the sender.
+		/// Sends the message to the sender itself. If the sender's peer ID is 0 (server), the message is ignored.
 		/// </summary>
-		AllExceptSelf,
+		SelfOnly,
 
 		/// <summary>
-		/// Sends the message to all players who are members of the same groups as the sender(sub groups not included).
+		/// Sends the message to all connected players except the sender.
 		/// </summary>
-		GroupMembers,
+		AllPlayersExceptSelf,
 
 		/// <summary>
-		/// Sends the message to all players(except the sender) who are members of the same groups as the sender(sub groups not included).
+		/// Sends the message to all players who are members of the same group(s) as the sender.
+		/// Sub-groups are not included.
 		/// </summary>
-		GroupMembersExceptSelf,
+		GroupOnly,
 
 		/// <summary>
-		/// Sends the message to all players who are not members of any groups.
+		/// Sends the message to all players in the same group(s) as the sender, excluding the sender itself.
+		/// Sub-groups are not included.
 		/// </summary>
-		NonGroupMembers,
+		GroupExceptSelf,
 
 		/// <summary>
-		/// Sends the message to all players who are not members of any groups. Except the sender.
+		/// Sends the message to all players who are not members of any group.
 		/// </summary>
-		NonGroupMembersExceptSelf
+		UngroupedPlayers,
+
+		/// <summary>
+		/// Sends the message to all players who are not members of any group, excluding the sender.
+		/// </summary>
+		UngroupedPlayersExceptSelf,
 	}
 
 	/// <summary>
@@ -174,28 +185,33 @@ namespace Omni.Core
 	public enum DeliveryMode : byte
 	{
 		/// <summary>
-		/// Reliable and ordered. Packets won't be dropped, won't be duplicated, will arrive in order.
+		/// Ensures packets are delivered reliably and in the exact order they were sent.
+		/// No packets will be dropped, duplicated, or arrive out of order.
 		/// </summary>
 		ReliableOrdered,
 
 		/// <summary>
-		/// Unreliable. Packets can be dropped, can be duplicated, can arrive without order.
+		/// Sends packets without guarantees. Packets may be dropped, duplicated, or arrive out of order.
+		/// This mode offers the lowest latency but no reliability.
 		/// </summary>
 		Unreliable,
 
 		/// <summary>
-		/// Reliable. Packets won't be dropped, won't be duplicated, can arrive without order.
+		/// Ensures packets are delivered reliably but without enforcing any specific order.
+		/// Packets won't be dropped or duplicated, but they may arrive out of sequence.
 		/// </summary>
 		ReliableUnordered,
 
 		/// <summary>
-		/// Unreliable. Packets can be dropped, won't be duplicated, will arrive in order.
+		/// Sends packets without reliability but guarantees they will arrive in order.
+		/// Packets may be dropped, but no duplicates will occur, and order is preserved.
 		/// </summary>
 		Sequenced,
 
 		/// <summary>
-		/// Reliable only last packet. Packets can be dropped (except the last one), won't be duplicated, will arrive in order.
-		/// Cannot be fragmented
+		/// Ensures only the latest packet in a sequence is delivered reliably and in order.
+		/// Intermediate packets may be dropped, but duplicates will not occur, and the last packet is guaranteed.
+		/// This mode does not support fragmentation.
 		/// </summary>
 		ReliableSequenced
 	}
@@ -245,7 +261,7 @@ namespace Omni.Core
 
 	/// <summary>
 	/// Provides default synchronization options with the following settings:<br/>
-	/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+	/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
 	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -261,7 +277,7 @@ namespace Omni.Core
 
 		public NetworkVariableOptions()
 		{
-			Target = Target.All;
+			Target = Target.AllPlayers;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
 			DataCache = DataCache.None;
@@ -271,7 +287,7 @@ namespace Omni.Core
 
 	/// <summary>
 	/// Provides default synchronization options with the following settings:<br/>
-	/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+	/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
 	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -288,7 +304,7 @@ namespace Omni.Core
 
 		/// <summary>
 		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+		/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -297,7 +313,7 @@ namespace Omni.Core
 		public SyncOptions(DataBuffer buffer)
 		{
 			Buffer = buffer;
-			Target = Target.All;
+			Target = Target.AllPlayers;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
 			DataCache = DataCache.None;
@@ -345,7 +361,7 @@ namespace Omni.Core
 
 		/// <summary>
 		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+		/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
@@ -354,7 +370,7 @@ namespace Omni.Core
 		public SyncOptions(bool useDefaultOptions)
 		{
 			Buffer = null;
-			Target = Target.All;
+			Target = Target.AllPlayers;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
 			DataCache = DataCache.None;
@@ -363,7 +379,7 @@ namespace Omni.Core
 
 		/// <summary>
 		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.All"/> - Specifies that the target includes all recipients.<br/>
+		/// - <c>Target</c>: <see cref="Target.AllPlayers"/> - Specifies that the target includes all recipients.<br/>
 		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
 		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
 		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>

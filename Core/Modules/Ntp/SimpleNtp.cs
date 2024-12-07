@@ -184,7 +184,7 @@ namespace Omni.Core.Modules.Ntp
 					MessageType.NtpQuery,
 					peer,
 					message,
-					target: Target.Self,
+					target: Target.SelfOnly,
 					deliveryMode: DeliveryMode.Unreliable,
 					sequenceChannel: 0
 				);
