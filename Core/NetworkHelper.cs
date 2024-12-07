@@ -272,6 +272,11 @@ namespace Omni.Core
 			}
 		}
 
+		/// <summary>
+		/// Retrieves the external IP address of the device asynchronously.
+		/// </summary>
+		/// <param name="useIPv6">A boolean indicating whether to retrieve the IPv6 address or the IPv4 address.</param>
+		/// <returns>A Task representing the asynchronous operation, containing the external IP address as an IPAddress object.</returns>
 		public static async Task<IPAddress> GetExternalIpAsync(bool useIPv6)
 		{
 			try
@@ -300,34 +305,34 @@ namespace Omni.Core
 			}
 		}
 
-		public static void RunOnMainThread(Action action)
+		/// <summary>
+		/// Runs the specified action on the main thread.
+		/// </summary>
+		/// <param name="action">The action to be executed on the main thread.</param>
+		public static async void RunOnMainThread(Action action)
 		{
-			UniTask.Void(async () =>
-			{
-				await UniTask.SwitchToMainThread();
-				// Run on main thread
-				action();
-			});
+			await UniTask.SwitchToMainThread();
+			// Run on main thread
+			action();
 		}
 
+		/// <summary>
+		/// Runs the specified function on the main thread asynchronously.
+		/// </summary>
+		/// <typeparam name="T">The return type of the function.</typeparam>
+		/// <param name="func">The function to run on the main thread.</param>
+		/// <returns>A UniTask representing the asynchronous operation.</returns>
 		public static async UniTask<T> RunOnMainThread<T>(Func<T> func)
 		{
-			T result = default;
-			bool isCompleted = false;
-			// Run on main thread and wait until the result is available.
-			UniTask.Void(async () =>
-			{
-				await UniTask.SwitchToMainThread();
-				// Run on main thread
-				result = func();
-				isCompleted = true;
-			});
-
-			// Wait until the result is available
-			await UniTask.WaitUntil(() => isCompleted);
-			return result;
+			await UniTask.SwitchToMainThread();
+			// Run on main thread
+			return func();
 		}
 
+		/// <summary>
+		/// Checks whether the current thread is the main thread.
+		/// </summary>
+		/// <returns>True if the current thread is the main thread, false otherwise.</returns>
 		public static bool IsRunningOnMainThread()
 		{
 			return NetworkManager.MainThreadId == Thread.CurrentThread.ManagedThreadId;
