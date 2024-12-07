@@ -1026,6 +1026,16 @@ namespace Omni.Core
 					case Target.UngroupedPlayers:
 					case Target.UngroupedPlayersExceptSelf:
 						{
+							if (groupId != 0 && !cacheIsEnabled)
+							{
+								NetworkLogger.__Log__(
+									"Send: Target.UngroupedPlayers cannot be used with specified groups(groupId is not 0). Note that this is not a limitation, it just doesn't make sense.",
+									NetworkLogger.LogType.Error
+								);
+
+								return;
+							}
+
 							var peers = peersById.Values.Where(p => p._groups.Count == 0);
 							foreach (var peer in peers)
 							{
@@ -1055,15 +1065,17 @@ namespace Omni.Core
 							if (groupId != 0 && !cacheIsEnabled)
 							{
 								NetworkLogger.__Log__(
-									"Send: Target.GroupMembers cannot be used with specified groups(groupId is not 0). Note that this is not a limitation, it just doesn't make sense.",
-									NetworkLogger.LogType.Warning
+									"Send: Target.Group cannot be used with specified groups(groupId is not 0). Note that this is not a limitation, it just doesn't make sense.",
+									NetworkLogger.LogType.Error
 								);
+
+								return;
 							}
 
 							if (sender.Id == 0)
 							{
 								NetworkLogger.__Log__(
-									"Send: The server(id: 0) cannot use Target.GroupMembers. Because he's not in any group.",
+									"Send: The server(id: 0) cannot use Target.Group. Because he's not in any group.",
 									NetworkLogger.LogType.Error
 								);
 
