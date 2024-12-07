@@ -293,7 +293,7 @@ namespace Omni.Core
 
 		protected virtual void Awake()
 		{
-			NetworkHelper.LoadComponent(this, "setup.cfg");
+			// NetworkHelper.LoadComponent(this, "setup.cfg");
 			if (_manager != null)
 			{
 				gameObject.SetActive(false);
@@ -613,7 +613,7 @@ namespace Omni.Core
 #if OMNI_DEBUG
 				Server.GenerateRsaKeys();
 				Connection.Server.Listen(port);
-				NetworkHelper.SaveComponent(_manager, "setup.cfg");
+				// NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #else
 #if UNITY_EDITOR
                 Server.GenerateRsaKeys();

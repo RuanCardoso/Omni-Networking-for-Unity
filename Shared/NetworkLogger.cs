@@ -91,10 +91,17 @@ namespace Omni.Shared
 		/// </remarks>
 		public static void LogToFile(object message, LogType logType = LogType.Log)
 		{
-			fileStream ??= new(LogPath, append: true); // Keep the stream open for better performance.
-			string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-			int threadId = Thread.CurrentThread.ManagedThreadId;
-			fileStream.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
+			try
+			{
+				fileStream ??= new(LogPath, append: true); // Keep the stream open for better performance.
+				string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+				int threadId = Thread.CurrentThread.ManagedThreadId;
+				fileStream.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
+			}
+			catch
+			{
+				// Ignored -> IOException: Sharing violation
+			}
 		}
 
 		/// <summary>
