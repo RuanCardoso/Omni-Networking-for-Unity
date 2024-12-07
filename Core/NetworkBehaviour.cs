@@ -15,7 +15,7 @@ using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
-	[DeclareFoldoutGroup("Network Variables", Expanded = true)]
+	[DeclareFoldoutGroup("Network Variables", Expanded = true, Title = "Network Variables - (Auto Synced)")]
 	[DeclareBoxGroup("Service Settings")]
 	public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem, IEquatable<NetworkBehaviour>
 	{

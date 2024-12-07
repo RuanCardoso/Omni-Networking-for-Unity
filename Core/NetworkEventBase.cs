@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Omni.Core
 {
-	[DeclareFoldoutGroup("Network Variables", Expanded = true)]
+	[DeclareFoldoutGroup("Network Variables", Expanded = true, Title = "Network Variables - (Auto Synced)")]
 	[DeclareBoxGroup("Service Settings")]
 	public class NetworkEventBase : NetworkVariablesBehaviour
 	{
