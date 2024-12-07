@@ -372,7 +372,7 @@ namespace Omni.Core
 #if OMNI_DEBUG
 				timeLeft = TimeSpan.FromMinutes(minutes) - timeLeft;
 				NetworkLogger.Log(
-					$"You should wait {minutes} minutes before you can get the external IP again. Go to the context menu and click \"Get External IP\" to force it. Remaining time: {timeLeft.Minutes:0} minutes and {timeLeft.Seconds} seconds.",
+					$"You should wait {minutes} minutes before you can get the external IP again. Go to the context menu and click \"Force Get Public IP\" to force it. Remaining time: {timeLeft.Minutes:0} minutes and {timeLeft.Seconds} seconds.",
 					logType: NetworkLogger.LogType.Warning
 				);
 #endif
