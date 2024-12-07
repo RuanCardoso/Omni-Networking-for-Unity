@@ -18,9 +18,7 @@ namespace Omni.Core
 		[SerializeField]
 		internal int m_Id;
 
-		[SerializeField]
-		internal BindingFlags m_BindingFlags =
-			BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+		internal BindingFlags m_BindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
 		private NbClient local;
 		private NbServer remote;

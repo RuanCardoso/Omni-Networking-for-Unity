@@ -575,10 +575,7 @@ namespace Omni.Core
 		[Group("Service Settings")]
 		private byte m_Id = 0;
 
-		[SerializeField]
-		[Group("Service Settings")]
-		internal BindingFlags m_BindingFlags =
-			BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+		internal BindingFlags m_BindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
 		/// <summary>
 		/// Gets the unique identifier for this instance.
