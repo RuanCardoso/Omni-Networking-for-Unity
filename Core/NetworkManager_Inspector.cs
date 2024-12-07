@@ -67,7 +67,7 @@ namespace Omni.Core
 		[LabelText("Public IPv6")]
 		[ReadOnly]
 		[Group("Infor")]
-		private string PublicIPv6 = "127.0.0.1";
+		private string PublicIPv6 = "::1";
 
 		[Header("Scripting Backend")]
 		[SerializeField]
@@ -111,7 +111,11 @@ namespace Omni.Core
 		[SerializeField]
 		[Group("Connection")]
 		[LabelText("Hosts")]
-		private List<string> m_ConnectAddresses = new List<string>() { "127.0.0.1", };
+		private List<string> m_ConnectAddresses = new List<string>()
+		{
+			"127.0.0.1",
+			"::1"
+		};
 
 		[SerializeField]
 		[Group("Connection")]

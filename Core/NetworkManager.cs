@@ -546,7 +546,7 @@ namespace Omni.Core
 							if (
 								ConnectAddress.ToLower() != "localhost"
 								&& ConnectAddress.ToLower() != "::1" // IPv6 localhost
-								&& ConnectAddress != "127.0.0.1"
+								&& ConnectAddress != "127.0.0.1" // IPv4 localhost
 								&& ConnectAddress != Manager.PublicIPv4
 								&& ConnectAddress != Manager.PublicIPv6
 							)
