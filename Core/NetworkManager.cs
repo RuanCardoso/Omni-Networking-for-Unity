@@ -1042,10 +1042,7 @@ namespace Omni.Core
 								if (peer.Id == Server.ServerPeer.Id)
 									continue;
 
-								if (
-									peer.Equals(sender)
-									&& target == Target.UngroupedPlayersExceptSelf
-								)
+								if (peer.Equals(sender) && target == Target.UngroupedPlayersExceptSelf)
 									continue;
 
 								Send(message, peer);
@@ -1103,10 +1100,7 @@ namespace Omni.Core
 									if (peer.Id == Server.ServerPeer.Id)
 										continue;
 
-									if (
-										peer.Equals(sender)
-										&& target == Target.GroupExceptSelf
-									)
+									if (peer.Equals(sender) && target == Target.GroupExceptSelf)
 										continue;
 
 									Send(message, peer);
@@ -1115,26 +1109,6 @@ namespace Omni.Core
 						}
 						break;
 					case Target.AllPlayers:
-						{
-							foreach (var (_, peer) in peersById)
-							{
-								if (!peer.IsAuthenticated)
-								{
-									NetworkLogger.__Log__(
-										"Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
-										NetworkLogger.LogType.Warning
-									);
-
-									continue;
-								}
-
-								if (peer.Id == Server.ServerPeer.Id)
-									continue;
-
-								Send(message, peer);
-							}
-						}
-						break;
 					case Target.AllPlayersExceptSelf:
 						{
 							foreach (var (_, peer) in peersById)
@@ -1152,7 +1126,7 @@ namespace Omni.Core
 								if (peer.Id == Server.ServerPeer.Id)
 									continue;
 
-								if (peer.Equals(sender))
+								if (peer.Equals(sender) && target == Target.AllPlayersExceptSelf)
 									continue;
 
 								Send(message, peer);
