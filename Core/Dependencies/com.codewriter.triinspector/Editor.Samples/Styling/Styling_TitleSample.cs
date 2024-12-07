@@ -1,6 +1,8 @@
-﻿using System;
+using System;
 using TriInspector;
 using UnityEngine;
+
+#pragma warning disable
 
 public class Styling_TitleSample : ScriptableObject
 {
