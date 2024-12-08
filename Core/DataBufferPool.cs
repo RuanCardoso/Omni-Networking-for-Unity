@@ -78,11 +78,12 @@ namespace Omni.Core
 					)
 					{
 						NetworkLogger.Print(
-							"Memory Leak Fatal Error: The DataBuffer object has not been disposed or returned to the pool within the expected time frame. This could indicate a missing 'using' statement, a failure to call 'Dispose', prolonged processing time, or a persistent reference to the object. Ensure that the object is properly disposed or processing time is not too long."
+							"Memory Leak Fatal Error: The DataBuffer object has not been disposed or returned to the pool within the expected time frame. This could indicate a missing 'using' statement, a failure to call 'Dispose', prolonged processing time, or a persistent reference to the object. Ensure that the object is properly disposed or processing time is not too long.",
+							NetworkLogger.LogType.Error
 						);
 
 						// Print the stack trace only in debug mode.
-						NetworkLogger.Print(message);
+						NetworkLogger.Print(message, NetworkLogger.LogType.Error);
 						cts.Cancel();
 						cts.Dispose();
 						return;
