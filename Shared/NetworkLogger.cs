@@ -15,12 +15,16 @@
 #if UNITY_EDITOR
 using ParrelSync;
 #endif
+using Omni.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
+using System.Text;
 using System.Threading;
 using Debug = UnityEngine.Debug;
+using System.Linq;
 
 namespace Omni.Shared
 {
@@ -165,6 +169,14 @@ namespace Omni.Shared
 #else
 #if OMNI_DEBUG
 			Debug.LogFormat((UnityEngine.LogType)logType, UnityEngine.LogOption.None, null, "{0}", message);
+			if (logType == LogType.Error)
+			{
+				string stacktrace = GetStackTrace();
+				if (!string.IsNullOrEmpty(stacktrace))
+				{
+					Print(stacktrace, logType);
+				}
+			}
 #else
 			Debug.LogFormat(
 				(UnityEngine.LogType)logType,
@@ -243,18 +255,39 @@ namespace Omni.Shared
 		public static string GetStackTrace(Exception exception = null)
 		{
 			var frames = CreateStackTrace(exception);
-			var _message = "";
-
+			var _message = new StringBuilder();
 			// Very slow operation, but useful for debugging. Debug mode only.
-			foreach (var frame in frames)
+			foreach (var frame in frames.Reverse())
 			{
 				var method = frame.GetMethod();
 				int line = frame.GetFileLineNumber();
-				_message +=
-					$"StackTrace -> Class: [{method.DeclaringType}] | Method: [{method.Name}] | Line: [{line}]\r\n";
+				string fileName = frame.GetFileName();
+				string declaringType = method.DeclaringType?.ToString() ?? "Unknown";
+
+				if (method.GetCustomAttribute<StackTraceAttribute>() != null || (declaringType.Contains("NetworkBehaviour") || declaringType.Contains("ServerBehaviour") || declaringType.Contains("ClientBehaviour") || declaringType.Contains("DualBehaviour")))
+				{
+					string filePath = fileName?.Replace("\\", "/") ?? "Unknown";
+					string linkText = $"{filePath}:{line}";
+#if UNITY_6000_0_OR_NEWER
+					string link = $"<color=#40a0ff><link=\"href='{filePath}' line='{line}'\">{filePath}:{line}</link></color>";
+#else
+					string link = $"<a href=\"{filePath}\" line=\"{line}\">{filePath}:{line}</a>";
+#endif
+					_message.AppendLine(
+						$"Full Log -> " +
+						$"{link} | " +
+						$"Class: [{declaringType}] | " +
+						$"Method: [{method.Name}] | " +
+						$"Line: [{line}] | "
+					);
+				}
+				//else
+				//{
+				//	continue;
+				//}
 			}
 
-			return _message;
+			return _message.ToString();
 		}
 
 		/// <summary>
