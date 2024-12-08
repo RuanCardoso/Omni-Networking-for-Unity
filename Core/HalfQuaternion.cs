@@ -11,6 +11,8 @@ namespace Omni.Core
 	/// </summary>
 	public struct HalfQuaternion : IEquatable<HalfQuaternion>
 	{
+		const float kEpsilon = 0.000001F;
+
 		public Half x;
 		public Half y;
 		public Half z;
@@ -80,7 +82,7 @@ namespace Omni.Core
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static bool IsEqualUsingDot(float dot)
 		{
-			return dot > 0.999999f;
+			return dot > 1.0f - kEpsilon;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
