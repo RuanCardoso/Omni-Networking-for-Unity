@@ -83,7 +83,11 @@ namespace Omni.Core
 						);
 
 						// Print the stack trace only in debug mode.
-						NetworkLogger.Print(message, NetworkLogger.LogType.Error);
+						if (!string.IsNullOrEmpty(message))
+						{
+							NetworkLogger.Print(message, NetworkLogger.LogType.Error);
+						}
+
 						cts.Cancel();
 						cts.Dispose();
 						return;
