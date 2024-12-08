@@ -93,7 +93,7 @@ namespace Omni.Editor
 
         private static bool IsServer()
         {
-            //UNITY_STANDALONe
+            // UNITY_STANDALONE
 #if !UNITY_STANDALONE && !UNITY_SERVER
             return false;
 #endif

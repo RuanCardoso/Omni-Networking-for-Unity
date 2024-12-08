@@ -1,10 +1,13 @@
+#if UNITY_EDITOR
+using ParrelSync;
+#endif
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using UnityEngine;
 using TriInspector;
+using UnityEngine;
 
 #if OMNI_DEBUG
 using Omni.Shared;
@@ -69,23 +72,6 @@ namespace Omni.Core
 		[Group("Infor")]
 		private string PublicIPv6 = "::1";
 
-		[Header("Scripting Backend")]
-		[SerializeField]
-#if OMNI_DEBUG
-		[ReadOnly]
-		[HideInInspector]
-#endif
-		[LabelText("Client Backend")]
-		private ScriptingBackend m_ClientScriptingBackend = ScriptingBackend.Mono;
-
-		[SerializeField]
-#if OMNI_DEBUG
-		[ReadOnly]
-		[HideInInspector]
-#endif
-		[LabelText("Server Backend")]
-		private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
-
 		private bool m_ConnectionModule = true;
 		private bool m_ConsoleModule = true;
 		private bool m_MatchModule = true;
@@ -126,7 +112,7 @@ namespace Omni.Core
 		[Group("MiscTabs"), Tab("Basic")]
 		[LabelWidth(140)]
 #if OMNI_RELEASE
-        [ReadOnly]
+		[HideInInspector]
 #endif
 		private bool m_AutoStartClient = true;
 
@@ -134,7 +120,7 @@ namespace Omni.Core
 		[Group("MiscTabs"), Tab("Basic")]
 		[LabelWidth(140)]
 #if OMNI_RELEASE
-        [ReadOnly]
+		[HideInInspector]
 #endif
 		private bool m_AutoStartServer = true;
 
@@ -187,6 +173,22 @@ namespace Omni.Core
 		[Group("MiscTabs"), Tab("Advanced")]
 		[LabelWidth(190)]
 		private bool m_RunInBackground = true;
+
+		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+#if OMNI_DEBUG || UNITY_WEBGL
+		[HideInInspector]
+#endif
+		[LabelText("Client Backend")]
+		private ScriptingBackend m_ClientScriptingBackend = ScriptingBackend.Mono;
+
+		[SerializeField]
+		[Group("MiscTabs"), Tab("Advanced")]
+#if OMNI_DEBUG || UNITY_WEBGL
+		[HideInInspector]
+#endif
+		[LabelText("Server Backend")]
+		private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
 
 		[SerializeField]
 		[Group("Permissions")]
@@ -262,15 +264,14 @@ namespace Omni.Core
 				var clientObject = transform.GetChild(1);
 
 #if OMNI_RELEASE
-                UnityEngine.Debug.Log("Network Manager: Components stripped. Ready to build!");
-                name = "Network Manager";
+				name = "Network Manager";
 
 #if UNITY_SERVER
                 SetTag(clientObject, "EditorOnly");
                 SetTag(serverObject, "Untagged");
 #else
-                SetTag(serverObject, "EditorOnly");
-                SetTag(clientObject, "Untagged");
+				SetTag(serverObject, "EditorOnly");
+				SetTag(clientObject, "Untagged");
 #endif
 #elif OMNI_DEBUG
 				SetTag(clientObject, "Untagged");
@@ -291,14 +292,32 @@ namespace Omni.Core
 		[ContextMenu("Set Scripting Backend")]
 		private void SetScriptingBackend()
 		{
+			// WebGl only supports IL2CPP -> Wasm
+#if UNITY_WEBGL
+			return;
+#endif
 			ScriptingBackend[] scriptingBackends =
 			{
 				m_ServerScriptingBackend,
 				m_ClientScriptingBackend
 			};
 
-			using StreamWriter writer = new("ScriptingBackend.txt");
-			writer.Write(ToJson(scriptingBackends));
+			bool isClone = false;
+#if UNITY_EDITOR
+			if (ClonesManager.IsClone())
+			{
+				isClone = true;
+			}
+#endif
+			if (!isClone)
+			{
+				try
+				{
+					using StreamWriter writer = new("ScriptingBackend.txt");
+					writer.Write(ToJson(scriptingBackends));
+				}
+				catch { }
+			}
 		}
 
 		[ContextMenu("Force Get Public IP")]
@@ -379,17 +398,16 @@ namespace Omni.Core
 			}
 		}
 
-		private bool DisableAutoStartIfHasHud()
+		private void DisableAutoStartIfHasHud()
 		{
+#if OMNI_DEBUG
 			if (TryGetComponent<NetworkConnectionDisplay>(out _))
 			{
 				m_AutoStartClient = false;
 				m_AutoStartServer = false;
 				NetworkHelper.EditorSaveObject(gameObject);
-				return true;
 			}
-
-			return false;
+#endif
 		}
 	}
 }

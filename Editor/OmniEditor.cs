@@ -10,7 +10,7 @@ namespace Omni.Editor
 {
     public class OmniEditor
     {
-        [MenuItem("Omni Networking/Setup", false, 10)]
+        [MenuItem("Omni Networking/Setup", false, -100)]
         static void Setup()
         {
             if (GameObject.Find("Network Manager") == null)

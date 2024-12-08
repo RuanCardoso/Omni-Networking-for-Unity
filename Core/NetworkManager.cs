@@ -429,18 +429,18 @@ namespace Omni.Core
 			}
 		}
 
-		private void SkipDefaultUnityLog()
+		private void SkipDefaultUnityLog() // Referenced!
 		{
 			System.Console.Clear();
 		}
 
-		private void ShowDefaultOmniLog()
+		private void ShowDefaultOmniLog() // Referenced!
 		{
 			NetworkLogger.Log("Welcome to Omni Server Console.");
 #if OMNI_DEBUG
 			NetworkLogger.Log("You are in Debug Mode.");
 #else
-            NetworkLogger.Log("You are in Release Mode.");
+			NetworkLogger.Log("You are in Release Mode.");
 #endif
 		}
 
@@ -538,8 +538,8 @@ namespace Omni.Core
 						);
 
 #if OMNI_RELEASE || (UNITY_SERVER && !UNITY_EDITOR)
-                        Manager.m_AutoStartServer = true;
-                        Manager.m_AutoStartClient = true;
+						Manager.m_AutoStartServer = true;
+						Manager.m_AutoStartClient = true;
 #else
 						if (Manager.m_AutoStartServer)
 						{
@@ -608,6 +608,10 @@ namespace Omni.Core
 
 		public static void StartServer(int port)
 		{
+			// WebGl Client does not support server
+#if UNITY_WEBGL && !UNITY_EDITOR
+			return;
+#endif
 			if (!IsServerActive)
 			{
 #if OMNI_DEBUG
@@ -616,9 +620,9 @@ namespace Omni.Core
 				// NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #else
 #if UNITY_EDITOR
-                Server.GenerateRsaKeys();
-                Connection.Server.Listen(port);
-                NetworkHelper.SaveComponent(_manager, "setup.cfg");
+				Server.GenerateRsaKeys();
+				Connection.Server.Listen(port);
+				//NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #elif !UNITY_SERVER
                 NetworkLogger.LogToFile(
                     "Server is not available in 'release mode' on client build."
@@ -626,7 +630,7 @@ namespace Omni.Core
 #else
                 Server.GenerateRsaKeys();
                 Connection.Server.Listen(port);
-                NetworkHelper.SaveComponent(_manager, "setup.cfg");
+                // NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #endif
 #endif
 			}
@@ -1662,13 +1666,20 @@ namespace Omni.Core
 								&& !m_AllowNetworkVariablesFromClients
 							) // 255 is reserved for NetVar
 							{
+#if OMNI_DEBUG
 								// NetVar exclusively
 								NetworkLogger.__Log__(
 									"The client does not have permission to send Network Variables.",
 									NetworkLogger.LogType.Error
 								);
+#endif
 #if OMNI_RELEASE
-                                peer.Disconnect();
+								// NetVar exclusively
+								NetworkLogger.__Log__(
+									"The client has been disconnected. The client does not have permission to send Network Variables.",
+									NetworkLogger.LogType.Error
+								);
+								peer.Disconnect();
 #endif
 								return;
 							}
@@ -1718,7 +1729,7 @@ namespace Omni.Core
 								);
 
 #if OMNI_RELEASE
-                                peer.Disconnect();
+								peer.Disconnect();
 #endif
 								return;
 							}

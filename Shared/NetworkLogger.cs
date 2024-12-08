@@ -12,6 +12,9 @@
     License: Open Source (MIT)
     ===========================================================*/
 
+#if UNITY_EDITOR
+using ParrelSync;
+#endif
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -93,10 +96,20 @@ namespace Omni.Shared
 		{
 			try
 			{
-				fileStream ??= new(LogPath, append: true); // Keep the stream open for better performance.
-				string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-				int threadId = Thread.CurrentThread.ManagedThreadId;
-				fileStream.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
+				bool isClone = false;
+#if UNITY_EDITOR
+				if (ClonesManager.IsClone())
+				{
+					isClone = true;
+				}
+#endif
+				if (!isClone)
+				{
+					fileStream ??= new(LogPath, append: true); // Keep the stream open for better performance.
+					string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+					int threadId = Thread.CurrentThread.ManagedThreadId;
+					fileStream.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
+				}
 			}
 			catch
 			{
@@ -153,13 +166,13 @@ namespace Omni.Shared
 #if OMNI_DEBUG
 			Debug.LogFormat((UnityEngine.LogType)logType, UnityEngine.LogOption.None, null, "{0}", message);
 #else
-            Debug.LogFormat(
-                (UnityEngine.LogType)logType,
-                UnityEngine.LogOption.NoStacktrace,
-                null,
-                "{0}",
-                message
-            );
+			Debug.LogFormat(
+				(UnityEngine.LogType)logType,
+				UnityEngine.LogOption.NoStacktrace,
+				null,
+				"{0}",
+				message
+			);
 #endif
 #endif
 		}

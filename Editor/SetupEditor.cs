@@ -1,11 +1,14 @@
 #if UNITY_EDITOR
 using Newtonsoft.Json;
+using ParrelSync;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.Callbacks;
 using UnityEngine;
+
+#pragma warning disable
 
 namespace Omni.Editor
 {
@@ -55,7 +58,7 @@ namespace Omni.Editor
 		}
 
 #if OMNI_RELEASE
-        [MenuItem("Omni Networking/Change to Debug")]
+		[MenuItem("Omni Networking/Change to Debug")]
 #endif
 		private static void ChangeToDebug()
 		{
@@ -95,9 +98,9 @@ namespace Omni.Editor
 
 			if (!File.Exists(fileName))
 			{
+				using FileStream fileStream = File.Create(fileName);
 				if (EditorHelper.SetDefines(false))
 				{
-					using FileStream fileStream = File.Create(fileName);
 					using StreamWriter writer = new(fileStream);
 					writer.Write(string.Join("\n", EditorHelper.GetDefines()));
 					// Warn the user that the macros have been imported.
@@ -108,41 +111,48 @@ namespace Omni.Editor
 
 		private static void SetScriptingBackend(BuildTarget? buildTarget = null)
 		{
-			if (File.Exists("ScriptingBackend.txt"))
+			// WebGl only supports IL2CPP -> Wasm
+#if UNITY_WEBGL
+			return;
+#endif
+			if (!ClonesManager.IsClone())
 			{
-				try
+				if (File.Exists("ScriptingBackend.txt"))
 				{
-					using StreamReader reader = new("ScriptingBackend.txt");
-					string json = reader.ReadToEnd();
+					try
+					{
+						using StreamReader reader = new("ScriptingBackend.txt");
+						string json = reader.ReadToEnd();
 
-					ScriptingBackend[] scriptingBackends =
-						JsonConvert.DeserializeObject<ScriptingBackend[]>(json);
+						ScriptingBackend[] scriptingBackends =
+							JsonConvert.DeserializeObject<ScriptingBackend[]>(json);
 
+						var namedBuildTarget = EditorHelper.GetCurrentNamedBuildTarget(buildTarget);
+						ScriptingBackend scriptingBackend =
+							namedBuildTarget == NamedBuildTarget.Server
+								? scriptingBackends[0]
+								: scriptingBackends[1];
+
+						PlayerSettings.SetScriptingBackend(
+							namedBuildTarget,
+							scriptingBackend == ScriptingBackend.IL2CPP
+								? ScriptingImplementation.IL2CPP
+								: ScriptingImplementation.Mono2x
+						);
+					}
+					catch
+					{
+						File.Delete("ScriptingBackend.txt");
+					}
+				}
+				else
+				{
 					var namedBuildTarget = EditorHelper.GetCurrentNamedBuildTarget(buildTarget);
-					ScriptingBackend scriptingBackend =
-						namedBuildTarget == NamedBuildTarget.Server
-							? scriptingBackends[0]
-							: scriptingBackends[1];
-
 					PlayerSettings.SetScriptingBackend(
 						namedBuildTarget,
-						scriptingBackend == ScriptingBackend.IL2CPP
-							? ScriptingImplementation.IL2CPP
-							: ScriptingImplementation.Mono2x
+						ScriptingImplementation.Mono2x
 					);
 				}
-				catch
-				{
-					File.Delete("ScriptingBackend.txt");
-				}
-			}
-			else
-			{
-				var namedBuildTarget = EditorHelper.GetCurrentNamedBuildTarget(buildTarget);
-				PlayerSettings.SetScriptingBackend(
-					namedBuildTarget,
-					ScriptingImplementation.Mono2x
-				);
 			}
 		}
 	}

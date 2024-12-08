@@ -70,10 +70,13 @@ namespace Omni.Core
 
 			if (!isClone)
 			{
+				// WebGL can't start server.
+#if !UNITY_WEBGL || UNITY_EDITOR
 				if (GUILayout.Button("Start Server", buttonFontSize, width, height))
 				{
 					NetworkManager.StartServer(hostPort);
 				}
+#endif
 			}
 
 			if (GUILayout.Button("Start Client", buttonFontSize, width, height))
@@ -83,11 +86,14 @@ namespace Omni.Core
 
 			if (!isClone)
 			{
+				// WebGL can't start server.
+#if !UNITY_WEBGL || UNITY_EDITOR
 				if (GUILayout.Button("Start Server & Client", buttonFontSize, width, height))
 				{
 					NetworkManager.StartServer(hostPort);
 					NetworkManager.Connect(host, hostPort);
 				}
+#endif
 			}
 
 			GUILayout.EndArea();
