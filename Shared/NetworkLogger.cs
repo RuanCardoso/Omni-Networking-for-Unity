@@ -15,16 +15,17 @@
 #if UNITY_EDITOR
 using ParrelSync;
 #endif
-using Omni.Core;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using System.Threading;
 using Debug = UnityEngine.Debug;
 using System.Linq;
+using System.Reflection;
+using Omni.Core;
 
 namespace Omni.Shared
 {
@@ -262,11 +263,21 @@ namespace Omni.Shared
 				var method = frame.GetMethod();
 				int line = frame.GetFileLineNumber();
 				string fileName = frame.GetFileName();
-				string declaringType = method.DeclaringType?.ToString() ?? "Unknown";
+				string declaringType = method.DeclaringType?.ToString() ?? "";
 
 				if (method.GetCustomAttribute<StackTraceAttribute>() != null || (declaringType.Contains("NetworkBehaviour") || declaringType.Contains("ServerBehaviour") || declaringType.Contains("ClientBehaviour") || declaringType.Contains("DualBehaviour")))
 				{
-					string filePath = fileName?.Replace("\\", "/") ?? "Unknown";
+					string filePath = fileName?.Replace("\\", "/") ?? "";
+					if (string.IsNullOrEmpty(filePath))
+					{
+						continue;
+					}
+
+					if (string.IsNullOrEmpty(declaringType))
+					{
+						continue;
+					}
+
 					string linkText = $"{filePath}:{line}";
 #if UNITY_6000_0_OR_NEWER
 					string link = $"<color=#40a0ff><link=\"href='{filePath}' line='{line}'\">{filePath}:{line}</link></color>";
@@ -281,10 +292,7 @@ namespace Omni.Shared
 						$"Line: [{line}] | "
 					);
 				}
-				//else
-				//{
-				//	continue;
-				//}
+				else continue;
 			}
 
 			return _message.ToString();
