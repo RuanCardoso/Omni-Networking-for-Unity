@@ -989,14 +989,29 @@ namespace Omni.Core
 				{
 					if (GroupsById.TryGetValue(groupId, out _group))
 					{
-						if (!m_AllowAcrossGroupMessage || !_group.AllowAcrossGroupMessage)
+						if (!m_AllowAcrossGroupMessage)
 						{
-							if (!_group._peersById.ContainsKey(sender.Id) && sender.Id != 0)
+							if (!_group.AllowAcrossGroupMessage)
+							{
+								if (!_group._peersById.ContainsKey(sender.Id) && sender.Id != 0)
+								{
+									NetworkLogger.__Log__(
+										"Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
+										NetworkLogger.LogType.Error
+									);
+
+									return;
+								}
+							}
+						}
+						else
+						{
+							if (!_group.AllowAcrossGroupMessage)
 							{
 								NetworkLogger.__Log__(
-									"Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
-									NetworkLogger.LogType.Error
-								);
+										"Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
+										NetworkLogger.LogType.Error
+									);
 
 								return;
 							}
