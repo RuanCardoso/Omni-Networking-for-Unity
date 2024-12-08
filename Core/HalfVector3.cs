@@ -11,6 +11,8 @@ namespace Omni.Core
 	/// </summary>
 	public struct HalfVector3 : IEquatable<HalfVector3>
 	{
+		const float kEpsilon = 0.00001F;
+
 		public Half x;
 		public Half y;
 		public Half z;
@@ -73,11 +75,12 @@ namespace Omni.Core
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator ==(HalfVector3 lhs, HalfVector3 rhs)
 		{
-			float num = lhs.x - rhs.x;
-			float num2 = lhs.y - rhs.y;
-			float num3 = lhs.z - rhs.z;
-			float num4 = num * num + num2 * num2 + num3 * num3;
-			return num4 < 9.9999994E-11f;
+			// Returns false in the presence of NaN values.
+			float diff_x = lhs.x - rhs.x;
+			float diff_y = lhs.y - rhs.y;
+			float diff_z = lhs.z - rhs.z;
+			float sqrmag = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+			return sqrmag < kEpsilon * kEpsilon;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
