@@ -35,6 +35,9 @@ namespace Omni.Core
 		public int Id { get; }
 
 		[MemoryPackIgnore]
+		public int MainGroupId { get; internal set; }
+
+		[MemoryPackIgnore]
 		public bool IsConnected { get; internal set; }
 
 		[MemoryPackIgnore]
