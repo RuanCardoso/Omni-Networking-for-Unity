@@ -55,7 +55,11 @@ namespace Omni.Core
 			var labelFontSize = new GUIStyle(GUI.skin.label) { fontSize = m_FontSize };
 			var textFieldFontSize = new GUIStyle(GUI.skin.textField) { fontSize = m_FontSize };
 
-			GUILayout.BeginArea(new Rect(10, 10, Screen.width, Screen.height));
+			// Calcula posição centralizada
+			float centerX = (Screen.width - m_Width) / 2;
+			float centerY = (Screen.height - (m_Height * 8)) / 2; // 6 linhas de altura
+
+			GUILayout.BeginArea(new Rect(centerX, centerY, m_Width, m_Height * 8));
 
 			GUILayout.Label("Host:", labelFontSize);
 			host = GUILayout.TextField(host, textFieldFontSize, width, height);
