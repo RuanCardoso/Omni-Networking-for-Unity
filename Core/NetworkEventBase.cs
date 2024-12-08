@@ -1,3 +1,4 @@
+using Omni.Shared;
 using System;
 using System.ComponentModel;
 using TriInspector;
@@ -9,6 +10,7 @@ namespace Omni.Core
 {
 	[DeclareFoldoutGroup("Network Variables", Expanded = true, Title = "Network Variables - (Auto Synced)")]
 	[DeclareBoxGroup("Service Settings")]
+	[StackTrace]
 	public class NetworkEventBase : NetworkVariablesBehaviour
 	{
 		[GroupNext("Service Settings")]
@@ -34,6 +36,7 @@ namespace Omni.Core
 			{
 				if (local == null)
 				{
+					NetworkLogger.PrintHyperlink();
 					throw new NullReferenceException(
 						"This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
 					);

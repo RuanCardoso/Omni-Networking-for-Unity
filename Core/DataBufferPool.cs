@@ -53,7 +53,7 @@ namespace Omni.Core
 		private void CreateTrace(DataBuffer buffer)
 		{
 			CancellationTokenSource cts = new();
-			string message = NetworkLogger.GetStackTrace();
+			string message = NetworkLogger.GetStackFramesToHyperlink();
 
 #if OMNI_DEBUG
 			buffer._onDisposed = () =>

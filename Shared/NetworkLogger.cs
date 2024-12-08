@@ -23,7 +23,6 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Debug = UnityEngine.Debug;
-using System.Linq;
 using System.Reflection;
 using Omni.Core;
 
@@ -39,6 +38,23 @@ namespace Omni.Shared
 			Error = 0,
 			Warning = 2,
 			Log = 3,
+		}
+
+		/// <summary>
+		/// Prints a hyperlink to the console with the provided exception and log type.
+		/// </summary>
+		/// <param name="ex">The exception to print, or null for no exception.</param>
+		/// <param name="logType">The type of log message (default: LogType.Error).</param>
+		[Conditional("UNITY_EDITOR")]
+		public static void PrintHyperlink(Exception ex = null, LogType logType = LogType.Error)
+		{
+#if OMNI_DEBUG
+			string stacktrace = GetStackFramesToHyperlink(ex);
+			if (!string.IsNullOrEmpty(stacktrace))
+			{
+				Print(stacktrace, logType);
+			}
+#endif
 		}
 
 #pragma warning disable IDE1006
@@ -171,13 +187,7 @@ namespace Omni.Shared
 #if OMNI_DEBUG
 			Debug.LogFormat((UnityEngine.LogType)logType, UnityEngine.LogOption.None, null, "{0}", message);
 			if (logType == LogType.Error)
-			{
-				string stacktrace = GetStackTrace();
-				if (!string.IsNullOrEmpty(stacktrace))
-				{
-					Print(stacktrace, logType);
-				}
-			}
+				PrintHyperlink(null, LogType.Error);
 #else
 			Debug.LogFormat(
 				(UnityEngine.LogType)logType,
@@ -253,31 +263,31 @@ namespace Omni.Shared
 		/// It performs a detailed analysis of the stack frames, which can be computationally expensive.
 		/// Use this method primarily in debug builds or for diagnostic purposes.
 		/// </remarks>
-		public static string GetStackTrace(Exception exception = null)
+		public static string GetStackFramesToHyperlink(Exception exception = null)
 		{
-			var frames = CreateStackTrace(exception);
+			var frames = GetStackFrames(exception);
 			var _message = new StringBuilder();
 			// Very slow operation, but useful for debugging. Debug mode only.
-			foreach (var frame in frames.Reverse())
+			foreach (var frame in frames)
 			{
-				var method = frame.GetMethod();
 				int line = frame.GetFileLineNumber();
 				string fileName = frame.GetFileName();
+				string filePath = fileName?.Replace("\\", "/") ?? "";
+				if (string.IsNullOrEmpty(filePath))
+					continue;
+
+				MethodBase method = frame.GetMethod();
+				if (method == null)
+					continue;
+
 				string declaringType = method.DeclaringType?.ToString() ?? "";
+				if (string.IsNullOrEmpty(declaringType))
+					continue;
 
-				if (method.GetCustomAttribute<StackTraceAttribute>() != null || (declaringType.Contains("NetworkBehaviour") || declaringType.Contains("ServerBehaviour") || declaringType.Contains("ClientBehaviour") || declaringType.Contains("DualBehaviour")))
+				bool hasStacktraceAttribute = method.GetCustomAttribute<StackTraceAttribute>(true) != null || method.DeclaringType.GetCustomAttribute<StackTraceAttribute>(true) != null;
+				bool hasBaseClasses = declaringType.Contains("NetworkBehaviour") || declaringType.Contains("ServerBehaviour") || declaringType.Contains("ClientBehaviour") || declaringType.Contains("DualBehaviour");
+				if (hasStacktraceAttribute || hasBaseClasses)
 				{
-					string filePath = fileName?.Replace("\\", "/") ?? "";
-					if (string.IsNullOrEmpty(filePath))
-					{
-						continue;
-					}
-
-					if (string.IsNullOrEmpty(declaringType))
-					{
-						continue;
-					}
-
 					string linkText = $"{filePath}:{line}";
 #if UNITY_6000_0_OR_NEWER
 					string link = $"<color=#40a0ff><link=\"href='{filePath}' line='{line}'\">{filePath}:{line}</link></color>";
@@ -313,7 +323,7 @@ namespace Omni.Shared
 		/// Each <see cref="StackFrame"/> includes file information such as line numbers and method details,
 		/// which may require the application to be compiled with debug symbols for complete accuracy.
 		/// </remarks>
-		public static IEnumerable<StackFrame> CreateStackTrace(Exception exception = null)
+		public static IEnumerable<StackFrame> GetStackFrames(Exception exception = null)
 		{
 			StackTrace stack = exception == null ? new StackTrace(fNeedFileInfo: true) : new StackTrace(exception, fNeedFileInfo: true);
 			for (int i = stack.FrameCount - 1; i >= 0; i--)
