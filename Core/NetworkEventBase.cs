@@ -1,4 +1,3 @@
-using Omni.Shared;
 using System;
 using System.ComponentModel;
 using TriInspector;
@@ -21,52 +20,7 @@ namespace Omni.Core
 		internal int m_Id;
 
 		internal BindingFlags m_BindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-		private NetworkEventClient local;
-		private NetworkEventServer remote;
 		internal bool m_UnregisterOnLoad = true;
-
-		// public api: allow send from other object
-		/// <summary>
-		/// Gets the <see cref="NetworkEventClient"/> instance used to invoke messages on the server from the client.
-		/// </summary>
-		public NetworkEventClient Local
-		{
-			get
-			{
-				if (local == null)
-				{
-					NetworkLogger.PrintHyperlink();
-					throw new NullReferenceException(
-						"This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
-					);
-				}
-
-				return local;
-			}
-			internal set => local = value;
-		}
-
-		// public api: allow send from other object
-		/// <summary>
-		/// Gets the <see cref="NetworkEventServer"/> instance used to invoke messages on the client from the server.
-		/// </summary>
-		public NetworkEventServer Remote
-		{
-			get
-			{
-				if (remote == null)
-				{
-					NetworkLogger.PrintHyperlink();
-					throw new NullReferenceException(
-						"This property(Remote) is intended for server-side use only. It appears to be accessed from the client side. Or Call Awake() and Start() base first or initialize manually."
-					);
-				}
-
-				return remote;
-			}
-			internal set => remote = value;
-		}
 
 		/// <summary>
 		/// Called when the service is initialized.

@@ -1,4 +1,6 @@
 using Omni.Core.Interfaces;
+using Omni.Shared;
+using System;
 using System.Collections;
 using System.ComponentModel;
 using UnityEngine;
@@ -24,7 +26,29 @@ namespace Omni.Core
 		/// <value>The identifier of the associated <see cref="IInvokeMessage"/> as an integer.</value>
 		public int IdentityId => m_Id;
 
+		private NetworkEventServer remote;
 		private readonly InvokeBehaviour<DataBuffer, NetworkPeer, int, Null, Null> invoker = new();
+
+		// public api: allow send from other object
+		/// <summary>
+		/// Gets the <see cref="NetworkEventServer"/> instance used to invoke messages on the client from the server.
+		/// </summary>
+		public NetworkEventServer Remote
+		{
+			get
+			{
+				if (remote == null)
+				{
+					NetworkLogger.PrintHyperlink();
+					throw new NullReferenceException(
+						"This property(Remote) is intended for server-side use only. It appears to be accessed from the client side. Or Call Awake() and Start() base first or initialize manually."
+					);
+				}
+
+				return remote;
+			}
+			internal set => remote = value;
+		}
 
 		/// <summary>
 		/// The `Awake` method is virtual, allowing it to be overridden in derived classes
