@@ -62,7 +62,7 @@ namespace Omni.Core
 			)
 			{
 				using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
-				Invoke(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
+				Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
 			}
 
 			/// <summary>
@@ -103,7 +103,7 @@ namespace Omni.Core
 						property.Id
 					);
 
-					Invoke(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
+					Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
 				}
 			}
 
@@ -112,9 +112,9 @@ namespace Omni.Core
 			/// </summary>
 			/// <param name="msgId">The ID of the message to be invoked.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, ClientOptions options)
+			public void Rpc(byte msgId, ClientOptions options)
 			{
-				Invoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
+				Rpc(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
 			}
 
 			/// <summary>
@@ -125,7 +125,7 @@ namespace Omni.Core
 			/// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 			/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(
+			public void Rpc(
 				byte msgId,
 				DataBuffer buffer = null,
 				DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -143,25 +143,25 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, IMessage message, ClientOptions options = default)
+			public void Rpc(byte msgId, IMessage message, ClientOptions options = default)
 			{
 				using var _ = message.Serialize();
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1>(byte msgId, T1 p1, ClientOptions options = default)
+			public void Rpc<T1>(byte msgId, T1 p1, ClientOptions options = default)
 				where T1 : unmanaged
 			{
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
 				using var _ = NetworkManager.FastWrite(p1);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, ClientOptions options = default)
+			public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2, ClientOptions options = default)
 				where T1 : unmanaged
 				where T2 : unmanaged
 			{
@@ -169,11 +169,11 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
 				using var _ = NetworkManager.FastWrite(p1, p2);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2, T3>(
+			public void Rpc<T1, T2, T3>(
 				byte msgId,
 				T1 p1,
 				T2 p2,
@@ -189,11 +189,11 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2, T3, T4>(
+			public void Rpc<T1, T2, T3, T4>(
 				byte msgId,
 				T1 p1,
 				T2 p2,
@@ -212,11 +212,11 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2, T3, T4, T5>(
+			public void Rpc<T1, T2, T3, T4, T5>(
 				byte msgId,
 				T1 p1,
 				T2 p2,
@@ -238,7 +238,7 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4, p5);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 		}
 
@@ -293,7 +293,7 @@ namespace Omni.Core
 			{
 				dataCache ??= DataCache.None;
 				using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
-				Invoke(
+				Rpc(
 					NetworkConstants.NET_VAR_RPC_ID,
 					message,
 					target,
@@ -356,7 +356,7 @@ namespace Omni.Core
 						propertyInfo.Id
 					);
 
-					Invoke(
+					Rpc(
 						NetworkConstants.NET_VAR_RPC_ID,
 						message,
 						target,
@@ -373,9 +373,9 @@ namespace Omni.Core
 			/// </summary>
 			/// <param name="msgId">The ID of the message to be invoked.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, ServerOptions options)
+			public void Rpc(byte msgId, ServerOptions options)
 			{
-				Invoke(
+				Rpc(
 					msgId,
 					options.Buffer,
 					options.Target,
@@ -391,10 +391,10 @@ namespace Omni.Core
 			/// </summary>
 			/// <param name="msgId">The ID of the message to be invoked.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void InvokeByPeer(byte msgId,
+			public void RpcToPeer(byte msgId,
 				NetworkPeer peer, ServerOptions options)
 			{
-				InvokeByPeer(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId, options.DataCache, options.SequenceChannel);
+				RpcToPeer(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId, options.DataCache, options.SequenceChannel);
 			}
 
 			/// <summary>
@@ -408,7 +408,7 @@ namespace Omni.Core
 			/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 			/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void InvokeByPeer(
+			public void RpcToPeer(
 				byte msgId,
 				NetworkPeer peer,
 				DataBuffer buffer = null,
@@ -445,7 +445,7 @@ namespace Omni.Core
 			/// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
 			/// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(
+			public void Rpc(
 				byte msgId,
 				DataBuffer buffer = null,
 				Target target = Target.Auto,
@@ -456,29 +456,29 @@ namespace Omni.Core
 			)
 			{
 				dataCache ??= DataCache.None;
-				InvokeByPeer(msgId, m_NetworkBehaviour.Identity.Owner, buffer, target, deliveryMode, groupId, dataCache, sequenceChannel);
+				RpcToPeer(msgId, m_NetworkBehaviour.Identity.Owner, buffer, target, deliveryMode, groupId, dataCache, sequenceChannel);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, IMessage message, ServerOptions options = default)
+			public void Rpc(byte msgId, IMessage message, ServerOptions options = default)
 			{
 				using var _ = message.Serialize();
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1>(byte msgId, T1 p1, ServerOptions options = default)
+			public void Rpc<T1>(byte msgId, T1 p1, ServerOptions options = default)
 				where T1 : unmanaged
 			{
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
 				using var _ = NetworkManager.FastWrite(p1);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, ServerOptions options = default)
+			public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2, ServerOptions options = default)
 				where T1 : unmanaged
 				where T2 : unmanaged
 			{
@@ -486,11 +486,11 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
 				using var _ = NetworkManager.FastWrite(p1, p2);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2, T3>(
+			public void Rpc<T1, T2, T3>(
 				byte msgId,
 				T1 p1,
 				T2 p2,
@@ -506,11 +506,11 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2, T3, T4>(
+			public void Rpc<T1, T2, T3, T4>(
 				byte msgId,
 				T1 p1,
 				T2 p2,
@@ -529,11 +529,11 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2, T3, T4, T5>(
+			public void Rpc<T1, T2, T3, T4, T5>(
 				byte msgId,
 				T1 p1,
 				T2 p2,
@@ -555,7 +555,7 @@ namespace Omni.Core
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
 				using var _ = NetworkManager.FastWrite(p1, p2, p3, p4, p5);
 				options.Buffer = _;
-				Invoke(msgId, options);
+				Rpc(msgId, options);
 			}
 		}
 
