@@ -126,7 +126,7 @@ namespace Omni.Core
 			byte sequenceChannel = 0
 		)
 		{
-			Client.GlobalInvoke(msgId, buffer, deliveryMode, sequenceChannel);
+			ClientSide.GlobalInvoke(msgId, buffer, deliveryMode, sequenceChannel);
 		}
 
 		/// <summary>
@@ -154,7 +154,7 @@ namespace Omni.Core
 			byte sequenceChannel = 0
 		)
 		{
-			Client.Invoke(
+			ClientSide.Invoke(
 				msgId,
 				m_NetworkMessage.IdentityId,
 				buffer,
@@ -324,7 +324,7 @@ namespace Omni.Core
 		)
 		{
 			dataCache ??= DataCache.None;
-			peer ??= Server.ServerPeer;
+			peer ??= ServerSide.ServerPeer;
 
 			using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(
 				property,
@@ -393,7 +393,7 @@ namespace Omni.Core
 
 			if (property != null)
 			{
-				peer ??= Server.ServerPeer;
+				peer ??= ServerSide.ServerPeer;
 				using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(
 					propertyGeneric.Invoke(),
 					property.Id
@@ -454,7 +454,7 @@ namespace Omni.Core
 		)
 		{
 			dataCache ??= DataCache.None;
-			Server.GlobalInvoke(
+			ServerSide.GlobalInvoke(
 				msgId,
 				peer,
 				buffer,
@@ -508,7 +508,7 @@ namespace Omni.Core
 		)
 		{
 			dataCache ??= DataCache.None;
-			Server.Invoke(
+			ServerSide.Invoke(
 				msgId,
 				peer,
 				m_NetworkMessage.IdentityId,

@@ -33,7 +33,7 @@ namespace Omni.Core
 		/// <summary>
 		/// Gets the <see cref="NetworkEventClient"/> instance used to invoke messages on the server from the client.
 		/// </summary>
-		public NetworkEventClient Local
+		public NetworkEventClient Client
 		{
 			get
 			{
@@ -140,8 +140,8 @@ namespace Omni.Core
 		protected void InitializeBehaviour()
 		{
 			invoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
-			Client.AddEventBehaviour(m_Id, this);
-			Local = new NetworkEventClient(this, m_BindingFlags);
+			NetworkManager.ClientSide.AddEventBehaviour(m_Id, this);
+			Client = new NetworkEventClient(this, m_BindingFlags);
 		}
 
 		protected void RegisterSystemEvents()
@@ -150,7 +150,7 @@ namespace Omni.Core
 			NetworkManager.OnClientConnected += OnClientConnected;
 			NetworkManager.OnClientDisconnected += OnClientDisconnected;
 			NetworkManager.OnClientIdentitySpawned += OnClientIdentitySpawned;
-			Client.OnMessage += OnMessage;
+			NetworkManager.ClientSide.OnMessage += OnMessage;
 		}
 
 		protected void RegisterMatchmakingEvents()
@@ -168,7 +168,7 @@ namespace Omni.Core
 			NetworkManager.OnClientConnected -= OnClientConnected;
 			NetworkManager.OnClientDisconnected -= OnClientDisconnected;
 			NetworkManager.OnClientIdentitySpawned -= OnClientIdentitySpawned;
-			Client.OnMessage -= OnMessage;
+			NetworkManager.ClientSide.OnMessage -= OnMessage;
 
 			if (MatchmakingModuleEnabled)
 			{

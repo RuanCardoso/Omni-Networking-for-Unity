@@ -36,7 +36,7 @@ namespace Omni.Core
 		/// <summary>
 		/// Gets the <see cref="NetworkEventClient"/> instance used to invoke messages on the server from the client.
 		/// </summary>
-		public NetworkEventClient Local
+		public NetworkEventClient Client
 		{
 			get
 			{
@@ -57,7 +57,7 @@ namespace Omni.Core
 		/// <summary>
 		/// Gets the <see cref="NetworkEventServer"/> instance used to invoke messages on the client from the server.
 		/// </summary>
-		public NetworkEventServer Remote
+		public NetworkEventServer Server
 		{
 			get
 			{
@@ -179,11 +179,11 @@ namespace Omni.Core
 			cInvoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
 			sInvoker.FindEvents<ServerAttribute>(this, m_BindingFlags);
 
-			Client.AddEventBehaviour(m_Id, this);
-			Server.AddEventBehaviour(m_Id, this);
+			NetworkManager.ClientSide.AddEventBehaviour(m_Id, this);
+			NetworkManager.ServerSide.AddEventBehaviour(m_Id, this);
 
-			Local = new NetworkEventClient(this, m_BindingFlags);
-			Remote = new NetworkEventServer(this, m_BindingFlags);
+			Client = new NetworkEventClient(this, m_BindingFlags);
+			Server = new NetworkEventServer(this, m_BindingFlags);
 		}
 
 		protected void RegisterSystemEvents()
@@ -191,12 +191,12 @@ namespace Omni.Core
 			NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
 			NetworkManager.OnClientConnected += OnClientConnected;
 			NetworkManager.OnClientDisconnected += OnClientDisconnected;
-			Client.OnMessage += OnClientMessage;
+			NetworkManager.ClientSide.OnMessage += OnClientMessage;
 
 			NetworkManager.OnServerInitialized += OnServerInitialized;
 			NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
 			NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
-			Server.OnMessage += OnServerMessage;
+			NetworkManager.ServerSide.OnMessage += OnServerMessage;
 		}
 
 		protected void RegisterMatchmakingEvents()
@@ -219,12 +219,12 @@ namespace Omni.Core
 			NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
 			NetworkManager.OnClientConnected -= OnClientConnected;
 			NetworkManager.OnClientDisconnected -= OnClientDisconnected;
-			Client.OnMessage -= OnClientMessage;
+			NetworkManager.ClientSide.OnMessage -= OnClientMessage;
 
 			NetworkManager.OnServerInitialized -= OnServerInitialized;
 			NetworkManager.OnServerPeerConnected -= OnServerPeerConnected;
 			NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
-			Server.OnMessage -= OnServerMessage;
+			NetworkManager.ServerSide.OnMessage -= OnServerMessage;
 
 			if (MatchmakingModuleEnabled)
 			{

@@ -83,8 +83,8 @@ namespace Omni.Core
 		internal static void Destroy(int identityId, bool isServer)
 		{
 			var identities = isServer
-				? NetworkManager.Server.Identities
-				: NetworkManager.Client.Identities;
+				? NetworkManager.ServerSide.Identities
+				: NetworkManager.ClientSide.Identities;
 
 			if (identities.Remove(identityId, out var identity))
 			{
@@ -131,7 +131,7 @@ namespace Omni.Core
 			identity.Owner = peer;
 			identity.IsServer = isServer;
 			identity.IsLocalPlayer = isLocalPlayer;
-			identity.IsServerOwner = identity.Owner.Id == NetworkManager.Server.ServerPeer.Id;
+			identity.IsServerOwner = identity.Owner.Id == NetworkManager.ServerSide.ServerPeer.Id;
 			identity._prefabName = prefab.name;
 			identity.name = $"{prefab.name}(On {(isServer ? "Server" : "Client")})";
 
@@ -160,8 +160,8 @@ namespace Omni.Core
 			}
 
 			var identities = isServer
-			? NetworkManager.Server.Identities
-			: NetworkManager.Client.Identities;
+			? NetworkManager.ServerSide.Identities
+			: NetworkManager.ClientSide.Identities;
 
 			if (!identities.TryAdd(identity.IdentityId, identity))
 			{

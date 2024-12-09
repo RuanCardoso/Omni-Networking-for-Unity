@@ -50,7 +50,7 @@ namespace Omni.Core
 			}
 		}
 
-		public static class Client
+		public static class ClientSide
 		{
 			public static BandwidthMonitor SentBandwidth => Connection.Client.SentBandwidth;
 			public static BandwidthMonitor ReceivedBandwidth => Connection.Client.ReceivedBandwidth;
@@ -272,7 +272,7 @@ namespace Omni.Core
 			}
 		}
 
-		public static class Server
+		public static class ServerSide
 		{
 			public static BandwidthMonitor SentBandwidth => Connection.Server.SentBandwidth;
 			public static BandwidthMonitor ReceivedBandwidth => Connection.Server.ReceivedBandwidth;

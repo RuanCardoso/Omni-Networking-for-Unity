@@ -23,7 +23,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// <remarks>
             /// The key is the unique identifier of each group.
             /// </remarks>
-            public Dictionary<int, NetworkGroup> Groups => NetworkManager.Client.Groups;
+            public Dictionary<int, NetworkGroup> Groups => NetworkManager.ClientSide.Groups;
 
             /// <summary>
             /// Event triggered when a client successfully joins a group on the server.
@@ -63,7 +63,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public void JoinGroup(string groupName, DataBuffer buffer = null)
             {
-                NetworkManager.Client.JoinGroup(groupName, buffer);
+                NetworkManager.ClientSide.JoinGroup(groupName, buffer);
             }
 
             /// <summary>
@@ -75,7 +75,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public void LeaveGroup(string groupName)
             {
-                NetworkManager.Client.LeaveGroup(groupName);
+                NetworkManager.ClientSide.LeaveGroup(groupName);
             }
         }
 
@@ -141,7 +141,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// <remarks>
             /// The key is the unique identifier of each group.
             /// </remarks>
-            public Dictionary<int, NetworkGroup> Groups => NetworkManager.Server.Groups;
+            public Dictionary<int, NetworkGroup> Groups => NetworkManager.ServerSide.Groups;
 
             /// <summary>
             /// Adds a new group to the server.
@@ -153,7 +153,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public NetworkGroup AddGroup(string groupName)
             {
-                return NetworkManager.Server.AddGroup(groupName);
+                return NetworkManager.ServerSide.AddGroup(groupName);
             }
 
             /// <summary>
@@ -166,7 +166,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public bool TryAddGroup(string groupName, out NetworkGroup group)
             {
-                return NetworkManager.Server.TryAddGroup(groupName, out group);
+                return NetworkManager.ServerSide.TryAddGroup(groupName, out group);
             }
 
             /// <summary>
@@ -179,7 +179,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public void JoinGroup(NetworkGroup group, NetworkPeer peer)
             {
-                NetworkManager.Server.JoinGroup(group.Identifier, DataBuffer.Empty, peer, false);
+                NetworkManager.ServerSide.JoinGroup(group.Identifier, DataBuffer.Empty, peer, false);
             }
 
             /// <summary>
@@ -195,7 +195,7 @@ namespace Omni.Core.Modules.Matchmaking
             public void JoinGroup(NetworkGroup group, DataBuffer buffer, NetworkPeer peer)
             {
                 buffer ??= DataBuffer.Empty;
-                NetworkManager.Server.JoinGroup(group.Identifier, buffer, peer, true);
+                NetworkManager.ServerSide.JoinGroup(group.Identifier, buffer, peer, true);
             }
 
             /// <summary>
@@ -214,7 +214,7 @@ namespace Omni.Core.Modules.Matchmaking
                 string reason = "Leave event called by server."
             )
             {
-                NetworkManager.Server.LeaveGroup(group.Identifier, reason, peer);
+                NetworkManager.ServerSide.LeaveGroup(group.Identifier, reason, peer);
             }
 
             /// <summary>
@@ -224,7 +224,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// <returns>The ID of the group corresponding to the specified group name.</returns>
             public int GetGroupId(string groupName)
             {
-                return NetworkManager.Server.GetGroupIdByName(groupName);
+                return NetworkManager.ServerSide.GetGroupIdByName(groupName);
             }
 
             /// <summary>
@@ -274,7 +274,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// <returns>The <see cref="NetworkGroup"/> object corresponding to the specified group ID.</returns>
             public NetworkGroup GetGroup(int groupId)
             {
-                return NetworkManager.Server.GetGroupById(groupId);
+                return NetworkManager.ServerSide.GetGroupById(groupId);
             }
 
             /// <summary>
@@ -284,7 +284,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// <returns>The <see cref="NetworkGroup"/> object corresponding to the specified group ID.</returns>
             public bool TryGetGroup(int groupId, out NetworkGroup group)
             {
-                return NetworkManager.Server.TryGetGroupById(groupId, out group);
+                return NetworkManager.ServerSide.TryGetGroupById(groupId, out group);
             }
 
             /// <summary>

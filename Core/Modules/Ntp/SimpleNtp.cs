@@ -111,7 +111,7 @@ namespace Omni.Core.Modules.Ntp
 				message.Write(DeltaTime);
 
 				// Query the server.
-				NetworkManager.Client.SendMessage(
+				NetworkManager.ClientSide.SendMessage(
 					MessageType.NtpQuery,
 					message,
 					DeliveryMode.Unreliable,
@@ -180,7 +180,7 @@ namespace Omni.Core.Modules.Ntp
 				message.Write(y);
 				message.Write(t);
 				// Send NTP response
-				NetworkManager.Server.SendMessage(
+				NetworkManager.ServerSide.SendMessage(
 					MessageType.NtpQuery,
 					peer,
 					message,

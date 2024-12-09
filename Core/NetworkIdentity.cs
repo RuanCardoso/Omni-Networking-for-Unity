@@ -500,7 +500,7 @@ namespace Omni.Core
 			using var message = NetworkManager.Pool.Rent();
 			message.WriteString(_prefabName);
 			message.WriteIdentity(this);
-			NetworkManager.Server.SendMessage(
+			NetworkManager.ServerSide.SendMessage(
 				MessageType.Spawn,
 				Owner,
 				message,
@@ -551,7 +551,7 @@ namespace Omni.Core
 
 			using var message = NetworkManager.Pool.Rent();
 			message.Write(m_Id);
-			NetworkManager.Server.SendMessage(
+			NetworkManager.ServerSide.SendMessage(
 				MessageType.Destroy,
 				peer,
 				message,
@@ -592,7 +592,7 @@ namespace Omni.Core
 
 			using var message = NetworkManager.Pool.Rent();
 			message.Write(m_Id);
-			NetworkManager.Server.SendMessage(
+			NetworkManager.ServerSide.SendMessage(
 				MessageType.Destroy,
 				Owner,
 				message,
@@ -647,7 +647,7 @@ namespace Omni.Core
 				using var message = NetworkManager.Pool.Rent();
 				message.Write(m_Id);
 				message.Write(peer.Id);
-				NetworkManager.Server.SendMessage(
+				NetworkManager.ServerSide.SendMessage(
 					MessageType.SetOwner,
 					Owner,
 					message,
@@ -680,7 +680,7 @@ namespace Omni.Core
 			using var message = NetworkManager.Pool.Rent();
 			message.Write(m_Id);
 			message.WriteRawBytes(data.BufferAsSpan);
-			NetworkManager.Client.SendMessage(MessageType.RequestEntityAction, message, deliveryMode, sequenceChannel);
+			NetworkManager.ClientSide.SendMessage(MessageType.RequestEntityAction, message, deliveryMode, sequenceChannel);
 		}
 
 		public override bool Equals(object obj)

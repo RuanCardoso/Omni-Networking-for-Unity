@@ -258,15 +258,15 @@ namespace Omni.Core
 			{
 				if (IsClientActive && IsServerActive)
 				{
-					return Server.ServerPeer;
+					return ServerSide.ServerPeer;
 				}
 
 				if (IsClientActive)
 				{
-					return Client.ServerPeer;
+					return ClientSide.ServerPeer;
 				}
 
-				return Server.ServerPeer;
+				return ServerSide.ServerPeer;
 			}
 		}
 
@@ -615,7 +615,7 @@ namespace Omni.Core
 			if (!IsServerActive)
 			{
 #if OMNI_DEBUG
-				Server.GenerateRsaKeys();
+				ServerSide.GenerateRsaKeys();
 				Connection.Server.Listen(port);
 				// NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #else
@@ -863,7 +863,7 @@ namespace Omni.Core
 								== (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
 						)
 						{
-							Server.CACHES_APPEND_GLOBAL.Add(GetCache(message));
+							ServerSide.CACHES_APPEND_GLOBAL.Add(GetCache(message));
 						}
 						else if (
 							dataCache.Mode == (CacheMode.Group | CacheMode.New)
@@ -890,13 +890,13 @@ namespace Omni.Core
 						)
 						{
 							NetworkCache newCache = GetCache(message);
-							if (Server.CACHES_OVERWRITE_GLOBAL.ContainsKey(dataCache.Id))
+							if (ServerSide.CACHES_OVERWRITE_GLOBAL.ContainsKey(dataCache.Id))
 							{
-								Server.CACHES_OVERWRITE_GLOBAL[dataCache.Id] = newCache;
+								ServerSide.CACHES_OVERWRITE_GLOBAL[dataCache.Id] = newCache;
 							}
 							else
 							{
-								Server.CACHES_OVERWRITE_GLOBAL.Add(dataCache.Id, newCache);
+								ServerSide.CACHES_OVERWRITE_GLOBAL.Add(dataCache.Id, newCache);
 							}
 						}
 						else if (
@@ -1068,7 +1068,7 @@ namespace Omni.Core
 									continue;
 								}
 
-								if (peer.Id == Server.ServerPeer.Id)
+								if (peer.Id == ServerSide.ServerPeer.Id)
 									continue;
 
 								if (peer.Equals(sender) && target == Target.UngroupedPlayersExceptSelf)
@@ -1128,7 +1128,7 @@ namespace Omni.Core
 										continue;
 									}
 
-									if (peer.Id == Server.ServerPeer.Id)
+									if (peer.Id == ServerSide.ServerPeer.Id)
 										continue;
 
 									if (peer.Equals(sender) && target == Target.GroupExceptSelf)
@@ -1154,7 +1154,7 @@ namespace Omni.Core
 									continue;
 								}
 
-								if (peer.Id == Server.ServerPeer.Id)
+								if (peer.Id == ServerSide.ServerPeer.Id)
 									continue;
 
 								if (peer.Equals(sender) && target == Target.AllPlayersExceptSelf)
@@ -1237,7 +1237,7 @@ namespace Omni.Core
 		{
 			NetworkHelper.EnsureRunningOnMainThread();
 			// Set the default peer, used when the server sends to nothing(peerId = 0).
-			NetworkPeer serverPeer = Server.ServerPeer;
+			NetworkPeer serverPeer = ServerSide.ServerPeer;
 			serverPeer._aesKey = AesCryptography.GenerateKey();
 			serverPeer.IsConnected = true;
 			serverPeer.IsAuthenticated = true;
@@ -1298,7 +1298,7 @@ namespace Omni.Core
 					message.Write(newPeer.Id);
 					// Write the server's RSA public key to the buffer
 					// If the public key were modified (MITM) the connection would fail because the public key is validated by the server.
-					message.WriteString(Server.RsaPublicKey);
+					message.WriteString(ServerSide.RsaPublicKey);
 
 					SendToClient(
 						MessageType.BeginHandshake,
@@ -1369,7 +1369,7 @@ namespace Omni.Core
 
 							if (group.DestroyWhenEmpty)
 							{
-								Server.DestroyGroup(group);
+								ServerSide.DestroyGroup(group);
 							}
 						}
 						else
@@ -1388,7 +1388,7 @@ namespace Omni.Core
 					currentPeer.ClearData();
 
 					// All resources should be released at this point.
-					Server.DestroyAllCaches(currentPeer);
+					ServerSide.DestroyAllCaches(currentPeer);
 					currentPeer.DestroyAllCaches();
 					currentPeer.IsConnected = false;
 
@@ -1465,7 +1465,7 @@ namespace Omni.Core
 							ImmutableKeyValuePair keyValuePair =
 								header.ReadAsJson<ImmutableKeyValuePair>();
 
-							var groups = Client.Groups;
+							var groups = ClientSide.Groups;
 							if (!groups.ContainsKey(groupId))
 							{
 								groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!")); // This group is invalid!, Used only for data sync.
@@ -1501,7 +1501,7 @@ namespace Omni.Core
 								ImmutableKeyValuePair keyValuePair =
 									header.ReadAsJson<ImmutableKeyValuePair>();
 
-								var peers = Client.Peers;
+								var peers = ClientSide.Peers;
 								if (!peers.ContainsKey(peerId))
 								{
 									peers.Add(peerId, new NetworkPeer(endPoint, peerId)); // _peer is not valid endpoint in this case!
@@ -1561,17 +1561,17 @@ namespace Omni.Core
 								LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId);
 								LocalPeer._nativePeer = LocalNativePeer;
 								IsClientActive = true; // true: to allow send the aes key to the server.
-								Client.Peers.Add(localPeerId, LocalPeer);
+								ClientSide.Peers.Add(localPeerId, LocalPeer);
 
 								// Generate AES Key and send it to the server(Encrypted by RSA public key).
-								Client.RsaServerPublicKey = rsaServerPublicKey;
+								ClientSide.RsaServerPublicKey = rsaServerPublicKey;
 								byte[] aesKey = AesCryptography.GenerateKey();
 								LocalPeer._aesKey = aesKey;
 
 								// Crypt the AES Key with the server's RSA public key
 								byte[] encryptedAesKey = RsaCryptography.Encrypt(
 									aesKey,
-									Client.RsaServerPublicKey
+									ClientSide.RsaServerPublicKey
 								);
 
 								// Send the AES Key to the server
@@ -1595,10 +1595,10 @@ namespace Omni.Core
 								// Decrypt the AES Key with the server's RSA private key
 								peer._aesKey = RsaCryptography.Decrypt(
 									aesKey,
-									Server.RsaPrivateKey
+									ServerSide.RsaPrivateKey
 								);
 
-								byte[] serverAesKey = Server.ServerPeer._aesKey;
+								byte[] serverAesKey = ServerSide.ServerPeer._aesKey;
 								byte[] cryptedServerAesKey = AesCryptography.Encrypt(
 									serverAesKey,
 									0,
@@ -1639,7 +1639,7 @@ namespace Omni.Core
 								byte[] serverAesKeyCrypted = header.ReadAsBinary<byte[]>();
 
 								// decrypt server aes key
-								Client.ServerPeer._aesKey = AesCryptography.Decrypt(
+								ClientSide.ServerPeer._aesKey = AesCryptography.Decrypt(
 									serverAesKeyCrypted,
 									0,
 									serverAesKeyCrypted.Length,
@@ -1702,8 +1702,8 @@ namespace Omni.Core
 							using var message = EndOfHeader();
 							var key = (identityId, instanceId);
 							var eventBehavious = isServer
-								? Server.LocalEventBehaviours
-								: Client.LocalEventBehaviours;
+								? ServerSide.LocalEventBehaviours
+								: ClientSide.LocalEventBehaviours;
 
 							if (eventBehavious.TryGetValue(key, out IInvokeMessage behaviour))
 							{
@@ -1751,8 +1751,8 @@ namespace Omni.Core
 
 							using var message = EndOfHeader();
 							var eventBehavious = isServer
-								? Server.GlobalEventBehaviours
-								: Client.GlobalEventBehaviours;
+								? ServerSide.GlobalEventBehaviours
+								: ClientSide.GlobalEventBehaviours;
 
 							if (
 								eventBehavious.TryGetValue(identityId, out IInvokeMessage behaviour)
@@ -1784,7 +1784,7 @@ namespace Omni.Core
 
 							if (isServer)
 							{
-								Server.LeaveGroup(groupName, reason, peer);
+								ServerSide.LeaveGroup(groupName, reason, peer);
 							}
 							else
 							{
@@ -1815,7 +1815,7 @@ namespace Omni.Core
 									);
 								}
 
-								Server.JoinGroup(groupName, message, peer, false);
+								ServerSide.JoinGroup(groupName, message, peer, false);
 							}
 							else
 							{
@@ -1836,7 +1836,7 @@ namespace Omni.Core
 							{
 								int identityId = header.Read<int>();
 								if (
-									NetworkManager.Server.TryGetIdentity(
+									NetworkManager.ServerSide.TryGetIdentity(
 										identityId,
 										out var identity
 									))
@@ -1853,7 +1853,7 @@ namespace Omni.Core
 							if (!isServer)
 							{
 								if (
-									NetworkManager.Client.TryGetIdentity(
+									NetworkManager.ClientSide.TryGetIdentity(
 										identityId,
 										out var identity
 									)
@@ -1888,7 +1888,7 @@ namespace Omni.Core
 								using var message = EndOfHeader();
 
 								if (
-									NetworkManager.Server.TryGetIdentity(
+									NetworkManager.ServerSide.TryGetIdentity(
 										identityId,
 										out var identity
 									))

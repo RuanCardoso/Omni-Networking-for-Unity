@@ -42,7 +42,7 @@ namespace Omni.Core.Components
 			{
 				if (identity != null)
 				{
-					Spawn(identity.name, NetworkManager.Server.ServerPeer);
+					Spawn(identity.name, NetworkManager.ServerSide.ServerPeer);
 				}
 			}
 		}

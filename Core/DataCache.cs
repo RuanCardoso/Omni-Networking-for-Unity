@@ -48,7 +48,7 @@ namespace Omni.Core
 			bool sendMyOwnCacheToMe = false
 		)
 		{
-			NetworkManager.Server.Internal_SendCache(peer, this, groupId, sendMyOwnCacheToMe);
+			NetworkManager.ServerSide.Internal_SendCache(peer, this, groupId, sendMyOwnCacheToMe);
 		}
 
 		/// <summary>
@@ -65,7 +65,7 @@ namespace Omni.Core
 			bool sendMyOwnCacheToMe = false
 		)
 		{
-			NetworkManager.Server.Internal_SendPeerCache(fromPeer, toPeer, this, groupId, sendMyOwnCacheToMe);
+			NetworkManager.ServerSide.Internal_SendPeerCache(fromPeer, toPeer, this, groupId, sendMyOwnCacheToMe);
 		}
 	}
 }

@@ -132,7 +132,7 @@ namespace Omni.Core
 				byte sequenceChannel = 0
 			)
 			{
-				NetworkManager.Client.Invoke(
+				NetworkManager.ClientSide.Invoke(
 					msgId,
 					m_NetworkBehaviour.IdentityId,
 					m_NetworkBehaviour.Id,
@@ -420,7 +420,7 @@ namespace Omni.Core
 			)
 			{
 				dataCache ??= DataCache.None;
-				NetworkManager.Server.Invoke(
+				NetworkManager.ServerSide.Invoke(
 					msgId,
 					peer,
 					m_NetworkBehaviour.IdentityId,
@@ -701,7 +701,7 @@ namespace Omni.Core
 		/// Use this property to invoke server-side operations from the client.
 		/// Ensure it is not accessed on the server side, as it is strictly for client functionality.
 		/// </remarks>
-		public NetworkBehaviourClient Local
+		public NetworkBehaviourClient Client
 		{
 			get
 			{
@@ -735,7 +735,7 @@ namespace Omni.Core
 		/// Use this property to invoke client-side operations from the server.
 		/// Ensure it is not accessed on the client side, as it is strictly for server functionality.
 		/// </remarks>
-		public NetworkBehaviourServer Remote
+		public NetworkBehaviourServer Server
 		{
 			get
 			{
@@ -827,12 +827,12 @@ namespace Omni.Core
 			if (Identity.IsServer)
 			{
 				sInvoker.FindEvents<ServerAttribute>(this, m_BindingFlags);
-				Remote = new NetworkBehaviourServer(this);
+				Server = new NetworkBehaviourServer(this);
 			}
 			else
 			{
 				cInvoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
-				Local = new NetworkBehaviourClient(this);
+				Client = new NetworkBehaviourClient(this);
 			}
 
 			InitializeServiceLocator();
@@ -873,8 +873,8 @@ namespace Omni.Core
 		protected internal void Unregister()
 		{
 			var eventBehaviours = Identity.IsServer
-				? NetworkManager.Server.LocalEventBehaviours
-				: NetworkManager.Client.LocalEventBehaviours;
+				? NetworkManager.ServerSide.LocalEventBehaviours
+				: NetworkManager.ClientSide.LocalEventBehaviours;
 
 			var key = (IdentityId, m_Id);
 			if (!eventBehaviours.Remove(key))
@@ -976,8 +976,8 @@ namespace Omni.Core
 		private void AddEventBehaviour()
 		{
 			var eventBehaviours = Identity.IsServer
-				? NetworkManager.Server.LocalEventBehaviours
-				: NetworkManager.Client.LocalEventBehaviours;
+				? NetworkManager.ServerSide.LocalEventBehaviours
+				: NetworkManager.ClientSide.LocalEventBehaviours;
 
 			var key = (IdentityId, m_Id);
 			if (!eventBehaviours.TryAdd(key, this))

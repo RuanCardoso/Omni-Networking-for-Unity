@@ -64,8 +64,8 @@ namespace Omni.Core.Components
 
 		private void FindIdentities()
 		{
-			m_ServerIdentities = Server.Identities.Values.Select(x => x.GetComponentsInChildren<Collider>(true)).ToList();
-			m_ClientIdentities = Client.Identities.Values.Select(x => x.GetComponentsInChildren<Collider>(true)).ToList();
+			m_ServerIdentities = ServerSide.Identities.Values.Select(x => x.GetComponentsInChildren<Collider>(true)).ToList();
+			m_ClientIdentities = ClientSide.Identities.Values.Select(x => x.GetComponentsInChildren<Collider>(true)).ToList();
 
 			foreach (var col in m_ServerColliders)
 				m_ServerIdentities.Add(col);
@@ -97,7 +97,7 @@ namespace Omni.Core.Components
 
 		private void SetupRenderer()
 		{
-			foreach (var identity in Server.Identities.Values)
+			foreach (var identity in ServerSide.Identities.Values)
 			{
 				SetupRenderer(identity.gameObject);
 			}

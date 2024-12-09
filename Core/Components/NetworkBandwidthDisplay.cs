@@ -32,13 +32,13 @@ public sealed class NetworkBandwidthDisplay : MonoBehaviour
 	private void Start()
 	{
 		// Client
-		NetworkManager.Client.SentBandwidth.OnAverageChanged += (avg) => clientSentBandwidth = avg;
-		NetworkManager.Client.ReceivedBandwidth.OnAverageChanged += (avg) =>
+		NetworkManager.ClientSide.SentBandwidth.OnAverageChanged += (avg) => clientSentBandwidth = avg;
+		NetworkManager.ClientSide.ReceivedBandwidth.OnAverageChanged += (avg) =>
 			clientReceivedBandwidth = avg;
 
 		// Server
-		NetworkManager.Server.SentBandwidth.OnAverageChanged += (avg) => serverSentBandwidth = avg;
-		NetworkManager.Server.ReceivedBandwidth.OnAverageChanged += (avg) =>
+		NetworkManager.ServerSide.SentBandwidth.OnAverageChanged += (avg) => serverSentBandwidth = avg;
+		NetworkManager.ServerSide.ReceivedBandwidth.OnAverageChanged += (avg) =>
 			serverReceivedBandwidth = avg;
 	}
 

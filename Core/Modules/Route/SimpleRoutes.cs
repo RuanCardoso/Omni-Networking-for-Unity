@@ -260,7 +260,7 @@ namespace Omni.Core
 				byte sequenceChannel
 			)
 			{
-				Client.SendMessage(msgId, message, deliveryMode, sequenceChannel);
+				ClientSide.SendMessage(msgId, message, deliveryMode, sequenceChannel);
 				UniTaskCompletionSource<DataBuffer> source = CreateTask(timeout);
 				m_Tasks.Add(lastId, source);
 				return source.Task;
@@ -473,8 +473,8 @@ namespace Omni.Core
 
 		internal static void Initialize()
 		{
-			Client.OnMessage += OnClientMessage;
-			Server.OnMessage += OnServerMessage;
+			ClientSide.OnMessage += OnClientMessage;
+			ServerSide.OnMessage += OnServerMessage;
 		}
 
 		private static async void OnServerMessage(
@@ -630,7 +630,7 @@ namespace Omni.Core
 				}
 
 				// Self:
-				Server.SendMessage(
+				ServerSide.SendMessage(
 					msgId,
 					peer,
 					header,
@@ -653,7 +653,7 @@ namespace Omni.Core
 				// Send the response, except for Self
 				if (target != Target.SelfOnly)
 				{
-					Server.SendMessage(
+					ServerSide.SendMessage(
 						msgId,
 						peer,
 						header,

@@ -183,7 +183,7 @@ namespace Omni.Core
 				using var message = Pool.Rent();
 				message.Write(Id);
 				message.WriteAsJson(keyValuePair);
-				Server.SendMessage(
+				ServerSide.SendMessage(
 					MessageType.SyncPeerSerializedData,
 					this,
 					message,
