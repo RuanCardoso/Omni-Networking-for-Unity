@@ -21,7 +21,7 @@ namespace Omni.Editor
 
                 var server = new GameObject(">> [Server Code Here] <<");
                 server.transform.parent = manager.transform;
-                
+
                 var client = new GameObject(">> [Client Code Here] <<");
                 client.transform.parent = manager.transform;
 

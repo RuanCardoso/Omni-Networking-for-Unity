@@ -17,78 +17,78 @@ using UnityEngine;
 
 namespace Omni.Core
 {
-	[DefaultExecutionOrder(-5000)]
-	public class NetworkTickSystem : ITickInfo
-	{
-		private readonly List<ITickSystem> handlers = new();
+    [DefaultExecutionOrder(-5000)]
+    public class NetworkTickSystem : ITickInfo
+    {
+        private readonly List<ITickSystem> handlers = new();
 
-		private double elapsedDeltaTime;
-		private double lastElapsedDeltaTime;
+        private double elapsedDeltaTime;
+        private double lastElapsedDeltaTime;
 
-		public long CurrentTick { get; private set; }
-		public long ElapsedTicks { get; private set; }
+        public long CurrentTick { get; private set; }
+        public long ElapsedTicks { get; private set; }
 
-		public double DeltaTime { get; private set; }
-		public double DeltaTick { get; private set; }
+        public double DeltaTime { get; private set; }
+        public double DeltaTick { get; private set; }
 
-		public int TickRate { get; private set; }
-		public double MsPerTick { get; private set; }
-		public double FixedTimestep { get; private set; }
+        public int TickRate { get; private set; }
+        public double MsPerTick { get; private set; }
+        public double FixedTimestep { get; private set; }
 
-		internal void Initialize(int tickRate)
-		{
-			TickRate = tickRate;
-			FixedTimestep = 1.0d / tickRate;
-			MsPerTick = 1000d / TickRate;
-		}
+        internal void Initialize(int tickRate)
+        {
+            TickRate = tickRate;
+            FixedTimestep = 1.0d / tickRate;
+            MsPerTick = 1000d / TickRate;
+        }
 
-		public void Register(ITickSystem handler)
-		{
+        public void Register(ITickSystem handler)
+        {
 #if OMNI_DEBUG || UNITY_EDITOR
-			if (handlers.Contains(handler))
-				return;
+            if (handlers.Contains(handler))
+                return;
 #endif
-			handlers.Add(handler);
-		}
+            handlers.Add(handler);
+        }
 
-		public void Unregister(ITickSystem handler)
-		{
-			handlers.Remove(handler);
-		}
+        public void Unregister(ITickSystem handler)
+        {
+            handlers.Remove(handler);
+        }
 
-		internal void OnTick()
-		{
-			if (!NetworkManager.IsServerActive && !NetworkManager.IsClientActive)
-			{
-				return;
-			}
+        internal void OnTick()
+        {
+            if (!NetworkManager.IsServerActive && !NetworkManager.IsClientActive)
+            {
+                return;
+            }
 
-			DeltaTime += Time.deltaTime;
-			elapsedDeltaTime += Time.deltaTime;
-			while (DeltaTime >= FixedTimestep)
-			{
-				// The interval in seconds from the last tick to the current one (Read Only).
-				DeltaTick = elapsedDeltaTime - lastElapsedDeltaTime;
-				lastElapsedDeltaTime = elapsedDeltaTime;
+            DeltaTime += Time.deltaTime;
+            elapsedDeltaTime += Time.deltaTime;
+            while (DeltaTime >= FixedTimestep)
+            {
+                // The interval in seconds from the last tick to the current one (Read Only).
+                DeltaTick = elapsedDeltaTime - lastElapsedDeltaTime;
+                lastElapsedDeltaTime = elapsedDeltaTime;
 
-				// Add tick per frame(1 / tickrate)
-				CurrentTick++;
-				ElapsedTicks++;
+                // Add tick per frame(1 / tickrate)
+                CurrentTick++;
+                ElapsedTicks++;
 
-				// Tick-tack..tick-tack..tick-tack..
-				for (int i = 0; i < handlers.Count; i++)
-				{
-					ITickSystem handler = handlers[i];
-					handler.OnTick(this);
-				}
+                // Tick-tack..tick-tack..tick-tack..
+                for (int i = 0; i < handlers.Count; i++)
+                {
+                    ITickSystem handler = handlers[i];
+                    handler.OnTick(this);
+                }
 
-				if (CurrentTick == TickRate)
-				{
-					CurrentTick -= TickRate;
-				}
+                if (CurrentTick == TickRate)
+                {
+                    CurrentTick -= TickRate;
+                }
 
-				DeltaTime -= FixedTimestep;
-			}
-		}
-	}
+                DeltaTime -= FixedTimestep;
+            }
+        }
+    }
 }

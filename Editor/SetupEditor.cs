@@ -12,149 +12,149 @@ using UnityEngine;
 
 namespace Omni.Editor
 {
-	enum ScriptingBackend
-	{
-		IL2CPP,
-		Mono
-	}
+    enum ScriptingBackend
+    {
+        IL2CPP,
+        Mono
+    }
 
-	internal class SetupEditor
-		: AssetPostprocessor,
-			IActiveBuildTargetChanged,
-			IPreprocessBuildWithReport
-	{
-		private const string OMNI_VERSION = "3.0.2"; // VERY VERY IMPORTANT!
-		public int callbackOrder => 0;
+    internal class SetupEditor
+        : AssetPostprocessor,
+            IActiveBuildTargetChanged,
+            IPreprocessBuildWithReport
+    {
+        private const string OMNI_VERSION = "3.0.2"; // VERY VERY IMPORTANT!
+        public int callbackOrder => 0;
 
-		public void OnPreprocessBuild(BuildReport report)
-		{
-			SetScriptingBackend();
-		}
+        public void OnPreprocessBuild(BuildReport report)
+        {
+            SetScriptingBackend();
+        }
 
-		[InitializeOnLoadMethod]
-		private static void OnInitialize()
-		{
-			SetMacros();
-			SetScriptingBackend();
-		}
+        [InitializeOnLoadMethod]
+        private static void OnInitialize()
+        {
+            SetMacros();
+            SetScriptingBackend();
+        }
 
-		[DidReloadScripts]
-		private static void OnScriptsReloaded()
-		{
-			SetMacros();
-			SetScriptingBackend();
-		}
+        [DidReloadScripts]
+        private static void OnScriptsReloaded()
+        {
+            SetMacros();
+            SetScriptingBackend();
+        }
 
-		private void OnPreprocessAsset()
-		{
-			SetMacros();
-			SetScriptingBackend();
-		}
+        private void OnPreprocessAsset()
+        {
+            SetMacros();
+            SetScriptingBackend();
+        }
 
-		public void OnActiveBuildTargetChanged(BuildTarget previousTarget, BuildTarget newTarget)
-		{
-			SetMacros(newTarget);
-			SetScriptingBackend(newTarget);
-		}
+        public void OnActiveBuildTargetChanged(BuildTarget previousTarget, BuildTarget newTarget)
+        {
+            SetMacros(newTarget);
+            SetScriptingBackend(newTarget);
+        }
 
 #if OMNI_RELEASE
 		[MenuItem("Omni Networking/Change to Debug")]
 #endif
-		private static void ChangeToDebug()
-		{
-			if (EditorHelper.SetDefines(false))
-			{
-				ShowDialog();
-			}
-		}
+        private static void ChangeToDebug()
+        {
+            if (EditorHelper.SetDefines(false))
+            {
+                ShowDialog();
+            }
+        }
 
 #if OMNI_DEBUG
-		[MenuItem("Omni Networking/Change to Release")]
+        [MenuItem("Omni Networking/Change to Release")]
 #endif
-		private static void ChangeToRelease()
-		{
-			if (EditorHelper.SetDefines(true))
-			{
-				ShowDialog();
-			}
-		}
+        private static void ChangeToRelease()
+        {
+            if (EditorHelper.SetDefines(true))
+            {
+                ShowDialog();
+            }
+        }
 
-		private static void ShowDialog()
-		{
-			EditorUtility.DisplayDialog(
-				"Omni Networking",
-				"Macros have been imported, please wait for recompilation.",
-				"Ok"
-			);
-		}
+        private static void ShowDialog()
+        {
+            EditorUtility.DisplayDialog(
+                "Omni Networking",
+                "Macros have been imported, please wait for recompilation.",
+                "Ok"
+            );
+        }
 
-		// Set the macros to the current build target the first time.
-		private static void SetMacros(BuildTarget? buildTarget = null) // Saved in assets folder(hidden)!
-		{
-			string fileName = Path.Combine(
-				Application.dataPath,
-				$".omni_macros_{EditorHelper.GetCurrentNamedBuildTarget(buildTarget).TargetName.ToLower()}_{OMNI_VERSION}.ini"
-			);
+        // Set the macros to the current build target the first time.
+        private static void SetMacros(BuildTarget? buildTarget = null) // Saved in assets folder(hidden)!
+        {
+            string fileName = Path.Combine(
+                Application.dataPath,
+                $".omni_macros_{EditorHelper.GetCurrentNamedBuildTarget(buildTarget).TargetName.ToLower()}_{OMNI_VERSION}.ini"
+            );
 
-			if (!File.Exists(fileName))
-			{
-				using FileStream fileStream = File.Create(fileName);
-				if (EditorHelper.SetDefines(false))
-				{
-					using StreamWriter writer = new(fileStream);
-					writer.Write(string.Join("\n", EditorHelper.GetDefines()));
-					// Warn the user that the macros have been imported.
-					ShowDialog();
-				}
-			}
-		}
+            if (!File.Exists(fileName))
+            {
+                using FileStream fileStream = File.Create(fileName);
+                if (EditorHelper.SetDefines(false))
+                {
+                    using StreamWriter writer = new(fileStream);
+                    writer.Write(string.Join("\n", EditorHelper.GetDefines()));
+                    // Warn the user that the macros have been imported.
+                    ShowDialog();
+                }
+            }
+        }
 
-		private static void SetScriptingBackend(BuildTarget? buildTarget = null)
-		{
-			// WebGl only supports IL2CPP -> Wasm
+        private static void SetScriptingBackend(BuildTarget? buildTarget = null)
+        {
+            // WebGl only supports IL2CPP -> Wasm
 #if UNITY_WEBGL
 			return;
 #endif
-			if (!ClonesManager.IsClone())
-			{
-				if (File.Exists("ScriptingBackend.txt"))
-				{
-					try
-					{
-						using StreamReader reader = new("ScriptingBackend.txt");
-						string json = reader.ReadToEnd();
+            if (!ClonesManager.IsClone())
+            {
+                if (File.Exists("ScriptingBackend.txt"))
+                {
+                    try
+                    {
+                        using StreamReader reader = new("ScriptingBackend.txt");
+                        string json = reader.ReadToEnd();
 
-						ScriptingBackend[] scriptingBackends =
-							JsonConvert.DeserializeObject<ScriptingBackend[]>(json);
+                        ScriptingBackend[] scriptingBackends =
+                            JsonConvert.DeserializeObject<ScriptingBackend[]>(json);
 
-						var namedBuildTarget = EditorHelper.GetCurrentNamedBuildTarget(buildTarget);
-						ScriptingBackend scriptingBackend =
-							namedBuildTarget == NamedBuildTarget.Server
-								? scriptingBackends[0]
-								: scriptingBackends[1];
+                        var namedBuildTarget = EditorHelper.GetCurrentNamedBuildTarget(buildTarget);
+                        ScriptingBackend scriptingBackend =
+                            namedBuildTarget == NamedBuildTarget.Server
+                                ? scriptingBackends[0]
+                                : scriptingBackends[1];
 
-						PlayerSettings.SetScriptingBackend(
-							namedBuildTarget,
-							scriptingBackend == ScriptingBackend.IL2CPP
-								? ScriptingImplementation.IL2CPP
-								: ScriptingImplementation.Mono2x
-						);
-					}
-					catch
-					{
-						File.Delete("ScriptingBackend.txt");
-					}
-				}
-				else
-				{
-					var namedBuildTarget = EditorHelper.GetCurrentNamedBuildTarget(buildTarget);
-					PlayerSettings.SetScriptingBackend(
-						namedBuildTarget,
-						ScriptingImplementation.Mono2x
-					);
-				}
-			}
-		}
-	}
+                        PlayerSettings.SetScriptingBackend(
+                            namedBuildTarget,
+                            scriptingBackend == ScriptingBackend.IL2CPP
+                                ? ScriptingImplementation.IL2CPP
+                                : ScriptingImplementation.Mono2x
+                        );
+                    }
+                    catch
+                    {
+                        File.Delete("ScriptingBackend.txt");
+                    }
+                }
+                else
+                {
+                    var namedBuildTarget = EditorHelper.GetCurrentNamedBuildTarget(buildTarget);
+                    PlayerSettings.SetScriptingBackend(
+                        namedBuildTarget,
+                        ScriptingImplementation.Mono2x
+                    );
+                }
+            }
+        }
+    }
 }
 #endif

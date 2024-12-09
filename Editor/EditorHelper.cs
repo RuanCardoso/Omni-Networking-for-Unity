@@ -98,7 +98,7 @@ namespace Omni.Editor
             return false;
 #endif
             return EditorUserBuildSettings.standaloneBuildSubtarget
-                == StandaloneBuildSubtarget.Server;
+                   == StandaloneBuildSubtarget.Server;
         }
     }
 }

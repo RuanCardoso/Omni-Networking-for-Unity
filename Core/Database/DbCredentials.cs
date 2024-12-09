@@ -83,7 +83,7 @@ namespace Omni.Core
                 DatabaseType.SqlServer
                     => $"Server={Server};Database={Database};User Id={Username};Password={Password};",
                 DatabaseType.MariaDb
-                or DatabaseType.MySql
+                    or DatabaseType.MySql
                     => $"Server={Server};Database={Database};Uid={Username};Pwd={Password};",
                 DatabaseType.PostgreSql
                     => $"Host={Server};Database={Database};Username={Username};Password={Password};",

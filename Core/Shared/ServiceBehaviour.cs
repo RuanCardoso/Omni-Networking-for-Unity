@@ -9,139 +9,147 @@ using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
-	[DefaultExecutionOrder(-10500)]
-	[DeclareBoxGroup("Service Settings")]
-	[StackTrace]
-	public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
-	{
-		[GroupNext("Service Settings")]
-		[SerializeField]
-		private string m_ServiceName;
+    [DefaultExecutionOrder(-10500)]
+    [DeclareBoxGroup("Service Settings")]
+    [StackTrace]
+    public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
+    {
+        [GroupNext("Service Settings")] [SerializeField]
+        private string m_ServiceName;
 
-		private bool m_UnregisterOnLoad = true;
-		public string ServiceName
-		{
-			get => m_ServiceName;
-			set => m_ServiceName = value;
-		}
+        private bool m_UnregisterOnLoad = true;
 
-		/// <summary>
-		/// The `Awake` method is virtual, allowing it to be overridden in derived classes
-		/// for additional startup logic. If overridden, it is essential to call the base class's
-		/// `Awake` method to ensure proper initialization. Not doing so may result in incomplete
-		/// initialization and unpredictable behavior.
-		/// </summary>
-		public virtual void Awake()
-		{
-			InitAwake();
-		}
+        public string ServiceName
+        {
+            get => m_ServiceName;
+            set => m_ServiceName = value;
+        }
 
-		private void InitAwake()
-		{
-			if (NetworkService.Exists(m_ServiceName))
-			{
-				m_UnregisterOnLoad = false;
-				return;
-			}
+        /// <summary>
+        /// The `Awake` method is virtual, allowing it to be overridden in derived classes
+        /// for additional startup logic. If overridden, it is essential to call the base class's
+        /// `Awake` method to ensure proper initialization. Not doing so may result in incomplete
+        /// initialization and unpredictable behavior.
+        /// </summary>
+        public virtual void Awake()
+        {
+            InitAwake();
+        }
 
-			if (m_UnregisterOnLoad)
-			{
-				NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
-				InitializeServiceLocator();
-				OnAwake();
-			}
-		}
+        private void InitAwake()
+        {
+            if (NetworkService.Exists(m_ServiceName))
+            {
+                m_UnregisterOnLoad = false;
+                return;
+            }
 
-		/// <summary>
-		/// The `Start` method is virtual, allowing it to be overridden in derived classes
-		/// for additional startup logic. If overridden, it is essential to call the base class's
-		/// `Start` method to ensure proper initialization. Not doing so may result in incomplete
-		/// initialization and unpredictable behavior.
-		/// </summary>
-		public virtual void Start()
-		{
-			___InjectServices___();
-			InitStart();
-		}
+            if (m_UnregisterOnLoad)
+            {
+                NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
+                InitializeServiceLocator();
+                OnAwake();
+            }
+        }
 
-		private void InitStart()
-		{
-			if (m_UnregisterOnLoad)
-			{
-				OnStart();
-				Service.UpdateReference(m_ServiceName);
-			}
+        /// <summary>
+        /// The `Start` method is virtual, allowing it to be overridden in derived classes
+        /// for additional startup logic. If overridden, it is essential to call the base class's
+        /// `Start` method to ensure proper initialization. Not doing so may result in incomplete
+        /// initialization and unpredictable behavior.
+        /// </summary>
+        public virtual void Start()
+        {
+            ___InjectServices___();
+            InitStart();
+        }
 
-			m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
-		}
+        private void InitStart()
+        {
+            if (m_UnregisterOnLoad)
+            {
+                OnStart();
+                Service.UpdateReference(m_ServiceName);
+            }
 
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		public void Internal_Awake()
-		{
-			InitAwake();
-		}
+            m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+        }
 
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		public void Internal_Start()
-		{
-			InitStart();
-		}
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Awake()
+        {
+            InitAwake();
+        }
 
-		protected void InitializeServiceLocator()
-		{
-			if (!NetworkService.TryRegister(this, m_ServiceName))
-			{
-				// Update the old reference to the new one.
-				NetworkService.Update(this, m_ServiceName);
-			}
-		}
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void Internal_Start()
+        {
+            InitStart();
+        }
 
-		protected void Unregister()
-		{
-			NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
-			NetworkService.Unregister(m_ServiceName);
-			OnStop();
-		}
+        protected void InitializeServiceLocator()
+        {
+            if (!NetworkService.TryRegister(this, m_ServiceName))
+            {
+                // Update the old reference to the new one.
+                NetworkService.Update(this, m_ServiceName);
+            }
+        }
 
-		protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
-		{
-			if (m_UnregisterOnLoad)
-			{
-				Unregister();
-			}
-		}
+        protected void Unregister()
+        {
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+            NetworkService.Unregister(m_ServiceName);
+            OnStop();
+        }
 
-		[EditorBrowsable(EditorBrowsableState.Never)]
-		[Obsolete("Don't override this method! The source generator will override it.")]
-		protected internal virtual void ___InjectServices___() { }
+        protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
+        {
+            if (m_UnregisterOnLoad)
+            {
+                Unregister();
+            }
+        }
 
-		/// <summary>
-		/// Called when the service is initialized.
-		/// </summary>
-		protected virtual void OnAwake() { }
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [Obsolete("Don't override this method! The source generator will override it.")]
+        protected internal virtual void ___InjectServices___()
+        {
+        }
 
-		/// <summary>
-		/// Called when the service is initialized.
-		/// </summary>
-		protected virtual void OnStart() { }
+        /// <summary>
+        /// Called when the service is initialized.
+        /// </summary>
+        protected virtual void OnAwake()
+        {
+        }
 
-		/// <summary>
-		/// Called when the service is stopped/destroyed/unregistered.
-		/// </summary>
-		protected virtual void OnStop() { }
+        /// <summary>
+        /// Called when the service is initialized.
+        /// </summary>
+        protected virtual void OnStart()
+        {
+        }
 
-		protected virtual void Reset()
-		{
-			OnValidate();
-		}
+        /// <summary>
+        /// Called when the service is stopped/destroyed/unregistered.
+        /// </summary>
+        protected virtual void OnStop()
+        {
+        }
 
-		protected virtual void OnValidate()
-		{
-			if (string.IsNullOrEmpty(m_ServiceName))
-			{
-				m_ServiceName = GetType().Name;
-				NetworkHelper.EditorSaveObject(gameObject);
-			}
-		}
-	}
+        protected virtual void Reset()
+        {
+            OnValidate();
+        }
+
+        protected virtual void OnValidate()
+        {
+            if (string.IsNullOrEmpty(m_ServiceName))
+            {
+                m_ServiceName = GetType().Name;
+                NetworkHelper.EditorSaveObject(gameObject);
+            }
+        }
+    }
 }

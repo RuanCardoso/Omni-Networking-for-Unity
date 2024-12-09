@@ -6,23 +6,24 @@ using UnityEngine;
 
 namespace Omni.Core
 {
-	public class TransporterBehaviour : MonoBehaviour
-	{
-		private ITransporter _ITransporter;
-		internal ITransporter ITransporter
-		{
-			get
-			{
-				if (_ITransporter == null)
-				{
-					throw new NullReferenceException(
-						"The transporter is not initialized. Ensure Initialize() is called before performing any operations."
-					);
-				}
+    public class TransporterBehaviour : MonoBehaviour
+    {
+        private ITransporter _ITransporter;
 
-				return _ITransporter;
-			}
-			set => _ITransporter = value;
-		}
-	}
+        internal ITransporter ITransporter
+        {
+            get
+            {
+                if (_ITransporter == null)
+                {
+                    throw new NullReferenceException(
+                        "The transporter is not initialized. Ensure Initialize() is called before performing any operations."
+                    );
+                }
+
+                return _ITransporter;
+            }
+            set => _ITransporter = value;
+        }
+    }
 }

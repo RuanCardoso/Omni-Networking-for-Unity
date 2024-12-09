@@ -11,8 +11,7 @@ namespace Omni.Core.Components
     [DefaultExecutionOrder(-11500)] // Component Service should be initialized before the all other components because has priority.
     public class NetworkComponentService : ServiceBehaviour, INetworkComponentService
     {
-        [SerializeField]
-        private Component m_Component;
+        [SerializeField] private Component m_Component;
 
         public Component Component => m_Component;
         public GameObject GameObject => gameObject;

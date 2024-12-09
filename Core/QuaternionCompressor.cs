@@ -97,50 +97,50 @@ namespace Omni.Core
             compressed =
                 currentIndex != indexToSkip
                     ? (compressed << 10)
-                        | (uint)(
-                            (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
-                                ? k_True
-                                : k_False
-                        ) << k_ShiftNegativeBit
-                        | (ushort)
-                            Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
+                      | (uint)(
+                          (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
+                              ? k_True
+                              : k_False
+                      ) << k_ShiftNegativeBit
+                      | (ushort)
+                      Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
                     : compressed;
             currentIndex++;
             // Repeat the last 3 steps for the remaining elements
             compressed =
                 currentIndex != indexToSkip
                     ? (compressed << 10)
-                        | (uint)(
-                            (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
-                                ? k_True
-                                : k_False
-                        ) << k_ShiftNegativeBit
-                        | (ushort)
-                            Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
+                      | (uint)(
+                          (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
+                              ? k_True
+                              : k_False
+                      ) << k_ShiftNegativeBit
+                      | (ushort)
+                      Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
                     : compressed;
             currentIndex++;
             compressed =
                 currentIndex != indexToSkip
                     ? (compressed << 10)
-                        | (uint)(
-                            (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
-                                ? k_True
-                                : k_False
-                        ) << k_ShiftNegativeBit
-                        | (ushort)
-                            Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
+                      | (uint)(
+                          (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
+                              ? k_True
+                              : k_False
+                      ) << k_ShiftNegativeBit
+                      | (ushort)
+                      Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
                     : compressed;
             currentIndex++;
             compressed =
                 currentIndex != indexToSkip
                     ? (compressed << 10)
-                        | (uint)(
-                            (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
-                                ? k_True
-                                : k_False
-                        ) << k_ShiftNegativeBit
-                        | (ushort)
-                            Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
+                      | (uint)(
+                          (quaternion[currentIndex] < 0 ? k_True : k_False) != quatMaxSign
+                              ? k_True
+                              : k_False
+                      ) << k_ShiftNegativeBit
+                      | (ushort)
+                      Mathf.Round(k_CompressionEcodingMask * s_QuatAbsValues[currentIndex])
                     : compressed;
 
             // Return the compress quaternion
@@ -167,6 +167,7 @@ namespace Omni.Core
                 {
                     continue;
                 }
+
                 // Check the negative bit and multiply that result with the decompressed and decoded value
                 quaternion[i] =
                     ((compressed & k_NegShortBit) > 0 ? -1.0f : 1.0f)
@@ -174,6 +175,7 @@ namespace Omni.Core
                 sumOfSquaredMagnitudes += quaternion[i] * quaternion[i];
                 compressed >>= 10;
             }
+
             // Since a normalized quaternion's magnitude is 1.0f, we subtract the sum of the squared smallest three from the unit value and take
             // the square root of the difference to find the final largest value
             quaternion[indexToSkip] = Mathf.Sqrt(1.0f - sumOfSquaredMagnitudes);

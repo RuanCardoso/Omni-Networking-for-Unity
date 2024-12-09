@@ -72,6 +72,7 @@ namespace Omni.Core
         internal ushort Value;
 
         #region Constants
+
         /// <summary>
         /// Represents the smallest positive System.Half value greater than zero. This field is constant.
         /// </summary>
@@ -101,9 +102,11 @@ namespace Omni.Core
         /// Represents positive infinity. This field is constant.
         /// </summary>
         public static readonly Half PositiveInfinity = ToHalf(0x7c00);
+
         #endregion
 
         #region Constructors
+
         /// <summary>
         /// Initializes a new instance of System.Half to the value of the specified single-precision floating-point number.
         /// </summary>
@@ -118,42 +121,55 @@ namespace Omni.Core
         /// </summary>
         /// <param name="value">The value to represent as a System.Half.</param>
         public Half(int value)
-            : this((float)value) { }
+            : this((float)value)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of System.Half to the value of the specified 64-bit signed integer.
         /// </summary>
         /// <param name="value">The value to represent as a System.Half.</param>
         public Half(long value)
-            : this((float)value) { }
+            : this((float)value)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of System.Half to the value of the specified double-precision floating-point number.
         /// </summary>
         /// <param name="value">The value to represent as a System.Half.</param>
         public Half(double value)
-            : this((float)value) { }
+            : this((float)value)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of System.Half to the value of the specified decimal number.
         /// </summary>
         /// <param name="value">The value to represent as a System.Half.</param>
         public Half(decimal value)
-            : this((float)value) { }
+            : this((float)value)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of System.Half to the value of the specified 32-bit unsigned integer.
         /// </summary>
         /// <param name="value">The value to represent as a System.Half.</param>
         public Half(uint value)
-            : this((float)value) { }
+            : this((float)value)
+        {
+        }
 
         /// <summary>
         /// Initializes a new instance of System.Half to the value of the specified 64-bit unsigned integer.
         /// </summary>
         /// <param name="value">The value to represent as a System.Half.</param>
         public Half(ulong value)
-            : this((float)value) { }
+            : this((float)value)
+        {
+        }
+
         #endregion
 
         #region Numeric operators
@@ -362,9 +378,11 @@ namespace Omni.Core
         {
             return (half1 == half2) || (half1 > half2);
         }
+
         #endregion
 
         #region Type casting operators
+
         /// <summary>
         /// Converts an 8-bit unsigned integer to a System.Half.
         /// </summary>
@@ -604,6 +622,7 @@ namespace Omni.Core
         {
             return (ulong)(float)value;
         }
+
         #endregion
 
         /// <summary>
@@ -723,6 +742,7 @@ namespace Omni.Core
         }
 
         #region BitConverter & Math methods for Half
+
         /// <summary>
         /// Returns the specified half-precision floating point value as an array of bytes.
         /// </summary>
@@ -840,6 +860,7 @@ namespace Omni.Core
         {
             return (value1 < value2) ? value1 : value2;
         }
+
         #endregion
 
         /// <summary>
@@ -883,6 +904,7 @@ namespace Omni.Core
         }
 
         #region String operations (Parse and ToString)
+
         /// <summary>
         /// Converts the string representation of a number to its System.Half equivalent.
         /// </summary>
@@ -1068,9 +1090,11 @@ namespace Omni.Core
         {
             return ((float)this).ToString(format, formatProvider);
         }
+
         #endregion
 
         #region IConvertible Members
+
         readonly float IConvertible.ToSingle(IFormatProvider provider)
         {
             return this;
@@ -1169,6 +1193,7 @@ namespace Omni.Core
         {
             return Convert.ToUInt64(this);
         }
+
         #endregion
     }
 }
@@ -1206,6 +1231,7 @@ namespace Omni.Core
                 e -= 0x00800000; // Decrement exponent (1<<23)
                 m <<= 1; // Shift mantissa
             }
+
             m &= unchecked((uint)~0x00800000); // Clear leading 1 bit
             e += 0x38800000; // Adjust bias ((127-14)<<23)
             return m | e; // Return combined number
@@ -1219,6 +1245,7 @@ namespace Omni.Core
             {
                 mantissaTable[i] = ConvertMantissa(i);
             }
+
             for (int i = 1024; i < 2048; i++)
             {
                 mantissaTable[i] = (uint)(0x38000000 + ((i - 1024) << 13));
@@ -1235,12 +1262,14 @@ namespace Omni.Core
             {
                 exponentTable[i] = (uint)(i << 23);
             }
+
             exponentTable[31] = 0x47800000;
             exponentTable[32] = 0x80000000;
             for (int i = 33; i < 63; i++)
             {
                 exponentTable[i] = (uint)(0x80000000 + ((i - 32) << 23));
             }
+
             exponentTable[63] = 0xc7800000;
 
             return exponentTable;
@@ -1254,6 +1283,7 @@ namespace Omni.Core
             {
                 offsetTable[i] = 1024;
             }
+
             offsetTable[32] = 0;
             for (int i = 33; i < 64; i++)
             {
@@ -1270,27 +1300,32 @@ namespace Omni.Core
             {
                 sbyte e = (sbyte)(127 - i);
                 if (e > 24)
-                { // Very small numbers map to zero
+                {
+                    // Very small numbers map to zero
                     baseTable[i | 0x000] = 0x0000;
                     baseTable[i | 0x100] = 0x8000;
                 }
                 else if (e > 14)
-                { // Small numbers map to denorms
+                {
+                    // Small numbers map to denorms
                     baseTable[i | 0x000] = (ushort)(0x0400 >> (18 + e));
                     baseTable[i | 0x100] = (ushort)((0x0400 >> (18 + e)) | 0x8000);
                 }
                 else if (e >= -15)
-                { // Normal numbers just lose precision
+                {
+                    // Normal numbers just lose precision
                     baseTable[i | 0x000] = (ushort)((15 - e) << 10);
                     baseTable[i | 0x100] = (ushort)(((15 - e) << 10) | 0x8000);
                 }
                 else if (e > -128)
-                { // Large numbers map to Infinity
+                {
+                    // Large numbers map to Infinity
                     baseTable[i | 0x000] = 0x7c00;
                     baseTable[i | 0x100] = 0xfc00;
                 }
                 else
-                { // Infinity and NaN's stay Infinity and NaN's
+                {
+                    // Infinity and NaN's stay Infinity and NaN's
                     baseTable[i | 0x000] = 0x7c00;
                     baseTable[i | 0x100] = 0xfc00;
                 }
@@ -1306,27 +1341,32 @@ namespace Omni.Core
             {
                 sbyte e = (sbyte)(127 - i);
                 if (e > 24)
-                { // Very small numbers map to zero
+                {
+                    // Very small numbers map to zero
                     shiftTable[i | 0x000] = 24;
                     shiftTable[i | 0x100] = 24;
                 }
                 else if (e > 14)
-                { // Small numbers map to denorms
+                {
+                    // Small numbers map to denorms
                     shiftTable[i | 0x000] = (sbyte)(e - 1);
                     shiftTable[i | 0x100] = (sbyte)(e - 1);
                 }
                 else if (e >= -15)
-                { // Normal numbers just lose precision
+                {
+                    // Normal numbers just lose precision
                     shiftTable[i | 0x000] = 13;
                     shiftTable[i | 0x100] = 13;
                 }
                 else if (e > -128)
-                { // Large numbers map to Infinity
+                {
+                    // Large numbers map to Infinity
                     shiftTable[i | 0x000] = 24;
                     shiftTable[i | 0x100] = 24;
                 }
                 else
-                { // Infinity and NaN's stay Infinity and NaN's
+                {
+                    // Infinity and NaN's stay Infinity and NaN's
                     shiftTable[i | 0x000] = 13;
                     shiftTable[i | 0x100] = 13;
                 }

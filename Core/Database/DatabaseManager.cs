@@ -35,7 +35,9 @@ namespace Omni.Core
         private int Timeout { get; set; }
         private bool UseLegacyPagination { get; set; }
 
-        protected DatabaseManager() { } // do not remove.
+        protected DatabaseManager()
+        {
+        } // do not remove.
 
         /// <summary>
         /// Sets the database credentials and timeout values.
