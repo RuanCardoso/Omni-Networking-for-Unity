@@ -2,6 +2,7 @@ using MemoryPack;
 using MemoryPack.Compression;
 using Newtonsoft.Json;
 using Omni.Core.Cryptography;
+using Omni.Shared;
 using System;
 using System.Buffers;
 using System.IO;
@@ -109,6 +110,7 @@ namespace Omni.Core
 			}
 			catch (NotSupportedException ex)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new Exception(
 					$"{ex.Message} - The buffer acquired from the pool does not have sufficient space. " +
 					"Consider increasing the initial capacity of the pool to handle larger data."
@@ -116,6 +118,7 @@ namespace Omni.Core
 			}
 			catch (Exception ex)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new Exception(
 					$"An error occurred during compression: {ex.Message}. Please verify the data and compression settings."
 				);
@@ -206,6 +209,7 @@ namespace Omni.Core
 		{
 			if (peer == null)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentNullException(nameof(peer), "The peer cannot be null.");
 			}
 
@@ -259,6 +263,7 @@ namespace Omni.Core
 		{
 			if (peer == null)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentNullException(nameof(peer), "The peer cannot be null.");
 			}
 
@@ -442,6 +447,7 @@ namespace Omni.Core
 #if OMNI_DEBUG
 			if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new InvalidOperationException(
 					"Operation not supported: The type parameter T is a reference type or contains references, which violates the constraints for this operation."
 				);
@@ -449,6 +455,7 @@ namespace Omni.Core
 
 			if (size_t > (uint)destination.Length)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentOutOfRangeException(
 					nameof(destination),
 					"The size of the type T exceeds the available length of the destination span. Ensure the destination span has sufficient capacity."
@@ -947,12 +954,14 @@ namespace Omni.Core
 #if OMNI_DEBUG
 			if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new InvalidOperationException(
 					"Operation not supported: The type parameter T is a reference type or contains references, which violates the constraints for this operation."
 				);
 			}
 			if (size_t > source.Length)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentOutOfRangeException(
 					nameof(source),
 					"The size of the type T exceeds the available length of the source span. Ensure the source span has sufficient capacity."
@@ -1292,6 +1301,7 @@ namespace Omni.Core
 			byteReadJustNow = Read<byte>(buffer);
 			if (byteReadJustNow > 0b_1111u)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new FormatException("SR.Format_Bad7BitInt");
 			}
 
@@ -1349,6 +1359,7 @@ namespace Omni.Core
 			byteReadJustNow = Read<byte>(buffer);
 			if (byteReadJustNow > 0b_1u)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new FormatException("SR.Format_Bad7BitInt");
 			}
 

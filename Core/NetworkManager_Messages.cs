@@ -107,7 +107,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public static void SendMessage(byte msgId, SyncOptions options)
+			public static void SendMessage(byte msgId, ClientOptions options)
 			{
 				SendMessage(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
 			}
@@ -134,7 +134,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public static void GlobalInvoke(byte msgId, SyncOptions options)
+			public static void GlobalInvoke(byte msgId, ClientOptions options)
 			{
 				GlobalInvoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
 			}
@@ -151,7 +151,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public static void Invoke(byte msgId, int identityId, SyncOptions options)
+			public static void Invoke(byte msgId, int identityId, ClientOptions options)
 			{
 				Invoke(
 					msgId,
@@ -183,7 +183,7 @@ namespace Omni.Core
 				byte msgId,
 				int identityId,
 				byte instanceId,
-				SyncOptions options
+				ClientOptions options
 			)
 			{
 				Invoke(
@@ -354,7 +354,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public static void SendMessage(byte msgId, NetworkPeer peer, SyncOptions options)
+			public static void SendMessage(byte msgId, NetworkPeer peer, ServerOptions options)
 			{
 				SendMessage(
 					msgId,
@@ -395,7 +395,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public static void GlobalInvoke(byte msgId, NetworkPeer peer, SyncOptions options)
+			public static void GlobalInvoke(byte msgId, NetworkPeer peer, ServerOptions options)
 			{
 				GlobalInvoke(
 					msgId,
@@ -439,7 +439,7 @@ namespace Omni.Core
 				byte msgId,
 				NetworkPeer peer,
 				int identityId,
-				SyncOptions options
+				ServerOptions options
 			)
 			{
 				Invoke(
@@ -495,7 +495,7 @@ namespace Omni.Core
 				NetworkPeer peer,
 				int identityId,
 				byte instanceId,
-				SyncOptions options
+				ServerOptions options
 			)
 			{
 				Invoke(
@@ -659,11 +659,11 @@ namespace Omni.Core
 
 					if (!group.IsSubGroup)
 					{
-						peer.MainGroupId = group.Id;
+						peer.MainGroup = group;
 					}
 
 					// Set the master client if it's the first player in the group.
-					if (group.MasterClientId <= NetworkConstants.INVALID_MASTER_CLIENT_ID)
+					if (group.MasterClient == null)
 					{
 						group.SetMasterClient(peer);
 					}

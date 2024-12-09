@@ -17,6 +17,7 @@ namespace Omni.Core
 {
 	[DeclareFoldoutGroup("Network Variables", Expanded = true, Title = "Network Variables - (Auto Synced)")]
 	[DeclareBoxGroup("Service Settings")]
+	[StackTrace]
 	public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem, IEquatable<NetworkBehaviour>
 	{
 		// Hacky: DIRTY CODE!
@@ -111,7 +112,7 @@ namespace Omni.Core
 			/// </summary>
 			/// <param name="msgId">The ID of the message to be invoked.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, SyncOptions options)
+			public void Invoke(byte msgId, ClientOptions options)
 			{
 				Invoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
 			}
@@ -142,7 +143,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, IMessage message, SyncOptions options = default)
+			public void Invoke(byte msgId, IMessage message, ClientOptions options = default)
 			{
 				using var _ = message.Serialize();
 				options.Buffer = _;
@@ -150,7 +151,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
+			public void Invoke<T1>(byte msgId, T1 p1, ClientOptions options = default)
 				where T1 : unmanaged
 			{
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
@@ -160,7 +161,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, SyncOptions options = default)
+			public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, ClientOptions options = default)
 				where T1 : unmanaged
 				where T2 : unmanaged
 			{
@@ -177,7 +178,7 @@ namespace Omni.Core
 				T1 p1,
 				T2 p2,
 				T3 p3,
-				SyncOptions options = default
+				ClientOptions options = default
 			)
 				where T1 : unmanaged
 				where T2 : unmanaged
@@ -198,7 +199,7 @@ namespace Omni.Core
 				T2 p2,
 				T3 p3,
 				T4 p4,
-				SyncOptions options = default
+				ClientOptions options = default
 			)
 				where T1 : unmanaged
 				where T2 : unmanaged
@@ -222,7 +223,7 @@ namespace Omni.Core
 				T3 p3,
 				T4 p4,
 				T5 p5,
-				SyncOptions options = default
+				ClientOptions options = default
 			)
 				where T1 : unmanaged
 				where T2 : unmanaged
@@ -372,7 +373,7 @@ namespace Omni.Core
 			/// </summary>
 			/// <param name="msgId">The ID of the message to be invoked.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, SyncOptions options)
+			public void Invoke(byte msgId, ServerOptions options)
 			{
 				Invoke(
 					msgId,
@@ -391,7 +392,7 @@ namespace Omni.Core
 			/// <param name="msgId">The ID of the message to be invoked.</param>
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public void InvokeByPeer(byte msgId,
-				NetworkPeer peer, SyncOptions options)
+				NetworkPeer peer, ServerOptions options)
 			{
 				InvokeByPeer(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId, options.DataCache, options.SequenceChannel);
 			}
@@ -459,7 +460,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke(byte msgId, IMessage message, SyncOptions options = default)
+			public void Invoke(byte msgId, IMessage message, ServerOptions options = default)
 			{
 				using var _ = message.Serialize();
 				options.Buffer = _;
@@ -467,7 +468,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
+			public void Invoke<T1>(byte msgId, T1 p1, ServerOptions options = default)
 				where T1 : unmanaged
 			{
 				NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
@@ -477,7 +478,7 @@ namespace Omni.Core
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, SyncOptions options = default)
+			public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, ServerOptions options = default)
 				where T1 : unmanaged
 				where T2 : unmanaged
 			{
@@ -494,7 +495,7 @@ namespace Omni.Core
 				T1 p1,
 				T2 p2,
 				T3 p3,
-				SyncOptions options = default
+				ServerOptions options = default
 			)
 				where T1 : unmanaged
 				where T2 : unmanaged
@@ -515,7 +516,7 @@ namespace Omni.Core
 				T2 p2,
 				T3 p3,
 				T4 p4,
-				SyncOptions options = default
+				ServerOptions options = default
 			)
 				where T1 : unmanaged
 				where T2 : unmanaged
@@ -539,7 +540,7 @@ namespace Omni.Core
 				T3 p3,
 				T4 p4,
 				T5 p5,
-				SyncOptions options = default
+				ServerOptions options = default
 			)
 				where T1 : unmanaged
 				where T2 : unmanaged
@@ -606,6 +607,7 @@ namespace Omni.Core
 			{
 				if (_identity == null)
 				{
+					NetworkLogger.PrintHyperlink();
 					throw new InvalidOperationException(
 						"The 'NetworkIdentity' property has not been assigned yet. Make sure to set it before accessing it. If you are trying to access it during the object's initialization, ensure that the object has been fully initialized before accessing it."
 					);
@@ -705,6 +707,7 @@ namespace Omni.Core
 			{
 				if (_local == null)
 				{
+					NetworkLogger.PrintHyperlink();
 					throw new Exception(
 						"This property(Local) is intended for client-side use only. It appears to be accessed from the server side."
 					);
@@ -738,6 +741,7 @@ namespace Omni.Core
 			{
 				if (_remote == null)
 				{
+					NetworkLogger.PrintHyperlink();
 					throw new Exception(
 						"This property(Remote) is intended for server-side use only. It appears to be accessed from the client side."
 					);

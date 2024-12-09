@@ -1,4 +1,5 @@
 using Omni.Core.Interfaces;
+using Omni.Shared;
 using System;
 using System.Buffers;
 using System.Diagnostics;
@@ -149,6 +150,7 @@ namespace Omni.Core
 		{
 			if (capacity <= 0)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentException(null, nameof(capacity));
 			}
 
@@ -182,6 +184,7 @@ namespace Omni.Core
 #if OMNI_DEBUG
 			if (_disposed)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ObjectDisposedException(
 					nameof(DataBuffer),
 					"Cannot advance the buffer because this DataBuffer instance has already been disposed. Ensure the instance is valid before reading from it."
@@ -190,6 +193,7 @@ namespace Omni.Core
 
 			if (count < 0)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentException(
 					"The 'count' parameter must be a non-negative integer. Advancing by a negative value is not allowed.",
 					nameof(count)
@@ -198,6 +202,7 @@ namespace Omni.Core
 
 			if (_position > _buffer.Length - count)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentException(
 					$"The 'count' parameter exceeds the remaining buffer capacity. Current position: {_position}, Buffer length: {_buffer.Length}, Requested count: {count}.",
 					nameof(count)
@@ -206,6 +211,7 @@ namespace Omni.Core
 
 			if ((_position > _length - count) && ___ != nameof(Advance))
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new InvalidOperationException(
 					$"Cannot advance past the end of the buffer. Insufficient data available for reading. Current position: {_position}, Buffer length: {_length}, Requested count: {count}."
 				);
@@ -424,6 +430,7 @@ namespace Omni.Core
 		{
 			if (sizeHint > FreeCapacity)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new NotSupportedException(
 					$"The buffer cannot be resized to the requested size ({sizeHint}) because it exceeds the maximum capacity ({Capacity}). "
 						+ "Resizing the buffer is not supported due to performance reasons. "
@@ -455,6 +462,7 @@ namespace Omni.Core
 		{
 			if (_disposed == true)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ObjectDisposedException(
 					"Cannot dispose this buffer because it has already been disposed. Ensure Dispose is called only once."
 				);
@@ -462,7 +470,8 @@ namespace Omni.Core
 
 			if (_objectPooling == null)
 			{
-				throw new ArgumentNullException(
+				NetworkLogger.PrintHyperlink();
+				throw new ArgumentNullException("",
 					"Cannot dispose this buffer because it was not acquired from a buffer pool. Only pooled buffers should be disposed."
 				);
 			}

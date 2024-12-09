@@ -496,10 +496,18 @@ namespace Omni.Core
 					)
 				)
 				{
-					using var response = Pool.Rent();
-					response.SuppressTracking();
-					await asyncCallback(response, peer);
-					Send(MessageType.HttpGetResponseAsync, response);
+					try
+					{
+						using var response = Pool.Rent();
+						response.SuppressTracking();
+						await asyncCallback(response, peer);
+						Send(MessageType.HttpGetResponseAsync, response);
+					}
+					catch (Exception ex)
+					{
+						NetworkLogger.PrintHyperlink(ex);
+						throw;
+					}
 				}
 				else if (
 					XServer.m_Tasks.TryGetValue(
@@ -508,9 +516,17 @@ namespace Omni.Core
 					)
 				)
 				{
-					using var response = Pool.Rent();
-					callback(response, peer);
-					Send(MessageType.HttpGetResponseAsync, response);
+					try
+					{
+						using var response = Pool.Rent();
+						callback(response, peer);
+						Send(MessageType.HttpGetResponseAsync, response);
+					}
+					catch (Exception ex)
+					{
+						NetworkLogger.PrintHyperlink(ex);
+						throw;
+					}
 				}
 				else
 				{
@@ -539,11 +555,19 @@ namespace Omni.Core
 						request.DecryptInPlace(SharedPeer);
 					}
 
-					using var response = Pool.Rent();
-					response.SuppressTracking();
+					try
+					{
+						using var response = Pool.Rent();
+						response.SuppressTracking();
 
-					await asyncCallback(request, response, peer);
-					Send(MessageType.HttpPostResponseAsync, response);
+						await asyncCallback(request, response, peer);
+						Send(MessageType.HttpPostResponseAsync, response);
+					}
+					catch (Exception ex)
+					{
+						NetworkLogger.PrintHyperlink(ex);
+						throw;
+					}
 				}
 				else if (
 					XServer.m_a_Tasks.TryGetValue(
@@ -561,9 +585,17 @@ namespace Omni.Core
 						request.DecryptInPlace(SharedPeer);
 					}
 
-					using var response = Pool.Rent();
-					callback(request, response, peer);
-					Send(MessageType.HttpPostResponseAsync, response);
+					try
+					{
+						using var response = Pool.Rent();
+						callback(request, response, peer);
+						Send(MessageType.HttpPostResponseAsync, response);
+					}
+					catch (Exception ex)
+					{
+						NetworkLogger.PrintHyperlink(ex);
+						throw;
+					}
 				}
 				else
 				{
@@ -679,7 +711,15 @@ namespace Omni.Core
 							)
 						)
 						{
-							callback?.Invoke(eventMessage);
+							try
+							{
+								callback?.Invoke(eventMessage);
+							}
+							catch (Exception ex)
+							{
+								NetworkLogger.PrintHyperlink(ex);
+								throw;
+							}
 						}
 					}
 					else if (msgId == MessageType.HttpPostResponseAsync)
@@ -691,7 +731,15 @@ namespace Omni.Core
 							)
 						)
 						{
-							callback?.Invoke(eventMessage);
+							try
+							{
+								callback?.Invoke(eventMessage);
+							}
+							catch (Exception ex)
+							{
+								NetworkLogger.PrintHyperlink(ex);
+								throw;
+							}
 						}
 					}
 					else

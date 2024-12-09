@@ -260,13 +260,18 @@ namespace Omni.Core
 	}
 
 	/// <summary>
-	/// Provides default synchronization options with the following settings:<br/>
-	/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
-	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
-	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
-	/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+	/// Represents the default synchronization options for network variables.
 	/// </summary>
+	/// <remarks>
+	/// The following default settings are applied:
+	/// <list type="bullet">
+	/// <item><term><c>Target</c></term><description>Set to <see cref="Target.Auto"/>. Automatically determines the target recipients for the network message based on the context. <b>[Not valid on the client side]</b></description></item>
+	/// <item><term><c>DeliveryMode</c></term><description>Set to <see cref="DeliveryMode.ReliableOrdered"/>. Ensures messages are delivered reliably and in sequential order.</description></item>
+	/// <item><term><c>GroupId</c></term><description>Set to <c>0</c>. Indicates no specific group identifier. <b>[Not valid on the client side]</b></description></item>
+	/// <item><term><c>DataCache</c></term><description>Set to <see cref="DataCache.None"/>. Specifies that no caching mechanism is used. <b>[Not valid on the client side]</b></description></item>
+	/// <item><term><c>SequenceChannel</c></term><description>Set to <c>0</c>. Uses the default sequence channel for ordered message delivery.</description></item>
+	/// </list>
+	/// </remarks>
 	public class NetworkVariableOptions
 	{
 		public Target Target { get; set; }
@@ -277,23 +282,57 @@ namespace Omni.Core
 
 		public NetworkVariableOptions()
 		{
-			Target = Target.Auto;
+			Target = Target.Auto; // NOT VALID FOR CLIENT SIDE
 			DeliveryMode = DeliveryMode.ReliableOrdered;
-			GroupId = 0;
-			DataCache = DataCache.None;
+			GroupId = 0; // NOT VALID FOR CLIENT SIDE
+			DataCache = DataCache.None; // NOT VALID FOR CLIENT SIDE
+			SequenceChannel = 0;
+		}
+
+		public static implicit operator NetworkVariableOptions(ClientOptions options)
+		{
+			return new NetworkVariableOptions()
+			{
+				DeliveryMode = options.DeliveryMode,
+				SequenceChannel = options.SequenceChannel,
+			};
+		}
+
+		public static implicit operator NetworkVariableOptions(ServerOptions options)
+		{
+			return new NetworkVariableOptions()
+			{
+				Target = options.Target,
+				DeliveryMode = options.DeliveryMode,
+				GroupId = options.GroupId,
+				DataCache = options.DataCache,
+				SequenceChannel = options.SequenceChannel
+			};
+		}
+	}
+
+	/// <summary>
+	/// Represents the synchronization options for network communication on the client.
+	/// </summary>
+	public ref struct ClientOptions
+	{
+		public DeliveryMode DeliveryMode { get; set; }
+		public byte SequenceChannel { get; set; }
+		public DataBuffer Buffer { get; set; }
+
+		public ClientOptions(DataBuffer message = null)
+		{
+			message ??= DataBuffer.Empty;
+			Buffer = message;
+			DeliveryMode = DeliveryMode.ReliableOrdered;
 			SequenceChannel = 0;
 		}
 	}
 
 	/// <summary>
-	/// Provides default synchronization options with the following settings:<br/>
-	/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
-	/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
-	/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-	/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
-	/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
+	/// Represents the synchronization options for network communication on the server.
 	/// </summary>
-	public ref struct SyncOptions
+	public ref struct ServerOptions
 	{
 		public Target Target { get; set; }
 		public DeliveryMode DeliveryMode { get; set; }
@@ -302,89 +341,15 @@ namespace Omni.Core
 		public byte SequenceChannel { get; set; }
 		public DataBuffer Buffer { get; set; }
 
-		/// <summary>
-		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
-		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
-		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
-		/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
-		/// </summary>
-		public SyncOptions(DataBuffer buffer)
+		public ServerOptions(DataBuffer message = null)
 		{
-			Buffer = buffer;
+			message ??= DataBuffer.Empty;
+			Buffer = message;
 			Target = Target.Auto;
 			DeliveryMode = DeliveryMode.ReliableOrdered;
 			GroupId = 0;
 			DataCache = DataCache.None;
 			SequenceChannel = 0;
 		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="SyncOptions"/> struct with the specified parameters.
-		/// </summary>
-		public SyncOptions(
-			DataBuffer buffer,
-			Target target,
-			DeliveryMode deliveryMode,
-			int groupId,
-			DataCache dataCache,
-			byte sequenceChannel
-		)
-		{
-			Buffer = buffer;
-			Target = target;
-			DeliveryMode = deliveryMode;
-			GroupId = groupId;
-			DataCache = dataCache;
-			SequenceChannel = sequenceChannel;
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="SyncOptions"/> struct with the specified parameters.
-		/// </summary>
-		public SyncOptions(
-			Target target,
-			DeliveryMode deliveryMode,
-			int groupId,
-			DataCache dataCache,
-			byte sequenceChannel
-		)
-		{
-			Buffer = null;
-			Target = target;
-			DeliveryMode = deliveryMode;
-			GroupId = groupId;
-			DataCache = dataCache;
-			SequenceChannel = sequenceChannel;
-		}
-
-		/// <summary>
-		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
-		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
-		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
-		/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
-		/// </summary>
-		public SyncOptions(bool useDefaultOptions)
-		{
-			Buffer = null;
-			Target = Target.Auto;
-			DeliveryMode = DeliveryMode.ReliableOrdered;
-			GroupId = 0;
-			DataCache = DataCache.None;
-			SequenceChannel = 0;
-		}
-
-		/// <summary>
-		/// Provides default synchronization options with the following settings:<br/>
-		/// - <c>Target</c>: <see cref="Target.Auto"/> - Specifies that the target includes all recipients.<br/>
-		/// - <c>DeliveryMode</c>: <see cref="DeliveryMode.ReliableOrdered"/> - Ensures messages are delivered reliably and in order.<br/>
-		/// - <c>GroupId</c>: 0 - Indicates no specific group identifier.<br/>
-		/// - <c>DataCache</c>: <see cref="DataCache.None"/> - Specifies that no caching is used.<br/>
-		/// - <c>SequenceChannel</c>: 0 - Uses the default sequence channel.
-		/// </summary>
-		public static SyncOptions Default => new SyncOptions(true);
 	}
 }

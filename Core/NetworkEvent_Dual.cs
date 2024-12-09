@@ -135,8 +135,8 @@ namespace Omni.Core
 			Client.AddEventBehaviour(m_Id, this);
 			Server.AddEventBehaviour(m_Id, this);
 
-			Local = new NbClient(this, m_BindingFlags);
-			Remote = new NbServer(this, m_BindingFlags);
+			Local = new NetworkEventClient(this, m_BindingFlags);
+			Remote = new NetworkEventServer(this, m_BindingFlags);
 		}
 
 		protected void RegisterSystemEvents()

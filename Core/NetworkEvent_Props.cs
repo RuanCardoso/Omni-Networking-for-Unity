@@ -1,5 +1,5 @@
-using System.Runtime.CompilerServices;
 using Omni.Core.Interfaces;
+using System.Runtime.CompilerServices;
 using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
@@ -10,13 +10,13 @@ namespace Omni.Core
 	// Avoid refactoring as these techniques are crucial for optimizing execution speed.
 	// Works with il2cpp.
 
-	public class NbClient
+	public class NetworkEventClient
 	{
 		private readonly IInvokeMessage m_NetworkMessage;
 		private readonly NetworkVariablesBehaviour m_NetworkVariablesBehaviour;
 		private readonly BindingFlags m_BindingFlags;
 
-		internal NbClient(IInvokeMessage networkMessage, BindingFlags flags)
+		internal NetworkEventClient(IInvokeMessage networkMessage, BindingFlags flags)
 		{
 			m_NetworkMessage = networkMessage;
 			m_NetworkVariablesBehaviour = m_NetworkMessage as NetworkVariablesBehaviour;
@@ -106,7 +106,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <param name="msgId">The ID of the message to be invoked.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void GlobalInvoke(byte msgId, SyncOptions options)
+		public void GlobalInvoke(byte msgId, ClientOptions options)
 		{
 			GlobalInvoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
 		}
@@ -134,7 +134,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <param name="msgId">The ID of the message to be invoked.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Invoke(byte msgId, SyncOptions options)
+		public void Invoke(byte msgId, ClientOptions options)
 		{
 			Invoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
 		}
@@ -164,7 +164,7 @@ namespace Omni.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Invoke(byte msgId, IMessage message, SyncOptions options = default)
+		public void Invoke(byte msgId, IMessage message, ClientOptions options = default)
 		{
 			using var _ = message.Serialize();
 			options.Buffer = _;
@@ -172,7 +172,7 @@ namespace Omni.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Invoke<T1>(byte msgId, T1 p1, SyncOptions options = default)
+		public void Invoke<T1>(byte msgId, T1 p1, ClientOptions options = default)
 			where T1 : unmanaged
 		{
 			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
@@ -182,7 +182,7 @@ namespace Omni.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, SyncOptions options = default)
+		public void Invoke<T1, T2>(byte msgId, T1 p1, T2 p2, ClientOptions options = default)
 			where T1 : unmanaged
 			where T2 : unmanaged
 		{
@@ -199,7 +199,7 @@ namespace Omni.Core
 			T1 p1,
 			T2 p2,
 			T3 p3,
-			SyncOptions options = default
+			ClientOptions options = default
 		)
 			where T1 : unmanaged
 			where T2 : unmanaged
@@ -220,7 +220,7 @@ namespace Omni.Core
 			T2 p2,
 			T3 p3,
 			T4 p4,
-			SyncOptions options = default
+			ClientOptions options = default
 		)
 			where T1 : unmanaged
 			where T2 : unmanaged
@@ -244,7 +244,7 @@ namespace Omni.Core
 			T3 p3,
 			T4 p4,
 			T5 p5,
-			SyncOptions options = default
+			ClientOptions options = default
 		)
 			where T1 : unmanaged
 			where T2 : unmanaged
@@ -263,13 +263,13 @@ namespace Omni.Core
 		}
 	}
 
-	public class NbServer
+	public class NetworkEventServer
 	{
 		private readonly IInvokeMessage m_NetworkMessage;
 		private readonly NetworkVariablesBehaviour m_NetworkVariablesBehaviour;
 		private readonly BindingFlags m_BindingFlags;
 
-		internal NbServer(IInvokeMessage networkMessage, BindingFlags flags)
+		internal NetworkEventServer(IInvokeMessage networkMessage, BindingFlags flags)
 		{
 			m_NetworkMessage = networkMessage;
 			m_NetworkVariablesBehaviour = m_NetworkMessage as NetworkVariablesBehaviour;
@@ -358,7 +358,7 @@ namespace Omni.Core
 				options.Target,
 				options.DeliveryMode,
 				options.GroupId,
-			    options.DataCache,
+				options.DataCache,
 				options.SequenceChannel,
 				___
 			);
@@ -417,7 +417,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <param name="msgId">The ID of the message to be invoked.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void GlobalInvoke(byte msgId, NetworkPeer peer, SyncOptions options)
+		public void GlobalInvoke(byte msgId, NetworkPeer peer, ServerOptions options)
 		{
 			GlobalInvoke(
 				msgId,
@@ -449,7 +449,7 @@ namespace Omni.Core
 			Target target = Target.SelfOnly,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
-		DataCache dataCache = default,
+			DataCache dataCache = default,
 			byte sequenceChannel = 0
 		)
 		{
@@ -471,7 +471,7 @@ namespace Omni.Core
 		/// </summary>
 		/// <param name="msgId">The ID of the message to be invoked.</param>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Invoke(byte msgId, NetworkPeer peer, SyncOptions options)
+		public void Invoke(byte msgId, NetworkPeer peer, ServerOptions options)
 		{
 			Invoke(
 				msgId,
@@ -526,7 +526,7 @@ namespace Omni.Core
 			byte msgId,
 			NetworkPeer peer,
 			IMessage message,
-			SyncOptions options = default
+			ServerOptions options = default
 		)
 		{
 			using var _ = message.Serialize();
@@ -535,7 +535,7 @@ namespace Omni.Core
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public void Invoke<T1>(byte msgId, NetworkPeer peer, T1 p1, SyncOptions options = default)
+		public void Invoke<T1>(byte msgId, NetworkPeer peer, T1 p1, ServerOptions options = default)
 			where T1 : unmanaged
 		{
 			NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
@@ -550,7 +550,7 @@ namespace Omni.Core
 			NetworkPeer peer,
 			T1 p1,
 			T2 p2,
-			SyncOptions options = default
+			ServerOptions options = default
 		)
 			where T1 : unmanaged
 			where T2 : unmanaged
@@ -569,7 +569,7 @@ namespace Omni.Core
 			T1 p1,
 			T2 p2,
 			T3 p3,
-			SyncOptions options = default
+			ServerOptions options = default
 		)
 			where T1 : unmanaged
 			where T2 : unmanaged
@@ -591,7 +591,7 @@ namespace Omni.Core
 			T2 p2,
 			T3 p3,
 			T4 p4,
-			SyncOptions options = default
+			ServerOptions options = default
 		)
 			where T1 : unmanaged
 			where T2 : unmanaged
@@ -616,7 +616,7 @@ namespace Omni.Core
 			T3 p3,
 			T4 p4,
 			T5 p5,
-			SyncOptions options = default
+			ServerOptions options = default
 		)
 			where T1 : unmanaged
 			where T2 : unmanaged

@@ -1358,7 +1358,7 @@ namespace Omni.Core
 							);
 
 							// Change the current master client if the disconnected client was the master client
-							if (currentPeer.Id == group.MasterClientId)
+							if (currentPeer.Id == group.MasterClient.Id)
 							{
 								var nextPeer = group._peersById.Values.FirstOrDefault();
 								if (nextPeer != null)

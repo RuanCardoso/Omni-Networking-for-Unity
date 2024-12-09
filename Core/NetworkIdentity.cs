@@ -461,7 +461,7 @@ namespace Omni.Core
 		/// Automatic instantiates a network identity on the client.
 		/// </summary>
 		/// <returns>The instantiated network identity.</returns>
-		public void SpawnOnClient(SyncOptions options)
+		public void SpawnOnClient(ServerOptions options)
 		{
 			SpawnOnClient(
 				options.Target,
@@ -516,7 +516,7 @@ namespace Omni.Core
 		/// Automatic destroys a network identity on the client.
 		/// </summary>
 		/// <returns>The instantiated network identity.</returns>
-		public void Destroy(SyncOptions options)
+		public void Destroy(ServerOptions options)
 		{
 			Destroy(
 				options.Target,

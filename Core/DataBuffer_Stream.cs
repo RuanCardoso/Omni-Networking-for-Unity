@@ -1,3 +1,4 @@
+using Omni.Shared;
 using System;
 using System.Buffers;
 using System.IO;
@@ -164,6 +165,7 @@ namespace Omni.Core
 
 			if (newPosition < 0 || newPosition > Length)
 			{
+				NetworkLogger.PrintHyperlink();
 				throw new ArgumentOutOfRangeException(
 					nameof(offset),
 					"The resulting position is out of range."
@@ -176,11 +178,13 @@ namespace Omni.Core
 
 		protected override void Dispose(bool disposing)
 		{
+			NetworkLogger.PrintHyperlink();
 			throw new NotSupportedException("The stream is not disposable.");
 		}
 
 		public override ValueTask DisposeAsync()
 		{
+			NetworkLogger.PrintHyperlink();
 			throw new NotSupportedException("The stream is not disposable.");
 		}
 	}

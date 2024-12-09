@@ -35,7 +35,7 @@ namespace Omni.Core
 		public int Id { get; }
 
 		[MemoryPackIgnore]
-		public int MainGroupId { get; internal set; }
+		public NetworkGroup MainGroup { get; internal set; }
 
 		[MemoryPackIgnore]
 		public bool IsConnected { get; internal set; }
@@ -99,7 +99,7 @@ namespace Omni.Core
 			DisconnectPeer(this);
 		}
 
-		public void SyncSerializedData(SyncOptions options)
+		public void SyncSerializedData(ServerOptions options)
 		{
 			SyncSerializedData(
 				options.Target,
@@ -129,7 +129,7 @@ namespace Omni.Core
 			);
 		}
 
-		public void SyncSerializedData(string key, SyncOptions options)
+		public void SyncSerializedData(string key, ServerOptions options)
 		{
 			SyncSerializedData(
 				key,

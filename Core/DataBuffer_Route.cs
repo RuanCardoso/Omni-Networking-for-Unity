@@ -18,7 +18,7 @@ namespace Omni.Core
 		/// <remarks>
 		/// This method simplifies sending responses by encapsulating multiple configuration options into a single parameter.
 		/// </remarks>
-		public void Send(HttpTarget target, SyncOptions options)
+		public void Send(HttpTarget target, ServerOptions options)
 		{
 			Send(
 				target,

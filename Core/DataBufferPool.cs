@@ -53,7 +53,7 @@ namespace Omni.Core
 		private void CreateTrace(DataBuffer buffer)
 		{
 			CancellationTokenSource cts = new();
-			string message = NetworkLogger.GetStackFramesToHyperlink();
+			string hyperlink = NetworkLogger.GetStackFramesToHyperlink();
 
 #if OMNI_DEBUG
 			buffer._onDisposed = () =>
@@ -83,9 +83,9 @@ namespace Omni.Core
 						);
 
 						// Print the stack trace only in debug mode.
-						if (!string.IsNullOrEmpty(message))
+						if (!string.IsNullOrEmpty(hyperlink))
 						{
-							NetworkLogger.Print(message, NetworkLogger.LogType.Error);
+							NetworkLogger.Print(hyperlink, NetworkLogger.LogType.Error);
 						}
 
 						cts.Cancel();

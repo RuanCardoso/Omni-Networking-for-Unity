@@ -11,6 +11,7 @@ namespace Omni.Core
 {
 	[DefaultExecutionOrder(-10500)]
 	[DeclareBoxGroup("Service Settings")]
+	[StackTrace]
 	public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
 	{
 		[GroupNext("Service Settings")]

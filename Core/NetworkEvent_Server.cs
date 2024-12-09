@@ -117,7 +117,7 @@ namespace Omni.Core
 		{
 			invoker.FindEvents<ServerAttribute>(this, m_BindingFlags);
 			Server.AddEventBehaviour(m_Id, this);
-			Remote = new NbServer(this, m_BindingFlags);
+			Remote = new NetworkEventServer(this, m_BindingFlags);
 		}
 
 		protected void RegisterSystemEvents()

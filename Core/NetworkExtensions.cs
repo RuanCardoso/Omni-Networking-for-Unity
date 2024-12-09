@@ -24,7 +24,7 @@ namespace Omni.Core
 		/// <param name="prefab">The prefab to instantiate.</param>
 		/// <param name="peer">The peer who will receive the instantiated object.</param>
 		/// <returns>The instantiated network identity on the server.</returns>
-		public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, SyncOptions options)
+		public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, ServerOptions options)
 		{
 			var identity = NetworkManager.SpawnOnServer(prefab, peer);
 			identity.SpawnOnClient(options);

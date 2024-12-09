@@ -22,15 +22,15 @@ namespace Omni.Core
 
 		internal BindingFlags m_BindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-		private NbClient local;
-		private NbServer remote;
+		private NetworkEventClient local;
+		private NetworkEventServer remote;
 		internal bool m_UnregisterOnLoad = true;
 
 		// public api: allow send from other object
 		/// <summary>
-		/// Gets the <see cref="NbClient"/> instance used to invoke messages on the server from the client.
+		/// Gets the <see cref="NetworkEventClient"/> instance used to invoke messages on the server from the client.
 		/// </summary>
-		public NbClient Local
+		public NetworkEventClient Local
 		{
 			get
 			{
@@ -49,14 +49,15 @@ namespace Omni.Core
 
 		// public api: allow send from other object
 		/// <summary>
-		/// Gets the <see cref="NbServer"/> instance used to invoke messages on the client from the server.
+		/// Gets the <see cref="NetworkEventServer"/> instance used to invoke messages on the client from the server.
 		/// </summary>
-		public NbServer Remote
+		public NetworkEventServer Remote
 		{
 			get
 			{
 				if (remote == null)
 				{
+					NetworkLogger.PrintHyperlink();
 					throw new NullReferenceException(
 						"This property(Remote) is intended for server-side use only. It appears to be accessed from the client side. Or Call Awake() and Start() base first or initialize manually."
 					);

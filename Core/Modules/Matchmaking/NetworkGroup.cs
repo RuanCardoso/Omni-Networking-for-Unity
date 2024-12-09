@@ -1,10 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using MemoryPack;
 using Newtonsoft.Json;
 using Omni.Shared;
 using Omni.Shared.Collections;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
@@ -29,7 +29,10 @@ namespace Omni.Core
 		public string Name { get; }
 
 		[MemoryPackIgnore]
-		public int MasterClientId { get; private set; } = NetworkConstants.INVALID_MASTER_CLIENT_ID;
+		public NetworkPeer MasterClient { get; private set; } = null;
+
+		[MemoryPackIgnore]
+		public NetworkGroup MainGroup { get; internal set; }
 
 		[MemoryPackIgnore]
 		public int PeerCount => _peersById.Count;
@@ -154,10 +157,10 @@ namespace Omni.Core
 
 		public void SetMasterClient(NetworkPeer peer)
 		{
-			MasterClientId = peer.Id;
+			MasterClient = peer;
 		}
 
-		public void SyncSerializedData(SyncOptions options)
+		public void SyncSerializedData(ServerOptions options)
 		{
 			SyncSerializedData(
 				options.Target,
@@ -187,7 +190,7 @@ namespace Omni.Core
 			);
 		}
 
-		public void SyncSerializedData(string key, SyncOptions options)
+		public void SyncSerializedData(string key, ServerOptions options)
 		{
 			SyncSerializedData(
 				key,
@@ -234,45 +237,35 @@ namespace Omni.Core
 				throw new Exception("Can't use this method on client.");
 			}
 
-			if (MasterClientId <= NetworkConstants.INVALID_MASTER_CLIENT_ID)
+			if (MasterClient == null)
 			{
 				throw new Exception(
 					"MasterClientId is not set. Please set it before using this method."
 				);
 			}
 
-			if (Server.Peers.TryGetValue(MasterClientId, out var peer))
+			if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
 			{
-				if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
-				{
-					value = key != "_AllKeys_" ? value : SerializedData;
-					ImmutableKeyValuePair keyValuePair = new(key, value);
-					using var message = Pool.Rent();
-					message.Write(Id);
-					message.WriteAsJson(keyValuePair);
-					Server.SendMessage(
-						MessageType.SyncGroupSerializedData,
-						peer,
-						message,
-						target,
-						deliveryMode,
-						groupId,
-						dataCache,
-						sequenceChannel
-					);
-				}
-				else
-				{
-					NetworkLogger.__Log__(
-						$"SyncSerializedData Group Error: Failed to sync '{key}' because it doesn't exist.",
-						NetworkLogger.LogType.Error
-					);
-				}
+				value = key != "_AllKeys_" ? value : SerializedData;
+				ImmutableKeyValuePair keyValuePair = new(key, value);
+				using var message = Pool.Rent();
+				message.Write(Id);
+				message.WriteAsJson(keyValuePair);
+				Server.SendMessage(
+					MessageType.SyncGroupSerializedData,
+					MasterClient,
+					message,
+					target,
+					deliveryMode,
+					groupId,
+					dataCache,
+					sequenceChannel
+				);
 			}
 			else
 			{
 				NetworkLogger.__Log__(
-					$"SyncSerializedData Group Error: Peer(Master) with ID '{MasterClientId}' not found. Please verify the master ID and ensure the peer is properly registered(connected!).",
+					$"SyncSerializedData Group Error: Failed to sync '{key}' because it doesn't exist.",
 					NetworkLogger.LogType.Error
 				);
 			}

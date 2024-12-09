@@ -270,39 +270,54 @@ namespace Omni.Shared
 			// Very slow operation, but useful for debugging. Debug mode only.
 			foreach (var frame in frames)
 			{
-				int line = frame.GetFileLineNumber();
-				string fileName = frame.GetFileName();
-				string filePath = fileName?.Replace("\\", "/") ?? "";
-				if (string.IsNullOrEmpty(filePath))
-					continue;
-
-				MethodBase method = frame.GetMethod();
-				if (method == null)
-					continue;
-
-				string declaringType = method.DeclaringType?.ToString() ?? "";
-				if (string.IsNullOrEmpty(declaringType))
-					continue;
-
-				bool hasStacktraceAttribute = method.GetCustomAttribute<StackTraceAttribute>(true) != null || method.DeclaringType.GetCustomAttribute<StackTraceAttribute>(true) != null;
-				bool hasBaseClasses = declaringType.Contains("NetworkBehaviour") || declaringType.Contains("ServerBehaviour") || declaringType.Contains("ClientBehaviour") || declaringType.Contains("DualBehaviour");
-				if (hasStacktraceAttribute || hasBaseClasses)
+				try
 				{
-					string linkText = $"{filePath}:{line}";
+					int line = frame.GetFileLineNumber();
+					string fileName = frame.GetFileName();
+					string filePath = fileName?.Replace("\\", "/") ?? "";
+					if (string.IsNullOrEmpty(filePath))
+						continue;
+
+					// Skip internal Omni framework types in the stack trace.  
+					// Only user script files will be processed and displayed.  
+					// do not change the name of the omni folder!!
+					if (filePath.Contains("/Assets/Omni-Networking-for-Unity") || filePath.Contains("/Packages/Omni-Networking-for-Unity"))
+						continue;
+
+					MethodBase method = frame.GetMethod();
+					if (method == null)
+						continue;
+
+					string declaringType = method.DeclaringType?.ToString() ?? "";
+					if (string.IsNullOrEmpty(declaringType))
+						continue;
+
+					bool hasStacktraceAttribute = method.GetCustomAttribute<StackTraceAttribute>(true) != null || method.DeclaringType.GetCustomAttribute<StackTraceAttribute>(true) != null;
+					bool hasBaseClasses = declaringType.Contains("NetworkBehaviour") || declaringType.Contains("ServerBehaviour") || declaringType.Contains("ClientBehaviour") || declaringType.Contains("DualBehaviour");
+					if (hasStacktraceAttribute || hasBaseClasses)
+					{
+						int indexOf = filePath.IndexOf("/Assets");
+						string linkText = indexOf > 0 ? $"{filePath[indexOf..]}:{line}" : $"{filePath}:{line}";
 #if UNITY_6000_0_OR_NEWER
-					string link = $"<color=#40a0ff><link=\"href='{filePath}' line='{line}'\">{filePath}:{line}</link></color>";
+						string link = $"<color=#40a0ff><link=\"href='{filePath}' line='{line}'\">{linkText}</link></color>";
 #else
-					string link = $"<a href=\"{filePath}\" line=\"{line}\">{filePath}:{line}</a>";
+					string link = $"<a href=\"{filePath}\" line=\"{line}\">{linkText}</a>";
 #endif
-					_message.AppendLine(
-						$"Full Log -> " +
-						$"{link} | " +
-						$"Class: [{declaringType}] | " +
-						$"Method: [{method.Name}] | " +
-						$"Line: [{line}] | "
-					);
+						_message.AppendLine(
+							$"Full Log -> " +
+							$"{link} | " +
+							$"Class: [{declaringType}] | " +
+							$"Method: [{method.Name}] | " +
+							$"Line: [{line}] | "
+						);
+					}
+					else continue;
 				}
-				else continue;
+				catch (Exception ex)
+				{
+					_message.AppendLine($"Hyperlink Exception: {ex.Message}");
+					continue; // Continue to the next frame after the exception
+				}
 			}
 
 			return _message.ToString();

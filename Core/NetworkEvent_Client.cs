@@ -117,7 +117,7 @@ namespace Omni.Core
 		{
 			invoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
 			Client.AddEventBehaviour(m_Id, this);
-			Local = new NbClient(this, m_BindingFlags);
+			Local = new NetworkEventClient(this, m_BindingFlags);
 		}
 
 		protected void RegisterSystemEvents()
