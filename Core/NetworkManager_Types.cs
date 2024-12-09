@@ -30,10 +30,10 @@ namespace Omni.Core
 		internal const byte Spawn = 242;
 		internal const byte SyncGroupSerializedData = 243;
 		internal const byte SyncPeerSerializedData = 244;
-		internal const byte HttpPostResponseAsync = 245;
-		internal const byte HttpPostFetchAsync = 246;
-		internal const byte HttpGetResponseAsync = 247;
-		internal const byte HttpGetFetchAsync = 248;
+		internal const byte PostResponseAsync = 245;
+		internal const byte PostFetchAsync = 246;
+		internal const byte GetResponseAsync = 247;
+		internal const byte GetFetchAsync = 248;
 		internal const byte NtpQuery = 249;
 		internal const byte BeginHandshake = 250;
 		internal const byte EndHandshake = 251;
@@ -107,7 +107,7 @@ namespace Omni.Core
 	/// <summary>
 	/// Specifies the target recipients for a GET/POST message.
 	/// </summary>
-	public enum HttpTarget
+	public enum RouteTarget
 	{
 		/// <summary>
 		/// Sends the message to the current client only. If the peer ID is 0 (server), the message is ignored.

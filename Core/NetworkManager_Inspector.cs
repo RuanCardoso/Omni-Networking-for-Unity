@@ -153,7 +153,7 @@ namespace Omni.Core
 		[SerializeField]
 		[Group("MiscTabs"), Tab("Advanced")]
 		[LabelWidth(190)]
-		private bool m_UseSecureRouteX = false;
+		private bool m_UseSecureRoutes = false;
 
 		// [SerializeField]
 		// [ReadOnly]
@@ -212,7 +212,7 @@ namespace Omni.Core
 
 		internal static bool MatchmakingModuleEnabled => Manager.m_MatchModule;
 		internal static bool TickSystemModuleEnabled => Manager.m_TickModule;
-		internal static bool UseSecureRouteX => Manager.m_UseSecureRouteX;
+		internal static bool UseSecureRoutes => Manager.m_UseSecureRoutes;
 
 		public static int ServerListenPort => Manager.m_ServerListenPort;
 		public static int ClientListenPort => Manager.m_ClientListenPort;

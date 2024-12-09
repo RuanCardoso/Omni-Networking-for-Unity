@@ -1,11 +1,11 @@
 namespace Omni.Core
 {
-	// Exclusively for RouteX API.
+	// Exclusively for Routes API.
 	public sealed partial class DataBuffer
 	{
 		internal bool SendEnabled { get; set; }
 		internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
-		internal HttpTarget Target { get; private set; } = HttpTarget.SelfOnly;
+		internal RouteTarget Target { get; private set; } = RouteTarget.SelfOnly;
 		internal int GroupId { get; private set; }
 		internal DataCache DataCache { get; private set; } = DataCache.None;
 		internal byte SequenceChannel { get; private set; }
@@ -18,7 +18,7 @@ namespace Omni.Core
 		/// <remarks>
 		/// This method simplifies sending responses by encapsulating multiple configuration options into a single parameter.
 		/// </remarks>
-		public void Send(HttpTarget target, ServerOptions options)
+		public void Send(RouteTarget target, ServerOptions options)
 		{
 			Send(
 				target,
@@ -32,7 +32,7 @@ namespace Omni.Core
 		/// <summary>
 		/// Sends a GET/POST response from the server with specified delivery and target settings.
 		/// </summary>
-		/// <param name="target">The target of the response, defaulting to <see cref="HttpTarget.SelfOnly"/>.</param>
+		/// <param name="target">The target of the response, defaulting to <see cref="RouteTarget.SelfOnly"/>.</param>
 		/// <param name="deliveryMode">The delivery mode for the response, defaulting to <see cref="DeliveryMode.ReliableOrdered"/>.</param>
 		/// <param name="groupId">The ID of the target group for the response, defaulting to 0 (no group).</param>
 		/// <param name="dataCache">The data cache configuration, defaulting to <see cref="DataCache.None"/>.</param>
@@ -42,7 +42,7 @@ namespace Omni.Core
 		/// Defaults are provided for common scenarios, ensuring ease of use for typical use cases.
 		/// </remarks>
 		public void Send(
-			HttpTarget target = HttpTarget.SelfOnly,
+			RouteTarget target = RouteTarget.SelfOnly,
 			DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
 			int groupId = 0,
 			DataCache dataCache = default,

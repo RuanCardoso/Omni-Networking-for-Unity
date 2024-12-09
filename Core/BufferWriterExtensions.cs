@@ -413,7 +413,7 @@ namespace Omni.Core
 		/// Indicates whether binary serialization is enabled by default for certain types.
 		/// </summary>
 		/// <remarks>
-		/// This is particularly useful for types such as <see cref="HttpResponse"/>.
+		/// This is particularly useful for types such as <see cref="Response"/>.
 		/// </remarks>
 		public static bool UseBinarySerialization = false;
 
@@ -596,15 +596,15 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Writes an HTTP response to the buffer using the configured serialization format.
+		/// Writes an response to the buffer using the configured serialization format.
 		/// </summary>
-		/// <param name="buffer">The <see cref="DataBuffer"/> to write the HTTP response to.</param>
-		/// <param name="response">The <see cref="HttpResponse"/> to write.</param>
+		/// <param name="buffer">The <see cref="DataBuffer"/> to write the response to.</param>
+		/// <param name="response">The <see cref="Response"/> to write.</param>
 		/// <remarks>
 		/// The serialization format is determined by the value of <see cref="UseBinarySerialization"/>.
 		/// If set to true, binary serialization is used; otherwise, JSON serialization is used.
 		/// </remarks>
-		public static void WriteHttpResponse(this DataBuffer buffer, HttpResponse response)
+		public static void WriteResponse(this DataBuffer buffer, Response response)
 		{
 			if (!UseBinarySerialization)
 			{
@@ -616,16 +616,16 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Writes an HTTP response with a generic payload to the buffer using the configured serialization format.
+		/// Writes an response with a generic payload to the buffer using the configured serialization format.
 		/// </summary>
-		/// <typeparam name="T">The type of the payload in the HTTP response.</typeparam>
-		/// <param name="buffer">The <see cref="DataBuffer"/> to write the HTTP response to.</param>
-		/// <param name="response">The <see cref="HttpResponse{T}"/> containing the generic payload to write.</param>
+		/// <typeparam name="T">The type of the payload in the response.</typeparam>
+		/// <param name="buffer">The <see cref="DataBuffer"/> to write the response to.</param>
+		/// <param name="response">The <see cref="Response{T}"/> containing the generic payload to write.</param>
 		/// <remarks>
 		/// The serialization format is determined by the value of <see cref="UseBinarySerialization"/>.
 		/// If set to true, binary serialization is used; otherwise, JSON serialization is used.
 		/// </remarks>
-		public static void WriteHttpResponse<T>(this DataBuffer buffer, HttpResponse<T> response)
+		public static void WriteResponse<T>(this DataBuffer buffer, Response<T> response)
 		{
 			if (!UseBinarySerialization)
 			{
@@ -1017,46 +1017,46 @@ namespace Omni.Core
 		}
 
 		/// <summary>
-		/// Reads an HTTP response from the specified <see cref="DataBuffer"/> using the configured deserialization format.
+		/// Reads an response from the specified <see cref="DataBuffer"/> using the configured deserialization format.
 		/// </summary>
-		/// <param name="buffer">The <see cref="DataBuffer"/> to read the HTTP response from.</param>
+		/// <param name="buffer">The <see cref="DataBuffer"/> to read the response from.</param>
 		/// <returns>
-		/// A deserialized <see cref="HttpResponse"/> object.
+		/// A deserialized <see cref="Response"/> object.
 		/// </returns>
 		/// <remarks>
 		/// The deserialization format is determined by the value of <see cref="UseBinarySerialization"/>.
 		/// If set to true, binary deserialization is used; otherwise, JSON deserialization is used.
 		/// </remarks>
-		public static HttpResponse ReadHttpResponse(this DataBuffer buffer)
+		public static Response ReadResponse(this DataBuffer buffer)
 		{
 			if (!UseBinarySerialization)
 			{
-				return ReadAsJson<HttpResponse>(buffer);
+				return ReadAsJson<Response>(buffer);
 			}
 
-			return ReadAsBinary<HttpResponse>(buffer);
+			return ReadAsBinary<Response>(buffer);
 		}
 
 		/// <summary>
-		/// Reads an HTTP response with a generic payload from the specified <see cref="DataBuffer"/> using the configured deserialization format.
+		/// Reads an response with a generic payload from the specified <see cref="DataBuffer"/> using the configured deserialization format.
 		/// </summary>
-		/// <typeparam name="T">The type of the payload in the HTTP response.</typeparam>
-		/// <param name="buffer">The <see cref="DataBuffer"/> to read the HTTP response from.</param>
+		/// <typeparam name="T">The type of the payload in the response.</typeparam>
+		/// <param name="buffer">The <see cref="DataBuffer"/> to read the response from.</param>
 		/// <returns>
-		/// A deserialized <see cref="HttpResponse{T}"/> object containing the generic payload.
+		/// A deserialized <see cref="Response{T}"/> object containing the generic payload.
 		/// </returns>
 		/// <remarks>
 		/// The deserialization format is determined by the value of <see cref="UseBinarySerialization"/>.
 		/// If set to true, binary deserialization is used; otherwise, JSON deserialization is used.
 		/// </remarks>
-		public static HttpResponse<T> ReadHttpResponse<T>(this DataBuffer buffer)
+		public static Response<T> ReadResponse<T>(this DataBuffer buffer)
 		{
 			if (!UseBinarySerialization)
 			{
-				return ReadAsJson<HttpResponse<T>>(buffer);
+				return ReadAsJson<Response<T>>(buffer);
 			}
 
-			return ReadAsBinary<HttpResponse<T>>(buffer);
+			return ReadAsBinary<Response<T>>(buffer);
 		}
 
 		/// <summary>

@@ -352,7 +352,7 @@ namespace Omni.Core
 			// This module should be initialized last, as it needs the other modules to be initialized.
 			if (m_ConnectionModule)
 			{
-				RouteX.Initialize();
+				SimpleRoutes.Initialize();
 				InitializeModule(Module.Connection);
 			}
 
