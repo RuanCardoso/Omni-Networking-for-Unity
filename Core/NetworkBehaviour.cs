@@ -844,8 +844,8 @@ namespace Omni.Core
 			}
 
 			Identity.OnRequestAction += OnRequestedAction;
-			Identity.OnSpawn += Internal_OnSpawned;
 			Identity.OnSpawn += OnSpawned;
+			Identity.OnSpawn += Internal_OnSpawned;
 
 			NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
 			NetworkManager.OnSceneLoaded += OnSceneLoaded;
@@ -891,8 +891,8 @@ namespace Omni.Core
 			}
 
 			Identity.OnRequestAction -= OnRequestedAction;
-			Identity.OnSpawn -= Internal_OnSpawned;
 			Identity.OnSpawn -= OnSpawned;
+			Identity.OnSpawn -= Internal_OnSpawned;
 
 			if (!Identity.Unregister(m_ServiceName))
 			{
