@@ -161,11 +161,7 @@ namespace Omni.Shared
         /// </list>
         /// </para>
         /// </remarks>
-        public static void Log(
-            object message,
-            bool writeToLogFile = false,
-            LogType logType = LogType.Log
-        )
+        public static void Log(object message, bool writeToLogFile = false, LogType logType = LogType.Log)
         {
             if (writeToLogFile)
             {

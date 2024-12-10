@@ -1,10 +1,11 @@
+using System;
 using Omni.Core.Interfaces;
 using UnityEngine;
 
 [DefaultExecutionOrder(-2000)]
 public class NetworkRegisterDisabledComponents : MonoBehaviour
 {
-    private MonoBehaviour[] components = new MonoBehaviour[0];
+    private MonoBehaviour[] components = Array.Empty<MonoBehaviour>();
 
     private void Awake()
     {

@@ -13,17 +13,8 @@ namespace Omni.Core
     // High-level methods for sending network messages.
     public partial class NetworkManager
     {
-        private static void Internal_SendMessage(
-            byte msgId,
-            NetworkPeer peer,
-            DataBuffer buffer,
-            Target target,
-            DeliveryMode deliveryMode,
-            bool isServer,
-            int groupId,
-            DataCache dataCache,
-            byte seqChannel
-        )
+        private static void Internal_SendMessage(byte msgId, NetworkPeer peer, DataBuffer buffer, Target target,
+            DeliveryMode deliveryMode, bool isServer, int groupId, DataCache dataCache, byte seqChannel)
         {
             buffer ??= DataBuffer.Empty;
             if (!isServer)
@@ -37,16 +28,7 @@ namespace Omni.Core
                     throw new NullReferenceException("Peer cannot be null.");
                 }
 
-                SendToClient(
-                    msgId,
-                    buffer,
-                    peer,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    seqChannel
-                );
+                SendToClient(msgId, buffer, peer, target, deliveryMode, groupId, dataCache, seqChannel);
             }
         }
 
@@ -58,8 +40,7 @@ namespace Omni.Core
             /// <summary>
             /// Gets the server peer used for exclusively for encryption keys.
             /// </summary>
-            public static NetworkPeer ServerPeer { get; } =
-                new(new IPEndPoint(IPAddress.None, 0), 0);
+            public static NetworkPeer ServerPeer { get; } = new(new IPEndPoint(IPAddress.None, 0), 0);
 
             /// <summary>
             /// Gets the server RSA public key .
@@ -70,10 +51,9 @@ namespace Omni.Core
 
             internal static Dictionary<int, NetworkGroup> Groups { get; } = new();
 
-            internal static Dictionary<int, IInvokeMessage> GlobalEventBehaviours { get; } =
-                new(); // int: identifier(identity id)
-
-            internal static Dictionary<(int, byte), IInvokeMessage> LocalEventBehaviours { get; } = new();
+            // int: identifier(identity id)
+            internal static Dictionary<int, IRpcMessage> GlobalRpcHandlers { get; } = new();
+            internal static Dictionary<(int, byte), IRpcMessage> LocalRpcHandlers { get; } = new();
 
             public static Dictionary<int, NetworkIdentity> Identities { get; } = new();
             public static Dictionary<int, NetworkPeer> Peers { get; } = new();
@@ -116,97 +96,51 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void SendMessage(
-                byte msgId,
-                DataBuffer buffer = null,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
+            public static void SendMessage(byte msgId, DataBuffer buffer = null,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
-                Internal_SendMessage(
-                    msgId,
-                    LocalPeer,
-                    buffer,
-                    Target.SelfOnly,
-                    deliveryMode,
-                    false,
-                    0,
-                    DataCache.None,
-                    sequenceChannel
-                );
+                Internal_SendMessage(msgId, LocalPeer, buffer, Target.SelfOnly, deliveryMode, false, 0, DataCache.None,
+                    sequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void GlobalInvoke(byte msgId, ClientOptions options)
+            public static void GlobalRpc(byte msgId, ClientOptions options)
             {
-                GlobalInvoke(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
+                GlobalRpc(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void GlobalInvoke(
-                byte msgId,
-                DataBuffer buffer = null,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
+            public static void GlobalRpc(byte msgId, DataBuffer buffer = null,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 SendMessage(msgId, buffer, deliveryMode, sequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void Invoke(byte msgId, int identityId, ClientOptions options)
+            public static void Rpc(byte msgId, int identityId, ClientOptions options)
             {
-                Invoke(
-                    msgId,
-                    identityId,
-                    options.Buffer,
-                    options.DeliveryMode,
-                    options.SequenceChannel
-                );
+                Rpc(msgId, identityId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
             }
 
-            public static void Invoke(
-                byte msgId,
-                int identityId,
-                DataBuffer buffer = null,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
+            public static void Rpc(byte msgId, int identityId, DataBuffer buffer = null,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 buffer ??= DataBuffer.Empty;
                 using DataBuffer message = Pool.Rent();
                 message.Write(identityId);
                 message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
-                SendMessage(MessageType.GlobalInvoke, message, deliveryMode, sequenceChannel);
+                SendMessage(MessageType.GlobalRpc, message, deliveryMode, sequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void Invoke(
-                byte msgId,
-                int identityId,
-                byte instanceId,
-                ClientOptions options
-            )
+            public static void Rpc(byte msgId, int identityId, byte instanceId, ClientOptions options)
             {
-                Invoke(
-                    msgId,
-                    identityId,
-                    instanceId,
-                    options.Buffer,
-                    options.DeliveryMode,
-                    options.SequenceChannel
-                );
+                Rpc(msgId, identityId, instanceId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
             }
 
-            public static void Invoke(
-                byte msgId,
-                int identityId,
-                byte instanceId,
-                DataBuffer buffer = null,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
+            public static void Rpc(byte msgId, int identityId, byte instanceId, DataBuffer buffer = null,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 buffer ??= DataBuffer.Empty;
                 using DataBuffer message = Pool.Rent();
@@ -214,7 +148,7 @@ namespace Omni.Core
                 message.Write(instanceId);
                 message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
-                SendMessage(MessageType.LocalInvoke, message, deliveryMode, sequenceChannel);
+                SendMessage(MessageType.LocalRpc, message, deliveryMode, sequenceChannel);
             }
 
             internal static void JoinGroup(string groupName, DataBuffer buffer)
@@ -236,10 +170,7 @@ namespace Omni.Core
                 SendMessage(MessageType.JoinGroup, message, DeliveryMode.ReliableOrdered, 0);
             }
 
-            internal static void LeaveGroup(
-                string groupName,
-                string reason = "Leave called by user."
-            )
+            internal static void LeaveGroup(string groupName, string reason = "Leave called by user.")
             {
                 if (string.IsNullOrEmpty(groupName))
                 {
@@ -257,11 +188,11 @@ namespace Omni.Core
                 SendMessage(MessageType.LeaveGroup, message, DeliveryMode.ReliableOrdered, 0);
             }
 
-            internal static void AddEventBehaviour(int identityId, IInvokeMessage behaviour)
+            internal static void AddEventBehaviour(int identityId, IRpcMessage behaviour)
             {
-                if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
+                if (!GlobalRpcHandlers.TryAdd(identityId, behaviour))
                 {
-                    GlobalEventBehaviours[identityId] = behaviour;
+                    GlobalRpcHandlers[identityId] = behaviour;
                 }
             }
 
@@ -286,8 +217,7 @@ namespace Omni.Core
             /// <remarks>
             /// The server peer is a special peer that is used to represent the server.
             /// </remarks>
-            public static NetworkPeer ServerPeer { get; } =
-                new(new IPEndPoint(IPAddress.None, 0), 0);
+            public static NetworkPeer ServerPeer { get; } = new(new IPEndPoint(IPAddress.None, 0), 0);
 
             /// <summary>
             /// Gets the RSA public key.
@@ -308,9 +238,8 @@ namespace Omni.Core
             internal static Dictionary<int, NetworkCache> CACHES_OVERWRITE_GLOBAL { get; } = new();
 
             internal static Dictionary<int, NetworkGroup> Groups => GroupsById;
-            internal static Dictionary<int, IInvokeMessage> GlobalEventBehaviours { get; } = new();
-
-            internal static Dictionary<(int, byte), IInvokeMessage> LocalEventBehaviours { get; } = new();
+            internal static Dictionary<int, IRpcMessage> GlobalRpcHandlers { get; } = new();
+            internal static Dictionary<(int, byte), IRpcMessage> LocalRpcHandlers { get; } = new();
 
             public static Dictionary<int, NetworkPeer> Peers => PeersById;
             public static Dictionary<int, NetworkIdentity> Identities { get; } = new();
@@ -359,116 +288,46 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SendMessage(byte msgId, NetworkPeer peer, ServerOptions options)
             {
-                SendMessage(
-                    msgId,
-                    peer,
-                    options.Buffer,
-                    options.Target,
-                    options.DeliveryMode,
-                    options.GroupId,
-                    options.DataCache,
-                    options.SequenceChannel
-                );
+                SendMessage(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId,
+                    options.DataCache, options.SequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void SendMessage(
-                byte msgId,
-                NetworkPeer peer,
-                DataBuffer buffer = null,
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0
-            )
+            public static void SendMessage(byte msgId, NetworkPeer peer, DataBuffer buffer = null,
+                Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
-                Internal_SendMessage(
-                    msgId,
-                    peer,
-                    buffer,
-                    target,
-                    deliveryMode,
-                    true,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                Internal_SendMessage(msgId, peer, buffer, target, deliveryMode, true, groupId, dataCache,
+                    sequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void GlobalInvoke(byte msgId, NetworkPeer peer, ServerOptions options)
+            public static void GlobalRpc(byte msgId, NetworkPeer peer, ServerOptions options)
             {
-                GlobalInvoke(
-                    msgId,
-                    peer,
-                    options.Buffer,
-                    options.Target,
-                    options.DeliveryMode,
-                    options.GroupId,
-                    options.DataCache,
-                    options.SequenceChannel
-                );
+                GlobalRpc(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId,
+                    options.DataCache, options.SequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void GlobalInvoke(
-                byte msgId,
-                NetworkPeer peer,
-                DataBuffer buffer = null,
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0
-            )
+            public static void GlobalRpc(byte msgId, NetworkPeer peer, DataBuffer buffer = null,
+                Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
-                SendMessage(
-                    msgId,
-                    peer,
-                    buffer,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                SendMessage(msgId, peer, buffer, target, deliveryMode, groupId, dataCache, sequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void Invoke(
-                byte msgId,
-                NetworkPeer peer,
-                int identityId,
-                ServerOptions options
-            )
+            public static void Rpc(byte msgId, NetworkPeer peer, int identityId, ServerOptions options)
             {
-                Invoke(
-                    msgId,
-                    peer,
-                    identityId,
-                    options.Buffer,
-                    options.Target,
-                    options.DeliveryMode,
-                    options.GroupId,
-                    options.DataCache,
-                    options.SequenceChannel
-                );
+                Rpc(msgId, peer, identityId, options.Buffer, options.Target, options.DeliveryMode, options.GroupId,
+                    options.DataCache, options.SequenceChannel);
             }
 
-            public static void Invoke(
-                byte msgId,
-                NetworkPeer peer,
-                int identityId,
-                DataBuffer buffer = null,
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0
-            )
+            public static void Rpc(byte msgId, NetworkPeer peer, int identityId, DataBuffer buffer = null,
+                Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
                 buffer ??= DataBuffer.Empty;
@@ -477,56 +336,24 @@ namespace Omni.Core
                 message.Write(identityId);
                 message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
-                SendMessage(
-                    MessageType.GlobalInvoke,
-                    peer,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                SendMessage(MessageType.GlobalRpc, peer, message, target, deliveryMode, groupId, dataCache,
+                    sequenceChannel);
 
                 // byte count per empty message: 4 + 1 = 5 + header;
                 // TODO: reduce bandwidth usage
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static void Invoke(
-                byte msgId,
-                NetworkPeer peer,
-                int identityId,
-                byte instanceId,
-                ServerOptions options
-            )
+            public static void Rpc(byte msgId, NetworkPeer peer, int identityId, byte instanceId, ServerOptions options)
             {
-                Invoke(
-                    msgId,
-                    peer,
-                    identityId,
-                    instanceId,
-                    options.Buffer,
-                    options.Target,
-                    options.DeliveryMode,
-                    options.GroupId,
-                    options.DataCache,
-                    options.SequenceChannel
-                );
+                Rpc(msgId, peer, identityId, instanceId, options.Buffer, options.Target, options.DeliveryMode,
+                    options.GroupId, options.DataCache, options.SequenceChannel);
             }
 
-            public static void Invoke(
-                byte msgId,
-                NetworkPeer peer,
-                int identityId,
-                byte instanceId,
-                DataBuffer buffer = null,
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0
-            )
+            public static void Rpc(byte msgId, NetworkPeer peer, int identityId, byte instanceId,
+                DataBuffer buffer = null, Target target = Target.Auto,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 buffer ??= DataBuffer.Empty;
                 dataCache ??= DataCache.None;
@@ -536,16 +363,8 @@ namespace Omni.Core
                 message.Write(instanceId);
                 message.Write(msgId); // rpc id
                 message.Write(buffer.BufferAsSpan);
-                SendMessage(
-                    MessageType.LocalInvoke,
-                    peer,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                SendMessage(MessageType.LocalRpc, peer, message, target, deliveryMode, groupId, dataCache,
+                    sequenceChannel);
 
                 // byte count per empty message: 1 + 1 + 1 + 1 = 4;
                 // TODO: reduce bandwidth usage
@@ -576,12 +395,8 @@ namespace Omni.Core
                 return GroupsById.TryGetValue(groupId, out group);
             }
 
-            internal static void JoinGroup(
-                string groupName,
-                DataBuffer buffer,
-                NetworkPeer peer,
-                bool writeBufferToClient
-            )
+            internal static void JoinGroup(string groupName, DataBuffer buffer, NetworkPeer peer,
+                bool writeBufferToClient)
             {
                 void SendResponseToClient()
                 {
@@ -593,16 +408,8 @@ namespace Omni.Core
                         message.Write(buffer.BufferAsSpan);
                     }
 
-                    SendMessage(
-                        MessageType.JoinGroup,
-                        peer,
-                        message,
-                        Target.SelfOnly,
-                        DeliveryMode.ReliableOrdered,
-                        0,
-                        DataCache.None,
-                        0
-                    );
+                    SendMessage(MessageType.JoinGroup, peer, message, Target.SelfOnly, DeliveryMode.ReliableOrdered, 0,
+                        DataCache.None, 0);
                 }
 
                 int uniqueId = GetGroupIdByName(groupName);
@@ -706,16 +513,8 @@ namespace Omni.Core
                     message.WriteString(groupName);
                     message.WriteString(reason);
 
-                    SendMessage(
-                        MessageType.LeaveGroup,
-                        peer,
-                        message,
-                        Target.SelfOnly,
-                        DeliveryMode.ReliableOrdered,
-                        0,
-                        DataCache.None,
-                        0
-                    );
+                    SendMessage(MessageType.LeaveGroup, peer, message, Target.SelfOnly, DeliveryMode.ReliableOrdered, 0,
+                        DataCache.None, 0);
                 }
 
                 int groupId = GetGroupIdByName(groupName);
@@ -799,21 +598,10 @@ namespace Omni.Core
             /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
             /// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
             /// <param name="sendMyOwnCacheToMe">A flag indicating whether to send the cache data to the originating peer (optional, default is false).</param>
-            internal static void Internal_SendPeerCache(
-                NetworkPeer fromPeer,
-                NetworkPeer toPeer,
-                DataCache dataCache,
-                int groupId = 0,
-                bool sendMyOwnCacheToMe = false
-            )
+            internal static void Internal_SendPeerCache(NetworkPeer fromPeer, NetworkPeer toPeer, DataCache dataCache,
+                int groupId = 0, bool sendMyOwnCacheToMe = false)
             {
-                Internal_SendCache(
-                    fromPeer,
-                    toPeer,
-                    dataCache,
-                    groupId,
-                    sendMyOwnCacheToMe
-                );
+                Internal_SendCache(fromPeer, toPeer, dataCache, groupId, sendMyOwnCacheToMe);
             }
 
             /// <summary>
@@ -823,23 +611,14 @@ namespace Omni.Core
             /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
             /// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
             /// <param name="sendMyOwnCacheToMe">A flag indicating whether to send the cache data to the originating peer (optional, default is false).</param>
-            internal static void Internal_SendCache(
-                NetworkPeer peer,
-                DataCache dataCache,
-                int groupId = 0,
-                bool sendMyOwnCacheToMe = false
-            )
+            internal static void Internal_SendCache(NetworkPeer peer, DataCache dataCache, int groupId = 0,
+                bool sendMyOwnCacheToMe = false)
             {
                 Internal_SendCache(peer, peer, dataCache, groupId, sendMyOwnCacheToMe);
             }
 
-            internal static void Internal_SendCache(
-                NetworkPeer fromPeer,
-                NetworkPeer toPeer,
-                DataCache dataCache,
-                int groupId,
-                bool sendMyOwnCacheToMe
-            )
+            internal static void Internal_SendCache(NetworkPeer fromPeer, NetworkPeer toPeer, DataCache dataCache,
+                int groupId, bool sendMyOwnCacheToMe)
             {
                 if (dataCache.Mode != CacheMode.None || dataCache.Id != 0)
                 {
@@ -854,47 +633,13 @@ namespace Omni.Core
                     }
                     else
                     {
-                        if (
-                            dataCache.Mode == (CacheMode.Global | CacheMode.New)
-                            || dataCache.Mode
-                            == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
-                        )
+                        switch (dataCache.Mode)
                         {
-                            List<NetworkCache> caches = CACHES_APPEND_GLOBAL
-                                .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id)
-                                .ToList();
-
-                            foreach (NetworkCache cache in caches)
+                            case CacheMode.Global | CacheMode.New:
+                            case CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy:
                             {
-                                if (!sendMyOwnCacheToMe)
-                                {
-                                    if (cache.Peer.Id == toPeer.Id)
-                                    {
-                                        continue;
-                                    }
-                                }
-
-                                Connection.Server.Send(
-                                    cache.Data,
-                                    toPeer.EndPoint,
-                                    cache.DeliveryMode,
-                                    cache.SequenceChannel
-                                );
-                            }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Group | CacheMode.New)
-                            || dataCache.Mode
-                            == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
-                            {
-                                List<NetworkCache> caches = group
-                                    .CACHES_APPEND.Where(x =>
-                                        x.Mode == dataCache.Mode && x.Id == dataCache.Id
-                                    )
-                                    .ToList();
+                                List<NetworkCache> caches = CACHES_APPEND_GLOBAL
+                                    .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
 
                                 foreach (NetworkCache cache in caches)
                                 {
@@ -906,68 +651,49 @@ namespace Omni.Core
                                         }
                                     }
 
-                                    Connection.Server.Send(
-                                        cache.Data,
-                                        toPeer.EndPoint,
-                                        cache.DeliveryMode,
-                                        cache.SequenceChannel
-                                    );
-                                }
-                            }
-                            else
-                            {
-                                NetworkLogger.__Log__(
-                                    $"Send Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                    NetworkLogger.LogType.Error
-                                );
-                            }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Global | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (
-                                CACHES_OVERWRITE_GLOBAL.TryGetValue(dataCache.Id, out NetworkCache cache)
-                            )
-                            {
-                                if (!sendMyOwnCacheToMe)
-                                {
-                                    if (cache.Peer.Id == toPeer.Id)
-                                    {
-                                        return;
-                                    }
+                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                        cache.SequenceChannel);
                                 }
 
-                                Connection.Server.Send(
-                                    cache.Data,
-                                    toPeer.EndPoint,
-                                    cache.DeliveryMode,
-                                    cache.SequenceChannel
-                                );
+                                break;
                             }
-                            else
+                            case CacheMode.Group | CacheMode.New:
+                            case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
                             {
-                                NetworkLogger.__Log__(
-                                    $"Cache Error: Cache with Id: {dataCache.Id} and search mode: [{dataCache.Mode}] not found.",
-                                    NetworkLogger.LogType.Error
-                                );
+                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                {
+                                    List<NetworkCache> caches = group.CACHES_APPEND
+                                        .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
+
+                                    foreach (NetworkCache cache in caches)
+                                    {
+                                        if (!sendMyOwnCacheToMe)
+                                        {
+                                            if (cache.Peer.Id == toPeer.Id)
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                            cache.SequenceChannel);
+                                    }
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Send Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+
+                                break;
                             }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                            case CacheMode.Global | CacheMode.Overwrite:
+                            case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
                             {
                                 if (
-                                    group.CACHES_OVERWRITE.TryGetValue(
-                                        dataCache.Id,
-                                        out NetworkCache cache
-                                    )
+                                    CACHES_OVERWRITE_GLOBAL.TryGetValue(dataCache.Id, out NetworkCache cache)
                                 )
                                 {
                                     if (!sendMyOwnCacheToMe)
@@ -978,12 +704,8 @@ namespace Omni.Core
                                         }
                                     }
 
-                                    Connection.Server.Send(
-                                        cache.Data,
-                                        toPeer.EndPoint,
-                                        cache.DeliveryMode,
-                                        cache.SequenceChannel
-                                    );
+                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                        cache.SequenceChannel);
                                 }
                                 else
                                 {
@@ -992,77 +714,97 @@ namespace Omni.Core
                                         NetworkLogger.LogType.Error
                                     );
                                 }
+
+                                break;
                             }
-                            else
+                            case CacheMode.Group | CacheMode.Overwrite:
+                            case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
                             {
+                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                {
+                                    if (
+                                        group.CACHES_OVERWRITE.TryGetValue(
+                                            dataCache.Id,
+                                            out NetworkCache cache
+                                        )
+                                    )
+                                    {
+                                        if (!sendMyOwnCacheToMe)
+                                        {
+                                            if (cache.Peer.Id == toPeer.Id)
+                                            {
+                                                return;
+                                            }
+                                        }
+
+                                        Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                            cache.SequenceChannel);
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"Cache Error: Cache with Id: {dataCache.Id} and search mode: [{dataCache.Mode}] not found.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+
+                                break;
+                            }
+                            case CacheMode.Peer | CacheMode.New:
+                            case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
+                            {
+                                List<NetworkCache> caches = fromPeer.CACHES_APPEND
+                                    .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
+
+                                foreach (NetworkCache cache in caches)
+                                {
+                                    if (!sendMyOwnCacheToMe)
+                                    {
+                                        if (cache.Peer.Id == toPeer.Id)
+                                        {
+                                            continue;
+                                        }
+                                    }
+
+                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                        cache.SequenceChannel);
+                                }
+
+                                break;
+                            }
+                            case CacheMode.Peer | CacheMode.Overwrite:
+                            case CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                            {
+                                if (fromPeer.CACHES_OVERWRITE.TryGetValue(dataCache.Id, out NetworkCache cache))
+                                {
+                                    if (!sendMyOwnCacheToMe)
+                                    {
+                                        if (cache.Peer.Id == toPeer.Id)
+                                        {
+                                            return;
+                                        }
+                                    }
+
+                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                        cache.SequenceChannel);
+                                }
+
+                                break;
+                            }
+                            default:
                                 NetworkLogger.__Log__(
-                                    $"Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    "Cache Error: Unsupported cache mode set.",
                                     NetworkLogger.LogType.Error
                                 );
-                            }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Peer | CacheMode.New)
-                            || dataCache.Mode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
-                        )
-                        {
-                            List<NetworkCache> caches = fromPeer
-                                .CACHES_APPEND.Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id)
-                                .ToList();
-
-                            foreach (NetworkCache cache in caches)
-                            {
-                                if (!sendMyOwnCacheToMe)
-                                {
-                                    if (cache.Peer.Id == toPeer.Id)
-                                    {
-                                        continue;
-                                    }
-                                }
-
-                                Connection.Server.Send(
-                                    cache.Data,
-                                    toPeer.EndPoint,
-                                    cache.DeliveryMode,
-                                    cache.SequenceChannel
-                                );
-                            }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Peer | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (
-                                fromPeer.CACHES_OVERWRITE.TryGetValue(
-                                    dataCache.Id,
-                                    out NetworkCache cache
-                                )
-                            )
-                            {
-                                if (!sendMyOwnCacheToMe)
-                                {
-                                    if (cache.Peer.Id == toPeer.Id)
-                                    {
-                                        return;
-                                    }
-                                }
-
-                                Connection.Server.Send(
-                                    cache.Data,
-                                    toPeer.EndPoint,
-                                    cache.DeliveryMode,
-                                    cache.SequenceChannel
-                                );
-                            }
-                        }
-                        else
-                        {
-                            NetworkLogger.__Log__(
-                                "Cache Error: Unsupported cache mode set.",
-                                NetworkLogger.LogType.Error
-                            );
+                                break;
                         }
                     }
                 }
@@ -1094,68 +836,57 @@ namespace Omni.Core
                     }
                     else
                     {
-                        if (
-                            dataCache.Mode == (CacheMode.Global | CacheMode.New)
-                            || dataCache.Mode
-                            == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
-                        )
+                        switch (dataCache.Mode)
                         {
-                            CACHES_APPEND_GLOBAL.RemoveAll(x =>
-                                x.Mode == dataCache.Mode && x.Id == dataCache.Id
-                            );
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Group | CacheMode.New)
-                            || dataCache.Mode
-                            == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                            case CacheMode.Global | CacheMode.New:
+                            case CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy:
+                                CACHES_APPEND_GLOBAL.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
+                                break;
+                            case CacheMode.Group | CacheMode.New:
+                            case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
                             {
-                                group.CACHES_APPEND.RemoveAll(x =>
-                                    x.Mode == dataCache.Mode && x.Id == dataCache.Id
-                                );
+                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                {
+                                    group.CACHES_APPEND.RemoveAll(x =>
+                                        x.Mode == dataCache.Mode && x.Id == dataCache.Id);
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+
+                                break;
                             }
-                            else
+                            case CacheMode.Global | CacheMode.Overwrite:
+                            case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                                CACHES_OVERWRITE_GLOBAL.Remove(dataCache.Id);
+                                break;
+                            case CacheMode.Group | CacheMode.Overwrite:
+                            case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
                             {
+                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                {
+                                    group.CACHES_OVERWRITE.Remove(dataCache.Id);
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+
+                                break;
+                            }
+                            default:
                                 NetworkLogger.__Log__(
-                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    "Delete Cache Error: Unsupported cache mode set.",
                                     NetworkLogger.LogType.Error
                                 );
-                            }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Global | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            CACHES_OVERWRITE_GLOBAL.Remove(dataCache.Id);
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
-                            {
-                                group.CACHES_OVERWRITE.Remove(dataCache.Id);
-                            }
-                            else
-                            {
-                                NetworkLogger.__Log__(
-                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                    NetworkLogger.LogType.Error
-                                );
-                            }
-                        }
-                        else
-                        {
-                            NetworkLogger.__Log__(
-                                "Delete Cache Error: Unsupported cache mode set.",
-                                NetworkLogger.LogType.Error
-                            );
+                                break;
                         }
                     }
                 }
@@ -1173,11 +904,7 @@ namespace Omni.Core
             /// <param name="dataCache">The data cache to be deleted.</param>
             /// <param name="peer">The network peer associated with the cache.</param>
             /// <param name="groupId">The identifier of the group to which the cache belongs (optional, default is 0).</param>
-            public static void DeleteCache(
-                DataCache dataCache,
-                NetworkPeer peer,
-                int groupId = 0
-            )
+            public static void DeleteCache(DataCache dataCache, NetworkPeer peer, int groupId = 0)
             {
                 if (dataCache.Mode != CacheMode.None || dataCache.Id != 0)
                 {
@@ -1192,85 +919,66 @@ namespace Omni.Core
                     }
                     else
                     {
-                        if (
-                            dataCache.Mode == (CacheMode.Global | CacheMode.New)
-                            || dataCache.Mode
-                            == (CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy)
-                        )
+                        switch (dataCache.Mode)
                         {
-                            CACHES_APPEND_GLOBAL.RemoveAll(x =>
-                                x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id
-                            );
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Group | CacheMode.New)
-                            || dataCache.Mode
-                            == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                            case CacheMode.Global | CacheMode.New:
+                            case CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy:
+                                CACHES_APPEND_GLOBAL.RemoveAll(x =>
+                                    x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id);
+                                break;
+                            case CacheMode.Group | CacheMode.New:
+                            case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
                             {
-                                group.CACHES_APPEND.RemoveAll(x =>
-                                    x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id
-                                );
+                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                {
+                                    group.CACHES_APPEND.RemoveAll(x =>
+                                        x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id);
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+
+                                break;
                             }
-                            else
+                            case CacheMode.Global | CacheMode.Overwrite:
+                            case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                                CACHES_OVERWRITE_GLOBAL.Remove(dataCache.Id);
+                                break;
+                            case CacheMode.Group | CacheMode.Overwrite:
+                            case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
                             {
+                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                {
+                                    group.CACHES_OVERWRITE.Remove(dataCache.Id);
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
+
+                                break;
+                            }
+                            case CacheMode.Peer | CacheMode.New:
+                            case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
+                                peer.CACHES_APPEND.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
+                                break;
+                            case CacheMode.Peer | CacheMode.Overwrite:
+                            case CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                                peer.CACHES_OVERWRITE.Remove(dataCache.Id);
+                                break;
+                            default:
                                 NetworkLogger.__Log__(
-                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                    "Delete Cache Error: Unsupported cache mode set.",
                                     NetworkLogger.LogType.Error
                                 );
-                            }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Global | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            CACHES_OVERWRITE_GLOBAL.Remove(dataCache.Id);
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
-                            {
-                                group.CACHES_OVERWRITE.Remove(dataCache.Id);
-                            }
-                            else
-                            {
-                                NetworkLogger.__Log__(
-                                    $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                    NetworkLogger.LogType.Error
-                                );
-                            }
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Peer | CacheMode.New)
-                            || dataCache.Mode == (CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy)
-                        )
-                        {
-                            peer.CACHES_APPEND.RemoveAll(x =>
-                                x.Mode == dataCache.Mode && x.Id == dataCache.Id
-                            );
-                        }
-                        else if (
-                            dataCache.Mode == (CacheMode.Peer | CacheMode.Overwrite)
-                            || dataCache.Mode
-                            == (CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy)
-                        )
-                        {
-                            peer.CACHES_OVERWRITE.Remove(dataCache.Id);
-                        }
-                        else
-                        {
-                            NetworkLogger.__Log__(
-                                "Delete Cache Error: Unsupported cache mode set.",
-                                NetworkLogger.LogType.Error
-                            );
+                                break;
                         }
                     }
                 }
@@ -1289,8 +997,7 @@ namespace Omni.Core
             public static void DestroyAllCaches(NetworkPeer peer)
             {
                 CACHES_APPEND_GLOBAL.RemoveAll(x => x.Peer.Id == peer.Id && x.AutoDestroyCache);
-                var caches = CACHES_OVERWRITE_GLOBAL
-                    .Values.Where(x => x.Peer.Id == peer.Id && x.AutoDestroyCache)
+                var caches = CACHES_OVERWRITE_GLOBAL.Values.Where(x => x.Peer.Id == peer.Id && x.AutoDestroyCache)
                     .ToList();
 
                 foreach (var cache in caches)
@@ -1314,11 +1021,11 @@ namespace Omni.Core
                 CACHES_OVERWRITE_GLOBAL.Clear();
             }
 
-            internal static void AddEventBehaviour(int identityId, IInvokeMessage behaviour)
+            internal static void AddEventBehaviour(int identityId, IRpcMessage behaviour)
             {
-                if (!GlobalEventBehaviours.TryAdd(identityId, behaviour))
+                if (!GlobalRpcHandlers.TryAdd(identityId, behaviour))
                 {
-                    GlobalEventBehaviours[identityId] = behaviour;
+                    GlobalRpcHandlers[identityId] = behaviour;
                 }
             }
         }

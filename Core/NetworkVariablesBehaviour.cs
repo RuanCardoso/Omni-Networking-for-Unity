@@ -42,7 +42,7 @@ namespace Omni.Core
 
     public class NetworkVariablesBehaviour : MonoBehaviour
     {
-        readonly Dictionary<string, IPropertyInfo> properties = new();
+        private readonly Dictionary<string, IPropertyInfo> properties = new();
 
         internal DataBuffer CreateHeader<T>(T @object, byte id)
         {
@@ -61,28 +61,21 @@ namespace Omni.Core
             return message;
         }
 
-        internal IPropertyInfo GetPropertyInfoWithCallerName<T>(
-            string callerName,
-            BindingFlags flags
-        )
+        internal IPropertyInfo GetPropertyInfoWithCallerName<T>(string callerName, BindingFlags flags)
         {
             if (!properties.TryGetValue(callerName, out IPropertyInfo memberInfo))
             {
                 // Reflection is slow, but cached for performance optimization!
                 // Delegates are used to avoid reflection overhead, it is much faster, like a direct call.
 
-                PropertyInfo propertyInfo =
-                    GetType().GetProperty(callerName, (System.Reflection.BindingFlags)flags)
-                    ?? throw new NullReferenceException(
-                        $"NetworkVariable: Property not found: {callerName}. Use the other overload of this function(ManualSync)."
-                    );
+                PropertyInfo propertyInfo = GetType().GetProperty(callerName, (System.Reflection.BindingFlags)flags) ??
+                                            throw new NullReferenceException(
+                                                $"NetworkVariable: Property not found: {callerName}. Use the other overload of this function(ManualSync).");
 
                 string name = propertyInfo.Name;
-                NetworkVariableAttribute attribute =
-                    propertyInfo.GetCustomAttribute<NetworkVariableAttribute>()
-                    ?? throw new NullReferenceException(
-                        $"NetworkVariable: NetworkVariableAttribute not found on property: {name}. Ensure it has 'NetworkVariable' attribute."
-                    );
+                NetworkVariableAttribute attribute = propertyInfo.GetCustomAttribute<NetworkVariableAttribute>() ??
+                                                     throw new NullReferenceException(
+                                                         $"NetworkVariable: NetworkVariableAttribute not found on property: {name}. Ensure it has 'NetworkVariable' attribute.");
 
                 MethodInfo getMethod = propertyInfo.GetMethod;
                 if (getMethod == null)
@@ -99,8 +92,8 @@ namespace Omni.Core
                 }
 
                 memberInfo = new PropertyInfo<T>(name, id);
-                ((IPropertyInfo<T>)memberInfo).Invoke =
-                    getMethod.CreateDelegate(typeof(Func<T>), this) as Func<T>; // hack: performance optimization!
+                // hack: performance optimization!
+                ((IPropertyInfo<T>)memberInfo).Invoke = getMethod.CreateDelegate(typeof(Func<T>), this) as Func<T>;
                 properties.Add(callerName, memberInfo);
                 return memberInfo;
             }
@@ -113,12 +106,8 @@ namespace Omni.Core
         // never override this method!
         [EditorBrowsable(EditorBrowsableState.Never)]
         [Obsolete("Don't override this method! The source generator will override it.")]
-        protected virtual void ___OnPropertyChanged___(
-            string propertyName,
-            byte propertyId,
-            NetworkPeer peer,
-            DataBuffer buffer
-        )
+        protected virtual void ___OnPropertyChanged___(string propertyName, byte propertyId, NetworkPeer peer,
+            DataBuffer buffer)
         {
             // The overriden method must call base(SourceGenerator).
             if (peer == null)
@@ -167,11 +156,7 @@ namespace Omni.Core
         /// </summary>
         /// <param name="id">The ID of the property that has changed.</param>
         /// <param name="peer">The network peer associated with the property change.</param>
-        protected virtual void OnServerPropertyChanged(
-            string propertyName,
-            int propertyId,
-            NetworkPeer peer
-        )
+        protected virtual void OnServerPropertyChanged(string propertyName, int propertyId, NetworkPeer peer)
         {
         }
 

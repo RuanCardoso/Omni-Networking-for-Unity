@@ -171,12 +171,8 @@ namespace Omni.Core
         /// <param name="compiler">The Compiler to be used by the database.</param>
         /// <param name="tableName">The name of the table to be used by the database.</param>
         /// <param name="timeout">The timeout value in seconds for the database queries. Default is 30 seconds.</param>
-        private async Task<DatabaseConnection> InitializeAsync(
-            DbConnection DbConnection,
-            Compiler compiler,
-            int timeout = 30,
-            CancellationToken token = default
-        )
+        private async Task<DatabaseConnection> InitializeAsync(DbConnection DbConnection, Compiler compiler,
+            int timeout = 30, CancellationToken token = default)
         {
             try
             {
@@ -225,12 +221,8 @@ namespace Omni.Core
         /// SQLite: Initialize(DatabaseType.SQLite, "Data Source=omni_server_db.sqlite3")
         /// MariaDb/MySQL: Initialize(DatabaseType.MariaDb, "Server=localhost;Database=omni_server_db;Uid=root;Pwd=******;")
         /// </remarks>
-        public void Initialize(
-            DatabaseType dbType,
-            string connectionString,
-            int timeout = 30,
-            bool useLegacyPagination = false
-        )
+        public void Initialize(DatabaseType dbType, string connectionString, int timeout = 30,
+            bool useLegacyPagination = false)
         {
             switch (dbType)
             {
@@ -288,13 +280,8 @@ namespace Omni.Core
         /// SQLite: await InitializeAsync("table_name", DatabaseType.SQLite, "Data Source=omni_server_db.sqlite3")
         /// MariaDb/MySQL: await InitializeAsync("table_name", DatabaseType.MariaDb, "Server=localhost;Database=omni_server_db;Uid=root;Pwd=*****;")
         /// </remarks>
-        public Task<DatabaseConnection> InitializeAsync(
-            DatabaseType dbType,
-            string connectionString,
-            int timeout = 30,
-            bool useLegacyPagination = false,
-            CancellationToken token = default
-        )
+        public Task<DatabaseConnection> InitializeAsync(DatabaseType dbType, string connectionString, int timeout = 30,
+            bool useLegacyPagination = false, CancellationToken token = default)
         {
             switch (dbType)
             {
@@ -371,11 +358,8 @@ namespace Omni.Core
         /// Example Usage:
         /// await InitializeAsync(sqliteConnection, timeout)
         /// </remarks>
-        public Task<DatabaseConnection> InitializeAsync(
-            SqliteConnection sqliteConnection,
-            int timeout = 30,
-            CancellationToken token = default
-        )
+        public Task<DatabaseConnection> InitializeAsync(SqliteConnection sqliteConnection, int timeout = 30,
+            CancellationToken token = default)
         {
             return InitializeAsync(
                 new SqliteConnection(sqliteConnection),
@@ -396,12 +380,8 @@ namespace Omni.Core
         /// Example Usage:
         /// Initialize(sqlCredential, connectionString, timeout)
         /// </remarks>
-        public void Initialize(
-            SqlCredential sqlCredential,
-            string connectionString,
-            int timeout = 30,
-            bool useLegacyPagination = false
-        )
+        public void Initialize(SqlCredential sqlCredential, string connectionString, int timeout = 30,
+            bool useLegacyPagination = false)
         {
             Initialize(
                 new SqlConnection(connectionString, sqlCredential),
@@ -422,13 +402,8 @@ namespace Omni.Core
         /// Example Usage:
         /// await InitializeAsync(sqlCredential, connectionString, timeout)
         /// </remarks>
-        public Task<DatabaseConnection> InitializeAsync(
-            SqlCredential sqlCredential,
-            string connectionString,
-            int timeout = 30,
-            bool useLegacyPagination = false,
-            CancellationToken token = default
-        )
+        public Task<DatabaseConnection> InitializeAsync(SqlCredential sqlCredential, string connectionString,
+            int timeout = 30, bool useLegacyPagination = false, CancellationToken token = default)
         {
             return InitializeAsync(
                 new SqlConnection(connectionString, sqlCredential),
@@ -449,12 +424,8 @@ namespace Omni.Core
         /// Example Usage:
         /// Initialize(oracleCredential, connectionString, timeout)
         /// </remarks>
-        public void Initialize(
-            OracleCredential oracleCredential,
-            string connectionString,
-            int timeout = 30,
-            bool useLegacyPagination = false
-        )
+        public void Initialize(OracleCredential oracleCredential, string connectionString, int timeout = 30,
+            bool useLegacyPagination = false)
         {
             Initialize(
                 new OracleConnection(connectionString, oracleCredential),
@@ -476,12 +447,8 @@ namespace Omni.Core
         /// Example Usage:
         /// await InitializeAsync(oracleCredential, connectionString, timeout)
         /// </remarks>
-        public Task<DatabaseConnection> InitializeAsync(
-            OracleCredential oracleCredential,
-            string connectionString,
-            int timeout = 30,
-            bool useLegacyPagination = false
-        )
+        public Task<DatabaseConnection> InitializeAsync(OracleCredential oracleCredential, string connectionString,
+            int timeout = 30, bool useLegacyPagination = false)
         {
             return InitializeAsync(
                 new OracleConnection(connectionString, oracleCredential),
@@ -502,12 +469,7 @@ namespace Omni.Core
         /// This method executes the provided SQL query using the initialized Database Management System.
         /// If a transaction is specified, the query is executed within that transaction context.
         /// </remarks>
-        public int Run(
-            string query,
-            object param = null,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public int Run(string query, object param = null, DbTransaction transaction = null, int? timeout = null)
         {
             ThrowErrorIfNotInitialized();
             return Factory.Statement(query, param, transaction, timeout);
@@ -525,13 +487,8 @@ namespace Omni.Core
         /// This method asynchronously executes the provided SQL query using the initialized Database Management System (DBMS).
         /// If a transaction is specified, the query is executed within that transaction context.
         /// </remarks>
-        public Task<int> RunAsync(
-            string query,
-            object param = null,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public Task<int> RunAsync(string query, object param = null, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken token = default)
         {
             ThrowErrorIfNotInitialized();
             return Factory.StatementAsync(query, param, transaction, timeout, token);

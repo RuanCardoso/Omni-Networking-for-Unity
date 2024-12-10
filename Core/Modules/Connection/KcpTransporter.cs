@@ -122,20 +122,9 @@ namespace Omni.Core.Modules.Connection
                 throw new InvalidOperationException("The Kcp Transporter has already been initialized.");
             }
 
-            KcpConfig kcpConf = new KcpConfig(
-                m_DualMode,
-                m_RecvBufferSize,
-                m_SendBufferSize,
-                MTU,
-                m_NoDelay,
-                m_Interval,
-                m_FastResend,
-                m_CongestionWindow,
-                m_SendWindowSize,
-                m_ReceiveWindowSize,
-                m_Timeout,
-                m_MaxRetransmit
-            );
+            KcpConfig kcpConf = new KcpConfig(m_DualMode, m_RecvBufferSize, m_SendBufferSize, MTU, m_NoDelay,
+                m_Interval, m_FastResend, m_CongestionWindow, m_SendWindowSize, m_ReceiveWindowSize, m_Timeout,
+                m_MaxRetransmit);
 
             if (isServer)
             {
@@ -152,29 +141,17 @@ namespace Omni.Core.Modules.Connection
                         }
                         else
                         {
-                            IManager.Internal_OnServerPeerConnected(
-                                conn.remoteEndPoint,
-                                new NativePeer(
-                                    () => conn.time,
-                                    () =>
-                                        throw new NotImplementedException(
-                                            "[KCP] Individual ping not implemented! Use SNTP clock."
-                                        )
-                                )
-                            );
+                            IManager.Internal_OnServerPeerConnected(conn.remoteEndPoint,
+                                new NativePeer(() => conn.time,
+                                    () => throw new NotImplementedException(
+                                        "[KCP] Individual ping not implemented! Use SNTP clock.")));
                         }
                     },
                     (connId, data, channel) =>
                     {
                         var conn = kcpServer.connections[connId];
-                        IManager.Internal_OnDataReceived(
-                            data,
-                            GetDeliveryMode(channel),
-                            conn.remoteEndPoint,
-                            0,
-                            isServer,
-                            out byte msgType
-                        );
+                        IManager.Internal_OnDataReceived(data, GetDeliveryMode(channel), conn.remoteEndPoint, 0,
+                            isServer, out byte msgType);
 
                         if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
                         {
@@ -193,10 +170,7 @@ namespace Omni.Core.Modules.Connection
                         }
                         else
                         {
-                            IManager.Internal_OnServerPeerDisconnected(
-                                conn.remoteEndPoint,
-                                "[Normally Disconnected]"
-                            );
+                            IManager.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, "[Normally Disconnected]");
                         }
                     },
                     (connId, error, reason) =>
@@ -218,22 +192,16 @@ namespace Omni.Core.Modules.Connection
                     () =>
                     {
                         kcpClientConnectTime = kcpClient.time;
-                        IManager.Internal_OnClientConnected(kcpClient.remoteEndPoint, new NativePeer(
-                            () => (kcpClient.time - kcpClientConnectTime) / 1000d,
-                            () => (int)Math.Round(m_PingAvg.Average * 1000d, 0)));
+                        IManager.Internal_OnClientConnected(kcpClient.remoteEndPoint,
+                            new NativePeer(() => (kcpClient.time - kcpClientConnectTime) / 1000d,
+                                () => (int)Math.Round(m_PingAvg.Average * 1000d, 0)));
 
                         SendPingRequest();
                     },
                     (data, channel) =>
                     {
-                        IManager.Internal_OnDataReceived(
-                            data,
-                            GetDeliveryMode(channel),
-                            kcpClient.remoteEndPoint,
-                            0,
-                            isServer,
-                            out byte msgType
-                        );
+                        IManager.Internal_OnDataReceived(data, GetDeliveryMode(channel), kcpClient.remoteEndPoint, 0,
+                            isServer, out byte msgType);
 
                         if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
                         {
@@ -242,15 +210,10 @@ namespace Omni.Core.Modules.Connection
                             m_PingAvg.Add(NetworkHelper.MinMax(halfRtt, PING_TIME_PRECISION));
                         }
                     },
-                    () =>
-                        IManager.Internal_OnClientDisconnected(
-                            kcpClient.remoteEndPoint,
-                            "Disconnected!"
-                        ),
+                    () => IManager.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, "Disconnected!"),
                     (error, reason) =>
                     {
                         IManager.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, reason);
-
                         NetworkLogger.__Log__(
                             $"[KCP] OnServerError({error}, {reason}",
                             NetworkLogger.LogType.Error
@@ -286,7 +249,7 @@ namespace Omni.Core.Modules.Connection
             ITransporter = this;
         }
 
-        // [DefaultExecutionOrder(-1100)] // before the world because has priority.
+        // before the world because has priority.
         private void Update()
         {
             if (isRunning)
@@ -373,12 +336,7 @@ namespace Omni.Core.Modules.Connection
         }
 
         // Span to array is very fast!
-        public void Send(
-            ReadOnlySpan<byte> data,
-            IPEndPoint target,
-            DeliveryMode deliveryMode,
-            byte channel
-        )
+        public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte channel)
         {
             ThrowAnErrorIfNotInitialized();
             if (isServer)
@@ -447,18 +405,21 @@ namespace Omni.Core.Modules.Connection
         public void CopyTo(ITransporter ITransporter)
         {
             KcpTransporter kcpTransporter = ITransporter as KcpTransporter;
-            kcpTransporter.m_DualMode = m_DualMode;
-            kcpTransporter.m_NoDelay = m_NoDelay;
-            kcpTransporter.m_Interval = m_Interval;
-            kcpTransporter.m_Timeout = m_Timeout;
-            kcpTransporter.m_RecvBufferSize = m_RecvBufferSize;
-            kcpTransporter.m_SendBufferSize = m_SendBufferSize;
-            kcpTransporter.m_FastResend = m_FastResend;
-            kcpTransporter.m_CongestionWindow = m_CongestionWindow;
-            kcpTransporter.m_ReceiveWindowSize = m_ReceiveWindowSize;
-            kcpTransporter.m_SendWindowSize = m_SendWindowSize;
-            kcpTransporter.m_MaxRetransmit = m_MaxRetransmit;
-            kcpTransporter.m_MaximizeSocketBuffers = m_MaximizeSocketBuffers;
+            if (kcpTransporter != null)
+            {
+                kcpTransporter.m_DualMode = m_DualMode;
+                kcpTransporter.m_NoDelay = m_NoDelay;
+                kcpTransporter.m_Interval = m_Interval;
+                kcpTransporter.m_Timeout = m_Timeout;
+                kcpTransporter.m_RecvBufferSize = m_RecvBufferSize;
+                kcpTransporter.m_SendBufferSize = m_SendBufferSize;
+                kcpTransporter.m_FastResend = m_FastResend;
+                kcpTransporter.m_CongestionWindow = m_CongestionWindow;
+                kcpTransporter.m_ReceiveWindowSize = m_ReceiveWindowSize;
+                kcpTransporter.m_SendWindowSize = m_SendWindowSize;
+                kcpTransporter.m_MaxRetransmit = m_MaxRetransmit;
+                kcpTransporter.m_MaximizeSocketBuffers = m_MaximizeSocketBuffers;
+            }
         }
     }
 }

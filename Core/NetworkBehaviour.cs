@@ -15,10 +15,17 @@ using UnityEngine.SceneManagement;
 
 namespace Omni.Core
 {
+    /// <summary>
+    /// Represents a behavior for network entities providing synchronization and network messaging capabilities.
+    /// </summary>
+    /// <remarks>
+    /// This class is part of the core networking module and extends functionalities required for network-aware behaviors.
+    /// It includes auto-synced network variables and supports client and server execution contexts.
+    /// </remarks>
     [DeclareFoldoutGroup("Network Variables", Expanded = true, Title = "Network Variables - (Auto Synced)")]
     [DeclareBoxGroup("Service Settings")]
     [StackTrace]
-    public class NetworkBehaviour : NetworkVariablesBehaviour, IInvokeMessage, ITickSystem, IEquatable<NetworkBehaviour>
+    public class NetworkBehaviour : NetworkVariablesBehaviour, IRpcMessage, ITickSystem, IEquatable<NetworkBehaviour>
     {
         // Hacky: DIRTY CODE!
         // This class utilizes unconventional methods to minimize boilerplate code, reflection, and source generation.
@@ -41,9 +48,9 @@ namespace Omni.Core
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
             /// <param name="propertyId">The ID of the property being synchronized.</param>
-            public void ManualSync<T>(T property, byte propertyId, NetworkVariableOptions options)
+            public void NetworkVariableSync<T>(T property, byte propertyId, NetworkVariableOptions options)
             {
-                ManualSync<T>(property, propertyId, options.DeliveryMode, options.SequenceChannel);
+                NetworkVariableSync<T>(property, propertyId, options.DeliveryMode, options.SequenceChannel);
             }
 
             /// <summary>
@@ -54,12 +61,8 @@ namespace Omni.Core
             /// <param name="propertyId">The ID of the property being synchronized.</param>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            public void ManualSync<T>(
-                T property,
-                byte propertyId,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
+            public void NetworkVariableSync<T>(T property, byte propertyId,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
                 Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
@@ -69,12 +72,9 @@ namespace Omni.Core
             /// Automatically sends a 'NetworkVariable' message to the server based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-            public void AutoSync<T>(
-                NetworkVariableOptions options,
-                [CallerMemberName] string ___ = ""
-            )
+            public void NetworkVariableSync<T>(NetworkVariableOptions options, [CallerMemberName] string ___ = "")
             {
-                AutoSync<T>(options.DeliveryMode, options.SequenceChannel, ___);
+                NetworkVariableSync<T>(options.DeliveryMode, options.SequenceChannel, ___);
             }
 
             /// <summary>
@@ -83,26 +83,17 @@ namespace Omni.Core
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            public void AutoSync<T>(
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            public void NetworkVariableSync<T>(DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
                 byte sequenceChannel = 0,
-                [CallerMemberName] string ___ = ""
-            )
+                [CallerMemberName] string ___ = "")
             {
-                IPropertyInfo property = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
-                    ___,
-                    m_NetworkBehaviour.m_BindingFlags
-                );
+                IPropertyInfo property =
+                    m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(___, m_NetworkBehaviour.m_BindingFlags);
 
                 IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
-
                 if (property != null)
                 {
-                    using DataBuffer message = m_NetworkBehaviour.CreateHeader(
-                        propertyGeneric.Invoke(),
-                        property.Id
-                    );
-
+                    using DataBuffer message = m_NetworkBehaviour.CreateHeader(propertyGeneric.Invoke(), property.Id);
                     Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
                 }
             }
@@ -125,21 +116,11 @@ namespace Omni.Core
             /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc(
-                byte msgId,
-                DataBuffer buffer = null,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                byte sequenceChannel = 0
-            )
+            public void Rpc(byte msgId, DataBuffer buffer = null,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
-                NetworkManager.ClientSide.Invoke(
-                    msgId,
-                    m_NetworkBehaviour.IdentityId,
-                    m_NetworkBehaviour.Id,
-                    buffer,
-                    deliveryMode,
-                    sequenceChannel
-                );
+                NetworkManager.ClientSide.Rpc(msgId, m_NetworkBehaviour.IdentityId, m_NetworkBehaviour.Id, buffer,
+                    deliveryMode, sequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -151,8 +132,7 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1>(byte msgId, T1 p1, ClientOptions options = default)
-                where T1 : unmanaged
+            public void Rpc<T1>(byte msgId, T1 p1, ClientOptions options = default) where T1 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 using var _ = NetworkManager.FastWrite(p1);
@@ -162,8 +142,7 @@ namespace Omni.Core
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2, ClientOptions options = default)
-                where T1 : unmanaged
-                where T2 : unmanaged
+                where T1 : unmanaged where T2 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
@@ -173,16 +152,8 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1, T2, T3>(
-                byte msgId,
-                T1 p1,
-                T2 p2,
-                T3 p3,
-                ClientOptions options = default
-            )
-                where T1 : unmanaged
-                where T2 : unmanaged
-                where T3 : unmanaged
+            public void Rpc<T1, T2, T3>(byte msgId, T1 p1, T2 p2, T3 p3, ClientOptions options = default)
+                where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
@@ -193,18 +164,8 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1, T2, T3, T4>(
-                byte msgId,
-                T1 p1,
-                T2 p2,
-                T3 p3,
-                T4 p4,
-                ClientOptions options = default
-            )
-                where T1 : unmanaged
-                where T2 : unmanaged
-                where T3 : unmanaged
-                where T4 : unmanaged
+            public void Rpc<T1, T2, T3, T4>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, ClientOptions options = default)
+                where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged where T4 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
@@ -216,16 +177,8 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1, T2, T3, T4, T5>(
-                byte msgId,
-                T1 p1,
-                T2 p2,
-                T3 p3,
-                T4 p4,
-                T5 p5,
-                ClientOptions options = default
-            )
-                where T1 : unmanaged
+            public void Rpc<T1, T2, T3, T4, T5>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5,
+                ClientOptions options = default) where T1 : unmanaged
                 where T2 : unmanaged
                 where T3 : unmanaged
                 where T4 : unmanaged
@@ -257,17 +210,10 @@ namespace Omni.Core
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
             /// <param name="propertyId">The ID of the property being synchronized.</param>
-            public void ManualSync<T>(T property, byte propertyId, NetworkVariableOptions options)
+            public void NetworkVariableSync<T>(T property, byte propertyId, NetworkVariableOptions options)
             {
-                ManualSync(
-                    property,
-                    propertyId,
-                    options.Target,
-                    options.DeliveryMode,
-                    options.GroupId,
-                    options.DataCache,
-                    options.SequenceChannel
-                );
+                NetworkVariableSync(property, propertyId, options.Target, options.DeliveryMode, options.GroupId,
+                    options.DataCache, options.SequenceChannel);
             }
 
             /// <summary>
@@ -281,46 +227,24 @@ namespace Omni.Core
             /// <param name="groupId">The group ID for the message. Default is 0.</param>
             /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            public void ManualSync<T>(
-                T property,
-                byte propertyId,
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0
-            )
+            public void NetworkVariableSync<T>(T property, byte propertyId, Target target = Target.Auto,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
                 using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
-                Rpc(
-                    NetworkConstants.NET_VAR_RPC_ID,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                Rpc(NetworkConstants.NET_VAR_RPC_ID, message, target, deliveryMode, groupId, dataCache,
+                    sequenceChannel);
             }
 
             /// <summary>
             /// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-            public void AutoSync<T>(
-                NetworkVariableOptions options,
-                [CallerMemberName] string ___ = ""
-            )
+            public void NetworkVariableSync<T>(NetworkVariableOptions options, [CallerMemberName] string ___ = "")
             {
-                AutoSync<T>(
-                    options.Target,
-                    options.DeliveryMode,
-                    options.GroupId,
-                    options.DataCache,
-                    options.SequenceChannel,
-                    ___
-                );
+                NetworkVariableSync<T>(options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
+                    options.SequenceChannel, ___);
             }
 
             /// <summary>
@@ -332,14 +256,9 @@ namespace Omni.Core
             /// <param name="groupId">The group ID for the message. Default is 0.</param>
             /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-            public void AutoSync<T>(
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0,
-                [CallerMemberName] string ___ = ""
-            )
+            public void NetworkVariableSync<T>(Target target = Target.Auto,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0, [CallerMemberName] string ___ = "")
             {
                 dataCache ??= DataCache.None;
                 IPropertyInfo propertyInfo = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
@@ -348,14 +267,10 @@ namespace Omni.Core
                 );
 
                 IPropertyInfo<T> propertyInfoGeneric = propertyInfo as IPropertyInfo<T>;
-
                 if (propertyInfo != null)
                 {
-                    using DataBuffer message = m_NetworkBehaviour.CreateHeader(
-                        propertyInfoGeneric.Invoke(),
-                        propertyInfo.Id
-                    );
-
+                    using DataBuffer message =
+                        m_NetworkBehaviour.CreateHeader(propertyInfoGeneric.Invoke(), propertyInfo.Id);
                     Rpc(
                         NetworkConstants.NET_VAR_RPC_ID,
                         message,
@@ -375,15 +290,8 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte msgId, ServerOptions options)
             {
-                Rpc(
-                    msgId,
-                    options.Buffer,
-                    options.Target,
-                    options.DeliveryMode,
-                    options.GroupId,
-                    options.DataCache,
-                    options.SequenceChannel
-                );
+                Rpc(msgId, options.Buffer, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
+                    options.SequenceChannel);
             }
 
             /// <summary>
@@ -409,30 +317,13 @@ namespace Omni.Core
             /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void RpcToPeer(
-                byte msgId,
-                NetworkPeer peer,
-                DataBuffer buffer = null,
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0
-            )
+            public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.Auto,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
-                NetworkManager.ServerSide.Invoke(
-                    msgId,
-                    peer,
-                    m_NetworkBehaviour.IdentityId,
-                    m_NetworkBehaviour.Id,
-                    buffer,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                NetworkManager.ServerSide.Rpc(msgId, peer, m_NetworkBehaviour.IdentityId, m_NetworkBehaviour.Id, buffer,
+                    target, deliveryMode, groupId, dataCache, sequenceChannel);
             }
 
             /// <summary>
@@ -446,15 +337,9 @@ namespace Omni.Core
             /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
             /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc(
-                byte msgId,
-                DataBuffer buffer = null,
-                Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-                int groupId = 0,
-                DataCache dataCache = default,
-                byte sequenceChannel = 0
-            )
+            public void Rpc(byte msgId, DataBuffer buffer = null, Target target = Target.Auto,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+                DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
                 RpcToPeer(msgId, m_NetworkBehaviour.Identity.Owner, buffer, target, deliveryMode, groupId, dataCache,
@@ -470,8 +355,7 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1>(byte msgId, T1 p1, ServerOptions options = default)
-                where T1 : unmanaged
+            public void Rpc<T1>(byte msgId, T1 p1, ServerOptions options = default) where T1 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 using var _ = NetworkManager.FastWrite(p1);
@@ -481,8 +365,7 @@ namespace Omni.Core
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2, ServerOptions options = default)
-                where T1 : unmanaged
-                where T2 : unmanaged
+                where T1 : unmanaged where T2 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
@@ -492,16 +375,8 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1, T2, T3>(
-                byte msgId,
-                T1 p1,
-                T2 p2,
-                T3 p3,
-                ServerOptions options = default
-            )
-                where T1 : unmanaged
-                where T2 : unmanaged
-                where T3 : unmanaged
+            public void Rpc<T1, T2, T3>(byte msgId, T1 p1, T2 p2, T3 p3, ServerOptions options = default)
+                where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
@@ -512,18 +387,8 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1, T2, T3, T4>(
-                byte msgId,
-                T1 p1,
-                T2 p2,
-                T3 p3,
-                T4 p4,
-                ServerOptions options = default
-            )
-                where T1 : unmanaged
-                where T2 : unmanaged
-                where T3 : unmanaged
-                where T4 : unmanaged
+            public void Rpc<T1, T2, T3, T4>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, ServerOptions options = default)
+                where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged where T4 : unmanaged
             {
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
                 NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
@@ -535,16 +400,8 @@ namespace Omni.Core
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc<T1, T2, T3, T4, T5>(
-                byte msgId,
-                T1 p1,
-                T2 p2,
-                T3 p3,
-                T4 p4,
-                T5 p5,
-                ServerOptions options = default
-            )
-                where T1 : unmanaged
+            public void Rpc<T1, T2, T3, T4, T5>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5,
+                ServerOptions options = default) where T1 : unmanaged
                 where T2 : unmanaged
                 where T3 : unmanaged
                 where T4 : unmanaged
@@ -567,11 +424,11 @@ namespace Omni.Core
         // Avoid refactoring as these techniques are crucial for optimizing execution speed.
         // Works with il2cpp.
 
-        private readonly InvokeBehaviour<DataBuffer, int, Null, Null, Null> cInvoker = new();
-        private readonly InvokeBehaviour<DataBuffer, NetworkPeer, int, Null, Null> sInvoker = new();
+        private readonly RpcHandler<DataBuffer, int, Null, Null, Null> clientRpcHandler = new();
+        private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> serverRpcHandler = new();
 
         [SerializeField] [Group("Service Settings")]
-        private string m_ServiceName;
+        private string m_ServiceName = "";
 
         [SerializeField] [Group("Service Settings")]
         private byte m_Id = 0;
@@ -605,15 +462,13 @@ namespace Omni.Core
         {
             get
             {
-                if (_identity == null)
-                {
-                    NetworkLogger.PrintHyperlink();
-                    throw new InvalidOperationException(
-                        "The 'NetworkIdentity' property has not been assigned yet. Make sure to set it before accessing it. If you are trying to access it during the object's initialization, ensure that the object has been fully initialized before accessing it."
-                    );
-                }
+                if (_identity != null)
+                    return _identity;
 
-                return _identity;
+                NetworkLogger.PrintHyperlink();
+                throw new InvalidOperationException(
+                    "The 'NetworkIdentity' property has not been assigned yet. Make sure to set it before accessing it. If you are trying to access it during the object's initialization, ensure that the object has been fully initialized before accessing it."
+                );
             }
             internal set => _identity = value;
         }
@@ -687,7 +542,7 @@ namespace Omni.Core
 
         private NetworkBehaviourClient _local;
 
-        // public api: allow send from other object
+        // public api: allow to send from other object
         /// <summary>
         /// Gets the <see cref="NetworkBehaviourClient"/> instance used to send messages from the client to the server.
         /// </summary>
@@ -705,15 +560,13 @@ namespace Omni.Core
         {
             get
             {
-                if (_local == null)
-                {
-                    NetworkLogger.PrintHyperlink();
-                    throw new Exception(
-                        "This property(Local) is intended for client-side use only. It appears to be accessed from the server side."
-                    );
-                }
+                if (_local != null)
+                    return _local;
 
-                return _local;
+                NetworkLogger.PrintHyperlink();
+                throw new Exception(
+                    "This property(Local) is intended for client-side use only. It appears to be accessed from the server side."
+                );
             }
             private set => _local = value;
         }
@@ -721,7 +574,7 @@ namespace Omni.Core
         private NetworkBehaviourServer _remote;
         private NetworkIdentity _identity;
 
-        // public api: allow send from other object
+        // public api: allow to send from other object
         /// <summary>
         /// Gets the <see cref="NetworkBehaviourServer"/> instance used to send messages from the server to the client.
         /// </summary>
@@ -739,15 +592,13 @@ namespace Omni.Core
         {
             get
             {
-                if (_remote == null)
-                {
-                    NetworkLogger.PrintHyperlink();
-                    throw new Exception(
-                        "This property(Remote) is intended for server-side use only. It appears to be accessed from the client side."
-                    );
-                }
+                if (_remote != null)
+                    return _remote;
 
-                return _remote;
+                NetworkLogger.PrintHyperlink();
+                throw new Exception(
+                    "This property(Remote) is intended for server-side use only. It appears to be accessed from the client side."
+                );
             }
             private set => _remote = value;
         }
@@ -836,17 +687,23 @@ namespace Omni.Core
         {
         }
 
+        /// <summary>
+        /// Registers the network behaviour within the network system, configuring
+        /// server or client-specific event handlers and services based on the
+        /// current network identity state. This method also integrates the network
+        /// behaviour with the tick system if the tick system module is enabled.
+        /// </summary>
         protected internal void Register()
         {
             CheckIfOverridden();
             if (Identity.IsServer)
             {
-                sInvoker.FindEvents<ServerAttribute>(this, m_BindingFlags);
+                serverRpcHandler.FindEvents<ServerAttribute>(this, m_BindingFlags);
                 Server = new NetworkBehaviourServer(this);
             }
             else
             {
-                cInvoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
+                clientRpcHandler.FindEvents<ClientAttribute>(this, m_BindingFlags);
                 Client = new NetworkBehaviourClient(this);
             }
 
@@ -873,31 +730,31 @@ namespace Omni.Core
             Type type = GetType();
             MethodInfo method = type.GetMethod(nameof(OnTick));
 
-            if (
-                method.DeclaringType.Name != nameof(NetworkBehaviour)
-                && !NetworkManager.TickSystemModuleEnabled
-            )
+            if (method.DeclaringType.Name != nameof(NetworkBehaviour) && !NetworkManager.TickSystemModuleEnabled)
             {
                 NetworkLogger.__Log__(
                     "Tick System Module must be enabled to use OnTick. You can enable it in the inspector.",
-                    logType: NetworkLogger.LogType.Error
-                );
+                    logType: NetworkLogger.LogType.Error);
             }
         }
 
+        /// <summary>
+        /// Unregisters the current network behaviour from associated events and systems.
+        /// This method ensures that the event behaviours and services linked to the network identity
+        /// are properly removed, preventing further invocation of network actions.
+        /// </summary>
         protected internal void Unregister()
         {
             var eventBehaviours = Identity.IsServer
-                ? NetworkManager.ServerSide.LocalEventBehaviours
-                : NetworkManager.ClientSide.LocalEventBehaviours;
+                ? NetworkManager.ServerSide.LocalRpcHandlers
+                : NetworkManager.ClientSide.LocalRpcHandlers;
 
             var key = (IdentityId, m_Id);
             if (!eventBehaviours.Remove(key))
             {
                 NetworkLogger.__Log__(
                     $"Unregister Error: EventBehaviour with ID '{m_Id}' and peer ID '{IdentityId}' does not exist. Please ensure the EventBehaviour is registered before attempting to unregister.",
-                    NetworkLogger.LogType.Error
-                );
+                    NetworkLogger.LogType.Error);
             }
 
             if (NetworkManager.TickSystemModuleEnabled)
@@ -913,8 +770,7 @@ namespace Omni.Core
             {
                 NetworkLogger.__Log__(
                     $"Unregister Error: ServiceLocator with name '{m_ServiceName}' does not exist. Please ensure the ServiceLocator is registered before attempting to unregister.",
-                    NetworkLogger.LogType.Error
-                );
+                    NetworkLogger.LogType.Error);
             }
 
             OnNetworkDestroy();
@@ -995,8 +851,8 @@ namespace Omni.Core
         private void AddEventBehaviour()
         {
             var eventBehaviours = Identity.IsServer
-                ? NetworkManager.ServerSide.LocalEventBehaviours
-                : NetworkManager.ClientSide.LocalEventBehaviours;
+                ? NetworkManager.ServerSide.LocalRpcHandlers
+                : NetworkManager.ClientSide.LocalRpcHandlers;
 
             var key = (IdentityId, m_Id);
             if (!eventBehaviours.TryAdd(key, this))
@@ -1009,7 +865,7 @@ namespace Omni.Core
         /// Rents a <see cref="DataBuffer"/> from the network manager's buffer pool.
         /// </summary>
         /// <remarks>
-        /// The rented buffer is a reusable instance aimed at reducing memory allocations. 
+        /// The rented buffer is a reusable instance aimed at reducing memory allocations.
         /// It must be disposed of properly or used within a <c>using</c> statement to ensure it is returned to the pool.
         /// </remarks>
         /// <returns>A rented <see cref="DataBuffer"/> instance from the pool.</returns>
@@ -1018,83 +874,72 @@ namespace Omni.Core
             return NetworkManager.Pool.Rent();
         }
 
-        private void TryClientLocate(byte msgId, DataBuffer buffer, int seqChannel)
+        private void TryCallClientRpc(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            if (cInvoker.Exists(msgId, out int argsCount))
+            if (clientRpcHandler.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        cInvoker.Invoke(msgId);
+                        clientRpcHandler.Rpc(msgId);
                         break;
                     case 1:
-                        cInvoker.Invoke(msgId, buffer);
+                        clientRpcHandler.Rpc(msgId, buffer);
                         break;
                     case 2:
-                        cInvoker.Invoke(msgId, buffer, seqChannel);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel);
                         break;
                     case 3:
-                        cInvoker.Invoke(msgId, buffer, seqChannel, default);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default);
                         break;
                     case 4:
-                        cInvoker.Invoke(msgId, buffer, seqChannel, default, default);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default);
                         break;
                     case 5:
-                        cInvoker.Invoke(msgId, buffer, seqChannel, default, default, default);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default, default);
                         break;
                 }
             }
         }
 
-        private void TryServerLocate(
-            byte msgId,
-            DataBuffer buffer,
-            NetworkPeer peer,
-            int seqChannel
-        )
+        private void TryCallServerRpc(byte msgId, DataBuffer buffer, NetworkPeer peer, int seqChannel)
         {
-            if (sInvoker.Exists(msgId, out int argsCount))
+            if (serverRpcHandler.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        sInvoker.Invoke(msgId);
+                        serverRpcHandler.Rpc(msgId);
                         break;
                     case 1:
-                        sInvoker.Invoke(msgId, buffer);
+                        serverRpcHandler.Rpc(msgId, buffer);
                         break;
                     case 2:
-                        sInvoker.Invoke(msgId, buffer, peer);
+                        serverRpcHandler.Rpc(msgId, buffer, peer);
                         break;
                     case 3:
-                        sInvoker.Invoke(msgId, buffer, peer, seqChannel);
+                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel);
                         break;
                     case 4:
-                        sInvoker.Invoke(msgId, buffer, peer, seqChannel, default);
+                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default);
                         break;
                     case 5:
-                        sInvoker.Invoke(msgId, buffer, peer, seqChannel, default, default);
+                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default, default);
                         break;
                 }
             }
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public void OnMessageInvoked(
-            byte msgId,
-            DataBuffer buffer,
-            NetworkPeer peer,
-            bool _,
-            int seqChannel
-        )
+        public void OnRpcInvoked(byte msgId, DataBuffer buffer, NetworkPeer peer, bool _, int seqChannel)
         {
             if (Identity.IsServer)
             {
-                TryServerLocate(msgId, buffer, peer, seqChannel);
+                TryCallServerRpc(msgId, buffer, peer, seqChannel);
             }
             else
             {
-                TryClientLocate(msgId, buffer, seqChannel);
+                TryCallClientRpc(msgId, buffer, seqChannel);
             }
         }
 
@@ -1103,35 +948,19 @@ namespace Omni.Core
             //if (_identity != null && _identity.IsRegistered)
             //	___NotifyEditorChange___(); // Overriden by the source generator.
 
-            if (m_Id < 0)
-            {
-                m_Id = 0;
-                NetworkHelper.EditorSaveObject(gameObject);
-            }
-            else if (m_Id > 255)
-            {
-                m_Id = 255;
-                NetworkHelper.EditorSaveObject(gameObject);
-            }
+            if (!string.IsNullOrEmpty(m_ServiceName))
+                return;
 
-            if (string.IsNullOrEmpty(m_ServiceName))
-            {
-                int uniqueId = 0;
-                string serviceName = GetType().Name;
-                NetworkBehaviour[] services =
-                    transform.root.GetComponentsInChildren<NetworkBehaviour>(true);
+            int uniqueId = 0;
+            string serviceName = GetType().Name;
+            NetworkBehaviour[] services =
+                transform.root.GetComponentsInChildren<NetworkBehaviour>(true);
 
-                if ((uniqueId = services.Count(x => x.m_ServiceName == serviceName)) >= 1)
-                {
-                    m_ServiceName = $"{serviceName}_{uniqueId}";
-                }
-                else
-                {
-                    m_ServiceName = serviceName;
-                }
+            m_ServiceName = (uniqueId = services.Count(x => x.m_ServiceName.StartsWith(serviceName))) >= 1
+                ? $"{serviceName}_{uniqueId}"
+                : serviceName;
 
-                NetworkHelper.EditorSaveObject(gameObject);
-            }
+            NetworkHelper.EditorSaveObject(gameObject);
         }
 
         protected virtual void Reset()

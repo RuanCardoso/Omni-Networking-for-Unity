@@ -17,17 +17,31 @@ namespace Omni.Core
     // Avoid refactoring as these techniques are crucial for optimizing execution speed.
     // Works with il2cpp.
 
+    /// <summary>
+    /// The ClientBehaviour class is a specialized component within the Omni.Core namespace.
+    /// It extends the NetworkEventBase class and implements the IInvokeMessage and IServiceBehaviour interfaces.
+    /// This class is marked with a DefaultExecutionOrder attribute to ensure specific execution timing during the Unity lifecycle.
+    /// </summary>
+    /// <remarks>
+    /// ClientBehaviour is fundamental for managing client-specific network events within a Unity environment.
+    /// The class is designed with performance in mind, employing techniques to reduce boilerplate code,
+    /// reflection, and source generation, which are critical for maintaining high execution speed.
+    /// It is intended to work with Unity's il2cpp scripting backend.
+    /// </remarks>
+    /// <seealso cref="NetworkEventBase" />
+    /// <seealso cref="IRpcMessage" />
+    /// <seealso cref="IServiceBehaviour" />
     [DefaultExecutionOrder(-3000)]
-    public class ClientBehaviour : NetworkEventBase, IInvokeMessage, IServiceBehaviour
+    public class ClientBehaviour : NetworkEventBase, IRpcMessage, IServiceBehaviour
     {
         /// <summary>
-        /// Gets the identifier of the associated <see cref="IInvokeMessage"/>.
+        /// Gets the identifier of the associated <see cref="IRpcMessage"/>.
         /// </summary>
-        /// <value>The identifier of the associated <see cref="IInvokeMessage"/> as an integer.</value>
+        /// <value>The identifier of the associated <see cref="IRpcMessage"/> as an integer.</value>
         public int IdentityId => m_Id;
 
         private NetworkEventClient local;
-        private readonly InvokeBehaviour<DataBuffer, int, Null, Null, Null> invoker = new();
+        private readonly RpcHandler<DataBuffer, int, Null, Null, Null> rpcHandler = new();
 
         // public api: allow send from other object
         /// <summary>
@@ -37,15 +51,13 @@ namespace Omni.Core
         {
             get
             {
-                if (local == null)
-                {
-                    NetworkLogger.PrintHyperlink();
-                    throw new NullReferenceException(
-                        "This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
-                    );
-                }
+                if (local != null)
+                    return local;
 
-                return local;
+                NetworkLogger.PrintHyperlink();
+                throw new NullReferenceException(
+                    "This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
+                );
             }
             internal set => local = value;
         }
@@ -141,7 +153,7 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            invoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
+            rpcHandler.FindEvents<ClientAttribute>(this, m_BindingFlags);
             NetworkManager.ClientSide.AddEventBehaviour(m_Id, this);
             Client = new NetworkEventClient(this, m_BindingFlags);
         }
@@ -205,32 +217,32 @@ namespace Omni.Core
         protected virtual void OnMessage(byte msgId, DataBuffer buffer, int seqChannel)
         {
             buffer.SeekToBegin();
-            TryInvoke(msgId, buffer, seqChannel); // Global Invoke
+            TryCallClientRpc(msgId, buffer, seqChannel); // Global Invoke
         }
 
-        private void TryInvoke(byte msgId, DataBuffer buffer, int seqChannel)
+        private void TryCallClientRpc(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            if (invoker.Exists(msgId, out int argsCount))
+            if (rpcHandler.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        invoker.Invoke(msgId);
+                        rpcHandler.Rpc(msgId);
                         break;
                     case 1:
-                        invoker.Invoke(msgId, buffer);
+                        rpcHandler.Rpc(msgId, buffer);
                         break;
                     case 2:
-                        invoker.Invoke(msgId, buffer, seqChannel);
+                        rpcHandler.Rpc(msgId, buffer, seqChannel);
                         break;
                     case 3:
-                        invoker.Invoke(msgId, buffer, seqChannel, default);
+                        rpcHandler.Rpc(msgId, buffer, seqChannel, default);
                         break;
                     case 4:
-                        invoker.Invoke(msgId, buffer, seqChannel, default, default);
+                        rpcHandler.Rpc(msgId, buffer, seqChannel, default, default);
                         break;
                     case 5:
-                        invoker.Invoke(msgId, buffer, seqChannel, default, default, default);
+                        rpcHandler.Rpc(msgId, buffer, seqChannel, default, default, default);
                         break;
                 }
             }
@@ -244,16 +256,10 @@ namespace Omni.Core
         {
         }
 
-        public void OnMessageInvoked(
-            byte methodId,
-            DataBuffer buffer,
-            NetworkPeer peer,
-            bool isServer,
-            int seqChannel
-        )
+        public void OnRpcInvoked(byte methodId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
         {
-            invoker.ThrowNoMethodFound(methodId);
-            TryInvoke(methodId, buffer, seqChannel);
+            rpcHandler.ThrowNoMethodFound(methodId);
+            TryCallClientRpc(methodId, buffer, seqChannel);
         }
     }
 }

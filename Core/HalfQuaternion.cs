@@ -121,26 +121,13 @@ namespace Omni.Core
 
         public override readonly string ToString()
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "({0:F2}, {1:F2}, {2:F2}, {3:F2})",
-                x,
-                y,
-                z,
-                w
-            );
+            return string.Format(CultureInfo.InvariantCulture, "({0:F2}, {1:F2}, {2:F2}, {3:F2})", x, y, z, w);
         }
 
         public readonly string ToString(string format)
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                $"({{0:{format}}}, {{1:{format}}}, {{2:{format}}}, {{3:{format}}})",
-                x,
-                y,
-                z,
-                w
-            );
+            return string.Format(CultureInfo.InvariantCulture,
+                $"({{0:{format}}}, {{1:{format}}}, {{2:{format}}}, {{3:{format}}})", x, y, z, w);
         }
     }
 }

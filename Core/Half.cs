@@ -12,13 +12,8 @@ namespace Omni.Core
     public sealed class HalfJsonConverter : JsonConverter<Half>
     {
         // Deserialization
-        public override Half ReadJson(
-            JsonReader reader,
-            Type objectType,
-            Half existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer
-        )
+        public override Half ReadJson(JsonReader reader, Type objectType, Half existingValue, bool hasExistingValue,
+            JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.Float || reader.TokenType == JsonToken.Integer)
             {
@@ -58,12 +53,7 @@ namespace Omni.Core
     ///     - IEEE 754 revision, link: http://grouper.ieee.org/groups/754/
     /// </remarks>
     [Serializable]
-    public struct Half
-        : IComparable,
-            IFormattable,
-            IConvertible,
-            IComparable<Half>,
-            IEquatable<Half>
+    public struct Half : IComparable, IFormattable, IConvertible, IComparable<Half>, IEquatable<Half>
     {
         /// <summary>
         /// Internal representation of the half-precision floating-point number.

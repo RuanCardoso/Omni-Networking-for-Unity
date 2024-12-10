@@ -18,16 +18,16 @@ namespace Omni.Core
     // Works with il2cpp.
 
     [DefaultExecutionOrder(-3000)]
-    public class DualBehaviour : NetworkEventBase, IInvokeMessage, IServiceBehaviour
+    public class DualBehaviour : NetworkEventBase, IRpcMessage, IServiceBehaviour
     {
         /// <summary>
-        /// Gets the identifier of the associated <see cref="IInvokeMessage"/>.
+        /// Gets the identifier of the associated <see cref="IRpcMessage"/>.
         /// </summary>
-        /// <value>The identifier of the associated <see cref="IInvokeMessage"/> as an integer.</value>
+        /// <value>The identifier of the associated <see cref="IRpcMessage"/> as an integer.</value>
         public int IdentityId => m_Id;
 
-        private readonly InvokeBehaviour<DataBuffer, int, Null, Null, Null> cInvoker = new();
-        private readonly InvokeBehaviour<DataBuffer, NetworkPeer, int, Null, Null> sInvoker = new();
+        private readonly RpcHandler<DataBuffer, int, Null, Null, Null> clientRpcHandler = new();
+        private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> serverRpcHandler = new();
 
         private NetworkEventClient local;
         private NetworkEventServer remote;
@@ -40,15 +40,13 @@ namespace Omni.Core
         {
             get
             {
-                if (local == null)
-                {
-                    NetworkLogger.PrintHyperlink();
-                    throw new NullReferenceException(
-                        "This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
-                    );
-                }
+                if (local != null)
+                    return local;
 
-                return local;
+                NetworkLogger.PrintHyperlink();
+                throw new NullReferenceException(
+                    "This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
+                );
             }
             internal set => local = value;
         }
@@ -61,15 +59,13 @@ namespace Omni.Core
         {
             get
             {
-                if (remote == null)
-                {
-                    NetworkLogger.PrintHyperlink();
-                    throw new NullReferenceException(
-                        "This property(Remote) is intended for server-side use only. It appears to be accessed from the client side. Or Call Awake() and Start() base first or initialize manually."
-                    );
-                }
+                if (remote != null)
+                    return remote;
 
-                return remote;
+                NetworkLogger.PrintHyperlink();
+                throw new NullReferenceException(
+                    "This property(Remote) is intended for server-side use only. It appears to be accessed from the client side. Or Call Awake() and Start() base first or initialize manually."
+                );
             }
             internal set => remote = value;
         }
@@ -180,8 +176,8 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            cInvoker.FindEvents<ClientAttribute>(this, m_BindingFlags);
-            sInvoker.FindEvents<ServerAttribute>(this, m_BindingFlags);
+            clientRpcHandler.FindEvents<ClientAttribute>(this, m_BindingFlags);
+            serverRpcHandler.FindEvents<ServerAttribute>(this, m_BindingFlags);
 
             NetworkManager.ClientSide.AddEventBehaviour(m_Id, this);
             NetworkManager.ServerSide.AddEventBehaviour(m_Id, this);
@@ -267,32 +263,32 @@ namespace Omni.Core
         protected virtual void OnClientMessage(byte msgId, DataBuffer buffer, int seqChannel)
         {
             buffer.SeekToBegin();
-            TryInvoke(msgId, buffer, seqChannel); // Global Invoke
+            TryCallClientRpc(msgId, buffer, seqChannel); // Global Invoke
         }
 
-        private void TryInvoke(byte msgId, DataBuffer buffer, int seqChannel)
+        private void TryCallClientRpc(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            if (cInvoker.Exists(msgId, out int argsCount))
+            if (clientRpcHandler.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        cInvoker.Invoke(msgId);
+                        clientRpcHandler.Rpc(msgId);
                         break;
                     case 1:
-                        cInvoker.Invoke(msgId, buffer);
+                        clientRpcHandler.Rpc(msgId, buffer);
                         break;
                     case 2:
-                        cInvoker.Invoke(msgId, buffer, seqChannel);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel);
                         break;
                     case 3:
-                        cInvoker.Invoke(msgId, buffer, seqChannel, default);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default);
                         break;
                     case 4:
-                        cInvoker.Invoke(msgId, buffer, seqChannel, default, default);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default);
                         break;
                     case 5:
-                        cInvoker.Invoke(msgId, buffer, seqChannel, default, default, default);
+                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default, default);
                         break;
                 }
             }
@@ -330,81 +326,61 @@ namespace Omni.Core
         {
         }
 
-        protected virtual void OnServerMessage(
-            byte msgId,
-            DataBuffer buffer,
-            NetworkPeer peer,
-            int seqChannel
-        )
+        protected virtual void OnServerMessage(byte msgId, DataBuffer buffer, NetworkPeer peer, int seqChannel)
         {
             buffer.SeekToBegin();
-            TryInvoke(msgId, buffer, peer, seqChannel); // Global Invoke
+            TryCallServerRpc(msgId, buffer, peer, seqChannel); // Global Invoke
         }
 
-        private void TryInvoke(byte msgId, DataBuffer buffer, NetworkPeer peer, int seqChannel)
+        private void TryCallServerRpc(byte msgId, DataBuffer buffer, NetworkPeer peer, int seqChannel)
         {
-            if (sInvoker.Exists(msgId, out int argsCount))
+            if (serverRpcHandler.Exists(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        sInvoker.Invoke(msgId);
+                        serverRpcHandler.Rpc(msgId);
                         break;
                     case 1:
-                        sInvoker.Invoke(msgId, buffer);
+                        serverRpcHandler.Rpc(msgId, buffer);
                         break;
                     case 2:
-                        sInvoker.Invoke(msgId, buffer, peer);
+                        serverRpcHandler.Rpc(msgId, buffer, peer);
                         break;
                     case 3:
-                        sInvoker.Invoke(msgId, buffer, peer, seqChannel);
+                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel);
                         break;
                     case 4:
-                        sInvoker.Invoke(msgId, buffer, peer, seqChannel, default);
+                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default);
                         break;
                     case 5:
-                        sInvoker.Invoke(msgId, buffer, peer, seqChannel, default, default);
+                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default, default);
                         break;
                 }
             }
         }
 
-        protected virtual void OnPlayerJoinedGroup(
-            DataBuffer buffer,
-            NetworkGroup group,
-            NetworkPeer peer
-        )
+        protected virtual void OnPlayerJoinedGroup(DataBuffer buffer, NetworkGroup group, NetworkPeer peer)
         {
         }
 
-        protected virtual void OnPlayerLeftGroup(
-            NetworkGroup group,
-            NetworkPeer peer,
-            Phase phase,
-            string reason
-        )
+        protected virtual void OnPlayerLeftGroup(NetworkGroup group, NetworkPeer peer, Phase phase, string reason)
         {
         }
 
         #endregion
 
-        public void OnMessageInvoked(
-            byte methodId,
-            DataBuffer buffer,
-            NetworkPeer peer,
-            bool isServer,
-            int seqChannel
-        )
+        public void OnRpcInvoked(byte methodId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
         {
             if (isServer)
             {
-                sInvoker.ThrowNoMethodFound(methodId);
-                TryInvoke(methodId, buffer, peer, seqChannel); // server Invoke
+                serverRpcHandler.ThrowNoMethodFound(methodId);
+                TryCallServerRpc(methodId, buffer, peer, seqChannel); // server Invoke
             }
             else
             {
-                cInvoker.ThrowNoMethodFound(methodId);
-                TryInvoke(methodId, buffer, seqChannel); // client Invoke
+                clientRpcHandler.ThrowNoMethodFound(methodId);
+                TryCallClientRpc(methodId, buffer, seqChannel); // client Invoke
             }
         }
     }

@@ -16,8 +16,8 @@ namespace Omni.Core
         internal Action OnSpawn;
         internal Action<DataBuffer> OnRequestAction;
 
-        private readonly Dictionary<string, object>
-            m_Services = new(); // (Service Name, Service Instance) exclusively to identity
+        // (Service Name, Service Instance) exclusively to identity
+        private readonly Dictionary<string, object> m_Services = new();
 
         [SerializeField] [ReadOnly] private int m_Id;
 
@@ -133,8 +133,7 @@ namespace Omni.Core
         /// <param name="serviceName">The name of the service to retrieve.</param>
         /// <param name="service">When this method returns, contains the service instance cast to the specified type if the service is found; otherwise, the default value for the type of the service parameter.</param>
         /// <returns>True if the service is found and successfully cast to the specified type; otherwise, false.</returns>
-        public bool TryGet<T>(string serviceName, out T service)
-            where T : class
+        public bool TryGet<T>(string serviceName, out T service) where T : class
         {
             service = default;
             if (m_Services.TryGetValue(serviceName, out object @obj))
@@ -159,8 +158,7 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown if the service is not found or cannot be cast to the specified type.
         /// </exception>
-        public T Get<T>()
-            where T : class
+        public T Get<T>() where T : class
         {
             return Get<T>(typeof(T).Name);
         }
@@ -171,8 +169,7 @@ namespace Omni.Core
         /// <typeparam name="T">The type of the service to retrieve.</typeparam>
         /// <param name="service">When this method returns, contains the service instance cast to the specified type if the service is found; otherwise, the default value for the type of the service parameter.</param>
         /// <returns>True if the service is found and successfully cast to the specified type; otherwise, false.</returns>
-        public bool TryGet<T>(out T service)
-            where T : class
+        public bool TryGet<T>(out T service) where T : class
         {
             service = default;
             string serviceName = typeof(T).Name;
@@ -370,44 +367,36 @@ namespace Omni.Core
             return m_Services.ContainsKey(serviceName);
         }
 
-        public void GetAsComponent<T>(out T service)
-            where T : class
+        public void GetAsComponent<T>(out T service) where T : class
         {
             GetAsComponent<T>(typeof(T).Name, out service);
         }
 
-        public void GetAsComponent<T>(string componentName, out T service)
-            where T : class
+        public void GetAsComponent<T>(string componentName, out T service) where T : class
         {
             service = Get<INetworkComponentService>(componentName).Component as T;
         }
 
-        public T GetAsComponent<T>()
-            where T : class
+        public T GetAsComponent<T>() where T : class
         {
             return GetAsComponent<T>(typeof(T).Name);
         }
 
-        public T GetAsComponent<T>(string componentName)
-            where T : class
+        public T GetAsComponent<T>(string componentName) where T : class
         {
             return Get<INetworkComponentService>(componentName).Component as T;
         }
 
-        public bool TryGetAsComponent<T>(out T service)
-            where T : class
+        public bool TryGetAsComponent<T>(out T service) where T : class
         {
             return TryGetAsComponent<T>(typeof(T).Name, out service);
         }
 
-        public bool TryGetAsComponent<T>(string componentName, out T service)
-            where T : class
+        public bool TryGetAsComponent<T>(string componentName, out T service) where T : class
         {
             service = null;
-            bool success =
-                TryGet<INetworkComponentService>(componentName, out var componentService)
-                && componentService.Component is T;
-
+            bool success = TryGet<INetworkComponentService>(componentName, out var componentService) &&
+                           componentService.Component is T;
             if (success)
             {
                 service = componentService.Component as T;
@@ -434,11 +423,7 @@ namespace Omni.Core
         public bool TryGetAsGameObject(string gameObjectName, out GameObject service)
         {
             service = null;
-            bool success = TryGet<INetworkComponentService>(
-                gameObjectName,
-                out var componentService
-            );
-
+            bool success = TryGet<INetworkComponentService>(gameObjectName, out var componentService);
             if (success)
             {
                 service = componentService.GameObject;
@@ -453,26 +438,16 @@ namespace Omni.Core
         /// <returns>The instantiated network identity.</returns>
         public void SpawnOnClient(ServerOptions options)
         {
-            SpawnOnClient(
-                options.Target,
-                options.DeliveryMode,
-                options.GroupId,
-                options.DataCache,
-                options.SequenceChannel
-            );
+            SpawnOnClient(options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
+                options.SequenceChannel);
         }
 
         /// <summary>
         /// Automatic instantiates a network identity on the client.
         /// </summary>
         /// <returns>The instantiated network identity.</returns>
-        public void SpawnOnClient(
-            Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            DataCache dataCache = default,
-            byte sequenceChannel = 0
-        )
+        public void SpawnOnClient(Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0, DataCache dataCache = default, byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
             if (!IsRegistered)
@@ -490,16 +465,8 @@ namespace Omni.Core
             using var message = NetworkManager.Pool.Rent();
             message.WriteString(_prefabName);
             message.WriteIdentity(this);
-            NetworkManager.ServerSide.SendMessage(
-                MessageType.Spawn,
-                Owner,
-                message,
-                target,
-                deliveryMode,
-                groupId,
-                dataCache,
-                sequenceChannel
-            );
+            NetworkManager.ServerSide.SendMessage(MessageType.Spawn, Owner, message, target, deliveryMode, groupId,
+                dataCache, sequenceChannel);
         }
 
         /// <summary>
@@ -508,23 +475,15 @@ namespace Omni.Core
         /// <returns>The instantiated network identity.</returns>
         public void Destroy(ServerOptions options)
         {
-            Destroy(
-                options.Target,
-                options.DeliveryMode,
-                options.GroupId,
-                options.DataCache,
-                options.SequenceChannel
-            );
+            Destroy(options.Target, options.DeliveryMode, options.GroupId, options.DataCache, options.SequenceChannel);
         }
 
         /// <summary>
         /// Automatic destroys a network identity on the client and server for a specific peer.
         /// </summary>
         /// <returns>The instantiated network identity.</returns>
-        public void DestroyByPeer(NetworkPeer peer,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            DataCache dataCache = default,
-            byte sequenceChannel = 0)
+        public void DestroyByPeer(NetworkPeer peer, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            DataCache dataCache = default, byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
             if (!IsRegistered)
@@ -541,16 +500,8 @@ namespace Omni.Core
 
             using var message = NetworkManager.Pool.Rent();
             message.Write(m_Id);
-            NetworkManager.ServerSide.SendMessage(
-                MessageType.Destroy,
-                peer,
-                message,
-                Target.SelfOnly,
-                deliveryMode,
-                0,
-                dataCache,
-                sequenceChannel
-            );
+            NetworkManager.ServerSide.SendMessage(MessageType.Destroy, peer, message, Target.SelfOnly, deliveryMode, 0,
+                dataCache, sequenceChannel);
 
             NetworkHelper.Destroy(m_Id, IsServer);
         }
@@ -559,13 +510,8 @@ namespace Omni.Core
         /// Automatic destroys a network identity on the client and server.
         /// </summary>
         /// <returns>The instantiated network identity.</returns>
-        public void Destroy(
-            Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            DataCache dataCache = default,
-            byte sequenceChannel = 0
-        )
+        public void Destroy(Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            int groupId = 0, DataCache dataCache = default, byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
             if (!IsRegistered)
@@ -582,16 +528,8 @@ namespace Omni.Core
 
             using var message = NetworkManager.Pool.Rent();
             message.Write(m_Id);
-            NetworkManager.ServerSide.SendMessage(
-                MessageType.Destroy,
-                Owner,
-                message,
-                target,
-                deliveryMode,
-                groupId,
-                dataCache,
-                sequenceChannel
-            );
+            NetworkManager.ServerSide.SendMessage(MessageType.Destroy, Owner, message, target, deliveryMode, groupId,
+                dataCache, sequenceChannel);
 
             NetworkHelper.Destroy(m_Id, IsServer);
         }
@@ -621,14 +559,9 @@ namespace Omni.Core
         /// Sets the owner of the network identity to the specified peer.
         /// </summary>
         /// <param name="peer">The new owner of the network identity.</param>
-        public void SetOwner(
-            NetworkPeer peer,
-            Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            DataCache dataCache = default,
-            byte sequenceChannel = 0
-        )
+        public void SetOwner(NetworkPeer peer, Target target = Target.Auto,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
+            byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
             if (IsServer)
@@ -638,16 +571,8 @@ namespace Omni.Core
                 using var message = NetworkManager.Pool.Rent();
                 message.Write(m_Id);
                 message.Write(peer.Id);
-                NetworkManager.ServerSide.SendMessage(
-                    MessageType.SetOwner,
-                    Owner,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                NetworkManager.ServerSide.SendMessage(MessageType.SetOwner, Owner, message, target, deliveryMode,
+                    groupId, dataCache, sequenceChannel);
             }
             else
             {

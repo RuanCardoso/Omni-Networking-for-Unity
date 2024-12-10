@@ -22,10 +22,15 @@ namespace Omni.Core.Cryptography
         // The code implements RSA cryptography in C#. It differentiates key sizes (1024 bits for UNITY_EDITOR and 2048 bits for other environments) likely due to a consideration of security and performance.
         // Larger keys offer more security but require more computational resources. Thus, a smaller key may be preferred during development (UNITY_EDITOR) to improve performance, while a larger key is used in production environments to ensure adequate security.
         // This differentiation enables a balance between security and performance, adapting to the execution environment.
-#if UNITY_EDITOR
+#if !UNITY_EDITOR
         private const int keySize = 1024;
 #else
+#if OMNI_DEBUG
+        private const int keySize = 1024;
+#else
+        // 2048 bits is the minimum recommended key size for production environments.
         private const int keySize = 2048;
+#endif
 #endif
 
         public static void GetRsaKeys(out string privateKey, out string publicKey)

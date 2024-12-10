@@ -15,88 +15,88 @@ using UnityEngine;
 namespace Omni.Core
 {
     /// <summary>
-    /// Defines the levels of Brotli compression.
+    /// Represents the various levels of Brotli compression that can be applied.
     /// </summary>
     public enum BrotliCompressionLevel
     {
         /// <summary>
-        /// Ultra-fast compression level. Optimized for speed over compression ratio.
+        /// Ultra-fast compression level. Prioritizes speed over compression efficiency, achieving minimal compression.
         /// </summary>
         UltraFast = 1,
 
         /// <summary>
-        /// Very fast compression level. Prioritizes speed while providing basic compression.
+        /// Very fast compression level. Offers a good balance between speed and compression efficiency.
         /// </summary>
         VeryFast = 2,
 
         /// <summary>
-        /// Fast compression level. A balance between speed and compression ratio.
+        /// Fast compression level. Offers a balance between speed and compression ratio, favoring quick execution.
         /// </summary>
         Fast = 3,
 
         /// <summary>
-        /// Moderately fast compression level. Leans slightly towards compression over speed.
+        /// Moderately fast compression level. Provides a balance between speed and compression efficiency.
         /// </summary>
         ModeratelyFast = 4,
 
         /// <summary>
-        /// Balanced compression level. Equal focus on speed and compression ratio.
+        /// Balanced compression level. Offers a compromise between compression ratio and speed.
         /// </summary>
         Balanced = 5,
 
         /// <summary>
-        /// Moderately slow compression level. Focuses more on compression than speed.
+        /// Moderately slow compression level. Provides a balanced trade-off between speed and compression ratio, leaning towards better compression.
         /// </summary>
         ModeratelySlow = 6,
 
         /// <summary>
-        /// Slow compression level. Optimized for a higher compression ratio at the cost of speed.
+        /// Slow compression level. Achieves a balance favoring compression ratio over speed.
         /// </summary>
         Slow = 7,
 
         /// <summary>
-        /// Very slow compression level. Provides a high compression ratio with slower performance.
+        /// Very slow compression level. Prioritizes compression ratio significantly over speed.
         /// </summary>
         VerySlow = 8,
 
         /// <summary>
-        /// Ultra-slow compression level. Maximizes compression at the expense of significant performance.
+        /// Ultra-slow compression level. Achieves maximum compression ratio at the cost of speed.
         /// </summary>
         UltraSlow = 9,
 
         /// <summary>
-        /// Maximum compression level. Achieves the highest compression ratio available.
+        /// Maximum compression level available. Prioritizes highest compression ratio over speed.
         /// </summary>
         MaxCompression = 10,
 
         /// <summary>
-        /// Extreme compression level. Designed for cases requiring the utmost compression, regardless of performance.
+        /// Extreme compression level. Provides the highest compression ratio at the cost of speed.
         /// </summary>
         ExtremeCompression = 11
     }
 
     // Global
+    /// <summary>
+    /// Provides extension methods for performing common operations on <see cref="DataBuffer"/> objects.
+    /// </summary>
     public static partial class BufferWriterExtensions
     {
         /// <summary>
-        /// Compresses the data in the provided buffer using the Brotli compression algorithm 
+        /// Compresses the data in the provided buffer using the Brotli compression algorithm
         /// and returns a new buffer containing the compressed data.
         /// </summary>
         /// <param name="data">The buffer containing the data to be compressed.</param>
         /// <param name="level">The Brotli compression level, ranging from UltraFast to ExtremeCompression. Default is UltraFast.</param>
         /// <param name="window">The Brotli sliding window size, ranging from 10 to 24. Default is 22.</param>
         /// <returns>
-        /// A new <see cref="DataBuffer"/> containing the compressed data. 
+        /// A new <see cref="DataBuffer"/> containing the compressed data.
         /// The caller is responsible for disposing of the returned buffer or managing its lifecycle appropriately.
         /// </returns>
         /// <exception cref="Exception">
         /// Thrown when an error occurs during compression, such as insufficient buffer space or invalid settings.
         /// </exception>
-        public static DataBuffer CompressWithBrotliToNewBuffer(
-            this DataBuffer data,
-            BrotliCompressionLevel level = BrotliCompressionLevel.UltraFast,
-            int window = 22
-        )
+        public static DataBuffer CompressWithBrotliToNewBuffer(this DataBuffer data,
+            BrotliCompressionLevel level = BrotliCompressionLevel.UltraFast, int window = 22)
         {
             try
             {
@@ -137,11 +137,8 @@ namespace Omni.Core
         /// <exception cref="Exception">
         /// Thrown when an error occurs during compression, such as insufficient buffer space or invalid settings.
         /// </exception>
-        public static void CompressWithBrotliInPlace(
-            this DataBuffer data,
-            BrotliCompressionLevel level = BrotliCompressionLevel.UltraFast,
-            int window = 22
-        )
+        public static void CompressWithBrotliInPlace(this DataBuffer data,
+            BrotliCompressionLevel level = BrotliCompressionLevel.UltraFast, int window = 22)
         {
             using var compressedBuffer = CompressWithBrotliToNewBuffer(data, level, window);
             data.Reset();
@@ -215,14 +212,9 @@ namespace Omni.Core
 
             buffer.SeekToEnd();
             byte[] data = buffer.ToArray();
-            byte[] encryptedData = AesCryptography.Encrypt(
-                data,
-                0,
-                data.Length,
-                peer._aesKey,
-                out byte[] Iv
-            );
+            byte[] encryptedData = AesCryptography.Encrypt(data, 0, data.Length, peer._aesKey, out byte[] Iv);
 
+            // Encrypt
             var encryptedBuffer = NetworkManager.Pool.Rent();
             encryptedBuffer.WriteAsBinary(Iv);
             encryptedBuffer.WriteAsBinary(encryptedData);
@@ -269,14 +261,9 @@ namespace Omni.Core
 
             byte[] iv = buffer.ReadAsBinary<byte[]>();
             byte[] encryptedData = buffer.ReadAsBinary<byte[]>();
-            byte[] decryptedData = AesCryptography.Decrypt(
-                encryptedData,
-                0,
-                encryptedData.Length,
-                peer._aesKey,
-                iv
-            );
+            byte[] decryptedData = AesCryptography.Decrypt(encryptedData, 0, encryptedData.Length, peer._aesKey, iv);
 
+            // Decrypt
             var decryptedBuffer = NetworkManager.Pool.Rent();
             BuffersExtensions.Write(decryptedBuffer, decryptedData);
             decryptedBuffer.SeekToBegin();
@@ -345,8 +332,7 @@ namespace Omni.Core
         /// and populates the instance.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T Deserialize<T>(this DataBuffer reader)
-            where T : IMessage, new()
+        public static T Deserialize<T>(this DataBuffer reader) where T : IMessage, new()
         {
             T message = new();
             message.Deserialize(reader);
@@ -373,13 +359,20 @@ namespace Omni.Core
         public static T Deserialize<T>(this DataBuffer reader, NetworkPeer peer, bool isServer)
             where T : IMessageWithPeer, new()
         {
-            T message = new() { SharedPeer = peer, IsServer = isServer };
+            T message = new()
+            {
+                SharedPeer = peer, IsServer = isServer
+            };
+
             message.Deserialize(reader);
             return message;
         }
     }
 
     // Writers
+    /// <summary>
+    /// Provides extension methods for writing various data types to a <see cref="DataBuffer"/>.
+    /// </summary>
     public static partial class BufferWriterExtensions
     {
         /// <summary>
@@ -393,12 +386,11 @@ namespace Omni.Core
         /// <remarks>
         /// By default, reference loops are ignored, and a custom converter for `Half` types is included.
         /// </remarks>
-        public static JsonSerializerSettings DefaultJsonSettings { get; set; } =
-            new JsonSerializerSettings()
-            {
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                Converters = { new HalfJsonConverter() },
-            };
+        public static JsonSerializerSettings DefaultJsonSettings { get; set; } = new JsonSerializerSettings()
+        {
+            ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+            Converters = { new HalfJsonConverter() },
+        };
 
         /// <summary>
         /// Specifies the default settings for serializing and deserializing objects using MemoryPack.
@@ -439,8 +431,7 @@ namespace Omni.Core
         /// Writes a structure of type T into a span of bytes.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static unsafe void Internal_UnsafeWrite<T>(DataBuffer buffer, in T value)
-            where T : unmanaged
+        internal static unsafe void Internal_UnsafeWrite<T>(DataBuffer buffer, in T value) where T : unmanaged
         {
             int size_t = sizeof(T);
             Span<byte> destination = buffer.Internal_GetSpan(size_t);
@@ -449,8 +440,7 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new InvalidOperationException(
-                    "Operation not supported: The type parameter T is a reference type or contains references, which violates the constraints for this operation."
-                );
+                    "Operation not supported: The type parameter T is a reference type or contains references, which violates the constraints for this operation.");
             }
 
             if (size_t > (uint)destination.Length)
@@ -498,6 +488,12 @@ namespace Omni.Core
         }
 
         // Internal use for bandwidth optimization
+        /// <summary>
+        /// Writes an integer value to the specified <see cref="DataBuffer"/> instance, utilizing
+        /// bandwidth optimization techniques if enabled.
+        /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> into which the value will be written.</param>
+        /// <param name="value">The integer value to be written to the buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static void Internal_Write(this DataBuffer buffer, int value)
         {
@@ -527,11 +523,7 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses Newtonsoft.Json for serialization by default.
         /// </remarks>
-        public static string WriteAsJson<T>(
-            this DataBuffer buffer,
-            T value,
-            JsonSerializerSettings settings = null
-        )
+        public static string WriteAsJson<T>(this DataBuffer buffer, T value, JsonSerializerSettings settings = null)
         {
             settings ??= DefaultJsonSettings;
             string objectAsJson = JsonConvert.SerializeObject(value, settings);
@@ -552,11 +544,8 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses MemoryPack for serialization by default.
         /// </remarks>
-        public static void WriteAsBinary<T>(
-            this DataBuffer buffer,
-            T value,
-            MemoryPackSerializerOptions settings = null
-        )
+        public static void WriteAsBinary<T>(this DataBuffer buffer, T value,
+            MemoryPackSerializerOptions settings = null)
         {
             settings ??= DefaultMemoryPackSettings;
             ReadOnlySpan<byte> data = MemoryPackSerializer.Serialize(value, settings);
@@ -580,11 +569,8 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses MemoryPack for serialization by default.
         /// </remarks>
-        public static async ValueTask WriteAsBinaryAsync<T>(
-            this DataBuffer buffer,
-            T value,
-            MemoryPackSerializerOptions settings = null
-        )
+        public static async ValueTask WriteAsBinaryAsync<T>(this DataBuffer buffer, T value,
+            MemoryPackSerializerOptions settings = null)
         {
             settings ??= DefaultMemoryPackSettings;
             using MemoryStream stream = new();
@@ -657,8 +643,7 @@ namespace Omni.Core
         /// <param name="buffer">The <see cref="DataBuffer"/> where the array will be written.</param>
         /// <param name="array">The array of primitive values to write to the buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe void Write<T>(this DataBuffer buffer, T[] array)
-            where T : unmanaged
+        public static unsafe void Write<T>(this DataBuffer buffer, T[] array) where T : unmanaged
         {
             int size_t = sizeof(T) * array.Length;
             Write7BitEncodedInt(buffer, size_t);
@@ -676,11 +661,7 @@ namespace Omni.Core
         /// The <see cref="Encoding"/> to use for converting the string to bytes. 
         /// If not specified, the default encoding (<see cref="DefaultEncoding"/>) is used.
         /// </param>
-        public static void WriteString(
-            this DataBuffer buffer,
-            ReadOnlySpan<char> input,
-            Encoding encoding = null
-        )
+        public static void WriteString(this DataBuffer buffer, ReadOnlySpan<char> input, Encoding encoding = null)
         {
             encoding ??= DefaultEncoding;
             // Write a header with the length of the string.
@@ -700,8 +681,7 @@ namespace Omni.Core
         /// <param name="buffer">The <see cref="DataBuffer"/> where the value will be written.</param>
         /// <param name="value">The primitive value to write to the buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Write<T>(this DataBuffer buffer, in T value)
-            where T : unmanaged
+        public static void Write<T>(this DataBuffer buffer, in T value) where T : unmanaged
         {
             Internal_UnsafeWrite(buffer, in value);
         }
@@ -838,13 +818,14 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Writes two boolean values to the underlying buffer, packed into a single byte.
+        /// Writes two boolean values to the buffer, packing them into a single byte.
         /// </summary>
-        /// <param name="v1">The first boolean value.</param>
-        /// <param name="v2">The second boolean value.</param>
+        /// <param name="buffer">The buffer where the packed boolean values will be written.</param>
+        /// <param name="v1">The first boolean value to pack.</param>
+        /// <param name="v2">The second boolean value to pack.</param>
         /// <remarks>
-        /// The two boolean values are packed into the least significant bits of a single byte,
-        /// with the first value in the least significant bit and the second value in the next bit.
+        /// The boolean values are packed into the least significant bits of the byte,
+        /// with the first boolean occupying the least significant bit and the second boolean occupying the next bit.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void WritePacked(this DataBuffer buffer, bool v1, bool v2) =>
@@ -853,6 +834,7 @@ namespace Omni.Core
         /// <summary>
         /// Writes three boolean values to the underlying buffer, packed into a single byte.
         /// </summary>
+        /// <param name="buffer">The target buffer where the packed boolean values will be written.</param>
         /// <param name="v1">The first boolean value.</param>
         /// <param name="v2">The second boolean value.</param>
         /// <param name="v3">The third boolean value.</param>
@@ -865,14 +847,15 @@ namespace Omni.Core
             buffer.Write((byte)(*(byte*)&v1 | *(byte*)&v2 << 1 | *(byte*)&v3 << 2));
 
         /// <summary>
-        /// Writes four boolean values to the underlying buffer, packed into a single byte.
+        /// Writes four boolean values to the buffer, efficiently packed into one byte.
         /// </summary>
-        /// <param name="v1">The first boolean value.</param>
-        /// <param name="v2">The second boolean value.</param>
-        /// <param name="v3">The third boolean value.</param>
-        /// <param name="v4">The fourth boolean value.</param>
+        /// <param name="buffer">The DataBuffer to which the values will be written.</param>
+        /// <param name="v1">The first boolean value to be packed.</param>
+        /// <param name="v2">The second boolean value to be packed.</param>
+        /// <param name="v3">The third boolean value to be packed.</param>
+        /// <param name="v4">The fourth boolean value to be packed.</param>
         /// <remarks>
-        /// The four boolean values are packed into the four least significant bits of a single byte.
+        /// The boolean values are compacted into the least significant bits of a byte, facilitating memory-efficient storage.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void WritePacked(this DataBuffer buffer, bool v1, bool v2, bool v3, bool v4) =>
@@ -881,6 +864,7 @@ namespace Omni.Core
         /// <summary>
         /// Writes five boolean values to the underlying buffer, packed into a single byte.
         /// </summary>
+        /// <param name="buffer">The buffer to write the packed boolean values into.</param>
         /// <param name="v1">The first boolean value.</param>
         /// <param name="v2">The second boolean value.</param>
         /// <param name="v3">The third boolean value.</param>
@@ -897,6 +881,7 @@ namespace Omni.Core
         /// <summary>
         /// Writes six boolean values to the underlying buffer, packed into a single byte.
         /// </summary>
+        /// <param name="buffer">The buffer to which the boolean values will be written.</param>
         /// <param name="v1">The first boolean value.</param>
         /// <param name="v2">The second boolean value.</param>
         /// <param name="v3">The third boolean value.</param>
@@ -915,6 +900,7 @@ namespace Omni.Core
         /// <summary>
         /// Writes seven boolean values to the underlying buffer, packed into a single byte.
         /// </summary>
+        /// <param name="buffer">The buffer to which the packed boolean values will be written.</param>
         /// <param name="v1">The first boolean value.</param>
         /// <param name="v2">The second boolean value.</param>
         /// <param name="v3">The third boolean value.</param>
@@ -934,6 +920,7 @@ namespace Omni.Core
         /// <summary>
         /// Writes eight boolean values to the underlying buffer, packed into a single byte.
         /// </summary>
+        /// <param name="buffer">The buffer to which the packed byte will be written.</param>
         /// <param name="v1">The first boolean value.</param>
         /// <param name="v2">The second boolean value.</param>
         /// <param name="v3">The third boolean value.</param>
@@ -953,6 +940,9 @@ namespace Omni.Core
     }
 
     // Readers
+    /// <summary>
+    /// Provides extension methods for reading various data types from a <see cref="DataBuffer"/> object.
+    /// </summary>
     public static partial class BufferWriterExtensions
     {
         // https://github.com/dotnet/runtime/blob/main/src/libraries/System.Private.CoreLib/src/System/Runtime/InteropServices/MemoryMarshal.cs#L468
@@ -960,8 +950,7 @@ namespace Omni.Core
         /// Reads a structure of type T out of a read-only span of bytes.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static unsafe T Internal_UnsafeRead<T>(DataBuffer buffer)
-            where T : unmanaged
+        internal static unsafe T Internal_UnsafeRead<T>(DataBuffer buffer) where T : unmanaged
         {
             int size_t = sizeof(T);
             Span<byte> source = buffer.Internal_GetSpan(size_t);
@@ -1100,10 +1089,7 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses Newtonsoft.Json by default to deserialize the JSON string.
         /// </remarks>
-        public static T ReadAsJson<T>(
-            this DataBuffer buffer,
-            JsonSerializerSettings settings = null
-        )
+        public static T ReadAsJson<T>(this DataBuffer buffer, JsonSerializerSettings settings = null)
         {
             settings ??= DefaultJsonSettings;
             string json = ReadString(buffer);
@@ -1125,11 +1111,7 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses Newtonsoft.Json by default to deserialize the JSON string.
         /// </remarks>
-        public static T ReadAsJson<T>(
-            this DataBuffer buffer,
-            out string json,
-            JsonSerializerSettings settings = null
-        )
+        public static T ReadAsJson<T>(this DataBuffer buffer, out string json, JsonSerializerSettings settings = null)
         {
             settings ??= DefaultJsonSettings;
             json = ReadString(buffer);
@@ -1149,10 +1131,7 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses MemoryPack by default to deserialize the binary data.
         /// </remarks>
-        public static T ReadAsBinary<T>(
-            this DataBuffer buffer,
-            MemoryPackSerializerOptions settings = null
-        )
+        public static T ReadAsBinary<T>(this DataBuffer buffer, MemoryPackSerializerOptions settings = null)
         {
             settings ??= DefaultMemoryPackSettings;
             int dataSize = Read7BitEncodedInt(buffer);
@@ -1189,8 +1168,7 @@ namespace Omni.Core
         /// This method reads raw binary data from the buffer and interprets it as an array of type <typeparamref name="T"/>.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe T[] ReadArray<T>(this DataBuffer buffer)
-            where T : unmanaged
+        public static unsafe T[] ReadArray<T>(this DataBuffer buffer) where T : unmanaged
         {
             int size_t = Read7BitEncodedInt(buffer);
             ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
@@ -1218,8 +1196,7 @@ namespace Omni.Core
         /// This method reads raw binary data from the buffer and directly populates the provided array. 
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe int ReadArray<T>(this DataBuffer buffer, T[] array)
-            where T : unmanaged
+        public static unsafe int ReadArray<T>(this DataBuffer buffer, T[] array) where T : unmanaged
         {
             int size_t = Read7BitEncodedInt(buffer);
             ReadOnlySpan<byte> data = buffer.Internal_GetSpan(size_t);
@@ -1241,8 +1218,7 @@ namespace Omni.Core
         /// This method reads the raw binary representation of the value directly from the buffer.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T Read<T>(this DataBuffer buffer)
-            where T : unmanaged
+        public static T Read<T>(this DataBuffer buffer) where T : unmanaged
         {
             return Internal_UnsafeRead<T>(buffer);
         }
@@ -1407,13 +1383,11 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads two boolean values from a packed byte in the stream.
+        /// Reads a byte from the buffer and unpacks it to retrieve two boolean values.
         /// </summary>
-        /// <param name="v1">The first boolean value extracted from the least significant bit.</param>
-        /// <param name="v2">The second boolean value extracted from the second least significant bit.</param>
-        /// <remarks>
-        /// The booleans are unpacked from the two least significant bits of a single byte.
-        /// </remarks>
+        /// <param name="buffer">The buffer instance from which the packed data is read.</param>
+        /// <param name="v1">The first boolean value, representing the least significant bit.</param>
+        /// <param name="v2">The second boolean value, representing the second least significant bit.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ReadPacked(this DataBuffer buffer, out bool v1, out bool v2)
         {
@@ -1423,13 +1397,14 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads three boolean values from a packed byte in the stream.
+        /// Reads three boolean values from a packed byte in the buffer.
         /// </summary>
-        /// <param name="v1">The first boolean value extracted from the least significant bit.</param>
-        /// <param name="v2">The second boolean value extracted from the second least significant bit.</param>
-        /// <param name="v3">The third boolean value extracted from the third least significant bit.</param>
+        /// <param name="buffer">The data buffer from which the packed byte is read.</param>
+        /// <param name="v1">The first boolean value, extracted from the least significant bit.</param>
+        /// <param name="v2">The second boolean value, extracted from the second least significant bit.</param>
+        /// <param name="v3">The third boolean value, extracted from the third least significant bit.</param>
         /// <remarks>
-        /// The booleans are unpacked from the three least significant bits of a single byte.
+        /// The boolean values are extracted from the three least significant bits of a single byte.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ReadPacked(this DataBuffer buffer, out bool v1, out bool v2, out bool v3)
@@ -1443,6 +1418,7 @@ namespace Omni.Core
         /// <summary>
         /// Reads four boolean values from a packed byte in the stream.
         /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> from which the packed byte is read.</param>
         /// <param name="v1">The first boolean value extracted from the least significant bit.</param>
         /// <param name="v2">The second boolean value extracted from the second least significant bit.</param>
         /// <param name="v3">The third boolean value extracted from the third least significant bit.</param>
@@ -1461,8 +1437,9 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads five boolean values from a packed byte in the stream.
+        /// Reads five boolean values from a packed byte in the buffer.
         /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> from which the packed byte is read.</param>
         /// <param name="v1">The first boolean value extracted from the least significant bit.</param>
         /// <param name="v2">The second boolean value extracted from the second least significant bit.</param>
         /// <param name="v3">The third boolean value extracted from the third least significant bit.</param>
@@ -1484,8 +1461,9 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads six boolean values from a packed byte in the stream.
+        /// Reads six boolean values from a packed byte in the buffer.
         /// </summary>
+        /// <param name="buffer">The buffer from which the packed byte is read.</param>
         /// <param name="v1">The first boolean value extracted from the least significant bit.</param>
         /// <param name="v2">The second boolean value extracted from the second least significant bit.</param>
         /// <param name="v3">The third boolean value extracted from the third least significant bit.</param>
@@ -1509,8 +1487,9 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads seven boolean values from a packed byte in the stream.
+        /// Reads seven boolean values from a packed byte in the buffer.
         /// </summary>
+        /// <param name="buffer">The buffer instance from which the packed byte will be read.</param>
         /// <param name="v1">The first boolean value extracted from the least significant bit.</param>
         /// <param name="v2">The second boolean value extracted from the second least significant bit.</param>
         /// <param name="v3">The third boolean value extracted from the third least significant bit.</param>
@@ -1536,19 +1515,17 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads eight boolean values from a packed byte in the stream.
+        /// Reads eight boolean values from a packed byte in the provided buffer.
         /// </summary>
-        /// <param name="v1">The first boolean value extracted from the least significant bit.</param>
-        /// <param name="v2">The second boolean value extracted from the second least significant bit.</param>
-        /// <param name="v3">The third boolean value extracted from the third least significant bit.</param>
-        /// <param name="v4">The fourth boolean value extracted from the fourth least significant bit.</param>
-        /// <param name="v5">The fifth boolean value extracted from the fifth least significant bit.</param>
-        /// <param name="v6">The sixth boolean value extracted from the sixth least significant bit.</param>
-        /// <param name="v7">The seventh boolean value extracted from the seventh least significant bit.</param>
-        /// <param name="v8">The eighth boolean value extracted from the eighth least significant bit.</param>
-        /// <remarks>
-        /// The booleans are unpacked from all eight bits of a single byte.
-        /// </remarks>
+        /// <param name="buffer">The <see cref="DataBuffer"/> from which the packed byte is read.</param>
+        /// <param name="v1">Outputs the first boolean value, extracted from the least significant bit of the byte.</param>
+        /// <param name="v2">Outputs the second boolean value, extracted from the second least significant bit of the byte.</param>
+        /// <param name="v3">Outputs the third boolean value, extracted from the third least significant bit of the byte.</param>
+        /// <param name="v4">Outputs the fourth boolean value, extracted from the fourth least significant bit of the byte.</param>
+        /// <param name="v5">Outputs the fifth boolean value, extracted from the fifth least significant bit of the byte.</param>
+        /// <param name="v6">Outputs the sixth boolean value, extracted from the sixth least significant bit of the byte.</param>
+        /// <param name="v7">Outputs the seventh boolean value, extracted from the seventh least significant bit of the byte.</param>
+        /// <param name="v8">Outputs the eighth boolean value, extracted from the most significant bit of the byte.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ReadPacked(this DataBuffer buffer, out bool v1, out bool v2, out bool v3, out bool v4,
             out bool v5, out bool v6, out bool v7, out bool v8)

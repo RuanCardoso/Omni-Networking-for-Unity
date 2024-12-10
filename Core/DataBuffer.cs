@@ -11,16 +11,11 @@ namespace Omni.Core
 {
     // ref: https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Buffers/ArrayBufferWriter.cs
     /// <summary>
-    /// A high-performance buffer designed for efficient writing, reading, and management of network messages and other data.
+    /// A versatile and efficient buffer tailored for network communication and other data-intensive operations.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The <see cref="DataBuffer"/> class provides optimized operations for handling dynamic data, including methods for 
-    /// writing, reading, resetting, and pooling. It supports span-based and memory-based APIs for maximum performance.
-    /// </para>
-    /// <para>
-    /// Ideal for network communication and scenarios requiring compact, reusable, and efficient data management.
-    /// </para>
+    /// This class offers functionality for implicit conversions to various data types, making it capable of seamless data manipulation.
+    /// Designed for high-performance scenarios, the DataBuffer supports memory-span-based data access and ensures optimal use of resources through pooling mechanisms.
     /// </remarks>
     public sealed partial class DataBuffer : IBufferWriter<byte>, IDisposable
     {
@@ -121,8 +116,7 @@ namespace Omni.Core
         /// <remarks>
         /// This constructor initializes a new buffer with a capacity large enough to hold the data from the source buffer.
         /// </remarks>
-        public DataBuffer(DataBuffer fromBuffer, bool seekToBegin = false)
-            : this(fromBuffer._length + 1)
+        public DataBuffer(DataBuffer fromBuffer, bool seekToBegin = false) : this(fromBuffer._length + 1)
         {
             // Copy the buffer.
             this.Write(fromBuffer.BufferAsSpan);
@@ -143,8 +137,7 @@ namespace Omni.Core
         /// <remarks>
         /// If no capacity is specified, a default value of <see cref="DefaultBufferSize"/> bytes is used.
         /// </remarks>
-        public DataBuffer(int capacity = DefaultBufferSize)
-            : this(capacity, null)
+        public DataBuffer(int capacity = DefaultBufferSize) : this(capacity, null)
         {
         }
 

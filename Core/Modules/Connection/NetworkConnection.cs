@@ -28,12 +28,7 @@ namespace Omni.Core.Modules.Connection
 #endif
             }
 
-            internal void Send(
-                ReadOnlySpan<byte> data,
-                IPEndPoint target,
-                DeliveryMode deliveryMode,
-                byte channel
-            )
+            internal void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte channel)
             {
                 NetworkHelper.EnsureRunningOnMainThread();
                 if (target.Port == 0)

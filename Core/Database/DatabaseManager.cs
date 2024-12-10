@@ -51,11 +51,7 @@ namespace Omni.Core
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void SetDatabase(
-            DbCredentials credentials,
-            int timeout = 30,
-            bool useLegacyPagination = false
-        )
+        protected void SetDatabase(DbCredentials credentials, int timeout = 30, bool useLegacyPagination = false)
         {
             Credentials = credentials;
             Timeout = timeout;
@@ -74,12 +70,8 @@ namespace Omni.Core
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void SetDatabase(
-            DatabaseType dbType,
-            string connectionString,
-            int timeout = 30,
-            bool useLegacyPagination = false
-        )
+        protected void SetDatabase(DatabaseType dbType, string connectionString, int timeout = 30,
+            bool useLegacyPagination = false)
         {
             Credentials = new DbCredentials(dbType, default, default, default, default);
             Credentials.ConnectionString = connectionString;
@@ -102,13 +94,8 @@ namespace Omni.Core
             }
 #endif
             var db = DatabaseConnection.New();
-            return db.InitializeAsync(
-                Credentials.Type,
-                Credentials.ConnectionString,
-                Timeout,
-                UseLegacyPagination,
-                token
-            );
+            return db.InitializeAsync(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination,
+                token);
         }
 
         /// <summary>
@@ -127,13 +114,7 @@ namespace Omni.Core
             }
 #endif
             var db = DatabaseConnection.New();
-            db.Initialize(
-                Credentials.Type,
-                Credentials.ConnectionString,
-                Timeout,
-                UseLegacyPagination
-            );
-
+            db.Initialize(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination);
             return db;
         }
 

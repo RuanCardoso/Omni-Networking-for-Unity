@@ -179,22 +179,16 @@ namespace Omni.Core.Modules.Connection
                     if (peer.ConnectionState == ConnectionState.Connected)
                     {
                         localPeer ??= peer;
-                        IManager.Internal_OnClientConnected(
-                            peer,
-                            new NativePeer(
-                                () => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
-                                () => (peer.Ping)
-                            )
-                        );
+                        IManager.Internal_OnClientConnected(peer,
+                            new NativePeer(() => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
+                                () => peer.Ping));
                     }
                 };
 
                 _listener.PeerDisconnectedEvent += (peer, info) =>
                 {
-                    IManager.Internal_OnClientDisconnected(
-                        localPeer,
-                        $"code: {info.SocketErrorCode} | reason: {info.Reason}"
-                    );
+                    IManager.Internal_OnClientDisconnected(localPeer,
+                        $"code: {info.SocketErrorCode} | reason: {info.Reason}");
                 };
 
                 _listener.NetworkReceiveUnconnectedEvent += OnP2PMessage;
@@ -211,12 +205,7 @@ namespace Omni.Core.Modules.Connection
             reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
         }
 
-        private void OnReceiveEvent(
-            NetPeer peer,
-            NetPacketReader reader,
-            byte seqChannel,
-            DeliveryMethod deliveryMode
-        )
+        private void OnReceiveEvent(NetPeer peer, NetPacketReader reader, byte seqChannel, DeliveryMethod deliveryMode)
         {
             ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
             DeliveryMode mode = GetDeliveryMode(deliveryMode);
@@ -253,13 +242,9 @@ namespace Omni.Core.Modules.Connection
             }
             else
             {
-                IManager.Internal_OnServerPeerConnected(
-                    peer,
-                    new NativePeer(
-                        () => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
-                        () => (peer.Ping)
-                    )
-                );
+                IManager.Internal_OnServerPeerConnected(peer,
+                    new NativePeer(() => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
+                        () => peer.Ping));
             }
         }
 
@@ -400,12 +385,7 @@ namespace Omni.Core.Modules.Connection
             }
         }
 
-        public void Send(
-            ReadOnlySpan<byte> data,
-            IPEndPoint target,
-            DeliveryMode deliveryMode,
-            byte sequenceChannel
-        )
+        public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
             ThrowAnErrorIfNotInitialized();
             if (isServer)
@@ -476,22 +456,25 @@ namespace Omni.Core.Modules.Connection
         public void CopyTo(ITransporter ITransporter)
         {
             LiteTransporter liteTransporter = ITransporter as LiteTransporter;
-            liteTransporter.m_VersionName = m_VersionName;
-            liteTransporter.m_disconnectTimeout = m_disconnectTimeout;
-            liteTransporter.m_IPv6Enabled = m_IPv6Enabled;
-            liteTransporter.m_pingInterval = m_pingInterval;
-            liteTransporter.m_MaxConnections = m_MaxConnections;
-            liteTransporter.m_MaxEventsPerFrame = m_MaxEventsPerFrame;
-            liteTransporter.m_useNativeSockets = m_useNativeSockets;
-            liteTransporter.m_useSafeMtu = m_useSafeMtu;
-            liteTransporter.m_ChannelsCount = m_ChannelsCount;
-            liteTransporter.m_UsePortForwarding = m_UsePortForwarding;
+            if (liteTransporter != null)
+            {
+                liteTransporter.m_VersionName = m_VersionName;
+                liteTransporter.m_disconnectTimeout = m_disconnectTimeout;
+                liteTransporter.m_IPv6Enabled = m_IPv6Enabled;
+                liteTransporter.m_pingInterval = m_pingInterval;
+                liteTransporter.m_MaxConnections = m_MaxConnections;
+                liteTransporter.m_MaxEventsPerFrame = m_MaxEventsPerFrame;
+                liteTransporter.m_useNativeSockets = m_useNativeSockets;
+                liteTransporter.m_useSafeMtu = m_useSafeMtu;
+                liteTransporter.m_ChannelsCount = m_ChannelsCount;
+                liteTransporter.m_UsePortForwarding = m_UsePortForwarding;
 
-            // Lag properties
-            liteTransporter.m_SimulateLag = m_SimulateLag;
-            liteTransporter.m_MinLatency = m_MinLatency;
-            liteTransporter.m_MaxLatency = m_MaxLatency;
-            liteTransporter.m_LossPercent = m_LossPercent;
+                // Lag properties
+                liteTransporter.m_SimulateLag = m_SimulateLag;
+                liteTransporter.m_MinLatency = m_MinLatency;
+                liteTransporter.m_MaxLatency = m_MaxLatency;
+                liteTransporter.m_LossPercent = m_LossPercent;
+            }
         }
 
 #if OMNI_DEBUG

@@ -46,12 +46,7 @@ namespace Omni.Core.Modules.Connection
                     }
                     else
                     {
-                        IManager.Internal_OnServerPeerConnected(
-                            UserEndPoint,
-                            new NativePeer(
-                                () => 0,
-                                () => 0
-                            ));
+                        IManager.Internal_OnServerPeerConnected(UserEndPoint, new NativePeer(() => 0, () => 0));
                     }
                 });
             }
@@ -210,13 +205,7 @@ namespace Omni.Core.Modules.Connection
             {
                 // Set to 'true' to indicate that the client is running.
                 isRunning = true;
-                IManager.Internal_OnClientConnected(
-                    localEndPoint,
-                    new NativePeer(
-                        () => 0,
-                        () => 0
-                    )
-                );
+                IManager.Internal_OnClientConnected(localEndPoint, new NativePeer(() => 0, () => 0));
             };
 
             webClient.OnMessage += (data) =>
@@ -290,8 +279,11 @@ namespace Omni.Core.Modules.Connection
         public void CopyTo(ITransporter ITransporter)
         {
             WebTransporter webTransporter = ITransporter as WebTransporter;
-            webTransporter.enableSsl = enableSsl;
-            webTransporter.certificateConfig = certificateConfig;
+            if (webTransporter != null)
+            {
+                webTransporter.enableSsl = enableSsl;
+                webTransporter.certificateConfig = certificateConfig;
+            }
         }
     }
 }

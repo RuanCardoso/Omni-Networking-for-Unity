@@ -5,13 +5,12 @@ namespace Omni.Core
 {
     internal class NetworkConstants
     {
-        internal const byte
-            NET_VAR_RPC_ID = 255; // TODO: Add it to the source generator. Don't change, used by Source Generator.
-
+        // TODO: Add it to the source generator. Don't change, used by Source Generator
+        internal const byte NET_VAR_RPC_ID = 255;
         internal const int INVALID_MASTER_CLIENT_ID = -1;
     }
 
-    enum ScriptingBackend
+    internal enum ScriptingBackend
     {
         IL2CPP,
         Mono
@@ -23,7 +22,8 @@ namespace Omni.Core
         Unload
     }
 
-    internal class MessageType // not a enum to avoid casting
+    // not a enum to avoid casting
+    internal class MessageType
     {
         internal const byte KCP_PING_REQUEST_RESPONSE = 238;
         internal const byte RequestEntityAction = 239;
@@ -39,8 +39,8 @@ namespace Omni.Core
         internal const byte NtpQuery = 249;
         internal const byte BeginHandshake = 250;
         internal const byte EndHandshake = 251;
-        internal const byte LocalInvoke = 252;
-        internal const byte GlobalInvoke = 253;
+        internal const byte LocalRpc = 252;
+        internal const byte GlobalRpc = 253;
         internal const byte LeaveGroup = 254;
         internal const byte JoinGroup = 255;
     }

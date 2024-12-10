@@ -319,11 +319,9 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Runs the specified function on the main thread asynchronously.
+        /// Schedules the specified action to be executed on the main thread asynchronously.
         /// </summary>
-        /// <typeparam name="T">The return type of the function.</typeparam>
-        /// <param name="func">The function to run on the main thread.</param>
-        /// <returns>A UniTask representing the asynchronous operation.</returns>
+        /// <param name="action">The action to be executed on the main thread.</param>
         public static async UniTask<T> RunOnMainThread<T>(Func<T> func)
         {
             await UniTask.SwitchToMainThread();

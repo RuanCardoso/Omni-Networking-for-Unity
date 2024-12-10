@@ -1,6 +1,7 @@
 namespace Omni.Core
 {
     // Exclusively for Routes API.
+    // Represents a buffer for managing data, used primarily within the Routes API.
     public sealed partial class DataBuffer
     {
         internal bool SendEnabled { get; set; }
@@ -11,12 +12,12 @@ namespace Omni.Core
         internal byte SequenceChannel { get; private set; }
 
         /// <summary>
-        /// Sends a GET/POST response from the server using the specified synchronization options.
+        /// Sends a message using specified route target and server synchronization settings.
         /// </summary>
-        /// <param name="target">The target of the response (e.g., a specific client or group).</param>
-        /// <param name="options">Synchronization options that include delivery mode, group ID, data cache, and sequence channel.</param>
+        /// <param name="target">The destination of the message, such as a specific client or group.</param>
+        /// <param name="options">The server synchronization settings, including delivery mode, group ID, data cache and sequence channel.</param>
         /// <remarks>
-        /// This method simplifies sending responses by encapsulating multiple configuration options into a single parameter.
+        /// This overload streamlines message sending by combining several configuration options into one parameter.
         /// </remarks>
         public void Send(RouteTarget target, ServerOptions options)
         {
@@ -32,7 +33,7 @@ namespace Omni.Core
         /// <param name="dataCache">The data cache configuration, defaulting to <see cref="DataCache.None"/>.</param>
         /// <param name="sequenceChannel">The channel used for sequencing responses, defaulting to 0.</param>
         /// <remarks>
-        /// Use this method for fine-grained control over the delivery of server responses. 
+        /// Use this method for fine-grained control over the delivery of server responses.
         /// Defaults are provided for common scenarios, ensuring ease of use for typical use cases.
         /// </remarks>
         public void Send(RouteTarget target = RouteTarget.SelfOnly,

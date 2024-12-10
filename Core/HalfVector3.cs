@@ -112,12 +112,8 @@ namespace Omni.Core
 
         public readonly string ToString(string format)
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                $"({{0:{format}}}, {{1:{format}}}, {{2:{format}}})",
-                x,
-                y,
-                z
+            return string.Format(CultureInfo.InvariantCulture, $"({{0:{format}}}, {{1:{format}}}, {{2:{format}}})", x,
+                y, z
             );
         }
     }

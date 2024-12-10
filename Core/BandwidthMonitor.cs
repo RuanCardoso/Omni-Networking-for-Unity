@@ -9,8 +9,7 @@ public sealed class BandwidthMonitor
     private double _total;
     public event Action<double> OnAverageChanged;
 
-    public BandwidthMonitor()
-        : this(new SimpleMovingAverage(), 5)
+    public BandwidthMonitor() : this(new SimpleMovingAverage(), 5)
     {
     } // SMA -> because we want to get a stable average over time.
 

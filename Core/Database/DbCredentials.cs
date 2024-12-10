@@ -29,13 +29,7 @@ namespace Omni.Core
         public string ConnectionString { get; internal set; }
         public DatabaseType Type { get; private set; }
 
-        internal DbCredentials(
-            DatabaseType type,
-            string server,
-            string database,
-            string username,
-            string password
-        )
+        internal DbCredentials(DatabaseType type, string server, string database, string username, string password)
         {
             SetConnectionString(type, server, database, username, password);
         }
@@ -59,14 +53,8 @@ namespace Omni.Core
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        public void SetConnectionString(
-            DatabaseType type,
-            string server,
-            string database,
-            string username,
-            string password,
-            [CallerMemberName] string _ = ""
-        )
+        public void SetConnectionString(DatabaseType type, string server, string database, string username,
+            string password, [CallerMemberName] string _ = "")
         {
             Type = type;
             Server = server;

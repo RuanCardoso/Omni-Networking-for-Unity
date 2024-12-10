@@ -7,21 +7,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Omni.Execution;
+using Omni.Shared;
 
 namespace Omni.Core
 {
     public static class DatabaseExtensions
     {
         /// <summary>
-        /// Determines the method used to map the results of database queries.
-        /// If set to true, Dapper will be used for object mapping, providing high performance
-        /// due to its lightweight nature and direct execution of SQL queries. Note that
-        /// Dapper is partially compatible with IL2CPP.
-        /// If set to false, Newtonsoft.Json(Works with IL2CPP) will be used, which offers flexibility and
-        /// ease of use for complex object mapping through JSON serialization.
-        /// Default value is <c>true</c>.
+        /// Indicates whether Dapper is used for database query result mapping.
+        /// When set to true, Dapper provides efficient and direct SQL execution with object mapping,
+        /// although it has partial compatibility with IL2CPP. Conversely, setting it to false
+        /// utilizes Newtonsoft.Json for JSON-based object mapping, which supports IL2CPP and is more versatile for complex structures.
+        /// The property default is set to true.
         /// </summary>
-        public static bool UseDapper { get; set; } = true;
+        public static bool UseDapper => Bridge.UseDapper;
 
         /// <summary>
         /// Retrieves the value associated with the specified key from the dictionary and casts it to the specified type.
@@ -51,8 +50,7 @@ namespace Omni.Core
         /// It is intended for performance-sensitive scenarios where the type is known at compile-time and type safety is ensured by the caller.
         /// If the key is not found in the dictionary, this method will throw a KeyNotFoundException.
         /// </remarks>
-        public static T FastGet<T>(this IDictionary<string, object> @this, string name)
-            where T : class
+        public static T FastGet<T>(this IDictionary<string, object> @this, string name) where T : class
         {
             var @ref = @this[name];
             return Unsafe.As<T>(@ref);
@@ -70,11 +68,7 @@ namespace Omni.Core
         /// This method tries to retrieve the value associated with the specified key from the dictionary and casts it to the specified type.
         /// If the key is found in the dictionary, the value is assigned to the <paramref name="value"/> parameter and the method returns true; otherwise, it returns false.
         /// </remarks>
-        public static bool TryGet<T>(
-            this IDictionary<string, object> @this,
-            string name,
-            out T value
-        )
+        public static bool TryGet<T>(this IDictionary<string, object> @this, string name, out T value)
         {
             if (@this.TryGetValue(name, out object @ref))
             {
@@ -99,11 +93,7 @@ namespace Omni.Core
         /// It is intended for performance-sensitive scenarios where the type is known at compile-time and type safety is ensured by the caller.
         /// If the key is found in the dictionary, the value is assigned to the <paramref name="value"/> parameter and the method returns true; otherwise, it returns false.
         /// </remarks>
-        public static bool TryFastGet<T>(
-            this IDictionary<string, object> @this,
-            string name,
-            out T value
-        )
+        public static bool TryFastGet<T>(this IDictionary<string, object> @this, string name, out T value)
             where T : class
         {
             if (@this.TryGetValue(name, out object @ref))
@@ -150,7 +140,7 @@ namespace Omni.Core
         /// <typeparam name="T">The type to which the object should be mapped.</typeparam>
         /// <param name="result">The object to be mapped.</param>
         /// <returns>The mapped object of type <typeparamref name="T"/>.</returns>
-        private static async Task<T> MapJsonAsync<T>(Task<IEnumerable<object>> task)
+        public static async Task<T> MapJsonAsync<T>(Task<IEnumerable<object>> task)
         {
             var taskResult = await task;
             return await Task.Run(() =>
@@ -173,11 +163,7 @@ namespace Omni.Core
         /// If the query does not return any results, the default value for the specified type <typeparamref name="T"/> is returned.
         /// The method optionally accepts a database transaction and a command timeout value, which can be used to control the execution context of the query.
         /// </remarks>
-        public static T First<T>(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T First<T>(this Query query, DbTransaction transaction = null, int? timeout = null)
         {
             if (UseDapper)
             {
@@ -202,12 +188,8 @@ namespace Omni.Core
         /// If the query does not return any results, the default value for the specified type <typeparamref name="T"/> is returned.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token to control the execution context of the query.
         /// </remarks>
-        public static Task<T> FirstAsync<T>(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public static Task<T> FirstAsync<T>(this Query query, DbTransaction transaction = null, int? timeout = null,
+            CancellationToken token = default)
         {
             if (UseDapper)
             {
@@ -230,11 +212,7 @@ namespace Omni.Core
         /// If no results are found, an empty collection is returned.
         /// The method optionally accepts a database transaction and a command timeout value, which can be used to control the execution context of the query.
         /// </remarks>
-        public static IEnumerable<T> All<T>(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static IEnumerable<T> All<T>(this Query query, DbTransaction transaction = null, int? timeout = null)
         {
             if (UseDapper)
             {
@@ -259,12 +237,8 @@ namespace Omni.Core
         /// If no results are found, an empty collection is returned.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token to control the execution context of the query.
         /// </remarks>
-        public static Task<IEnumerable<T>> AllAsync<T>(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public static Task<IEnumerable<T>> AllAsync<T>(this Query query, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken token = default)
         {
             if (UseDapper)
             {
@@ -291,26 +265,15 @@ namespace Omni.Core
         /// It retrieves the specified page of results, with the number of results per page determined by the <paramref name="perPage"/> parameter.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the query.
         /// </remarks>
-        public static PaginationResult<T> Page<T>(
-            this Query query,
-            int page,
-            int perPage = 25,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static PaginationResult<T> Page<T>(this Query query, int page, int perPage = 25,
+            DbTransaction transaction = null, int? timeout = null)
         {
             if (UseDapper)
             {
                 return query.Paginate<T>(page, perPage, transaction, timeout);
             }
 
-            PaginationResult<object> result = query.Paginate<object>(
-                page,
-                perPage,
-                transaction,
-                timeout
-            );
-
+            PaginationResult<object> result = query.Paginate<object>(page, perPage, transaction, timeout);
             var pageResult = new PaginationResult<T>
             {
                 Query = result.Query,
@@ -339,27 +302,16 @@ namespace Omni.Core
         /// It retrieves the specified page of results, with the number of results per page determined by the <paramref name="perPage"/> parameter.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token to control the execution context of the query.
         /// </remarks>
-        public static async Task<PaginationResult<T>> PageAsync<T>(
-            this Query query,
-            int page,
-            int perPage = 25,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public static async Task<PaginationResult<T>> PageAsync<T>(this Query query, int page, int perPage = 25,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken token = default)
         {
             if (UseDapper)
             {
                 return await query.PaginateAsync<T>(page, perPage, transaction, timeout, token);
             }
 
-            PaginationResult<object> result = await query.PaginateAsync<object>(
-                page,
-                perPage,
-                transaction,
-                timeout,
-                token
-            );
+            PaginationResult<object> result =
+                await query.PaginateAsync<object>(page, perPage, transaction, timeout, token);
 
             var pageResult = new PaginationResult<T>
             {
@@ -387,13 +339,8 @@ namespace Omni.Core
         /// The function should return true to continue processing, or false to stop processing.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the query.
         /// </remarks>
-        public static void Chunk<T>(
-            this Query query,
-            int chunkSize,
-            Func<IEnumerable<T>, int, bool> func,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static void Chunk<T>(this Query query, int chunkSize, Func<IEnumerable<T>, int, bool> func,
+            DbTransaction transaction = null, int? timeout = null)
         {
             if (UseDapper)
             {
@@ -421,25 +368,12 @@ namespace Omni.Core
         /// The function should return true to continue processing, or false to stop processing.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token to control the execution context of the query.
         /// </remarks>
-        public static Task ChunkAsync<T>(
-            this Query query,
-            int chunkSize,
-            Func<IEnumerable<T>, int, bool> func,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public static Task ChunkAsync<T>(this Query query, int chunkSize, Func<IEnumerable<T>, int, bool> func,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken token = default)
         {
             if (UseDapper)
             {
-                return QueryExtensions.ChunkAsync<T>(
-                    query,
-                    chunkSize,
-                    func,
-                    transaction,
-                    timeout,
-                    token
-                );
+                return QueryExtensions.ChunkAsync<T>(query, chunkSize, func, transaction, timeout, token);
             }
 
             throw new NotSupportedException(
@@ -460,13 +394,8 @@ namespace Omni.Core
         /// This method processes the results of the given query in chunks, invoking the specified action for each chunk of items.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the query.
         /// </remarks>
-        public static void Chunk<T>(
-            this Query query,
-            int chunkSize,
-            Action<IEnumerable<T>, int> action,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static void Chunk<T>(this Query query, int chunkSize, Action<IEnumerable<T>, int> action,
+            DbTransaction transaction = null, int? timeout = null)
         {
             if (UseDapper)
             {
@@ -493,25 +422,12 @@ namespace Omni.Core
         /// This method asynchronously processes the results of the given query in chunks, invoking the specified action for each chunk of items.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token to control the execution context of the query.
         /// </remarks>
-        public static Task ChunkAsync<T>(
-            this Query query,
-            int chunkSize,
-            Action<IEnumerable<T>, int> action,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public static Task ChunkAsync<T>(this Query query, int chunkSize, Action<IEnumerable<T>, int> action,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken token = default)
         {
             if (UseDapper)
             {
-                return QueryExtensions.ChunkAsync(
-                    query,
-                    chunkSize,
-                    action,
-                    transaction,
-                    timeout,
-                    token
-                );
+                return QueryExtensions.ChunkAsync(query, chunkSize, action, transaction, timeout, token);
             }
 
             throw new NotSupportedException(
@@ -530,11 +446,8 @@ namespace Omni.Core
         /// This method maps the first result of the given query to a Row(IDictionary<string, object>) object.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the query.
         /// </remarks>
-        public static IDictionary<string, object> First(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static IDictionary<string, object> First(this Query query, DbTransaction transaction = null,
+            int? timeout = null)
         {
             if (UseDapper)
             {
@@ -556,12 +469,8 @@ namespace Omni.Core
         /// This method asynchronously maps the first result of the given query to a Row(IDictionary<string, object>) object.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token to control the execution context of the query.
         /// </remarks>
-        public static async Task<IDictionary<string, object>> FirstAsync(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public static async Task<IDictionary<string, object>> FirstAsync(this Query query,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken token = default)
         {
             if (UseDapper)
             {
@@ -569,12 +478,7 @@ namespace Omni.Core
                     as IDictionary<string, object>;
             }
 
-            return await FirstAsync<IDictionary<string, object>>(
-                query,
-                transaction,
-                timeout,
-                token
-            );
+            return await FirstAsync<IDictionary<string, object>>(query, transaction, timeout, token);
         }
 
         /// <summary>
@@ -588,11 +492,8 @@ namespace Omni.Core
         /// This method maps all the results of the given query to a collection of rows.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the query.
         /// </remarks>
-        public static IEnumerable<IDictionary<string, object>> All(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static IEnumerable<IDictionary<string, object>> All(this Query query, DbTransaction transaction = null,
+            int? timeout = null)
         {
             if (UseDapper)
             {
@@ -615,22 +516,12 @@ namespace Omni.Core
         /// This method asynchronously maps all the results of the given query to a collection of rows.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token to control the execution context of the query.
         /// </remarks>
-        public static async Task<IEnumerable<IDictionary<string, object>>> AllAsync(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken token = default
-        )
+        public static async Task<IEnumerable<IDictionary<string, object>>> AllAsync(this Query query,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken token = default)
         {
             if (UseDapper)
             {
-                IEnumerable<object> result = await AllAsync<object>(
-                    query,
-                    transaction,
-                    timeout,
-                    token
-                );
-
+                IEnumerable<object> result = await AllAsync<object>(query, transaction, timeout, token);
                 return Enumerable.Cast<IDictionary<string, object>>(result);
             }
 
@@ -648,10 +539,7 @@ namespace Omni.Core
         /// This method executes the given query and checks if any results are returned.
         /// The method optionally accepts a database transaction and a command timeout value, which can be used to control the execution context of the query.
         /// </remarks>
-        public static bool Exists(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null
+        public static bool Exists(this Query query, DbTransaction transaction = null, int? timeout = null
         )
         {
             return QueryExtensions.Exists(query, transaction, timeout);
@@ -669,10 +557,7 @@ namespace Omni.Core
         /// This method asynchronously executes the given query and checks if any results are returned.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token, which can be used to control the execution context of the query.
         /// </remarks>
-        public static Task<bool> ExistsAsync(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null,
+        public static Task<bool> ExistsAsync(this Query query, DbTransaction transaction = null, int? timeout = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -690,11 +575,7 @@ namespace Omni.Core
         /// This method executes the given query and checks if no results are returned.
         /// The method optionally accepts a database transaction and a command timeout value, which can be used to control the execution context of the query.
         /// </remarks>
-        public static bool NotExist(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static bool NotExist(this Query query, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.NotExist(query, transaction, timeout);
         }
@@ -711,12 +592,8 @@ namespace Omni.Core
         /// This method asynchronously executes the given query and checks if no results are returned.
         /// The method optionally accepts a database transaction, a command timeout value, and a cancellation token, which can be used to control the execution context of the query.
         /// </remarks>
-        public static Task<bool> NotExistAsync(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<bool> NotExistAsync(this Query query, DbTransaction transaction = null, int? timeout = null,
+            CancellationToken cancellationToken = default)
         {
             return QueryExtensions.NotExistAsync(query, transaction, timeout, cancellationToken);
         }
@@ -734,12 +611,8 @@ namespace Omni.Core
         /// It accepts a collection of key-value pairs, where each key represents a column name and its corresponding value.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static int Insert(
-            this Query query,
-            IEnumerable<KeyValuePair<string, object>> values,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Insert(this Query query, IEnumerable<KeyValuePair<string, object>> values,
+            DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Insert(query, values, transaction, timeout);
         }
@@ -758,21 +631,10 @@ namespace Omni.Core
         /// It accepts a collection of key-value pairs, where each key represents a column name and its corresponding value.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static Task<int> InsertAsync(
-            this Query query,
-            IEnumerable<KeyValuePair<string, object>> values,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> InsertAsync(this Query query, IEnumerable<KeyValuePair<string, object>> values,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.InsertAsync(
-                query,
-                values,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.InsertAsync(query, values, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -789,13 +651,8 @@ namespace Omni.Core
         /// It accepts a collection of column names and a collection of collections, where each inner collection represents a set of values for a single row.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static int Insert(
-            this Query query,
-            IEnumerable<string> columns,
-            IEnumerable<IEnumerable<object>> valuesCollection,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Insert(this Query query, IEnumerable<string> columns,
+            IEnumerable<IEnumerable<object>> valuesCollection, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Insert(query, columns, valuesCollection, transaction, timeout);
         }
@@ -815,23 +672,12 @@ namespace Omni.Core
         /// It accepts a collection of column names and a collection of collections, where each inner collection represents a set of values for a single row.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static Task<int> InsertAsync(
-            this Query query,
-            IEnumerable<string> columns,
-            IEnumerable<IEnumerable<object>> valuesCollection,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> InsertAsync(this Query query, IEnumerable<string> columns,
+            IEnumerable<IEnumerable<object>> valuesCollection, DbTransaction transaction = null, int? timeout = null,
+            CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.InsertAsync(
-                query,
-                columns,
-                valuesCollection,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.InsertAsync(query, columns, valuesCollection, transaction, timeout,
+                cancellationToken);
         }
 
         /// <summary>
@@ -848,13 +694,8 @@ namespace Omni.Core
         /// It accepts a collection of column names and a Query object representing the source of data to be inserted.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static int Insert(
-            this Query query,
-            IEnumerable<string> columns,
-            Query fromQuery,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Insert(this Query query, IEnumerable<string> columns, Query fromQuery,
+            DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Insert(query, columns, fromQuery, transaction, timeout);
         }
@@ -874,23 +715,10 @@ namespace Omni.Core
         /// It accepts a collection of column names and a Query object representing the source of data to be inserted.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static Task<int> InsertAsync(
-            this Query query,
-            IEnumerable<string> columns,
-            Query fromQuery,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> InsertAsync(this Query query, IEnumerable<string> columns, Query fromQuery,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.InsertAsync(
-                query,
-                columns,
-                fromQuery,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.InsertAsync(query, columns, fromQuery, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -906,12 +734,7 @@ namespace Omni.Core
         /// It accepts an object whose properties will be used as column names and values to be inserted.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static int Insert(
-            this Query query,
-            object data,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Insert(this Query query, object data, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Insert(query, data, transaction, timeout);
         }
@@ -930,21 +753,10 @@ namespace Omni.Core
         /// It accepts an object whose properties will be used as column names and values to be inserted.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static Task<int> InsertAsync(
-            this Query query,
-            object data,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> InsertAsync(this Query query, object data, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.InsertAsync(
-                query,
-                data,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.InsertAsync(query, data, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -961,12 +773,8 @@ namespace Omni.Core
         /// It returns the generated primary key value of type <typeparamref name="T"/> after the insert operation.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static T InsertGetId<T>(
-            this Query query,
-            object data,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T InsertGetId<T>(this Query query, object data, DbTransaction transaction = null,
+            int? timeout = null)
         {
             if (!UseDapper)
             {
@@ -993,13 +801,8 @@ namespace Omni.Core
         /// It returns a Task representing the asynchronous operation, where the Task result contains the generated primary key value of type <typeparamref name="T"/>.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the insert operation.
         /// </remarks>
-        public static Task<T> InsertGetIdAsync<T>(
-            this Query query,
-            object data,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> InsertGetIdAsync<T>(this Query query, object data, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
             if (!UseDapper)
             {
@@ -1008,13 +811,7 @@ namespace Omni.Core
                 );
             }
 
-            return QueryExtensions.InsertGetIdAsync<T>(
-                query,
-                data,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.InsertGetIdAsync<T>(query, data, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1031,12 +828,8 @@ namespace Omni.Core
         /// It returns the generated primary key value of type <typeparamref name="T"/> after the insert operation.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the insert operation.
         /// </remarks>
-        public static T InsertGetId<T>(
-            this Query query,
-            IEnumerable<KeyValuePair<string, object>> data,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T InsertGetId<T>(this Query query, IEnumerable<KeyValuePair<string, object>> data,
+            DbTransaction transaction = null, int? timeout = null)
         {
             if (!UseDapper)
             {
@@ -1063,13 +856,8 @@ namespace Omni.Core
         /// It returns a Task representing the asynchronous operation, where the Task result contains the generated primary key value of type <typeparamref name="T"/>.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the insert operation.
         /// </remarks>
-        public static Task<T> InsertGetIdAsync<T>(
-            this Query query,
-            IEnumerable<KeyValuePair<string, object>> data,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> InsertGetIdAsync<T>(this Query query, IEnumerable<KeyValuePair<string, object>> data,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
             if (!UseDapper)
             {
@@ -1078,13 +866,7 @@ namespace Omni.Core
                 );
             }
 
-            return QueryExtensions.InsertGetIdAsync<T>(
-                query,
-                data,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.InsertGetIdAsync<T>(query, data, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1100,12 +882,8 @@ namespace Omni.Core
         /// It accepts a collection of key-value pairs, where each key represents a column name and its corresponding new value.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the update operation.
         /// </remarks>
-        public static int Update(
-            this Query query,
-            IEnumerable<KeyValuePair<string, object>> values,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Update(this Query query, IEnumerable<KeyValuePair<string, object>> values,
+            DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Update(query, values, transaction, timeout);
         }
@@ -1124,21 +902,10 @@ namespace Omni.Core
         /// It accepts a collection of key-value pairs, where each key represents a column name and its corresponding new value.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the update operation.
         /// </remarks>
-        public static Task<int> UpdateAsync(
-            this Query query,
-            IEnumerable<KeyValuePair<string, object>> values,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> UpdateAsync(this Query query, IEnumerable<KeyValuePair<string, object>> values,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.UpdateAsync(
-                query,
-                values,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.UpdateAsync(query, values, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1154,12 +921,7 @@ namespace Omni.Core
         /// It accepts an object whose properties will be used to update corresponding columns in the database table.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the update operation.
         /// </remarks>
-        public static int Update(
-            this Query query,
-            object data,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Update(this Query query, object data, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Update(query, data, transaction, timeout);
         }
@@ -1178,13 +940,8 @@ namespace Omni.Core
         /// It accepts an object whose properties will be used to update corresponding columns in the database table.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the update operation.
         /// </remarks>
-        public static Task<int> UpdateAsync(
-            this Query query,
-            object data,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> UpdateAsync(this Query query, object data, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
             return QueryExtensions.UpdateAsync(
                 query,
@@ -1209,13 +966,8 @@ namespace Omni.Core
         /// It accepts the name of the column to be incremented and an optional value to increment by.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the increment operation.
         /// </remarks>
-        public static int Increment(
-            this Query query,
-            string column,
-            int value = 1,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Increment(this Query query, string column, int value = 1, DbTransaction transaction = null,
+            int? timeout = null)
         {
             return QueryExtensions.Increment(query, column, value, transaction, timeout);
         }
@@ -1235,14 +987,8 @@ namespace Omni.Core
         /// It accepts the name of the column to be incremented and an optional value to increment by.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the increment operation.
         /// </remarks>
-        public static Task<int> IncrementAsync(
-            this Query query,
-            string column,
-            int value = 1,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> IncrementAsync(this Query query, string column, int value = 1,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
             return QueryExtensions.IncrementAsync(
                 query,
@@ -1268,13 +1014,8 @@ namespace Omni.Core
         /// It accepts the name of the column to be decremented and an optional value to decrement by.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the decrement operation.
         /// </remarks>
-        public static int Decrement(
-            this Query query,
-            string column,
-            int value = 1,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Decrement(this Query query, string column, int value = 1, DbTransaction transaction = null,
+            int? timeout = null)
         {
             return QueryExtensions.Decrement(query, column, value, transaction, timeout);
         }
@@ -1294,23 +1035,10 @@ namespace Omni.Core
         /// It accepts the name of the column to be decremented and an optional value to decrement by.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the decrement operation.
         /// </remarks>
-        public static Task<int> DecrementAsync(
-            this Query query,
-            string column,
-            int value = 1,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> DecrementAsync(this Query query, string column, int value = 1,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.DecrementAsync(
-                query,
-                column,
-                value,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.DecrementAsync(query, column, value, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1324,11 +1052,7 @@ namespace Omni.Core
         /// This method deletes all rows from the specified database table.
         /// It optionally accepts a database transaction and a command timeout value to control the execution context of the delete operation.
         /// </remarks>
-        public static int Delete(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static int Delete(this Query query, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Delete(query, transaction, timeout);
         }
@@ -1345,12 +1069,8 @@ namespace Omni.Core
         /// This method asynchronously deletes all rows from the specified database table.
         /// It optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the delete operation.
         /// </remarks>
-        public static Task<int> DeleteAsync(
-            this Query query,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<int> DeleteAsync(this Query query, DbTransaction transaction = null, int? timeout = null,
+            CancellationToken cancellationToken = default)
         {
             return QueryExtensions.DeleteAsync(query, transaction, timeout, cancellationToken);
         }
@@ -1370,21 +1090,10 @@ namespace Omni.Core
         /// It accepts the aggregate operation to perform and the names of the columns to be included in the operation.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the aggregate operation.
         /// </remarks>
-        public static T Aggregate<T>(
-            this Query query,
-            string aggregateOperation,
-            string[] columns,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T Aggregate<T>(this Query query, string aggregateOperation, string[] columns,
+            DbTransaction transaction = null, int? timeout = null)
         {
-            return QueryExtensions.Aggregate<T>(
-                query,
-                aggregateOperation,
-                columns,
-                transaction,
-                timeout
-            );
+            return QueryExtensions.Aggregate<T>(query, aggregateOperation, columns, transaction, timeout);
         }
 
         /// <summary>
@@ -1403,23 +1112,11 @@ namespace Omni.Core
         /// It accepts the aggregate operation to perform and the names of the columns to be included in the operation.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the aggregate operation.
         /// </remarks>
-        public static Task<T> AggregateAsync<T>(
-            this Query query,
-            string aggregateOperation,
-            string[] columns,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> AggregateAsync<T>(this Query query, string aggregateOperation, string[] columns,
+            DbTransaction transaction = null, int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.AggregateAsync<T>(
-                query,
-                aggregateOperation,
-                columns,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.AggregateAsync<T>(query, aggregateOperation, columns, transaction, timeout,
+                cancellationToken);
         }
 
         /// <summary>
@@ -1436,12 +1133,8 @@ namespace Omni.Core
         /// It accepts optional column names to be included in the count operation.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the count operation.
         /// </remarks>
-        public static T Count<T>(
-            this Query query,
-            string[] columns = null,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T Count<T>(this Query query, string[] columns = null, DbTransaction transaction = null,
+            int? timeout = null)
         {
             return QueryExtensions.Count<T>(query, columns, transaction, timeout);
         }
@@ -1461,21 +1154,10 @@ namespace Omni.Core
         /// It accepts optional column names to be included in the count operation.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the count operation.
         /// </remarks>
-        public static Task<T> CountAsync<T>(
-            this Query query,
-            string[] columns = null,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> CountAsync<T>(this Query query, string[] columns = null, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.CountAsync<T>(
-                query,
-                columns,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.CountAsync<T>(query, columns, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1492,12 +1174,8 @@ namespace Omni.Core
         /// It accepts the name of the numeric column for which the average should be calculated.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the average operation.
         /// </remarks>
-        public static T Average<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T Average<T>(this Query query, string column, DbTransaction transaction = null,
+            int? timeout = null)
         {
             return QueryExtensions.Average<T>(query, column, transaction, timeout);
         }
@@ -1517,21 +1195,10 @@ namespace Omni.Core
         /// It accepts the name of the numeric column for which the average should be calculated.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the average operation.
         /// </remarks>
-        public static Task<T> AverageAsync<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> AverageAsync<T>(this Query query, string column, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.AverageAsync<T>(
-                query,
-                column,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.AverageAsync<T>(query, column, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1548,12 +1215,7 @@ namespace Omni.Core
         /// It accepts the name of the numeric column for which the sum should be calculated.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the sum operation.
         /// </remarks>
-        public static T Sum<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T Sum<T>(this Query query, string column, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Sum<T>(query, column, transaction, timeout);
         }
@@ -1573,21 +1235,10 @@ namespace Omni.Core
         /// It accepts the name of the numeric column for which the sum should be calculated.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the sum operation.
         /// </remarks>
-        public static Task<T> SumAsync<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> SumAsync<T>(this Query query, string column, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.SumAsync<T>(
-                query,
-                column,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.SumAsync<T>(query, column, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1604,12 +1255,7 @@ namespace Omni.Core
         /// It accepts the name of the column for which the minimum value should be found.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the minimum operation.
         /// </remarks>
-        public static T Min<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T Min<T>(this Query query, string column, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Min<T>(query, column, transaction, timeout);
         }
@@ -1629,21 +1275,10 @@ namespace Omni.Core
         /// It accepts the name of the column for which the minimum value should be found.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the minimum operation.
         /// </remarks>
-        public static Task<T> MinAsync<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> MinAsync<T>(this Query query, string column, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.MinAsync<T>(
-                query,
-                column,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.MinAsync<T>(query, column, transaction, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1660,12 +1295,7 @@ namespace Omni.Core
         /// It accepts the name of the column for which the maximum value should be found.
         /// The method optionally accepts a database transaction and a command timeout value to control the execution context of the maximum operation.
         /// </remarks>
-        public static T Max<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null
-        )
+        public static T Max<T>(this Query query, string column, DbTransaction transaction = null, int? timeout = null)
         {
             return QueryExtensions.Max<T>(query, column, transaction, timeout);
         }
@@ -1685,21 +1315,10 @@ namespace Omni.Core
         /// It accepts the name of the column for which the maximum value should be found.
         /// The method optionally accepts a database transaction, a command timeout value, and a CancellationToken to control the execution context of the maximum operation.
         /// </remarks>
-        public static Task<T> MaxAsync<T>(
-            this Query query,
-            string column,
-            DbTransaction transaction = null,
-            int? timeout = null,
-            CancellationToken cancellationToken = default
-        )
+        public static Task<T> MaxAsync<T>(this Query query, string column, DbTransaction transaction = null,
+            int? timeout = null, CancellationToken cancellationToken = default)
         {
-            return QueryExtensions.MaxAsync<T>(
-                query,
-                column,
-                transaction,
-                timeout,
-                cancellationToken
-            );
+            return QueryExtensions.MaxAsync<T>(query, column, transaction, timeout, cancellationToken);
         }
     }
 }

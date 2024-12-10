@@ -150,74 +150,35 @@ namespace Omni.Core
 
         public void SyncSerializedData(ServerOptions options)
         {
-            SyncSerializedData(
-                options.Target,
-                options.DeliveryMode,
-                options.GroupId,
-                options.DataCache,
-                options.SequenceChannel
-            );
+            SyncSerializedData(options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
+                options.SequenceChannel);
         }
 
-        public void SyncSerializedData(
-            Target target = Target.GroupOnly,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            DataCache dataCache = default,
-            byte sequenceChannel = 0
-        )
+        public void SyncSerializedData(Target target = Target.GroupOnly,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
+            byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
-            SyncSerializedData(
-                "_AllKeys_",
-                target,
-                deliveryMode,
-                groupId,
-                dataCache,
-                sequenceChannel
-            );
+            SyncSerializedData("_AllKeys_", target, deliveryMode, groupId, dataCache, sequenceChannel);
         }
 
         public void SyncSerializedData(string key, ServerOptions options)
         {
-            SyncSerializedData(
-                key,
-                options.Target,
-                options.DeliveryMode,
-                options.GroupId,
-                options.DataCache,
-                options.SequenceChannel
-            );
+            SyncSerializedData(key, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
+                options.SequenceChannel);
         }
 
-        public void SyncSerializedData(
-            string key,
-            Target target = Target.GroupOnly,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            DataCache dataCache = default,
-            byte sequenceChannel = 0
-        )
+        public void SyncSerializedData(string key, Target target = Target.GroupOnly,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
+            byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
-            Internal_SyncSerializedData(
-                key,
-                target,
-                deliveryMode,
-                groupId,
-                dataCache,
-                sequenceChannel
-            );
+            Internal_SyncSerializedData(key, target, deliveryMode, groupId, dataCache, sequenceChannel);
         }
 
-        private void Internal_SyncSerializedData(
-            string key = "_AllKeys_",
-            Target target = Target.GroupOnly,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            DataCache dataCache = default,
-            byte sequenceChannel = 0
-        )
+        private void Internal_SyncSerializedData(string key = "_AllKeys_", Target target = Target.GroupOnly,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
+            byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
             if (!IsServerActive)
@@ -239,16 +200,8 @@ namespace Omni.Core
                 using var message = Pool.Rent();
                 message.Write(Id);
                 message.WriteAsJson(keyValuePair);
-                ServerSide.SendMessage(
-                    MessageType.SyncGroupSerializedData,
-                    MasterClient,
-                    message,
-                    target,
-                    deliveryMode,
-                    groupId,
-                    dataCache,
-                    sequenceChannel
-                );
+                ServerSide.SendMessage(MessageType.SyncGroupSerializedData, MasterClient, message, target, deliveryMode,
+                    groupId, dataCache, sequenceChannel);
             }
             else
             {
@@ -261,53 +214,45 @@ namespace Omni.Core
 
         public void DeleteCache(DataCache dataCache)
         {
-            if (
-                dataCache.Mode == (CacheMode.Group | CacheMode.New)
-                || dataCache.Mode == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
-            )
+            switch (dataCache.Mode)
             {
-                CACHES_APPEND.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
-            }
-            else if (
-                dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite)
-                || dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
-            )
-            {
-                CACHES_OVERWRITE.Remove(dataCache.Id);
-            }
-            else
-            {
-                NetworkLogger.__Log__(
-                    "Delete Cache Error: Unsupported cache mode set.",
-                    NetworkLogger.LogType.Error
-                );
+                case CacheMode.Group | CacheMode.New:
+                case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
+                    CACHES_APPEND.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
+                    break;
+                case CacheMode.Group | CacheMode.Overwrite:
+                case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                    CACHES_OVERWRITE.Remove(dataCache.Id);
+                    break;
+                default:
+                    NetworkLogger.__Log__(
+                        "Delete Cache Error: Unsupported cache mode set.",
+                        NetworkLogger.LogType.Error
+                    );
+                    break;
             }
         }
 
         public void DeleteCache(DataCache dataCache, NetworkPeer peer)
         {
-            if (
-                dataCache.Mode == (CacheMode.Group | CacheMode.New)
-                || dataCache.Mode == (CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy)
-            )
+            switch (dataCache.Mode)
             {
-                CACHES_APPEND.RemoveAll(x =>
-                    x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id
-                );
-            }
-            else if (
-                dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite)
-                || dataCache.Mode == (CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy)
-            )
-            {
-                CACHES_OVERWRITE.Remove(dataCache.Id);
-            }
-            else
-            {
-                NetworkLogger.__Log__(
-                    "Delete Cache Error: Unsupported cache mode set.",
-                    NetworkLogger.LogType.Error
-                );
+                case CacheMode.Group | CacheMode.New:
+                case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
+                    CACHES_APPEND.RemoveAll(x =>
+                        x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id
+                    );
+                    break;
+                case CacheMode.Group | CacheMode.Overwrite:
+                case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                    CACHES_OVERWRITE.Remove(dataCache.Id);
+                    break;
+                default:
+                    NetworkLogger.__Log__(
+                        "Delete Cache Error: Unsupported cache mode set.",
+                        NetworkLogger.LogType.Error
+                    );
+                    break;
             }
         }
 

@@ -20,9 +20,7 @@ namespace Omni.Core
         {
             _pool = new Queue<DataBuffer>();
             for (int i = 0; i < poolSize; i++)
-            {
                 _pool.Enqueue(new DataBuffer(capacity, pool: this));
-            }
         }
 
         /// <inheritdoc />
@@ -41,8 +39,7 @@ namespace Omni.Core
             {
                 NetworkLogger.__Log__(
                     "Pool: A new buffer was created. Consider increasing the initial capacity of the pool, recommended to reduce pressure on the garbage collector.",
-                    NetworkLogger.LogType.Error
-                );
+                    NetworkLogger.LogType.Error);
 
                 return new DataBuffer(pool: this);
             }
@@ -85,9 +82,7 @@ namespace Omni.Core
 
                         // Print the stack trace only in debug mode.
                         if (!string.IsNullOrEmpty(hyperlink))
-                        {
                             NetworkLogger.Print(hyperlink, NetworkLogger.LogType.Error);
-                        }
 
                         cts.Cancel();
                         cts.Dispose();

@@ -116,6 +116,13 @@ namespace Omni.Core
         [SerializeField] [Group("MiscTabs"), Tab("Basic")] [Min(0)]
         private int m_LockClientFps = 60;
 
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [LabelWidth(190)]
+        [InfoBox(
+            "Dapper has limited 'IL2CPP' support. Disable for JSON mapping. Tip: Use 'Mono' for Server, 'IL2CPP' for Client for database operations.")]
+        private bool m_UseDapper = true;
+
         [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [LabelWidth(190)]
         private bool m_UseSecureRoutes = false;
 
@@ -273,6 +280,7 @@ namespace Omni.Core
                 }
                 catch
                 {
+                    // ignore shared violation
                 }
             }
         }

@@ -17,7 +17,7 @@ namespace Omni.Core
     {
     }
 
-    internal sealed class InvokeBehaviour<T1, T2, T3, T4, T5>
+    internal sealed class RpcHandler<T1, T2, T3, T4, T5>
     {
         private readonly int expectedArgsCount = -1;
 
@@ -30,7 +30,7 @@ namespace Omni.Core
         private readonly Dictionary<int, Action<T1, T2, T3, T4, T5>> T1_T2_T3_T4_T5_action = new();
         private readonly Dictionary<int, int> t_methods = new(); // int: method id, int: args count
 
-        internal InvokeBehaviour(int expectedArgsCount = -1)
+        internal RpcHandler(int expectedArgsCount = -1)
         {
             this.expectedArgsCount = expectedArgsCount;
         }
@@ -40,7 +40,7 @@ namespace Omni.Core
             return t_methods.TryGetValue(methodId, out argsCount);
         }
 
-        internal void Invoke(int methodId)
+        internal void Rpc(int methodId)
         {
             if (expectedArgsCount > -1 && expectedArgsCount != 0)
             {
@@ -55,7 +55,7 @@ namespace Omni.Core
             }
         }
 
-        internal void Invoke(int methodId, T1 arg1)
+        internal void Rpc(int methodId, T1 arg1)
         {
             if (expectedArgsCount > -1 && expectedArgsCount != 1)
             {
@@ -70,7 +70,7 @@ namespace Omni.Core
             }
         }
 
-        internal void Invoke(int methodId, T1 arg1, T2 arg2)
+        internal void Rpc(int methodId, T1 arg1, T2 arg2)
         {
             if (expectedArgsCount > -1 && expectedArgsCount != 2)
             {
@@ -85,7 +85,7 @@ namespace Omni.Core
             }
         }
 
-        internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3)
+        internal void Rpc(int methodId, T1 arg1, T2 arg2, T3 arg3)
         {
             if (expectedArgsCount > -1 && expectedArgsCount != 3)
             {
@@ -100,7 +100,7 @@ namespace Omni.Core
             }
         }
 
-        internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+        internal void Rpc(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
         {
             if (expectedArgsCount > -1 && expectedArgsCount != 4)
             {
@@ -115,7 +115,7 @@ namespace Omni.Core
             }
         }
 
-        internal void Invoke(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
+        internal void Rpc(int methodId, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
         {
             if (expectedArgsCount > -1 && expectedArgsCount != 5)
             {
@@ -130,8 +130,7 @@ namespace Omni.Core
             }
         }
 
-        internal void FindEvents<T>(object target, BindingFlags flags)
-            where T : EventAttribute
+        internal void FindEvents<T>(object target, BindingFlags flags) where T : EventAttribute
         {
             // Reflection is very slow, but it's only called once.
             // Declared only, not inherited to optimize the search.
@@ -297,9 +296,7 @@ namespace Omni.Core
 
                 try
                 {
-                    func =
-                        (Action<T1, T2, T3>)
-                        method.CreateDelegate(typeof(Action<T1, T2, T3>), target);
+                    func = (Action<T1, T2, T3>)method.CreateDelegate(typeof(Action<T1, T2, T3>), target);
 
                     if (!T1_T2_T3_action.TryAdd(attr.Id, func))
                     {
@@ -329,9 +326,7 @@ namespace Omni.Core
 
                 try
                 {
-                    func =
-                        (Action<T1, T2, T3, T4>)
-                        method.CreateDelegate(typeof(Action<T1, T2, T3, T4>), target);
+                    func = (Action<T1, T2, T3, T4>)method.CreateDelegate(typeof(Action<T1, T2, T3, T4>), target);
 
                     if (!T1_T2_T3_T4_action.TryAdd(attr.Id, func))
                     {
@@ -361,9 +356,8 @@ namespace Omni.Core
 
                 try
                 {
-                    func =
-                        (Action<T1, T2, T3, T4, T5>)
-                        method.CreateDelegate(typeof(Action<T1, T2, T3, T4, T5>), target);
+                    func = (Action<T1, T2, T3, T4, T5>)method.CreateDelegate(typeof(Action<T1, T2, T3, T4, T5>),
+                        target);
 
                     if (!T1_T2_T3_T4_T5_action.TryAdd(attr.Id, func))
                     {
@@ -387,11 +381,7 @@ namespace Omni.Core
                 }
             }
 
-            void ThrowParameterCountMismatch(
-                T attr,
-                MethodInfo func,
-                TargetParameterCountException ex
-            )
+            void ThrowParameterCountMismatch(T attr, MethodInfo func, TargetParameterCountException ex)
             {
                 var expectedArguments = string.Join(
                     ", ",

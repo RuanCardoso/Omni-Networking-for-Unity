@@ -19,11 +19,16 @@ namespace Omni.Core
         };
 
         /// <summary>
-        /// Instantiates a network identity on the server and the clients.
+        /// Spawns a network identity on both server and specified target clients with given delivery and caching options.
         /// </summary>
-        /// <param name="prefab">The prefab to instantiate.</param>
-        /// <param name="peer">The peer who will receive the instantiated object.</param>
-        /// <returns>The instantiated network identity on the server.</returns>
+        /// <param name="prefab">The network identity prefab to spawn.</param>
+        /// <param name="peer">The network peer to receive the spawned object.</param>
+        /// <param name="target">Specifies the target clients for the spawned object.</param>
+        /// <param name="deliveryMode">Defines how the spawned object is delivered over the network.</param>
+        /// <param name="groupId">The group identifier for organizing network messages.</param>
+        /// <param name="dataCache">Optional data cache for storing additional data associated with the spawn operation.</param>
+        /// <param name="sequenceChannel">The sequence channel used for ordering network messages.</param>
+        /// <returns>The spawned network identity instance.</returns>
         public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, ServerOptions options)
         {
             var identity = NetworkManager.SpawnOnServer(prefab, peer);
@@ -32,11 +37,16 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Instantiates a network identity on the server and the clients.
+        /// Instantiates a network identity on the server and specified client targets with defined delivery and caching options.
         /// </summary>
-        /// <param name="prefab">The prefab to instantiate.</param>
-        /// <param name="peer">The peer who will receive the instantiated object.</param>
-        /// <returns>The instantiated network identity on the server.</returns>
+        /// <param name="prefab">The network identity prefab to instantiate.</param>
+        /// <param name="peer">The network peer that will receive the instantiated object.</param>
+        /// <param name="target">Specifies the target clients for the instantiated object.</param>
+        /// <param name="deliveryMode">Determines the manner in which the instantiated object is delivered over the network.</param>
+        /// <param name="groupId">An identifier used for organizing network messages into groups.</param>
+        /// <param name="dataCache">Optional parameter for caching additional data associated with the instantiation process.</param>
+        /// <param name="sequenceChannel">The sequence channel used to maintain message order for network delivery.</param>
+        /// <returns>The instantiated network identity as observed on the server.</returns>
         public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, Target target = Target.Auto,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0,
@@ -77,12 +87,11 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Instantiates a network identity on the server.
+        /// Instantiates a network identity on the server for the specified peer.
         /// </summary>
-        /// <param name="prefab">The prefab to instantiate.</param>
-        /// <param name="peerId">The ID of the peer who will receive the instantiated object.</param>
-        /// <param name="identityId">The ID of the instantiated object. If not provided, a dynamic unique ID will be generated.</param>
-        /// <returns>The instantiated network identity.</returns>
+        /// <param name="prefab">The network identity prefab to instantiate on the server.</param>
+        /// <param name="peer">The network peer associated with the instantiated object.</param>
+        /// <returns>The instantiated network identity object.</returns>
         public static NetworkIdentity SpawnOnServer(
             this NetworkIdentity prefab,
             int peerId,
@@ -93,12 +102,12 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Instantiates a network identity on the client.
+        /// Instantiates a network identity on a client with specified peer and identity identifiers.
         /// </summary>
-        /// <param name="prefab">The prefab to instantiate.</param>
-        /// <param name="peerId">The ID of the peer who owns the instantiated object.</param>
-        /// <param name="identityId">The ID of the instantiated object.</param>
-        /// <returns>The instantiated network identity.</returns>
+        /// <param name="prefab">The network identity prefab to instantiate on the client.</param>
+        /// <param name="peerId">The identifier of the peer who will own the instantiated object.</param>
+        /// <param name="identityId">The unique identifier for the instantiated network identity.</param>
+        /// <returns>The instantiated network identity on the client.</returns>
         public static NetworkIdentity SpawnOnClient(
             this NetworkIdentity prefab,
             int peerId,
@@ -145,8 +154,9 @@ namespace Omni.Core
 
         /// <summary>
         /// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
-        /// impacted by the 3D raycast hit.
+        /// affected by the 3D raycast hit.
         /// </summary>
+        /// <param name="hit">The <see cref="RaycastHit"/> instance resulting from a raycast operation.</param>
         /// <returns>
         /// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
         /// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
@@ -170,52 +180,40 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
-        /// impacted by the 2D raycast hit.
+        /// Retrieves the NetworkIdentity associated with the root of the transform involved in the collision.
         /// </summary>
-        /// <returns>
-        /// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
-        /// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
-        /// </returns>
+        /// <param name="hit">The Collision object from which to extract the NetworkIdentity.</param>
+        /// <returns>The NetworkIdentity component attached to the root transform of the collision, or null if not found.</returns>
         public static NetworkIdentity GetIdentity(this Collision hit)
         {
             return hit.transform.root.GetComponent<NetworkIdentity>();
         }
 
         /// <summary>
-        /// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
-        /// impacted by the 2D raycast hit.
+        /// Retrieves the NetworkIdentity component associated with the given Collider.
         /// </summary>
-        /// <returns>
-        /// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
-        /// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
-        /// </returns>
+        /// <param name="hit">The Collider from which to retrieve the NetworkIdentity component.</param>
+        /// <returns>The NetworkIdentity component attached to the root transform of the Collider, or null if none is found.</returns>
         public static NetworkIdentity GetIdentity(this Collider hit)
         {
             return hit.transform.root.GetComponent<NetworkIdentity>();
         }
 
         /// <summary>
-        /// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
-        /// impacted by the 2D raycast hit.
+        /// Retrieves the NetworkIdentity component from the root transform of a Collision2D instance.
         /// </summary>
-        /// <returns>
-        /// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
-        /// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
-        /// </returns>
+        /// <param name="hit">The Collision2D instance from which to obtain the NetworkIdentity component.</param>
+        /// <returns>The NetworkIdentity component associated with the root transform of the collision, or null if not found.</returns>
         public static NetworkIdentity GetIdentity(this Collision2D hit)
         {
             return hit.transform.root.GetComponent<NetworkIdentity>();
         }
 
         /// <summary>
-        /// Retrieves the <see cref="NetworkIdentity"/> component from the root of the transform
-        /// impacted by the 2D raycast hit.
+        /// Retrieves the NetworkIdentity component associated with the given Collider2D.
         /// </summary>
-        /// <returns>
-        /// The <see cref="NetworkIdentity"/> component located on the root object of the impacted transform,
-        /// or <c>null</c> if no <see cref="NetworkIdentity"/> is found.
-        /// </returns>
+        /// <param name="hit">The Collider2D from which to obtain the NetworkIdentity component.</param>
+        /// <returns>The NetworkIdentity component attached to the root transform of the specified Collider2D, or null if no such component exists.</returns>
         public static NetworkIdentity GetIdentity(this Collider2D hit)
         {
             return hit.transform.root.GetComponent<NetworkIdentity>();
