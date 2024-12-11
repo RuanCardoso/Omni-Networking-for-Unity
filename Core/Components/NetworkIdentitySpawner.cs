@@ -5,7 +5,7 @@ using UnityEngine;
 namespace Omni.Core.Components
 {
     [DefaultExecutionOrder(-2800)] // It must be the last thing to happen, user scripts must take priority.
-    public sealed class NetworkObjectSpawner : ServerBehaviour
+    public sealed class NetworkIdentitySpawner : ServerBehaviour
     {
         [SerializeField] private NetworkIdentity m_LocalPlayer;
 
