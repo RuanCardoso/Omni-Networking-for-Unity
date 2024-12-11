@@ -16,6 +16,10 @@ namespace Omni.Core
         Mono
     }
 
+    /// <summary>
+    /// Defines the mode of operation for scene-related actions,
+    /// such as loading or unloading scenes within the networked environment.
+    /// </summary>
     public enum SceneOperationMode
     {
         Load,
@@ -218,32 +222,134 @@ namespace Omni.Core
         ReliableSequenced
     }
 
+    /// <summary>
+    /// Provides predefined caching modes for various scoped cache operations.
+    /// </summary>
+    /// <remarks>
+    /// The class defines multiple cache presets by combining specific <see cref="CacheMode"/> flags to represent common cache usage scenarios.
+    /// These presets are categorized into the following scopes:
+    /// <list type="bullet">
+    /// <item>
+    /// <term>Peer-Scoped Cache Operations</term>
+    /// <description>
+    /// <list type="bullet">
+    /// <item><term><c>PeerNew</c></term><description>Combines <see cref="CacheMode.Peer"/> and <see cref="CacheMode.New"/>. Creates a new cache entry specific to a peer.</description></item>
+    /// <item><term><c>PeerNewWithAutoDestroy</c></term><description>Extends <c>PeerNew</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the cache entry when it is no longer needed.</description></item>
+    /// <item><term><c>PeerOverwrite</c></term><description>Combines <see cref="CacheMode.Peer"/> and <see cref="CacheMode.Overwrite"/>. Overwrites an existing cache entry specific to a peer.</description></item>
+    /// <item><term><c>PeerOverwriteWithAutoDestroy</c></term><description>Extends <c>PeerOverwrite</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the existing entry after overwriting.</description></item>
+    /// </list>
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <term>Group-Scoped Cache Operations</term>
+    /// <description>
+    /// <list type="bullet">
+    /// <item><term><c>GroupNew</c></term><description>Combines <see cref="CacheMode.Group"/> and <see cref="CacheMode.New"/>. Creates a new cache entry for a group.</description></item>
+    /// <item><term><c>GroupNewWithAutoDestroy</c></term><description>Extends <c>GroupNew</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the cache entry when no longer needed.</description></item>
+    /// <item><term><c>GroupOverwrite</c></term><description>Combines <see cref="CacheMode.Group"/> and <see cref="CacheMode.Overwrite"/>. Overwrites an existing group cache entry.</description></item>
+    /// <item><term><c>GroupOverwriteWithAutoDestroy</c></term><description>Extends <c>GroupOverwrite</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the existing entry after overwriting.</description></item>
+    /// </list>
+    /// </description>
+    /// </item>
+    /// <item>
+    /// <term>Global-Scoped Cache Operations</term>
+    /// <description>
+    /// <list type="bullet">
+    /// <item><term><c>ServerNew</c></term><description>Combines <see cref="CacheMode.Global"/> and <see cref="CacheMode.New"/>. Creates a new global cache entry.</description></item>
+    /// <item><term><c>ServerNewWithAutoDestroy</c></term><description>Extends <c>ServerNew</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the cache entry when no longer needed.</description></item>
+    /// <item><term><c>ServerOverwrite</c></term><description>Combines <see cref="CacheMode.Global"/> and <see cref="CacheMode.Overwrite"/>. Overwrites an existing global cache entry.</description></item>
+    /// <item><term><c>ServerOverwriteWithAutoDestroy</c></term><description>Extends <c>ServerOverwrite</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the existing entry after overwriting.</description></item>
+    /// </list>
+    /// </description>
+    /// </item>
+    /// </list>
+    /// These presets are useful for simplifying cache management in various scoped scenarios.
+    /// </remarks>
     public class CachePresets
     {
         // Peer-scoped cache operations
+        /// Represents a combination of cache modes specific to peer-scoped cache operations
+        /// and a new cache creation. This constant is used to define a caching behavior
+        /// that associates operations with individual peers while ensuring the creation
+        /// of new cache entries.
         public const CacheMode PeerNew = CacheMode.Peer | CacheMode.New;
+
+        /// Represents a peer-scoped cache mode configuration with the combination of
+        /// `CacheMode.Peer`, `CacheMode.New`, and `CacheMode.AutoDestroy`.
+        /// This configuration ensures that the cache is scoped to the peer, marks
+        /// it as new, and enables automatic destruction upon invalidation or specific
+        /// conditions.
         public const CacheMode PeerNewWithAutoDestroy = CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy;
 
+        /// <summary>
+        /// Represents a cache operation mode intended for peer-scoped overwrite operations.
+        /// Combines the <see cref="CacheMode.Peer"/> and <see cref="CacheMode.Overwrite"/> flags.
+        /// Used to indicate that existing cached data for a specific peer should be replaced with new data.
+        /// </summary>
         public const CacheMode PeerOverwrite = CacheMode.Peer | CacheMode.Overwrite;
 
+        /// Represents a combination of cache modes for operations scoped to a peer.
+        /// This preset combines the `Peer`, `Overwrite`, and `AutoDestroy` flags from the `CacheMode` enumeration.
+        /// It is used to specify that cached data should be overwritten, scoped to a peer,
+        /// and automatically destroyed when no longer needed.
         public const CacheMode PeerOverwriteWithAutoDestroy =
             CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy;
 
         // Group-scoped cache operations
+        /// <summary>
+        /// Represents a cache operation mode where a new entry is created within the group scope.
+        /// Combines <see cref="CacheMode.Group"/> and <see cref="CacheMode.New"/> to ensure that the
+        /// cache is scoped to the group and a new entry is created. Does not overwrite existing entries.
+        /// </summary>
         public const CacheMode GroupNew = CacheMode.Group | CacheMode.New;
+
+        /// Represents a caching mode that operates on a group scope where new cache entries
+        /// are created, and they are automatically destroyed when their scope ends.
+        /// Combines the Group, New, and AutoDestroy flags from the CacheMode enumeration.
         public const CacheMode GroupNewWithAutoDestroy = CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy;
 
+        /// <summary>
+        /// Represents a cache mode where existing data within the specified group is overwritten.
+        /// Combines the <see cref="CacheMode.Group"/> and <see cref="CacheMode.Overwrite"/> flags.
+        /// Typically used to update or replace existing cached information for group-scoped operations.
+        /// </summary>
         public const CacheMode GroupOverwrite = CacheMode.Group | CacheMode.Overwrite;
 
+        /// Represents a combined cache mode configuration that applies the following settings:
+        /// 1. Group-scoped cache operations (CacheMode.Group).
+        /// 2. Overwrite behavior for existing entries (CacheMode.Overwrite).
+        /// 3. Automatic destruction of cache entries when no longer needed (CacheMode.AutoDestroy).
+        /// This is useful for managing group-level cached data with automatic cleanup.
         public const CacheMode GroupOverwriteWithAutoDestroy =
             CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy;
 
         // Global-scoped cache operations
+        /// <summary>
+        /// Represents a cache operation mode configured for creating new global-scoped cache entities on the server.
+        /// Combines the <see cref="CacheMode.Global"/> and <see cref="CacheMode.New"/> flags to define a unique
+        /// operational behavior for managing server-level cache.
+        /// </summary>
         public const CacheMode ServerNew = CacheMode.Global | CacheMode.New;
+
+        /// <summary>
+        /// Represents a global-scoped cache operation mode that combines the creation of a new cache entry
+        /// with automatic cleanup.
+        /// This constant is defined using a combination of the <c>CacheMode.Global</c>, <c>CacheMode.New</c>,
+        /// and <c>CacheMode.AutoDestroy</c> flags, enabling new cache data to be added globally and
+        /// automatically removed when no longer needed.
+        /// </summary>
         public const CacheMode ServerNewWithAutoDestroy = CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy;
 
+        /// <summary>
+        /// Represents a cache operation mode that applies globally across the network (Global scope),
+        /// and is used to overwrite existing cache entries with new data.
+        /// </summary>
         public const CacheMode ServerOverwrite = CacheMode.Global | CacheMode.Overwrite;
 
+        /// Represents a cache operation mode that performs an overwrite operation on the global (server) cache
+        /// and marks the cached entries for automatic destruction when they are no longer needed.
+        /// Combines the CacheMode flags `Global`, `Overwrite`, and `AutoDestroy`.
+        /// Used to manage server-scoped cache entries with automatic cleanup after they are updated.
         public const CacheMode ServerOverwriteWithAutoDestroy =
             CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy;
     }

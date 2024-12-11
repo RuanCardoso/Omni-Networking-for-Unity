@@ -7,6 +7,19 @@ using System.Threading;
 
 namespace Omni.Core
 {
+    /// <summary>
+    /// The DataBufferPool class provides a buffer pooling mechanism for managing instances of DataBuffer.
+    /// It helps to minimize memory allocation overhead and reduce garbage collection pressure
+    /// by reusing buffer instances from the pool.
+    /// </summary>
+    /// <remarks>
+    /// This class is primarily used to manage the lifecycle of DataBuffer objects by providing rent and return operations.
+    /// When a buffer is returned, it is reset to its initial state and made available for reuse.
+    /// If the pool is empty when a buffer is requested, a new instance of DataBuffer will be created.
+    /// </remarks>
+    /// <threadsafety>
+    /// This class is not thread-safe. Synchronization must be considered if accessed across multiple threads.
+    /// </threadsafety>
     internal sealed class DataBufferPool : IBufferPooling<DataBuffer>
     {
         /// The maximum time in milliseconds that a buffer is being tracked before it is considered
@@ -14,10 +27,12 @@ namespace Omni.Core
         /// 500ms seems good to me, if there is an expensive operation that takes more than 500ms, it is recommended to call SupressTracking.
         private const int MAX_TRACKING_TIME = 500;
 
+        private int DefaultCapacity { get; } = DataBuffer.DefaultBufferSize;
         private readonly Queue<DataBuffer> _pool;
 
-        internal DataBufferPool(int capacity = 32768, int poolSize = 32)
+        internal DataBufferPool(int capacity = DataBuffer.DefaultBufferSize, int poolSize = 32)
         {
+            DefaultCapacity = capacity;
             _pool = new Queue<DataBuffer>();
             for (int i = 0; i < poolSize; i++)
                 _pool.Enqueue(new DataBuffer(capacity, pool: this));
@@ -38,10 +53,10 @@ namespace Omni.Core
             else
             {
                 NetworkLogger.__Log__(
-                    "Pool: A new buffer was created. Consider increasing the initial capacity of the pool, recommended to reduce pressure on the garbage collector.",
-                    NetworkLogger.LogType.Error);
+                    "Buffer Pool Warning: A new buffer has been created. To enhance performance and reduce garbage collection pressure, consider increasing the initial pool capacity.",
+                    NetworkLogger.LogType.Warning);
 
-                return new DataBuffer(pool: this);
+                return new DataBuffer(DefaultCapacity, pool: this);
             }
         }
 
@@ -76,7 +91,7 @@ namespace Omni.Core
                     )
                     {
                         NetworkLogger.Print(
-                            "Memory Leak Fatal Error: The DataBuffer object has not been disposed or returned to the pool within the expected time frame. This could indicate a missing 'using' statement, a failure to call 'Dispose', prolonged processing time, or a persistent reference to the object. Ensure that the object is properly disposed or processing time is not too long.",
+                            "Memory Leak Detected: The DataBuffer object has not been disposed of or returned to the pool within the expected time frame. This may indicate a missing 'using' statement, failure to call 'Dispose', extended processing time, or an unintended persistent reference to the object. Please ensure proper disposal or review the processing logic to avoid potential performance issues.",
                             NetworkLogger.LogType.Error
                         );
 

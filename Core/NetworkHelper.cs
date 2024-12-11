@@ -111,7 +111,7 @@ namespace Omni.Core
             else
             {
                 NetworkLogger.__Log__(
-                    $"Server Destroy: Identity with ID {identity.IdentityId} not found.",
+                    $"[Error] Failed to Destroy: Network Identity with ID '{identity.IdentityId}' was not found in the {(isServer ? "Server" : "Client")} identities. This might indicate a desynchronization issue or an invalid operation.",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -173,7 +173,7 @@ namespace Omni.Core
                 identities[identity.IdentityId] = identity;
 
                 NetworkLogger.__Log__(
-                    $"A Identity with Id: '{identity.IdentityId}' already exists. The old reference has been destroyed and replaced with the new one.",
+                    $"An identity conflict occurred. Identity with Id: '{identity.IdentityId}' already exists. The old instance has been destroyed and replaced with the new one to maintain consistency.",
                     NetworkLogger.LogType.Warning);
             }
 
@@ -211,11 +211,9 @@ namespace Omni.Core
             {
                 if (protocolType == ProtocolType.Udp)
                 {
-                    using Socket socket = new Socket(
-                        useIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork,
-                        SocketType.Dgram,
-                        ProtocolType.Udp
-                    );
+                    using Socket socket =
+                        new Socket(useIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork,
+                            SocketType.Dgram, ProtocolType.Udp);
 
                     if (useIPv6)
                     {
@@ -227,11 +225,9 @@ namespace Omni.Core
                 }
                 else if (protocolType == ProtocolType.Tcp)
                 {
-                    using Socket socket = new Socket(
-                        useIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork,
-                        SocketType.Stream,
-                        ProtocolType.Tcp
-                    );
+                    using Socket socket =
+                        new Socket(useIPv6 ? AddressFamily.InterNetworkV6 : AddressFamily.InterNetwork,
+                            SocketType.Stream, ProtocolType.Tcp);
 
                     if (useIPv6)
                     {
@@ -267,10 +263,10 @@ namespace Omni.Core
         [Conditional("OMNI_DEBUG")]
         internal static void ThrowAnErrorIfIsInternalTypes<T>(T type) where T : unmanaged
         {
-            if (type is Target || type is DeliveryMode || type is CacheMode)
+            if (type is Target or DeliveryMode or CacheMode)
             {
                 throw new InvalidOperationException(
-                    "Internal types are not allowed as arguments for the DataBuffer. If this was not intentional, please consider using a different overload.");
+                    "The type provided is internal and not permitted as an argument for the DataBuffer. If this was not intentional, use an appropriate alternative overload or consult the documentation for further guidance.");
             }
         }
 
@@ -344,11 +340,11 @@ namespace Omni.Core
             if (!IsRunningOnMainThread())
             {
                 NetworkLogger.__Log__(
-                    "This operation must be performed on the main thread. Omni does not support multithreaded operations. " +
-                    "Tip: Dispatch the events to the main thread.", NetworkLogger.LogType.Error);
+                    "Operation must run on the main thread. Multi-threading is not supported in Omni. " +
+                    "Hint: Use main thread dispatching to handle this operation.", NetworkLogger.LogType.Error);
 
-                throw new Exception(
-                    "This operation must be performed on the main thread. Omni does not support multithreaded operations. Tip: Dispatch the events to the main thread."
+                throw new NotSupportedException(
+                    "Operation must run on the main thread. Multi-threading is not supported in Omni. Hint: Use main thread dispatching to handle this operation."
                 );
             }
         }

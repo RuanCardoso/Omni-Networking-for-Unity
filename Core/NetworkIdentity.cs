@@ -443,7 +443,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Automatic instantiates a network identity on the client.
+        /// Automatic spawns a network identity on the client.
         /// </summary>
         /// <returns>The instantiated network identity.</returns>
         public void SpawnOnClient(Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -459,7 +459,8 @@ namespace Omni.Core
 
             if (!IsServer)
             {
-                throw new Exception($"Only server can spawn the game object '{name}'.");
+                throw new InvalidOperationException(
+                    $"Operation failed: Only the server is authorized to spawn the game object '{name}'. Ensure the operation is being performed on the server.");
             }
 
             using var message = NetworkManager.Pool.Rent();
@@ -495,7 +496,8 @@ namespace Omni.Core
 
             if (!IsServer)
             {
-                throw new Exception($"Only server can destroy the game object '{name}'.");
+                throw new InvalidOperationException(
+                    $"Operation failed: The game object '{name}' can only be destroyed by the server. Ensure the operation is being executed on the server.");
             }
 
             using var message = NetworkManager.Pool.Rent();
@@ -523,7 +525,8 @@ namespace Omni.Core
 
             if (!IsServer)
             {
-                throw new Exception($"Only server can destroy the game object '{name}'.");
+                throw new InvalidOperationException(
+                    $"Operation failed: The game object '{name}' can only be destroyed by the server. Ensure the operation is being executed on the server.");
             }
 
             using var message = NetworkManager.Pool.Rent();
@@ -556,9 +559,12 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Sets the owner of the network identity to the specified peer.
+        /// Sets the owner of the network identity to the specified network peer.
         /// </summary>
         /// <param name="peer">The new owner of the network identity.</param>
+        /// <param name="target">
+        /// Specifies the target(s) for the ownership change notification. Defaults to <see cref="Target.Auto"/>.
+        /// </param>
         public void SetOwner(NetworkPeer peer, Target target = Target.Auto,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
             byte sequenceChannel = 0)
@@ -577,7 +583,7 @@ namespace Omni.Core
             else
             {
                 throw new Exception(
-                    $"Only server can set the owner of the game object -> '{name}'."
+                    $"Operation denied: Only the server can set the owner of the game object '{name}'. Please ensure this action is performed on the server."
                 );
             }
         }
@@ -591,7 +597,7 @@ namespace Omni.Core
             if (IsServer)
             {
                 throw new NotSupportedException(
-                    "Only the client can request this action. Obs: Invokes a remote action on the server-side entity, triggered by a client-side entity.");
+                    "RequestAction failed: This operation is only allowed on the client. It invokes a remote action on the server-side entity, triggered by a client-side entity.");
             }
 
             data ??= DataBuffer.Empty;

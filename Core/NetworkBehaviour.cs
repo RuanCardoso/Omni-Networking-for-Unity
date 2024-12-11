@@ -99,9 +99,10 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
+            /// Invokes a message on the server using a Remote Procedure Call (RPC) with the specified message ID and options.
             /// </summary>
-            /// <param name="msgId">The ID of the message to be invoked.</param>
+            /// <param name="msgId">The ID of the message to invoke on the server.</param>
+            /// <param name="options">The client options used for the RPC call.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte msgId, ClientOptions options)
             {
@@ -109,12 +110,12 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Invokes a message on the server, similar to a Remote Procedure Call (RPC).
+            /// Sends a Remote Procedure Call (RPC) message to the server with the specified parameters.
             /// </summary>
-            /// <param name="msgId">The ID of the message to be invoked.</param>
-            /// <param name="buffer">The buffer containing the message data. Default is null.</param>
-            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <param name="msgId">The unique identifier for the RPC message to be sent.</param>
+            /// <param name="buffer">The data buffer containing the message payload. Defaults to null if no payload is provided.</param>
+            /// <param name="deliveryMode">Specifies the message delivery mode, such as reliable or ordered. Default is ReliableOrdered.</param>
+            /// <param name="sequenceChannel">The designated sequence channel for the message. Default is 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte msgId, DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
@@ -123,6 +124,13 @@ namespace Omni.Core
                     deliveryMode, sequenceChannel);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) message to the server with the specified parameters,
+            /// using the provided message object and client options.
+            /// </summary>
+            /// <param name="msgId">The identifier for the RPC message to be delivered.</param>
+            /// <param name="message">The IMessage implementation representing the data to serialize and send.</param>
+            /// <param name="options">The configuration settings defining buffer options for the RPC call. Defaults to a standard configuration if not provided.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte msgId, IMessage message, ClientOptions options = default)
             {
@@ -131,6 +139,13 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) to the server with the specified message ID, parameter, and optional client options.
+            /// </summary>
+            /// <typeparam name="T1">The type of the parameter to send. Must be unmanaged.</typeparam>
+            /// <param name="msgId">The unique identifier for the RPC message.</param>
+            /// <param name="p1">The parameter value to send with the RPC.</param>
+            /// <param name="options">Optional client options to configure the RPC behavior.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1>(byte msgId, T1 p1, ClientOptions options = default) where T1 : unmanaged
             {
@@ -140,6 +155,15 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a remote procedure call (RPC) message to the server, utilizing the specified message ID and parameters.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter.</typeparam>
+            /// <typeparam name="T2">The type of the second parameter.</typeparam>
+            /// <param name="msgId">The unique identifier for the RPC message.</param>
+            /// <param name="p1">The first parameter to include in the RPC message.</param>
+            /// <param name="p2">The second parameter to include in the RPC message.</param>
+            /// <param name="options">Optional client-specific configuration for the RPC message.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2, ClientOptions options = default)
                 where T1 : unmanaged where T2 : unmanaged
@@ -151,6 +175,17 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a remote procedure call (RPC) to a server with the specified parameters and configuration options.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T2">The type of the second parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T3">The type of the third parameter, which must be unmanaged.</typeparam>
+            /// <param name="msgId">The message ID that identifies the RPC call.</param>
+            /// <param name="p1">The first parameter to include in the RPC call.</param>
+            /// <param name="p2">The second parameter to include in the RPC call.</param>
+            /// <param name="p3">The third parameter to include in the RPC call.</param>
+            /// <param name="options">The options for configuring the RPC call's behavior and delivery.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3>(byte msgId, T1 p1, T2 p2, T3 p3, ClientOptions options = default)
                 where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged
@@ -163,6 +198,19 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a remote procedure call (RPC) with the specified message ID and parameters to the server.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T2">The type of the second parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T3">The type of the third parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T4">The type of the fourth parameter, which must be unmanaged.</typeparam>
+            /// <param name="msgId">The ID of the message to be sent.</param>
+            /// <param name="p1">The first parameter to include in the RPC.</param>
+            /// <param name="p2">The second parameter to include in the RPC.</param>
+            /// <param name="p3">The third parameter to include in the RPC.</param>
+            /// <param name="p4">The fourth parameter to include in the RPC.</param>
+            /// <param name="options">Additional client options for the RPC, which includes buffers and configurations.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, ClientOptions options = default)
                 where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged where T4 : unmanaged
@@ -176,6 +224,21 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends an RPC (Remote Procedure Call) message to the server with the specified arguments and message ID.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first argument, must be unmanaged.</typeparam>
+            /// <typeparam name="T2">The type of the second argument, must be unmanaged.</typeparam>
+            /// <typeparam name="T3">The type of the third argument, must be unmanaged.</typeparam>
+            /// <typeparam name="T4">The type of the fourth argument, must be unmanaged.</typeparam>
+            /// <typeparam name="T5">The type of the fifth argument, must be unmanaged.</typeparam>
+            /// <param name="msgId">The ID of the message to send.</param>
+            /// <param name="p1">The first argument to be included in the RPC message.</param>
+            /// <param name="p2">The second argument to be included in the RPC message.</param>
+            /// <param name="p3">The third argument to be included in the RPC message.</param>
+            /// <param name="p4">The fourth argument to be included in the RPC message.</param>
+            /// <param name="p5">The fifth argument to be included in the RPC message.</param>
+            /// <param name="options">The options for configuring the client RPC message.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4, T5>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5,
                 ClientOptions options = default) where T1 : unmanaged
@@ -205,7 +268,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a manual 'NetworkVariable' message to all(default) clients with the specified property and property ID.
+            /// Sends a manual 'NetworkVariable' message to clients with the specified property and property ID.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
@@ -217,7 +280,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a manual 'NetworkVariable' message to all(default) clients with the specified property and property ID.
+            /// Sends a manual 'NetworkVariable' message to clients with the specified property and property ID.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="property">The property value to synchronize.</param>
@@ -238,7 +301,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
+            /// Automatically sends a 'NetworkVariable' message to clients based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             public void NetworkVariableSync<T>(NetworkVariableOptions options, [CallerMemberName] string ___ = "")
@@ -248,7 +311,7 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
+            /// Automatically sends a 'NetworkVariable' message to clients based on the caller member name.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
             /// <param name="target">The target for the message. Default is <see cref="Target.Auto"/>.</param>
@@ -271,22 +334,17 @@ namespace Omni.Core
                 {
                     using DataBuffer message =
                         m_NetworkBehaviour.CreateHeader(propertyInfoGeneric.Invoke(), propertyInfo.Id);
-                    Rpc(
-                        NetworkConstants.NET_VAR_RPC_ID,
-                        message,
-                        target,
-                        deliveryMode,
-                        groupId,
-                        dataCache,
-                        sequenceChannel
-                    );
+
+                    Rpc(NetworkConstants.NET_VAR_RPC_ID, message, target, deliveryMode, groupId, dataCache,
+                        sequenceChannel);
                 }
             }
 
             /// <summary>
-            /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
+            /// Sends a Remote Procedure Call (RPC) to the client's using predefined server options.
             /// </summary>
-            /// <param name="msgId">The ID of the message to be invoked.</param>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="options">The server options containing configuration for the RPC, such as buffering and targeting.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte msgId, ServerOptions options)
             {
@@ -295,30 +353,39 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
+            /// Sends a Remote Procedure Call (RPC) to a specific network peer using server options.
             /// </summary>
-            /// <param name="msgId">The ID of the message to be invoked.</param>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="peer">The target network peer to receive the RPC.</param>
+            /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void RpcToPeer(byte msgId,
-                NetworkPeer peer, ServerOptions options)
+            public void RpcToPeer(byte msgId, NetworkPeer peer, ServerOptions options)
             {
-                RpcToPeer(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId,
-                    options.DataCache, options.SequenceChannel);
+                RpcToPeer(msgId, peer, options.Buffer, options.DeliveryMode, options.DataCache,
+                    options.SequenceChannel);
             }
 
             /// <summary>
-            /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
+            /// Sends a Remote Procedure Call (RPC) to a specific peer with detailed configuration.
             /// </summary>
-            /// <param name="msgId">The ID of the message to be invoked.</param>
-            /// <param name="buffer">The buffer containing the message data. Default is null.</param>
-            /// <param name="target">The target(s) for the message. Default is <see cref="Target.Auto"/>.</param>
-            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-            /// <param name="groupId">The group ID for the message. Default is 0.</param>
-            /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
-            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="peer">The target network peer to receive the RPC.</param>
+            /// <param name="buffer">The buffer containing the RPC data. Default is null.</param>
+            /// <param name="deliveryMode">Specifies the delivery mode of the RPC. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="dataCache">Defines whether the RPC should be cached for later retrieval. Default is <see cref="DataCache.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel to send the RPC over. Default is 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.Auto,
-                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
+            public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null,
+                DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, DataCache dataCache = default,
+                byte sequenceChannel = 0)
+            {
+                dataCache ??= DataCache.None;
+                Internal_RpcToPeer(msgId, peer, buffer, Target.SelfOnly, deliveryMode, 0, dataCache, sequenceChannel);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private void Internal_RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null,
+                Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
                 DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
@@ -327,25 +394,31 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Invokes a message on the client, similar to a Remote Procedure Call (RPC).
+            /// Sends a Remote Procedure Call (RPC) to the client's with detailed configuration.
             /// </summary>
-            /// <param name="msgId">The ID of the message to be invoked.</param>
-            /// <param name="buffer">The buffer containing the message data. Default is null.</param>
-            /// <param name="target">The target(s) for the message. Default is <see cref="Target.Auto"/>.</param>
-            /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-            /// <param name="groupId">The group ID for the message. Default is 0.</param>
-            /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
-            /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="buffer">The buffer containing the RPC data. Default is null.</param>
+            /// <param name="target">Specifies the target scope for the RPC. Default is <see cref="Target.Auto"/>.</param>
+            /// <param name="deliveryMode">Specifies the delivery mode of the RPC. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
+            /// <param name="groupId">An optional group identifier for the RPC. Default is 0.</param>
+            /// <param name="dataCache">Defines whether the RPC should be cached for later retrieval. Default is <see cref="DataCache.None"/>.</param>
+            /// <param name="sequenceChannel">The sequence channel to send the RPC over. Default is 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte msgId, DataBuffer buffer = null, Target target = Target.Auto,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0,
                 DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
-                RpcToPeer(msgId, m_NetworkBehaviour.Identity.Owner, buffer, target, deliveryMode, groupId, dataCache,
-                    sequenceChannel);
+                Internal_RpcToPeer(msgId, m_NetworkBehaviour.Identity.Owner, buffer, target, deliveryMode, groupId,
+                    dataCache, sequenceChannel);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) with a custom serialized message to the client.
+            /// </summary>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="message">The message to serialize and send as part of the RPC.</param>
+            /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte msgId, IMessage message, ServerOptions options = default)
             {
@@ -354,6 +427,13 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) with one unmanaged parameter to the client.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="p1">The first parameter of the RPC.</param>
+            /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1>(byte msgId, T1 p1, ServerOptions options = default) where T1 : unmanaged
             {
@@ -363,6 +443,15 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) with two unmanaged parameters to the client.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T2">The type of the second parameter, which must be unmanaged.</typeparam>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="p1">The first parameter of the RPC.</param>
+            /// <param name="p2">The second parameter of the RPC.</param>
+            /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2, ServerOptions options = default)
                 where T1 : unmanaged where T2 : unmanaged
@@ -374,6 +463,17 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) with three unmanaged parameters to the client.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T2">The type of the second parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T3">The type of the third parameter, which must be unmanaged.</typeparam>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="p1">The first parameter to include in the RPC.</param>
+            /// <param name="p2">The second parameter to include in the RPC.</param>
+            /// <param name="p3">The third parameter to include in the RPC.</param>
+            /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3>(byte msgId, T1 p1, T2 p2, T3 p3, ServerOptions options = default)
                 where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged
@@ -386,6 +486,19 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) with four unmanaged parameters to the client.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T2">The type of the second parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T3">The type of the third parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T4">The type of the fourth parameter, which must be unmanaged.</typeparam>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="p1">The first parameter to include in the RPC.</param>
+            /// <param name="p2">The second parameter to include in the RPC.</param>
+            /// <param name="p3">The third parameter to include in the RPC.</param>
+            /// <param name="p4">The fourth parameter to include in the RPC.</param>
+            /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, ServerOptions options = default)
                 where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged where T4 : unmanaged
@@ -399,6 +512,21 @@ namespace Omni.Core
                 Rpc(msgId, options);
             }
 
+            /// <summary>
+            /// Sends a Remote Procedure Call (RPC) with five unmanaged parameters to the client.
+            /// </summary>
+            /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T2">The type of the second parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T3">The type of the third parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T4">The type of the fourth parameter, which must be unmanaged.</typeparam>
+            /// <typeparam name="T5">The type of the fifth parameter, which must be unmanaged.</typeparam>
+            /// <param name="msgId">The unique identifier of the RPC to send.</param>
+            /// <param name="p1">The first parameter to include in the RPC.</param>
+            /// <param name="p2">The second parameter to include in the RPC.</param>
+            /// <param name="p3">The third parameter to include in the RPC.</param>
+            /// <param name="p4">The fourth parameter to include in the RPC.</param>
+            /// <param name="p5">The fifth parameter to include in the RPC.</param>
+            /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4, T5>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5,
                 ServerOptions options = default) where T1 : unmanaged
@@ -467,7 +595,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new InvalidOperationException(
-                    "The 'NetworkIdentity' property has not been assigned yet. Make sure to set it before accessing it. If you are trying to access it during the object's initialization, ensure that the object has been fully initialized before accessing it."
+                    "The 'NetworkIdentity' property has not been assigned yet. Ensure to assign it before accessing this property. If this occurs during object initialization, confirm the object is fully initialized before usage to avoid runtime issues."
                 );
             }
             internal set => _identity = value;
@@ -542,19 +670,20 @@ namespace Omni.Core
 
         private NetworkBehaviourClient _local;
 
-        // public api: allow to send from other object
         /// <summary>
-        /// Gets the <see cref="NetworkBehaviourClient"/> instance used to send messages from the client to the server.
+        /// Provides access to the <see cref="NetworkBehaviourClient"/> instance, 
+        /// enabling the client to send Remote Procedure Calls (RPCs) to the server.
         /// </summary>
         /// <value>
-        /// The <see cref="NetworkBehaviourClient"/> instance for client-to-server communication.
+        /// The <see cref="NetworkBehaviourClient"/> instance used for client-to-server communication.
         /// </value>
         /// <exception cref="Exception">
-        /// Thrown if this property is accessed from the server side. It is intended for client-side use only.
+        /// Thrown if this property is accessed on the server side. It is strictly intended for client-side use only.
         /// </exception>
         /// <remarks>
-        /// Use this property to invoke server-side operations from the client.
-        /// Ensure it is not accessed on the server side, as it is strictly for client functionality.
+        /// Use this property to invoke server-side operations via RPC from the client. 
+        /// Attempting to access it on the server side will result in an exception. 
+        /// Ensure this property is used only in client-side logic to avoid runtime errors.
         /// </remarks>
         public NetworkBehaviourClient Client
         {
@@ -565,7 +694,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new Exception(
-                    "This property(Local) is intended for client-side use only. It appears to be accessed from the server side."
+                    "Client-side-only property 'Client' was accessed improperly from the server side. This usage is invalid. Ensure this property is accessed exclusively on the client side to avoid runtime errors."
                 );
             }
             private set => _local = value;
@@ -574,19 +703,20 @@ namespace Omni.Core
         private NetworkBehaviourServer _remote;
         private NetworkIdentity _identity;
 
-        // public api: allow to send from other object
         /// <summary>
-        /// Gets the <see cref="NetworkBehaviourServer"/> instance used to send messages from the server to the client.
+        /// Provides access to the <see cref="NetworkBehaviourServer"/> instance, 
+        /// enabling the server to send Remote Procedure Calls (RPCs) to the client.
         /// </summary>
         /// <value>
-        /// The <see cref="NetworkBehaviourServer"/> instance for server-to-client communication.
+        /// The <see cref="NetworkBehaviourServer"/> instance used for server-to-client communication.
         /// </value>
         /// <exception cref="Exception">
-        /// Thrown if this property is accessed from the client side. It is intended for server-side use only.
+        /// Thrown if this property is accessed on the client side. It is strictly intended for server-side use only.
         /// </exception>
         /// <remarks>
-        /// Use this property to invoke client-side operations from the server.
-        /// Ensure it is not accessed on the client side, as it is strictly for server functionality.
+        /// Use this property to invoke client-side operations via RPC from the server. 
+        /// Attempting to access this property on the client side will throw an exception. 
+        /// Ensure this property is used exclusively within server-side logic to avoid runtime errors.
         /// </remarks>
         public NetworkBehaviourServer Server
         {
@@ -597,7 +727,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new Exception(
-                    "This property(Remote) is intended for server-side use only. It appears to be accessed from the client side."
+                    "Access to the 'Server' property is restricted to server-side use only. Detected an invalid access attempt from the client side. Please ensure this property is used exclusively in server-side logic."
                 );
             }
             private set => _remote = value;
@@ -733,7 +863,7 @@ namespace Omni.Core
             if (method.DeclaringType.Name != nameof(NetworkBehaviour) && !NetworkManager.TickSystemModuleEnabled)
             {
                 NetworkLogger.__Log__(
-                    "Tick System Module must be enabled to use OnTick. You can enable it in the inspector.",
+                    "The Tick System Module is required to use the OnTick method. Please enable the Tick System Module in the inspector to proceed.",
                     logType: NetworkLogger.LogType.Error);
             }
         }
@@ -753,7 +883,7 @@ namespace Omni.Core
             if (!eventBehaviours.Remove(key))
             {
                 NetworkLogger.__Log__(
-                    $"Unregister Error: EventBehaviour with ID '{m_Id}' and peer ID '{IdentityId}' does not exist. Please ensure the EventBehaviour is registered before attempting to unregister.",
+                    $"[Unregister Error] The NetworkBehaviour with ID '{m_Id}' and peer ID '{IdentityId}' could not be found. This indicates it was not registered or may have already been unregistered. Please verify that the NetworkBehaviour is properly registered before attempting to unregister it.",
                     NetworkLogger.LogType.Error);
             }
 
@@ -769,7 +899,7 @@ namespace Omni.Core
             if (!Identity.Unregister(m_ServiceName))
             {
                 NetworkLogger.__Log__(
-                    $"Unregister Error: ServiceLocator with name '{m_ServiceName}' does not exist. Please ensure the ServiceLocator is registered before attempting to unregister.",
+                    $"[Unregister Error] Failed to unregister the ServiceLocator. The specified service name '{m_ServiceName}' could not be found. Ensure the ServiceLocator is correctly registered and active before attempting to unregister it.",
                     NetworkLogger.LogType.Error);
             }
 
@@ -945,6 +1075,7 @@ namespace Omni.Core
 
         protected virtual void OnValidate()
         {
+            // Obsolete: Editor is fully supported!
             //if (_identity != null && _identity.IsRegistered)
             //	___NotifyEditorChange___(); // Overriden by the source generator.
 

@@ -17,6 +17,22 @@ namespace Omni.Core
     // Avoid refactoring as these techniques are crucial for optimizing execution speed.
     // Works with il2cpp.
 
+    /// <summary>
+    /// The <c>ServerBehaviour</c> class represents core server functionality within the network infrastructure.
+    /// It serves as a base class for implementing server-specific features and behaviors, offering methods
+    /// and properties to manage server initialization, connections, and network event handling.
+    /// <para>
+    /// This class is optimized to minimize boilerplate and maximize performance through unconventional coding techniques.
+    /// </para>
+    /// </summary>
+    /// <remarks>
+    /// Inherits from <see cref="NetworkEventBase"/>, and implements the <see cref="Omni.Core.Interfaces.IRpcMessage"/>
+    /// and <see cref="Omni.Core.Interfaces.IServiceBehaviour"/> interfaces.
+    /// <para>
+    /// Key responsibilities include setting up network events, managing peer connections, and handling
+    /// data buffer processing for server-side operations.
+    /// </para>
+    /// </remarks>
     [DefaultExecutionOrder(-3000)]
     public class ServerBehaviour : NetworkEventBase, IRpcMessage, IServiceBehaviour
     {
@@ -28,11 +44,15 @@ namespace Omni.Core
 
         private NetworkEventServer remote;
         private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> rpcHandler = new();
-
-        // public api: allow send from other object
+        
         /// <summary>
-        /// Gets the <see cref="NetworkEventServer"/> instance used to invoke messages on the client from the server.
+        /// Provides access to the <see cref="NetworkEventServer"/> instance, 
+        /// enabling the server to send Remote Procedure Calls (RPCs) to clients.
         /// </summary>
+        /// <remarks>
+        /// This allows RPCs to be invoked from other objects, facilitating communication between
+        /// the server and clients in a networked environment.
+        /// </remarks>
         public NetworkEventServer Server
         {
             get
@@ -42,7 +62,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new NullReferenceException(
-                    "This property(Remote) is intended for server-side use only. It appears to be accessed from the client side. Or Call Awake() and Start() base first or initialize manually."
+                    "The 'Server' property is null. Ensure this property is accessed only on the server-side. Verify that 'Awake()' and 'Start()' have been called or initialize the property manually before use."
                 );
             }
             internal set => remote = value;
@@ -298,7 +318,7 @@ namespace Omni.Core
 
         public void OnRpcInvoked(byte methodId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
         {
-            rpcHandler.ThrowNoMethodFound(methodId);
+            rpcHandler.ThrowIfNoRpcMethodFound(methodId);
             TryCallServerRpc(methodId, buffer, peer, seqChannel);
         }
     }

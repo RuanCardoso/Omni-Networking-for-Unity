@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
 using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
@@ -121,7 +122,7 @@ namespace Omni.Core
             dataCache ??= DataCache.None;
             if (!IsServerActive)
             {
-                throw new Exception("Can't use this method on client.");
+                throw new Exception("SyncSerializedData Error: Can't use this method on client.");
             }
 
             if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
@@ -188,11 +189,11 @@ namespace Omni.Core
         }
 
         [Conditional("OMNI_DEBUG")]
-        private void EnsureServerActive()
+        private void EnsureServerActive([CallerMemberName] string caller = "")
         {
             if (!IsServerActive)
             {
-                throw new Exception("Can't use this method on client.");
+                throw new Exception($"[{caller}] -> Can't use this method on client.");
             }
         }
 

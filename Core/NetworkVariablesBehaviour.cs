@@ -70,7 +70,7 @@ namespace Omni.Core
 
                 PropertyInfo propertyInfo = GetType().GetProperty(callerName, (System.Reflection.BindingFlags)flags) ??
                                             throw new NullReferenceException(
-                                                $"NetworkVariable: Property not found: {callerName}. Use the other overload of this function(ManualSync).");
+                                                $"NetworkVariable: Property not found: {callerName}. Use the other overload of this function.");
 
                 string name = propertyInfo.Name;
                 NetworkVariableAttribute attribute = propertyInfo.GetCustomAttribute<NetworkVariableAttribute>() ??
@@ -140,6 +140,7 @@ namespace Omni.Core
         [Conditional("UNITY_EDITOR")]
         protected virtual void ___NotifyEditorChange___()
         {
+            // Obsolete: Editor is fully supported!
             ___NotifyEditorChange___Called = false;
         }
 
@@ -184,6 +185,7 @@ namespace Omni.Core
                 return OnNetworkVariableDeepEquals(oldValue, newValue, name);
             }
 
+            // Obsolete: Editor is fully supported!
 #if OMNI_DEBUG
             NetworkLogger.__Log__(
                 $"[NetworkVariable({name})] -> Editing network variables through the Unity Editor (Inspector) is not fully allowed. " +

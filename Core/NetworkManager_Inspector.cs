@@ -108,7 +108,7 @@ namespace Omni.Core
         private int m_TickRate = 15;
 
         [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [Min(1)]
-        private int m_PoolCapacity = 32768;
+        private int m_PoolCapacity = DataBuffer.DefaultBufferSize;
 
         [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [Min(1)]
         private int m_PoolSize = 32;

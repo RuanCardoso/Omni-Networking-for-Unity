@@ -308,10 +308,9 @@ namespace Omni.Core
         {
             get
             {
-                return _localPeer
-                       ?? throw new Exception(
-                           "Client(LocalPeer) is neither active, nor authenticated. Please verify using NetworkManager.IsClientActive."
-                       );
+                return _localPeer ??
+                       throw new Exception(
+                           "Client(LocalPeer) is neither active, nor authenticated. Please verify using NetworkManager.IsClientActive.");
             }
             private set => _localPeer = value;
         }
@@ -475,6 +474,7 @@ namespace Omni.Core
 
             UpdateFrameAndCpuMetrics();
 
+            // Tests
             //if (IsClientActive && Input.GetKeyDown(KeyCode.Space))
             //{
             //	print(LocalEndPoint);
@@ -505,11 +505,12 @@ namespace Omni.Core
 
         private void ShowDefaultOmniLog() // Referenced!
         {
-            NetworkLogger.Log("Welcome to Omni Server Console.");
+            NetworkLogger.Log(
+                "Welcome to Omni Server Console. The server is now ready to handle connections and process requests.");
 #if OMNI_DEBUG
-            NetworkLogger.Log("You are in Debug Mode.");
+            NetworkLogger.Log("Debug Mode Enabled: Detailed logs and debug features are active.");
 #else
-			NetworkLogger.Log("You are in Release Mode.");
+			NetworkLogger.Log("Release Mode Active: Optimized for production with minimal logging.");
 #endif
         }
 
@@ -556,7 +557,7 @@ namespace Omni.Core
                     if (!Manager.TryGetComponent<TransporterBehaviour>(out var currentTransporter))
                     {
                         throw new NullReferenceException(
-                            "No transporter instance found on NetworkManager. Please ensure a transporter is added and properly configured."
+                            "Transporter instance missing in NetworkManager. Please add and configure a transporter component to ensure proper functioning of the network system."
                         );
                     }
 
@@ -618,8 +619,8 @@ namespace Omni.Core
                             {
                                 Manager.m_AutoStartServer = false;
                                 NetworkLogger.__Log__(
-                                    "Server auto-start has been disabled as the client address is not a recognized localhost or public IPv4/IPv6 address. "
-                                    + "Starting a server in this case does not make sense because the client cannot connect to it. But you can start it manually.",
+                                    "Server auto-start has been disabled because the provided client address is not a recognized localhost or matches the server's public IPv4/IPv6 address. "
+                                    + "Starting a server in this scenario is not practical, as the client will be unable to connect. You can start the server manually if required.",
                                     NetworkLogger.LogType.Warning
                                 );
                             }
@@ -701,7 +702,7 @@ namespace Omni.Core
             else
             {
                 throw new Exception(
-                    "Server is already initialized. Ensure to call StopServer() before calling StartServer()."
+                    "Error: The server is already running. Please call StopServer() to stop the current instance before attempting to start a new one using StartServer()."
                 );
             }
         }
@@ -719,7 +720,8 @@ namespace Omni.Core
             }
             else
             {
-                throw new Exception("Server is not initialized. Ensure to call StartServer().");
+                throw new Exception(
+                    "Error: The server is not initialized. Please ensure the StartServer() method has been successfully called before performing this operation.");
             }
         }
 
@@ -740,7 +742,7 @@ namespace Omni.Core
             else
             {
                 throw new Exception(
-                    "Server is not initialized. Ensure to call StartServer() before calling StopServer()."
+                    "Error: The server is not currently running. Please ensure that StartServer() is called successfully before attempting to invoke StopServer()."
                 );
             }
         }
@@ -784,7 +786,7 @@ namespace Omni.Core
             else
             {
                 throw new Exception(
-                    "Client is already initialized. Ensure to call StopClient() before calling Connect()."
+                    "The client is already initialized. Please call StopClient() to disconnect the current session before attempting to establish a new one with Connect()."
                 );
             }
         }
@@ -804,7 +806,8 @@ namespace Omni.Core
             }
             else
             {
-                throw new Exception("Client is not initialized. Ensure to call Connect().");
+                throw new Exception(
+                    "Error: The client is not currently initialized. Please ensure you call the Connect() method before attempting to disconnect.");
             }
         }
 
@@ -824,7 +827,7 @@ namespace Omni.Core
             else
             {
                 throw new Exception(
-                    "Client is not initialized. Ensure to call Connect() before calling StopClient()."
+                    "Error: The client is not currently initialized. Please ensure Connect() is called successfully before attempting to stop the client using StopClient()."
                 );
             }
         }
@@ -906,7 +909,7 @@ namespace Omni.Core
                         (dataCache.Mode != CacheMode.None && dataCache.Id == 0))
                     {
                         throw new Exception(
-                            "Cache Error: Both dataCache.Id and dataCache.Mode must be set together."
+                            $"Cache Error: Invalid configuration detected. Both dataCache.Id ({dataCache.Id}) and dataCache.Mode ({dataCache.Mode}) must be set together. Please ensure that these values are correctly assigned."
                         );
                     }
                     else
@@ -927,7 +930,7 @@ namespace Omni.Core
                                 else
                                 {
                                     NetworkLogger.__Log__(
-                                        "Cache Error: The specified group was not found. Please verify the existence of the group and ensure the groupId is correct.",
+                                        $"Cache Error: Group not found. Ensure the group exists and the group id '{groupId}' is correct.",
                                         NetworkLogger.LogType.Error
                                     );
                                 }
@@ -967,7 +970,7 @@ namespace Omni.Core
                                 else
                                 {
                                     NetworkLogger.__Log__(
-                                        "Cache Error: The specified group was not found. Please verify the existence of the group and ensure the groupId is correct.",
+                                        "Cache Error: Group not found. Verify that the group exists and the group id is correct. If the issue persists, ensure that the group was properly initialized before accessing it.",
                                         NetworkLogger.LogType.Error
                                     );
                                 }
@@ -995,7 +998,7 @@ namespace Omni.Core
                                 break;
                             default:
                                 NetworkLogger.__Log__(
-                                    "Cache Error: Unsupported cache mode set.",
+                                    "Cache Error: Unsupported cache mode set. Please verify the cache configuration and ensure it matches the expected cache mode values.",
                                     NetworkLogger.LogType.Error
                                 );
                                 break;
@@ -1012,10 +1015,11 @@ namespace Omni.Core
             {
                 if (!_allowZeroGroupForInternalMessages && !m_AllowZeroGroupMessage && groupId == 0)
                 {
-                    NetworkLogger.__Log__(
-                        "Send: Access denied: Zero-group message not allowed. Join a group first or set 'AllowZeroGroupMessage' to true.",
-                        NetworkLogger.LogType.Error
-                    );
+                    // DISABLED!!
+                    // NetworkLogger.__Log__(
+                    //     "Send: Access denied: Zero-group message not allowed. Join a group first or set 'AllowZeroGroupMessage' to true.",
+                    //     NetworkLogger.LogType.Error
+                    // );
 
                     return;
                 }
@@ -1023,7 +1027,7 @@ namespace Omni.Core
                 if (target == Target.SelfOnly && groupId != 0 && !cacheIsEnabled)
                 {
                     NetworkLogger.__Log__(
-                        "Target.Self cannot be used with groups. Note that this is not a limitation, it just doesn't make sense.",
+                        "Target.SelfOnly cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
                         NetworkLogger.LogType.Warning
                     );
                 }
@@ -1042,7 +1046,7 @@ namespace Omni.Core
                                 if (!_group._peersById.ContainsKey(sender.Id) && sender.Id != 0)
                                 {
                                     NetworkLogger.__Log__(
-                                        "Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
+                                        "Access Denied: Across-group messaging is currently disabled. To enable this functionality, set 'AllowAcrossGroupMessage' to true in the group settings or ensure the sender belongs to the target group.",
                                         NetworkLogger.LogType.Error
                                     );
 
@@ -1055,7 +1059,7 @@ namespace Omni.Core
                             if (!_group.AllowAcrossGroupMessage)
                             {
                                 NetworkLogger.__Log__(
-                                    "Send: Access denied: Across-group message not allowed. Or set 'AllowAcrossGroupMessage' to true.",
+                                    "Access Denied: Across-group messaging is currently disabled. To enable this functionality, set 'AllowAcrossGroupMessage' to true in the group settings or ensure the sender belongs to the target group.",
                                     NetworkLogger.LogType.Error
                                 );
 
@@ -1068,7 +1072,7 @@ namespace Omni.Core
                     else
                     {
                         NetworkLogger.__Log__(
-                            $"Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                            $"Error: The specified group with ID '{groupId}' was not found. Ensure the group exists and verify that the provided group id is correct. If the issue persists, check the group initialization process.",
                             NetworkLogger.LogType.Error
                         );
 
@@ -1078,8 +1082,8 @@ namespace Omni.Core
 
                 CreateCache(message, _group);
 
-                // Authentication
-                if (msgType == MessageType.BeginHandshake || msgType == MessageType.EndHandshake)
+                // Authentication step!
+                if (msgType is MessageType.BeginHandshake or MessageType.EndHandshake)
                 {
                     Send(message, sender);
                     return;
@@ -1094,7 +1098,7 @@ namespace Omni.Core
                         if (groupId != 0 && !cacheIsEnabled)
                         {
                             NetworkLogger.__Log__(
-                                "Send: Target.UngroupedPlayers cannot be used with specified groups(groupId is not 0). Note that this is not a limitation, it just doesn't make sense.",
+                                "Send: Target.UngroupedPlayers cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
                                 NetworkLogger.LogType.Error
                             );
 
@@ -1107,7 +1111,7 @@ namespace Omni.Core
                             if (!peer.IsAuthenticated)
                             {
                                 NetworkLogger.__Log__(
-                                    "Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
+                                    "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
                                     NetworkLogger.LogType.Warning
                                 );
 
@@ -1130,7 +1134,7 @@ namespace Omni.Core
                         if (groupId != 0 && !cacheIsEnabled)
                         {
                             NetworkLogger.__Log__(
-                                "Send: Target.Group cannot be used with specified groups(groupId is not 0). Note that this is not a limitation, it just doesn't make sense.",
+                                "Send: Target.Group cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
                                 NetworkLogger.LogType.Error
                             );
 
@@ -1140,7 +1144,7 @@ namespace Omni.Core
                         if (sender.Id == 0)
                         {
                             NetworkLogger.__Log__(
-                                "Send: The server(id: 0) cannot use Target.Group. Because he's not in any group.",
+                                "Send Error: Matchmaking is not supported by the server peer. Use a specific group to broadcast.",
                                 NetworkLogger.LogType.Error
                             );
 
@@ -1150,7 +1154,7 @@ namespace Omni.Core
                         if (sender._groups.Count == 0)
                         {
                             NetworkLogger.__Log__(
-                                "Send: You are not in any groups. Please join a group first.",
+                                "Send Error: You are not currently a member of any groups. Please ensure you join a group before sending this message.",
                                 NetworkLogger.LogType.Error
                             );
 
@@ -1167,7 +1171,7 @@ namespace Omni.Core
                                 if (!peer.IsAuthenticated)
                                 {
                                     NetworkLogger.__Log__(
-                                        "Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
+                                        "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
                                         NetworkLogger.LogType.Warning
                                     );
 
@@ -1193,7 +1197,7 @@ namespace Omni.Core
                             if (!peer.IsAuthenticated)
                             {
                                 NetworkLogger.__Log__(
-                                    "Server is trying to send a message to a peer that is not authenticated. This warning can sometimes be ignored.",
+                                    "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
                                     NetworkLogger.LogType.Warning
                                 );
 
@@ -1213,7 +1217,14 @@ namespace Omni.Core
                     case Target.SelfOnly:
                     {
                         if (!sender.IsAuthenticated)
+                        {
+                            NetworkLogger.__Log__(
+                                "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
+                                NetworkLogger.LogType.Warning
+                            );
+
                             return;
+                        }
 
                         // group id doesn't make sense here, because peersById is not used for target.Self.
                         Send(message, sender);
@@ -1237,7 +1248,7 @@ namespace Omni.Core
             else
             {
                 NetworkLogger.__Log__(
-                    "Your are trying to send a message to the server while not connected. Please connect first.",
+                    "Error: Attempted to send a message to the server while not connected. Please establish a connection before sending any messages.",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -1335,16 +1346,8 @@ namespace Omni.Core
                     // If the public key were modified (MITM) the connection would fail because the public key is validated by the server.
                     message.WriteString(ServerSide.RsaPublicKey);
 
-                    SendToClient(
-                        MessageType.BeginHandshake,
-                        message,
-                        newPeer,
-                        Target.SelfOnly,
-                        DeliveryMode.ReliableOrdered,
-                        0,
-                        DataCache.None,
-                        0
-                    );
+                    SendToClient(MessageType.BeginHandshake, message, newPeer, Target.SelfOnly,
+                        DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
 
                     OnServerPeerConnected?.Invoke(newPeer, Phase.Normal);
                 }
@@ -1377,20 +1380,12 @@ namespace Omni.Core
                     {
                         if (group._peersById.Remove(currentPeer.Id, out _))
                         {
-                            NetworkLogger.__Log__(
-                                $"Disconnection Info: Peer '{peer}' removed from group '{group.Identifier}'."
-                            );
-
                             // Dereferencing to allow for GC(Garbage Collector).
                             // All resources should be released at this point.
                             group.DestroyAllCaches(currentPeer);
 
-                            OnPlayerLeftGroup?.Invoke(
-                                group,
-                                currentPeer,
-                                Phase.End,
-                                "Leave event called by disconnect event."
-                            );
+                            OnPlayerLeftGroup?.Invoke(group, currentPeer, Phase.End,
+                                "Leave event called by disconnect event.");
 
                             // Change the current master client if the disconnected client was the master client
                             if (currentPeer.Id == group.MasterClient.Id)
@@ -1655,14 +1650,14 @@ namespace Omni.Core
 #if OMNI_DEBUG
                             // NetVar exclusively
                             NetworkLogger.__Log__(
-                                "The client does not have permission to send Network Variables.",
+                                "Access Denied: The client attempted to send Network Variables without proper permissions.",
                                 NetworkLogger.LogType.Error
                             );
 #endif
 #if OMNI_RELEASE
                             // NetVar exclusively
                             NetworkLogger.__Log__(
-                                "The client has been disconnected. The client does not have permission to send Network Variables.",
+                                "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
                                 NetworkLogger.LogType.Error
                             );
                             peer.Disconnect();
@@ -1672,11 +1667,11 @@ namespace Omni.Core
 
                         using var message = EndOfHeader();
                         var key = (identityId, instanceId);
-                        var eventBehavious = isServer
+                        var eventBehaviours = isServer
                             ? ServerSide.LocalRpcHandlers
                             : ClientSide.LocalRpcHandlers;
 
-                        if (eventBehavious.TryGetValue(key, out IRpcMessage behaviour))
+                        if (eventBehaviours.TryGetValue(key, out IRpcMessage behaviour))
                         {
                             behaviour.OnRpcInvoked(invokeId, message, peer, isServer, sequenceChannel);
                         }
@@ -1697,20 +1692,19 @@ namespace Omni.Core
                         byte invokeId = header.Read<byte>();
 
                         if (isServer && invokeId == NetworkConstants.NET_VAR_RPC_ID &&
-                            !m_AllowNetworkVariablesFromClients
-                           ) // 255 is reserved for NetVar
+                            !m_AllowNetworkVariablesFromClients) // 255 is reserved for NetVar
                         {
 #if OMNI_DEBUG
                             // NetVar exclusively
                             NetworkLogger.__Log__(
-                                "The client does not have permission to send Network Variables.",
+                                "Access Denied: The client attempted to send Network Variables without proper permissions.",
                                 NetworkLogger.LogType.Error
                             );
 #endif
 #if OMNI_RELEASE
                             // NetVar exclusively
                             NetworkLogger.__Log__(
-                                "The client has been disconnected. The client does not have permission to send Network Variables.",
+                                "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
                                 NetworkLogger.LogType.Error
                             );
                             peer.Disconnect();
@@ -1719,13 +1713,11 @@ namespace Omni.Core
                         }
 
                         using var message = EndOfHeader();
-                        var eventBehavious = isServer
+                        var eventBehaviours = isServer
                             ? ServerSide.GlobalRpcHandlers
                             : ClientSide.GlobalRpcHandlers;
 
-                        if (
-                            eventBehavious.TryGetValue(identityId, out IRpcMessage behaviour)
-                        )
+                        if (eventBehaviours.TryGetValue(identityId, out IRpcMessage behaviour))
                         {
                             behaviour.OnRpcInvoked(invokeId, message, peer, isServer, sequenceChannel);
                         }
@@ -1768,6 +1760,8 @@ namespace Omni.Core
                                     "JoinGroup: Group name cannot be null or empty.",
                                     NetworkLogger.LogType.Error
                                 );
+
+                                return;
                             }
 
                             if (groupName.Length > 256)
@@ -1776,6 +1770,8 @@ namespace Omni.Core
                                     "JoinGroup: Group name cannot be longer than 256 characters.",
                                     NetworkLogger.LogType.Error
                                 );
+
+                                return;
                             }
 
                             ServerSide.JoinGroup(groupName, message, peer, false);
@@ -1818,7 +1814,7 @@ namespace Omni.Core
                             else
                             {
                                 NetworkLogger.__Log__(
-                                    $"SetOwner: Identity with ID: [{identityId}] not found. Please ensure it is spawned.",
+                                    $"[Error][SetOwner]: Identity with ID [{identityId}] was not found. Ensure the object has been correctly spawned before attempting to set ownership. This might indicate a synchronization issue or an unregistered identity.",
                                     NetworkLogger.LogType.Error
                                 );
                             }
@@ -1844,6 +1840,13 @@ namespace Omni.Core
                             if (NetworkManager.ServerSide.TryGetIdentity(identityId, out var identity))
                             {
                                 identity.OnRequestAction?.Invoke(message);
+                            }
+                            else
+                            {
+                                NetworkLogger.__Log__(
+                                    $"[Error][RequestEntity]: Identity with ID [{identityId}] was not found. Ensure the object has been correctly spawned before attempting to set ownership. This might indicate a synchronization issue or an unregistered identity.",
+                                    NetworkLogger.LogType.Error
+                                );
                             }
                         }
                     }
@@ -1876,7 +1879,7 @@ namespace Omni.Core
             if (_allowLoadScene)
             {
                 throw new Exception(
-                    "Load Scene: Wait for scene load to complete before loading another scene."
+                    "Load Scene Error: The scene loading process is already in progress. Please wait for the current scene to fully load before attempting to load another scene."
                 );
             }
 
@@ -2053,7 +2056,7 @@ namespace Omni.Core
         {
             if (data.Length <= blockSize)
             {
-                throw new Exception("The specified data must be longer than block size");
+                throw new Exception("The specified data must be longer than the block size");
             }
 
             int x = blockSize;

@@ -1543,6 +1543,9 @@ namespace Omni.Core
     }
 
     // Syntactic sugar
+    /// <summary>
+    /// Provides extension methods to enhance operations on buffer writers and serialization utilities.
+    /// </summary>
     public static partial class BufferWriterExtensions
     {
         // nothing, i finish this

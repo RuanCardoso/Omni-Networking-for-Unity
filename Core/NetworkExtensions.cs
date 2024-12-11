@@ -37,7 +37,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Instantiates a network identity on the server and specified client targets with defined delivery and caching options.
+        /// Spawns a network identity on the server and specified client targets with defined delivery and caching options.
         /// </summary>
         /// <param name="prefab">The network identity prefab to instantiate.</param>
         /// <param name="peer">The network peer that will receive the instantiated object.</param>
@@ -48,9 +48,7 @@ namespace Omni.Core
         /// <param name="sequenceChannel">The sequence channel used to maintain message order for network delivery.</param>
         /// <returns>The instantiated network identity as observed on the server.</returns>
         public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            int groupId = 0,
-            DataCache dataCache = default,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
             byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
@@ -60,7 +58,7 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Instantiates a network identity on the server for a specific peer.
+        /// Spawns a network identity on the server for a specific peer.
         /// </summary>
         /// <param name="prefab">The prefab to instantiate.</param>
         /// <param name="peer">The peer who will receive the instantiated object.</param>
@@ -71,48 +69,37 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Instantiates a network identity on the server for a specific peer.
+        /// Spawns a network identity on the server for a specific peer.
         /// </summary>
         /// <param name="prefab">The prefab to instantiate.</param>
         /// <param name="peer">The peer who will receive the instantiated object.</param>
         /// <param name="identityId">The ID of the instantiated object.</param>
         /// <returns>The instantiated network identity.</returns>
-        public static NetworkIdentity SpawnOnServer(
-            this NetworkIdentity prefab,
-            NetworkPeer peer,
-            int identityId
-        )
+        public static NetworkIdentity SpawnOnServer(this NetworkIdentity prefab, NetworkPeer peer, int identityId)
         {
             return NetworkManager.SpawnOnServer(prefab, peer, identityId);
         }
 
         /// <summary>
-        /// Instantiates a network identity on the server for the specified peer.
+        /// Spawns a network identity on the server for a specific peer.
         /// </summary>
         /// <param name="prefab">The network identity prefab to instantiate on the server.</param>
-        /// <param name="peer">The network peer associated with the instantiated object.</param>
-        /// <returns>The instantiated network identity object.</returns>
-        public static NetworkIdentity SpawnOnServer(
-            this NetworkIdentity prefab,
-            int peerId,
-            int identityId = 0
-        )
+        /// <param name="peerId">The network peer associated with the spawned object.</param>
+        /// <param name="identityId">The ID of the instantiated object.</param>
+        /// <returns>The instantiated network identity object on the server.</returns>
+        public static NetworkIdentity SpawnOnServer(this NetworkIdentity prefab, int peerId, int identityId = 0)
         {
             return NetworkManager.SpawnOnServer(prefab, peerId, identityId);
         }
 
         /// <summary>
-        /// Instantiates a network identity on a client with specified peer and identity identifiers.
+        /// Spawns a network identity on a client with specified peer and identity identifiers.
         /// </summary>
         /// <param name="prefab">The network identity prefab to instantiate on the client.</param>
         /// <param name="peerId">The identifier of the peer who will own the instantiated object.</param>
         /// <param name="identityId">The unique identifier for the instantiated network identity.</param>
         /// <returns>The instantiated network identity on the client.</returns>
-        public static NetworkIdentity SpawnOnClient(
-            this NetworkIdentity prefab,
-            int peerId,
-            int identityId
-        )
+        public static NetworkIdentity SpawnOnClient(this NetworkIdentity prefab, int peerId, int identityId)
         {
             return NetworkManager.SpawnOnClient(prefab, peerId, identityId);
         }

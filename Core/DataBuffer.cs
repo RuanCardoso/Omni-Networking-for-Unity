@@ -19,7 +19,7 @@ namespace Omni.Core
     /// </remarks>
     public sealed partial class DataBuffer : IBufferWriter<byte>, IDisposable
     {
-        private const int DefaultBufferSize = 32768;
+        internal const int DefaultBufferSize = 32768;
         private readonly IBufferPooling<DataBuffer> _objectPooling;
         private readonly byte[] _buffer;
 
@@ -182,7 +182,7 @@ namespace Omni.Core
                 NetworkLogger.PrintHyperlink();
                 throw new ObjectDisposedException(
                     nameof(DataBuffer),
-                    "Cannot advance the buffer because this DataBuffer instance has already been disposed. Ensure the instance is valid before reading from it."
+                    "Cannot read the buffer because this DataBuffer instance has already been disposed. Ensure the instance is valid before reading from it."
                 );
             }
 
@@ -427,9 +427,9 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new NotSupportedException(
-                    $"The buffer cannot be resized to the requested size ({sizeHint}) because it exceeds the maximum capacity ({Capacity}). "
-                    + "Resizing the buffer is not supported due to performance reasons. "
-                    + "Consider using a larger initial capacity or a different data structure."
+                    $"The buffer cannot be resized to the requested size ({sizeHint}). The requested size exceeds the maximum capacity of the buffer ({Capacity}). "
+                    + "Buffer resizing is disabled to maintain optimal performance. "
+                    + "To resolve this issue, consider using a buffer with a larger initial capacity or switching to a different data structure better suited to your needs."
                 );
             }
         }
@@ -459,7 +459,7 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new ObjectDisposedException(
-                    "Cannot dispose this buffer because it has already been disposed. Ensure Dispose is called only once."
+                    "Cannot dispose this DataBuffer because it has already been disposed. Ensure Dispose is called only once."
                 );
             }
 
@@ -467,7 +467,7 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new ArgumentNullException("",
-                    "Cannot dispose this buffer because it was not acquired from a buffer pool. Only pooled buffers should be disposed."
+                    "Cannot dispose this DataBuffer because it was not acquired from a buffer pool. Only pooled buffers should be disposed."
                 );
             }
 

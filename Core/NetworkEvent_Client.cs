@@ -26,11 +26,7 @@ namespace Omni.Core
     /// ClientBehaviour is fundamental for managing client-specific network events within a Unity environment.
     /// The class is designed with performance in mind, employing techniques to reduce boilerplate code,
     /// reflection, and source generation, which are critical for maintaining high execution speed.
-    /// It is intended to work with Unity's il2cpp scripting backend.
     /// </remarks>
-    /// <seealso cref="NetworkEventBase" />
-    /// <seealso cref="IRpcMessage" />
-    /// <seealso cref="IServiceBehaviour" />
     [DefaultExecutionOrder(-3000)]
     public class ClientBehaviour : NetworkEventBase, IRpcMessage, IServiceBehaviour
     {
@@ -43,10 +39,14 @@ namespace Omni.Core
         private NetworkEventClient local;
         private readonly RpcHandler<DataBuffer, int, Null, Null, Null> rpcHandler = new();
 
-        // public api: allow send from other object
         /// <summary>
-        /// Gets the <see cref="NetworkEventClient"/> instance used to invoke messages on the server from the client.
+        /// Provides access to the <see cref="NetworkEventClient"/> instance, 
+        /// allowing the client to send Remote Procedure Calls (RPCs) to the server.
         /// </summary>
+        /// <remarks>
+        /// This enables RPCs to be invoked from other objects, facilitating communication 
+        /// from the client to the server in a networked environment.
+        /// </remarks>
         public NetworkEventClient Client
         {
             get
@@ -56,7 +56,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new NullReferenceException(
-                    "This property(Local) is intended for client-side use only. It appears to be accessed from the server side. Or Call Awake() and Start() base first or initialize manually."
+                    "The 'Client' property is null. Ensure this property is accessed only on the client-side. Verify that 'Awake()' and 'Start()' have been called or initialize the property manually before use."
                 );
             }
             internal set => local = value;
@@ -258,7 +258,7 @@ namespace Omni.Core
 
         public void OnRpcInvoked(byte methodId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
         {
-            rpcHandler.ThrowNoMethodFound(methodId);
+            rpcHandler.ThrowIfNoRpcMethodFound(methodId);
             TryCallClientRpc(methodId, buffer, seqChannel);
         }
     }

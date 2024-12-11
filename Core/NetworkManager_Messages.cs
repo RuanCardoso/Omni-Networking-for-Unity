@@ -359,12 +359,12 @@ namespace Omni.Core
                 dataCache ??= DataCache.None;
 
                 using DataBuffer message = Pool.Rent();
-                message.Internal_Write(identityId);
-                message.Write(instanceId);
-                message.Write(msgId); // rpc id
+                message.Internal_Write(identityId); // min: 1 byte, max = 4 bytes
+                message.Write(instanceId); // 1 byte
+                message.Write(msgId);  // 1 byte
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.LocalRpc, peer, message, target, deliveryMode, groupId, dataCache,
-                    sequenceChannel);
+                    sequenceChannel); // 1 byte
 
                 // byte count per empty message: 1 + 1 + 1 + 1 = 4;
                 // TODO: reduce bandwidth usage

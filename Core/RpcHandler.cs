@@ -389,8 +389,8 @@ namespace Omni.Core
                 );
 
                 NetworkLogger.__Log__(
-                    $"Delegate Creation Error: Failed to create delegate for method '{func.Name}' with event attribute ID '{attr.Id}'. "
-                    + $"Exception: {ex.Message}. Expected arguments: [{expectedArguments}].",
+                    $"[RPC Delegate Error] Failed to create delegate for method '{func.Name}' associated with RPC attribute ID '{attr.Id}'. " +
+                    $"Exception: {ex.Message}. Ensure the method signature matches the expected arguments: [{expectedArguments}].",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -398,20 +398,21 @@ namespace Omni.Core
             void ThrowDuplicatedEventId(T attr)
             {
                 NetworkLogger.__Log__(
-                    $"Configuration Error: Duplicated event ID '{attr.Id}'. "
-                    + $"Ensure that each method with the event attribute has a unique ID.",
+                    $"[RPC Configuration Error] Duplicate RPC event ID '{attr.Id}' detected. " +
+                    $"Ensure each method annotated with an RPC attribute has a unique ID to avoid conflicts.",
                     NetworkLogger.LogType.Error
                 );
             }
         }
 
         [Conditional("OMNI_DEBUG")]
-        internal void ThrowNoMethodFound(int methodId)
+        internal void ThrowIfNoRpcMethodFound(int methodId)
         {
             if (!Exists(methodId, out _))
             {
                 NetworkLogger.__Log__(
-                    $"Invoke Error: No method(event) with ID '{methodId}' registered. Ensure a method with the same ID is registered.",
+                    $"[RPC Invoke Error] No registered RPC method found with ID '{methodId}'. " +
+                    $"Verify that a method with this ID is properly registered and available for invocation.",
                     NetworkLogger.LogType.Error
                 );
             }

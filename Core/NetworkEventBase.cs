@@ -63,6 +63,7 @@ namespace Omni.Core
 
         protected virtual void OnValidate()
         {
+            // Obsolete: Editor is fully supported!
             //if (remote != null || local != null)
             //	___NotifyEditorChange___(); // Override by the source generator.
 
@@ -82,7 +83,7 @@ namespace Omni.Core
             if (GetComponentInChildren<NetworkIdentity>() != null)
             {
                 throw new NotSupportedException(
-                    "NetworkEventBase should not be attached to an object with a NetworkIdentity. Use 'NetworkBehaviour' instead."
+                    $"The component {GetType().Name} cannot be attached to an object that also has a 'NetworkIdentity' component. Please use 'NetworkBehaviour' in such cases."
                 );
             }
 #endif
