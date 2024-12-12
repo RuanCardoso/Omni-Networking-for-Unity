@@ -188,7 +188,7 @@ namespace Omni.Core
                 SendMessage(MessageType.LeaveGroup, message, DeliveryMode.ReliableOrdered, 0);
             }
 
-            internal static void AddEventBehaviour(int identityId, IRpcMessage behaviour)
+            internal static void AddRpcMessage(int identityId, IRpcMessage behaviour)
             {
                 if (!GlobalRpcHandlers.TryAdd(identityId, behaviour))
                 {
@@ -361,7 +361,7 @@ namespace Omni.Core
                 using DataBuffer message = Pool.Rent();
                 message.Internal_Write(identityId); // min: 1 byte, max = 4 bytes
                 message.Write(instanceId); // 1 byte
-                message.Write(msgId);  // 1 byte
+                message.Write(msgId); // 1 byte
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.LocalRpc, peer, message, target, deliveryMode, groupId, dataCache,
                     sequenceChannel); // 1 byte
@@ -1021,7 +1021,7 @@ namespace Omni.Core
                 CACHES_OVERWRITE_GLOBAL.Clear();
             }
 
-            internal static void AddEventBehaviour(int identityId, IRpcMessage behaviour)
+            internal static void AddRpcMessage(int identityId, IRpcMessage behaviour)
             {
                 if (!GlobalRpcHandlers.TryAdd(identityId, behaviour))
                 {

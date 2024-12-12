@@ -44,7 +44,7 @@ namespace Omni.Core
 
         private NetworkEventServer remote;
         private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> rpcHandler = new();
-        
+
         /// <summary>
         /// Provides access to the <see cref="NetworkEventServer"/> instance, 
         /// enabling the server to send Remote Procedure Calls (RPCs) to clients.
@@ -159,8 +159,9 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            rpcHandler.FindEvents<ServerAttribute>(this, m_BindingFlags);
-            NetworkManager.ServerSide.AddEventBehaviour(m_Id, this);
+            FindAllNetworkVariables();
+            rpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
+            NetworkManager.ServerSide.AddRpcMessage(m_Id, this);
             Server = new NetworkEventServer(this, m_BindingFlags);
         }
 
@@ -316,10 +317,39 @@ namespace Omni.Core
         {
         }
 
-        public void OnRpcInvoked(byte methodId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
+        public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
         {
-            rpcHandler.ThrowIfNoRpcMethodFound(methodId);
-            TryCallServerRpc(methodId, buffer, peer, seqChannel);
+            bool isClientAuthority = false;
+
+            if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+            {
+                byte id = buffer.BufferAsSpan[0];
+                if (networkVariables.TryGetValue(id, out NetworkVariableField property))
+                {
+                    isClientAuthority = property.IsClientAuthority;
+                }
+
+                if (!AllowNetworkVariablesFromClients && !isClientAuthority)
+                {
+#if OMNI_DEBUG
+                    NetworkLogger.__Log__(
+                        "Access Denied: The client attempted to send Network Variables without proper permissions.",
+                        NetworkLogger.LogType.Error
+                    );
+#else
+                    NetworkLogger.__Log__(
+                        "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
+                        NetworkLogger.LogType.Error
+                    );
+
+                    peer.Disconnect();
+#endif
+                    return;
+                }
+            }
+
+            rpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+            TryCallServerRpc(rpcId, buffer, peer, seqChannel);
         }
     }
 }

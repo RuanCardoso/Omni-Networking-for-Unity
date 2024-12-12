@@ -17,6 +17,20 @@ namespace Omni.Core
     {
     }
 
+    internal class RpcMethod
+    {
+        internal int MethodId { get; }
+        internal int ArgsCount { get; }
+        internal bool RequiresOwnership { get; }
+
+        internal RpcMethod(int methodId, int argsCount, bool requiresOwnership)
+        {
+            MethodId = methodId;
+            ArgsCount = argsCount;
+            RequiresOwnership = requiresOwnership;
+        }
+    }
+
     internal sealed class RpcHandler<T1, T2, T3, T4, T5>
     {
         private readonly int expectedArgsCount = -1;
@@ -28,7 +42,7 @@ namespace Omni.Core
         private readonly Dictionary<int, Action<T1, T2, T3>> T1_T2_T3_action = new();
         private readonly Dictionary<int, Action<T1, T2, T3, T4>> T1_T2_T3_T4_action = new();
         private readonly Dictionary<int, Action<T1, T2, T3, T4, T5>> T1_T2_T3_T4_T5_action = new();
-        private readonly Dictionary<int, int> t_methods = new(); // int: method id, int: args count
+        private readonly Dictionary<int, RpcMethod> t_methods = new(); // int: method id, int: args count
 
         internal RpcHandler(int expectedArgsCount = -1)
         {
@@ -37,7 +51,21 @@ namespace Omni.Core
 
         internal bool Exists(int methodId, out int argsCount)
         {
-            return t_methods.TryGetValue(methodId, out argsCount);
+            bool success = t_methods.TryGetValue(methodId, out RpcMethod method);
+            if (success)
+            {
+                argsCount = method.ArgsCount;
+                return true;
+            }
+
+            argsCount = -1;
+            return false;
+        }
+
+        internal bool IsRequiresOwnership(int methodId)
+        {
+            bool success = t_methods.TryGetValue(methodId, out RpcMethod method);
+            return success && method.RequiresOwnership;
         }
 
         internal void Rpc(int methodId)
@@ -130,7 +158,7 @@ namespace Omni.Core
             }
         }
 
-        internal void FindEvents<T>(object target, BindingFlags flags) where T : EventAttribute
+        internal void FindAllRpcMethods<T>(object target, BindingFlags flags) where T : EventAttribute
         {
             // Reflection is very slow, but it's only called once.
             // Declared only, not inherited to optimize the search.
@@ -151,16 +179,13 @@ namespace Omni.Core
                         int argsCount = method.GetParameters().Length;
                         if (expectedArgsCount > -1 && argsCount != expectedArgsCount)
                         {
-                            ThrowParameterCountMismatch(
-                                attr,
-                                method,
-                                new TargetParameterCountException("Invalid number of arguments.")
-                            );
+                            ThrowParameterCountMismatch(attr, method,
+                                new TargetParameterCountException("Invalid number of arguments."));
                         }
 
-                        if (attr.Id == NetworkConstants.NET_VAR_RPC_ID) // 255 -> Reserved to Network Variables!
+                        if (attr.Id == NetworkConstants.NETWORK_VARIABLE_RPC_ID) // 255 -> Reserved to Network Variables!
                         {
-                            // Derived class will be responsible of calling base method.
+                            // Derived class will be responsible for calling base method.
                             // Avoid duplicated events.
                             if (__net_var__)
                                 continue;
@@ -168,7 +193,12 @@ namespace Omni.Core
                             __net_var__ = true;
                         }
 
-                        if (t_methods.TryAdd(attr.Id, argsCount))
+                        // Security flag:
+                        bool requiresOwnership = true;
+                        if (attr is ServerAttribute serverAttribute)
+                            requiresOwnership = serverAttribute.requiresOwnership;
+
+                        if (t_methods.TryAdd(attr.Id, new RpcMethod(attr.Id, argsCount, requiresOwnership)))
                         {
                             switch (argsCount)
                             {

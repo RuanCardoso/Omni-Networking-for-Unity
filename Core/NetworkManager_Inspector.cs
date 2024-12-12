@@ -173,6 +173,7 @@ namespace Omni.Core
         internal static bool MatchmakingModuleEnabled => Manager.m_MatchModule;
         internal static bool TickSystemModuleEnabled => Manager.m_TickModule;
         internal static bool UseSecureRoutes => Manager.m_UseSecureRoutes;
+        internal static bool AllowNetworkVariablesFromClients => Manager.m_AllowNetworkVariablesFromClients;
 
         public static int ServerListenPort => Manager.m_ServerListenPort;
         public static int ClientListenPort => Manager.m_ClientListenPort;

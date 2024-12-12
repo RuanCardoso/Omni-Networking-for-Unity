@@ -193,11 +193,12 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            clientRpcHandler.FindEvents<ClientAttribute>(this, m_BindingFlags);
-            serverRpcHandler.FindEvents<ServerAttribute>(this, m_BindingFlags);
+            FindAllNetworkVariables();
+            clientRpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
+            serverRpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
 
-            NetworkManager.ClientSide.AddEventBehaviour(m_Id, this);
-            NetworkManager.ServerSide.AddEventBehaviour(m_Id, this);
+            NetworkManager.ClientSide.AddRpcMessage(m_Id, this);
+            NetworkManager.ServerSide.AddRpcMessage(m_Id, this);
 
             Client = new NetworkEventClient(this, m_BindingFlags);
             Server = new NetworkEventServer(this, m_BindingFlags);
@@ -387,17 +388,46 @@ namespace Omni.Core
 
         #endregion
 
-        public void OnRpcInvoked(byte methodId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
+        public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
         {
             if (isServer)
             {
-                serverRpcHandler.ThrowIfNoRpcMethodFound(methodId);
-                TryCallServerRpc(methodId, buffer, peer, seqChannel); // server Invoke
+                bool isClientAuthority = false;
+
+                if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+                {
+                    byte id = buffer.BufferAsSpan[0];
+                    if (networkVariables.TryGetValue(id, out NetworkVariableField property))
+                    {
+                        isClientAuthority = property.IsClientAuthority;
+                    }
+
+                    if (!AllowNetworkVariablesFromClients && !isClientAuthority)
+                    {
+#if OMNI_DEBUG
+                        NetworkLogger.__Log__(
+                            "Access Denied: The client attempted to send Network Variables without proper permissions.",
+                            NetworkLogger.LogType.Error
+                        );
+#else
+                        NetworkLogger.__Log__(
+                            "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
+                            NetworkLogger.LogType.Error
+                        );
+
+                        peer.Disconnect();
+#endif
+                        return;
+                    }
+                }
+
+                serverRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                TryCallServerRpc(rpcId, buffer, peer, seqChannel);
             }
             else
             {
-                clientRpcHandler.ThrowIfNoRpcMethodFound(methodId);
-                TryCallClientRpc(methodId, buffer, seqChannel); // client Invoke
+                clientRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                TryCallClientRpc(rpcId, buffer, seqChannel);
             }
         }
     }

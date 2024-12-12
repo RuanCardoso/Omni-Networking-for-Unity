@@ -31,6 +31,8 @@ namespace Omni.Core
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class ServerAttribute : EventAttribute
     {
+        public bool requiresOwnership = true;
+
         public ServerAttribute(byte id)
             : base(id)
         {

@@ -557,7 +557,7 @@ namespace Omni.Core
                     if (!Manager.TryGetComponent<TransporterBehaviour>(out var currentTransporter))
                     {
                         throw new NullReferenceException(
-                            "Transporter instance missing in NetworkManager. Please add and configure a transporter component to ensure proper functioning of the network system."
+                            "Transporter component is missing in NetworkManager. Please add and configure a transporter component to ensure proper functioning of the network system."
                         );
                     }
 
@@ -1642,28 +1642,7 @@ namespace Omni.Core
                     {
                         int identityId = header.Internal_Read();
                         byte instanceId = header.Read<byte>();
-                        byte invokeId = header.Read<byte>();
-
-                        if (isServer && invokeId == NetworkConstants.NET_VAR_RPC_ID &&
-                            !m_AllowNetworkVariablesFromClients) // 255 is reserved for NetVar
-                        {
-#if OMNI_DEBUG
-                            // NetVar exclusively
-                            NetworkLogger.__Log__(
-                                "Access Denied: The client attempted to send Network Variables without proper permissions.",
-                                NetworkLogger.LogType.Error
-                            );
-#endif
-#if OMNI_RELEASE
-                            // NetVar exclusively
-                            NetworkLogger.__Log__(
-                                "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
-                                NetworkLogger.LogType.Error
-                            );
-                            peer.Disconnect();
-#endif
-                            return;
-                        }
+                        byte rpcId = header.Read<byte>();
 
                         using var message = EndOfHeader();
                         var key = (identityId, instanceId);
@@ -1673,7 +1652,7 @@ namespace Omni.Core
 
                         if (eventBehaviours.TryGetValue(key, out IRpcMessage behaviour))
                         {
-                            behaviour.OnRpcInvoked(invokeId, message, peer, isServer, sequenceChannel);
+                            behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
                         }
                         else
                         {
@@ -1689,28 +1668,7 @@ namespace Omni.Core
                     case MessageType.GlobalRpc:
                     {
                         int identityId = header.Read<int>();
-                        byte invokeId = header.Read<byte>();
-
-                        if (isServer && invokeId == NetworkConstants.NET_VAR_RPC_ID &&
-                            !m_AllowNetworkVariablesFromClients) // 255 is reserved for NetVar
-                        {
-#if OMNI_DEBUG
-                            // NetVar exclusively
-                            NetworkLogger.__Log__(
-                                "Access Denied: The client attempted to send Network Variables without proper permissions.",
-                                NetworkLogger.LogType.Error
-                            );
-#endif
-#if OMNI_RELEASE
-                            // NetVar exclusively
-                            NetworkLogger.__Log__(
-                                "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
-                                NetworkLogger.LogType.Error
-                            );
-                            peer.Disconnect();
-#endif
-                            return;
-                        }
+                        byte rpcId = header.Read<byte>();
 
                         using var message = EndOfHeader();
                         var eventBehaviours = isServer
@@ -1719,7 +1677,7 @@ namespace Omni.Core
 
                         if (eventBehaviours.TryGetValue(identityId, out IRpcMessage behaviour))
                         {
-                            behaviour.OnRpcInvoked(invokeId, message, peer, isServer, sequenceChannel);
+                            behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
                         }
                         else
                         {

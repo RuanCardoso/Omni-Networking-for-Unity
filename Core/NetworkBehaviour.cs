@@ -65,7 +65,7 @@ namespace Omni.Core
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
-                Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
+                Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
             }
 
             /// <summary>
@@ -90,11 +90,10 @@ namespace Omni.Core
                 IPropertyInfo property =
                     m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(___, m_NetworkBehaviour.m_BindingFlags);
 
-                IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
-                if (property != null)
+                if (property is IPropertyInfo<T> propertyGeneric)
                 {
                     using DataBuffer message = m_NetworkBehaviour.CreateHeader(propertyGeneric.Invoke(), property.Id);
-                    Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
+                    Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
                 }
             }
 
@@ -296,7 +295,7 @@ namespace Omni.Core
             {
                 dataCache ??= DataCache.None;
                 using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
-                Rpc(NetworkConstants.NET_VAR_RPC_ID, message, target, deliveryMode, groupId, dataCache,
+                Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, target, deliveryMode, groupId, dataCache,
                     sequenceChannel);
             }
 
@@ -329,13 +328,12 @@ namespace Omni.Core
                     m_NetworkBehaviour.m_BindingFlags
                 );
 
-                IPropertyInfo<T> propertyInfoGeneric = propertyInfo as IPropertyInfo<T>;
-                if (propertyInfo != null)
+                if (propertyInfo is IPropertyInfo<T> propertyInfoGeneric)
                 {
                     using DataBuffer message =
                         m_NetworkBehaviour.CreateHeader(propertyInfoGeneric.Invoke(), propertyInfo.Id);
 
-                    Rpc(NetworkConstants.NET_VAR_RPC_ID, message, target, deliveryMode, groupId, dataCache,
+                    Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, target, deliveryMode, groupId, dataCache,
                         sequenceChannel);
                 }
             }
@@ -828,12 +826,13 @@ namespace Omni.Core
             CheckIfOverridden();
             if (Identity.IsServer)
             {
-                serverRpcHandler.FindEvents<ServerAttribute>(this, m_BindingFlags);
+                FindAllNetworkVariables();
+                serverRpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
                 Server = new NetworkBehaviourServer(this);
             }
             else
             {
-                clientRpcHandler.FindEvents<ClientAttribute>(this, m_BindingFlags);
+                clientRpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
                 Client = new NetworkBehaviourClient(this);
             }
 
@@ -1061,15 +1060,64 @@ namespace Omni.Core
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public void OnRpcInvoked(byte msgId, DataBuffer buffer, NetworkPeer peer, bool _, int seqChannel)
+        public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool _, int seqChannel)
         {
             if (Identity.IsServer)
             {
-                TryCallServerRpc(msgId, buffer, peer, seqChannel);
+                bool requiresOwnership = true;
+                bool isClientAuthority = false;
+
+                if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+                {
+                    byte id = buffer.BufferAsSpan[0];
+                    if (networkVariables.TryGetValue(id, out NetworkVariableField property))
+                    {
+                        requiresOwnership = property.RequiresOwnership;
+                        isClientAuthority = property.IsClientAuthority;
+                    }
+
+                    if (!NetworkManager.AllowNetworkVariablesFromClients && !isClientAuthority)
+                    {
+#if OMNI_DEBUG
+                        NetworkLogger.__Log__(
+                            "Access Denied: The client attempted to send Network Variables without proper permissions.",
+                            NetworkLogger.LogType.Error
+                        );
+#else
+                        NetworkLogger.__Log__(
+                            "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
+                            NetworkLogger.LogType.Error
+                        );
+
+                        peer.Disconnect();
+#endif
+                        return;
+                    }
+                }
+                else requiresOwnership = false;
+
+                // Requires ownership! -> security flag!
+                if ((serverRpcHandler.IsRequiresOwnership(rpcId) &&
+                     rpcId != NetworkConstants.NETWORK_VARIABLE_RPC_ID) || requiresOwnership)
+                {
+                    if (peer.Id != Identity.Owner.Id)
+                    {
+                        NetworkLogger.__Log__(
+                            "[RPC Ownership Error] RPC rejected: Only the client with ownership of the object can send RPCs to the server. " +
+                            "Ensure the client has authority over the target object before attempting this operation." +
+                            "You can disable this restriction if ownership verification is not required.",
+                            NetworkLogger.LogType.Error
+                        );
+
+                        return;
+                    }
+                }
+
+                TryCallServerRpc(rpcId, buffer, peer, seqChannel);
             }
             else
             {
-                TryCallClientRpc(msgId, buffer, seqChannel);
+                TryCallClientRpc(rpcId, buffer, seqChannel);
             }
         }
 

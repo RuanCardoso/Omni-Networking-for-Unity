@@ -153,8 +153,8 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            rpcHandler.FindEvents<ClientAttribute>(this, m_BindingFlags);
-            NetworkManager.ClientSide.AddEventBehaviour(m_Id, this);
+            rpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
+            NetworkManager.ClientSide.AddRpcMessage(m_Id, this);
             Client = new NetworkEventClient(this, m_BindingFlags);
         }
 

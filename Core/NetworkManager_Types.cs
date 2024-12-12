@@ -6,7 +6,7 @@ namespace Omni.Core
     internal class NetworkConstants
     {
         // TODO: Add it to the source generator. Don't change, used by Source Generator
-        internal const byte NET_VAR_RPC_ID = 255;
+        internal const byte NETWORK_VARIABLE_RPC_ID = 255;
         internal const int INVALID_MASTER_CLIENT_ID = -1;
     }
 

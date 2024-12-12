@@ -47,7 +47,7 @@ namespace Omni.Core
             byte sequenceChannel = 0)
         {
             using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(property, propertyId);
-            Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
+            Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
         }
 
         /// <summary>
@@ -70,12 +70,11 @@ namespace Omni.Core
             [CallerMemberName] string ___ = "")
         {
             IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(___, m_BindingFlags);
-            IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
-            if (property != null)
+            if (property is IPropertyInfo<T> propertyGeneric)
             {
                 using DataBuffer message =
                     m_NetworkVariablesBehaviour.CreateHeader(propertyGeneric.Invoke(), property.Id);
-                Rpc(NetworkConstants.NET_VAR_RPC_ID, message, deliveryMode, sequenceChannel);
+                Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
             }
         }
 
@@ -308,7 +307,7 @@ namespace Omni.Core
             peer ??= ServerSide.ServerPeer;
 
             using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(property, propertyId);
-            Rpc(NetworkConstants.NET_VAR_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
+            Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
                 sequenceChannel);
         }
 
@@ -338,14 +337,13 @@ namespace Omni.Core
         {
             dataCache ??= DataCache.None;
             IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(___, m_BindingFlags);
-            IPropertyInfo<T> propertyGeneric = property as IPropertyInfo<T>;
-            if (property != null)
+            if (property is IPropertyInfo<T> propertyGeneric)
             {
                 peer ??= ServerSide.ServerPeer;
                 using DataBuffer message =
                     m_NetworkVariablesBehaviour.CreateHeader(propertyGeneric.Invoke(), property.Id);
 
-                Rpc(NetworkConstants.NET_VAR_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
+                Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
                     sequenceChannel);
             }
         }

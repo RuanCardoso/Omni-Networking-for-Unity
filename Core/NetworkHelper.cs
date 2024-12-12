@@ -117,13 +117,8 @@ namespace Omni.Core
             }
         }
 
-        internal static NetworkIdentity Instantiate(
-            NetworkIdentity prefab,
-            NetworkPeer peer,
-            int identityId,
-            bool isServer,
-            bool isLocalPlayer
-        )
+        internal static NetworkIdentity Instantiate(NetworkIdentity prefab, NetworkPeer peer, int identityId,
+            bool isServer, bool isLocalPlayer)
         {
             // Disable the prefab to avoid Awake and Start being called multiple times before the registration.
             prefab.gameObject.SetActive(false);

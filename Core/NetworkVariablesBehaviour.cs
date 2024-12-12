@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection;
 using UnityEngine;
+using System.Linq;
 
 #pragma warning disable
 
@@ -40,9 +41,73 @@ namespace Omni.Core
         public byte Id { get; }
     }
 
+    internal class NetworkVariableField
+    {
+        internal int PropertyId { get; }
+        internal bool RequiresOwnership { get; }
+        internal bool IsClientAuthority { get; }
+
+        internal NetworkVariableField(int propertyId, bool requiresOwnership, bool isClientAuthority)
+        {
+            PropertyId = propertyId;
+            RequiresOwnership = requiresOwnership;
+            IsClientAuthority = isClientAuthority;
+        }
+    }
+
     public class NetworkVariablesBehaviour : MonoBehaviour
     {
-        private readonly Dictionary<string, IPropertyInfo> properties = new();
+        private readonly Dictionary<string, IPropertyInfo> runtimeProperties = new();
+        internal readonly Dictionary<byte, NetworkVariableField> networkVariables = new();
+
+        internal void FindAllNetworkVariables()
+        {
+            Type type = GetType();
+            FieldInfo[] fieldInfos = type.GetFields(System.Reflection.BindingFlags.Instance |
+                                                    System.Reflection.BindingFlags.Public |
+                                                    System.Reflection.BindingFlags.NonPublic);
+
+            foreach (var field in fieldInfos)
+            {
+                NetworkVariableAttribute fieldAttr = field.GetCustomAttribute<NetworkVariableAttribute>();
+                if (fieldAttr == null)
+                    continue;
+
+                string fieldName = field.Name;
+                if (fieldName.StartsWith("m_"))
+                {
+                    fieldName = fieldName[2..];
+                }
+                else
+                {
+                    if (!char.IsUpper(fieldName[0]))
+                    {
+                        fieldName = char.ToUpper(fieldName[0]) + fieldName[1..];
+                    }
+                }
+
+                PropertyInfo property = type.GetProperty(fieldName,
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.NonPublic);
+
+                if (property == null)
+                    continue;
+
+                NetworkVariableAttribute propertyAttr =
+                    property.GetCustomAttribute<NetworkVariableAttribute>();
+
+                if (propertyAttr == null)
+                    continue;
+
+                if (!networkVariables.TryAdd(propertyAttr.Id,
+                        new NetworkVariableField(propertyAttr.Id, fieldAttr.requiresOwnership,
+                            fieldAttr.isClientAuthority)))
+                {
+                    throw new NotSupportedException(
+                        $"[NetworkVariable] -> Duplicate network variable ID found: {propertyAttr.Id}. Ensure all network variable IDs within a class are unique. Field: {field.Name}");
+                }
+            }
+        }
 
         internal DataBuffer CreateHeader<T>(T @object, byte id)
         {
@@ -63,7 +128,7 @@ namespace Omni.Core
 
         internal IPropertyInfo GetPropertyInfoWithCallerName<T>(string callerName, BindingFlags flags)
         {
-            if (!properties.TryGetValue(callerName, out IPropertyInfo memberInfo))
+            if (!runtimeProperties.TryGetValue(callerName, out IPropertyInfo memberInfo))
             {
                 // Reflection is slow, but cached for performance optimization!
                 // Delegates are used to avoid reflection overhead, it is much faster, like a direct call.
@@ -94,7 +159,7 @@ namespace Omni.Core
                 memberInfo = new PropertyInfo<T>(name, id);
                 // hack: performance optimization!
                 ((IPropertyInfo<T>)memberInfo).Invoke = getMethod.CreateDelegate(typeof(Func<T>), this) as Func<T>;
-                properties.Add(callerName, memberInfo);
+                runtimeProperties.Add(callerName, memberInfo);
                 return memberInfo;
             }
 
@@ -167,7 +232,7 @@ namespace Omni.Core
         /// notifications for registered listeners, allowing clients to receive and apply the 
         /// latest server-side data and changes.
         /// </summary>
-        protected void SyncNetworkState()
+        protected virtual void SyncNetworkState()
         {
             ___NotifyChange___();
         }

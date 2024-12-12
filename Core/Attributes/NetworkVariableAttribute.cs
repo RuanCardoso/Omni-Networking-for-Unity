@@ -20,6 +20,9 @@ namespace Omni.Core
     {
         internal byte Id { get; }
 
+        public bool isClientAuthority = false;
+        public bool requiresOwnership = true;
+
         /// <summary>
         /// Automatically or manually syncs a property on the network.
         /// </summary>
