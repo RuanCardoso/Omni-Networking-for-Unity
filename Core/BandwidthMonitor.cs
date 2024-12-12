@@ -3,40 +3,68 @@ using Omni.Threading.Tasks;
 using System;
 using UnityEngine;
 
+/// <summary>
+/// Monitors bandwidth by measuring and calculating averages for data usage over time.
+/// </summary>
 public sealed class BandwidthMonitor
 {
-    private readonly IMovingAverage _movingAverage;
-    private double _total;
-    public event Action<double> OnAverageChanged;
+    private const int windowSize = 5;
 
-    public BandwidthMonitor() : this(new SimpleMovingAverage(), 5)
-    {
-    } // SMA -> because we want to get a stable average over time.
+    private readonly IMovingAverage _bytesMeasurementMovingAverage;
+    private readonly IMovingAverage _ppsMeasurementMovingAverage;
 
-    public BandwidthMonitor(IMovingAverage movingAverage, int windowSize)
+    private double _bytesMeasurementTotal;
+    private int _ppsMeasurementTotal;
+
+    /// <summary>
+    /// Event triggered when the moving average of bandwidth usage changes.
+    /// This event is invoked periodically with updated average bandwidth
+    /// and packets-per-second (PPS) values.
+    /// </summary>
+    /// <remarks>
+    /// The event provides two parameters:
+    /// - The first parameter is the average bandwidth in bytes per second (rounded to the nearest whole number).
+    /// - The second parameter is the average packets-per-second value (rounded to the nearest whole number).
+    /// </remarks>
+    public event Action<double, int> OnAverageChanged;
+
+    internal BandwidthMonitor()
     {
-        _movingAverage = movingAverage;
-        _movingAverage.SetPeriods(windowSize);
+        // Bytes Per Second
+        _bytesMeasurementMovingAverage = new SimpleMovingAverage();
+        _bytesMeasurementMovingAverage.SetPeriods(windowSize);
+
+        // Packets Per Second
+        _ppsMeasurementMovingAverage = new SimpleMovingAverage();
+        _ppsMeasurementMovingAverage.SetPeriods(windowSize);
     }
 
-    public async void Start(float seconds = 1f, int decimalPlaces = 0)
+    internal async void Start()
     {
         while (Application.isPlaying)
         {
-            // wait for 1 second to best match the moving average
-            // eg: 10 periods = 10 seconds of data.
-            await UniTask.WaitForSeconds(seconds);
+            // Wait for 1 second to align the moving average calculations 
+            // with the data collection period (e.g., 10 periods = 10 seconds of data).
+            await UniTask.WaitForSeconds(1f);
 
-            _movingAverage.Add(_total);
-            _total = 0;
+            // Add the current measurements to the moving average calculations.
+            // These measurements are accumulated over the 1-second interval.
+            _bytesMeasurementMovingAverage.Add(_bytesMeasurementTotal);
+            _ppsMeasurementMovingAverage.Add(_ppsMeasurementTotal);
 
-            // Get the rounded average to aproximately value the bandwidth!
-            OnAverageChanged?.Invoke(Math.Round(_movingAverage.Average, decimalPlaces));
+            // Reset the total measurements for the next interval.
+            _bytesMeasurementTotal = 0;
+            _ppsMeasurementTotal = 0;
+
+            // Invoke the callback with the rounded averages to estimate bandwidth usage.
+            OnAverageChanged?.Invoke(Math.Round(_bytesMeasurementMovingAverage.Average, 0),
+                (int)Math.Round(_ppsMeasurementMovingAverage.Average, 0));
         }
     }
 
-    public void Add(double value)
+    internal void Add(double value)
     {
-        _total += value;
+        _bytesMeasurementTotal += value;
+        _ppsMeasurementTotal++;
     }
 }

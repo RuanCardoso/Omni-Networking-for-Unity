@@ -35,8 +35,8 @@ namespace Omni.Core.Modules.UConsole
             NetworkManager.OnServerInitialized += () =>
             {
                 // Bandwidth register
-                NetworkManager.Server.ReceivedBandwidth.OnAverageChanged += (avg) => _receivedBytes = avg;
-                NetworkManager.Server.SentBandwidth.OnAverageChanged += (avg) => _sentBytes = avg;
+                NetworkManager.Server.ReceivedBandwidth.OnAverageChanged += (avg, pps) => _receivedBytes = avg;
+                NetworkManager.Server.SentBandwidth.OnAverageChanged += (avg, pps) => _sentBytes = avg;
             };
 #endif
         }
