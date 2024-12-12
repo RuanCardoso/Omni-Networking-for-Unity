@@ -219,5 +219,47 @@ namespace Omni.Core
         {
             return input * multiplier * Time.deltaTime;
         }
+
+        /// <summary>
+        /// Scales the input value by the specified multiplier and <see cref="Time.deltaTime"/>.
+        /// </summary>
+        /// <param name="input">The initial value to be scaled.</param>
+        /// <param name="multiplier">Multiplier applied to the input.</param>
+        /// <returns>The input value scaled over time.</returns>
+        /// <remarks>
+        /// Useful for making transformations consistent across frame rates.
+        /// </remarks>
+        public static Vector3 ScaleDelta(this Vector3 input, float multiplier)
+        {
+            return input * multiplier * Time.deltaTime;
+        }
+
+        /// <summary>
+        /// Scales the input value by the specified multiplier and <see cref="Time.deltaTime"/>.
+        /// </summary>
+        /// <param name="input">The initial value to be scaled.</param>
+        /// <param name="multiplier">Multiplier applied to the input.</param>
+        /// <returns>The input value scaled over time.</returns>
+        /// <remarks>
+        /// Useful for making transformations consistent across frame rates.
+        /// </remarks>
+        public static Vector2 ScaleDelta(this Vector2 input, float multiplier)
+        {
+            return input * multiplier * Time.deltaTime;
+        }
+
+        /// <summary>
+        /// Scales the input value by the specified multiplier and <see cref="Time.deltaTime"/>.
+        /// </summary>
+        /// <param name="input">The initial value to be scaled.</param>
+        /// <param name="multiplier">Multiplier applied to the input.</param>
+        /// <returns>The input value scaled over time.</returns>
+        /// <remarks>
+        /// Useful for making transformations consistent across frame rates.
+        /// </remarks>
+        public static Vector4 ScaleDelta(this Vector4 input, float multiplier)
+        {
+            return input * multiplier * Time.deltaTime;
+        }
     }
 }
