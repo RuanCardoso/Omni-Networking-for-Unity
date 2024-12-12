@@ -130,7 +130,7 @@ namespace Omni.Core.Components
 #if UNITY_EDITOR || !UNITY_SERVER
             if (m_Instance == null)
                 throw new Exception(
-                    "NetworkPhysicsIsolate is not initialized. Please add it to the NetworkManager object.");
+                    "NetworkPhysicsIsolate component is not initialized. Please add it to the NetworkManager object.");
 
             var colliders = obj.GetComponentsInChildren<Collider>(true);
             m_Instance.m_ServerColliders.Add(colliders);
@@ -146,7 +146,7 @@ namespace Omni.Core.Components
 #if UNITY_EDITOR || !UNITY_SERVER
             if (m_Instance == null)
                 throw new Exception(
-                    "NetworkPhysicsIsolate is not initialized. Please add it to the NetworkManager object.");
+                    "NetworkPhysicsIsolate component is not initialized. Please add it to the NetworkManager object.");
 
             var colliders = obj.GetComponentsInChildren<Collider>(true);
             m_Instance.m_ClientColliders.Add(colliders);
@@ -164,7 +164,7 @@ namespace Omni.Core.Components
             if (GetComponentInChildren<NetworkIdentity>() != null)
             {
                 throw new NotSupportedException(
-                    "NetworkPhysicsIsolate should not be attached to an object with a NetworkIdentity."
+                    "NetworkPhysicsIsolate component should not be attached to an object with a NetworkIdentity."
                 );
             }
 #endif

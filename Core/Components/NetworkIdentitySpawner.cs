@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Omni.Core.Components
 {
@@ -9,7 +11,8 @@ namespace Omni.Core.Components
     {
         [SerializeField] private NetworkIdentity m_LocalPlayer;
 
-        [SerializeField] private List<NetworkIdentity> m_ObjectsToSpawn;
+        [FormerlySerializedAs("m_ObjectsToSpawn")] [SerializeField]
+        private List<NetworkIdentity> m_IdentitiesToSpawn;
 
         private readonly DataCache m_InstantiateCache = new(CachePresets.ServerNew);
 
@@ -24,7 +27,7 @@ namespace Omni.Core.Components
                 DisableSceneObject(m_LocalPlayer.gameObject);
             }
 
-            foreach (NetworkIdentity identity in m_ObjectsToSpawn)
+            foreach (NetworkIdentity identity in m_IdentitiesToSpawn)
             {
                 if (identity != null)
                 {
@@ -36,7 +39,7 @@ namespace Omni.Core.Components
 
         protected override void OnServerStart()
         {
-            foreach (NetworkIdentity identity in m_ObjectsToSpawn)
+            foreach (NetworkIdentity identity in m_IdentitiesToSpawn)
             {
                 if (identity != null)
                 {
@@ -75,26 +78,25 @@ namespace Omni.Core.Components
 
         protected override void Reset()
         {
-            base.Reset();
             ThrowIfHasIdentity();
+            base.Reset();
         }
 
         protected override void OnValidate()
         {
-            base.OnValidate();
             ThrowIfHasIdentity();
+            base.OnValidate();
         }
 
+        [Conditional("OMNI_DEBUG")]
         private void ThrowIfHasIdentity()
         {
-#if OMNI_DEBUG
             if (GetComponentInChildren<NetworkIdentity>() != null)
             {
                 throw new NotSupportedException(
-                    "NetworkSpawn should not be attached to an object with a NetworkIdentity."
+                    $"{nameof(NetworkIdentitySpawner)} component should not be attached to an object with a NetworkIdentity."
                 );
             }
-#endif
         }
     }
 }
