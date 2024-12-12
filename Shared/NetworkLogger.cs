@@ -278,7 +278,8 @@ namespace Omni.Shared
                     // Only user script files will be processed and displayed.  
                     // do not change the name of the omni folder!!
                     if (filePath.Contains("/Assets/Omni-Networking-for-Unity") ||
-                        filePath.Contains("/Packages/Omni-Networking-for-Unity"))
+                        filePath.Contains("/Packages/Omni-Networking-for-Unity") ||
+                        filePath.Contains("/OmniNetSourceGenerator"))
                         continue;
 
                     MethodBase method = frame.GetMethod();
