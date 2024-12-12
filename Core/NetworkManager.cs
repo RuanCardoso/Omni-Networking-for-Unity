@@ -685,7 +685,7 @@ namespace Omni.Core
                 // NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #else
 #if UNITY_EDITOR
-				Server.GenerateRsaKeys();
+				ServerSide.GenerateRsaKeys();
 				Connection.Server.Listen(port);
 				//NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #elif !UNITY_SERVER
@@ -693,7 +693,7 @@ namespace Omni.Core
                     "Server is not available in 'release mode' on client build."
                 );
 #else
-                Server.GenerateRsaKeys();
+                ServerSide.GenerateRsaKeys();
                 Connection.Server.Listen(port);
                 // NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #endif
