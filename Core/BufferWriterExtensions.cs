@@ -556,6 +556,8 @@ namespace Omni.Core
             }
             catch (MemoryPackSerializationException ex)
             {
+                NetworkLogger.PrintHyperlink();
+                // Show extra info for MemoryPackSerializationException
                 NetworkLogger.PrintHyperlink(ex);
                 throw;
             }
