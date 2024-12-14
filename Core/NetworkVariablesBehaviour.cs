@@ -1,11 +1,12 @@
 using Omni.Shared;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Reflection;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
-using System.Linq;
 
 #pragma warning disable
 
@@ -46,12 +47,15 @@ namespace Omni.Core
         internal int PropertyId { get; }
         internal bool RequiresOwnership { get; }
         internal bool IsClientAuthority { get; }
+        internal bool CheckEquality { get; }
 
-        internal NetworkVariableField(int propertyId, bool requiresOwnership, bool isClientAuthority)
+        internal NetworkVariableField(int propertyId, bool requiresOwnership, bool isClientAuthority,
+            bool checkEquality)
         {
             PropertyId = propertyId;
             RequiresOwnership = requiresOwnership;
             IsClientAuthority = isClientAuthority;
+            CheckEquality = checkEquality;
         }
     }
 
@@ -62,6 +66,9 @@ namespace Omni.Core
 
         internal void FindAllNetworkVariables()
         {
+            // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
+            ___NotifyCollectionChange___();
+
             Type type = GetType();
             FieldInfo[] fieldInfos = type.GetFields(System.Reflection.BindingFlags.Instance |
                                                     System.Reflection.BindingFlags.Public |
@@ -100,8 +107,8 @@ namespace Omni.Core
                     continue;
 
                 if (!networkVariables.TryAdd(propertyAttr.Id,
-                        new NetworkVariableField(propertyAttr.Id, fieldAttr.requiresOwnership,
-                            fieldAttr.isClientAuthority)))
+                        new NetworkVariableField(propertyAttr.Id, fieldAttr.RequiresOwnership,
+                            fieldAttr.IsClientAuthority, fieldAttr.CheckEquality)))
                 {
                     throw new NotSupportedException(
                         $"[NetworkVariable] -> Duplicate network variable ID found: {propertyAttr.Id}. Ensure all network variable IDs within a class are unique. Field: {field.Name}");
@@ -190,23 +197,8 @@ namespace Omni.Core
         // never override this method!
         [EditorBrowsable(EditorBrowsableState.Never)]
         [Obsolete("Don't override this method! The source generator will override it.")]
-        protected virtual void ___NotifyChange___()
+        protected virtual void ___NotifyCollectionChange___()
         {
-        }
-
-        // This property is intended to be used by the source generator to determine if the method has been called from the editor.
-        protected bool ___NotifyEditorChange___Called { get; set; } = false;
-
-        // This method is intended to be overridden by the caller using source generators and reflection techniques. Magic wow!
-        // https://github.com/RuanCardoso/OmniNetSourceGenerator
-        // never override this method!
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        [Obsolete("Don't override this method! The source generator will override it.")]
-        [Conditional("UNITY_EDITOR")]
-        protected virtual void ___NotifyEditorChange___()
-        {
-            // Obsolete: Editor is fully supported!
-            ___NotifyEditorChange___Called = false;
         }
 
         /// <summary>
@@ -228,40 +220,14 @@ namespace Omni.Core
 
         /// <summary>
         /// Synchronizes the current state of all network variables and other relevant states, 
-        /// ensuring that any updates are transmitted to connected clients. This method triggers 
-        /// notifications for registered listeners, allowing clients to receive and apply the 
-        /// latest server-side data and changes.
+        /// ensuring that any updates are transmitted to the specified network peer. This method triggers 
+        /// notifications for registered listeners, allowing the peer to receive and apply the 
+        /// latest server-side data and changes. The synchronization is specifically scoped to the provided 
+        /// network peer.
         /// </summary>
-        protected virtual void SyncNetworkState()
+        /// <param name="peer">The network peer to synchronize the state with.</param>
+        protected virtual void SyncNetworkState(NetworkPeer peer)
         {
-            ___NotifyChange___();
-        }
-
-        /// <summary>
-        /// Compares two values of type T for deep equality.
-        /// </summary>
-        /// <returns>True if the values are deeply equal; otherwise, false.</returns>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        [Obsolete("Don't use this method! The source generator will use it.")]
-        protected bool DeepEquals<T>(T oldValue, T newValue, string name)
-        {
-            if (!___NotifyEditorChange___Called)
-            {
-                return OnNetworkVariableDeepEquals(oldValue, newValue, name);
-            }
-
-            // Obsolete: Editor is fully supported!
-#if OMNI_DEBUG
-            NetworkLogger.__Log__(
-                $"[NetworkVariable({name})] -> Editing network variables through the Unity Editor (Inspector) is not fully allowed. " +
-                "Any modifications made in this manner will cause all network variables to synchronize automatically. " +
-                "Network variables should only be updated via scripts to ensure consistency and prevent unintended behavior." +
-                "Editing via the Unity Editor (Inspector) is permitted solely for debugging purposes; however, be aware that this will synchronize all network variables, including those that have not been changed.",
-                NetworkLogger.LogType.Warning);
-#else
-			throw new NotSupportedException("[NetworkVariable] -> Editing network variables through the Unity Editor (Inspector) is not supported.");
-#endif
-            return false;
         }
 
         /// <summary>
@@ -272,9 +238,59 @@ namespace Omni.Core
         /// <param name="newValue">The new value to compare.</param>
         /// <param name="name">The name of the network variable.</param>
         /// <returns>True if the values are deeply equal; otherwise, false.</returns>
-        protected virtual bool OnNetworkVariableDeepEquals<T>(T oldValue, T newValue, string name)
+        protected virtual bool OnNetworkVariableDeepEquals<T>(T oldValue, T newValue, string name, byte id)
         {
-            return typeof(T).IsPrimitive && oldValue.Equals(newValue);
+            if (oldValue == null || newValue == null)
+            {
+                NetworkLogger.__Log__(
+                    $"The network variable '{name}' contains a null value. " +
+                    "Ensure the value is properly initialized before performing any operation.",
+                    NetworkLogger.LogType.Error
+                );
+
+                return true;
+            }
+
+            if (networkVariables.TryGetValue(id, out NetworkVariableField field))
+            {
+                if (!field.CheckEquality)
+                {
+                    return false;
+                }
+
+                var type = typeof(T);
+                if (type.IsValueType)
+                {
+#if OMNI_DEBUG
+                    if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+                    {
+                        NetworkLogger.__Log__(
+                            $"Warning: The struct '{type.Name}' contains reference-type fields. It is recommended to keep structs simple and free of references to ensure optimal performance.",
+                            NetworkLogger.LogType.Warning
+                        );
+                    }
+#endif
+                    return oldValue.Equals(newValue);
+                }
+                else if (typeof(IEnumerable).IsAssignableFrom(type))
+                {
+                    // Slower than the other checks, but it is the only way to compare complex types(List<T>, Dictionary<T>()).
+                    // It may be more recommended to avoid using complex types or just disable equality checking for these types.
+                    string oldJson = NetworkManager.ToJson(oldValue);
+                    string newJson = NetworkManager.ToJson(newValue);
+
+                    JToken oldToken = JToken.Parse(oldJson);
+                    JToken newToken = JToken.Parse(newJson);
+                    return JToken.DeepEquals(oldToken, newToken);
+                }
+                else
+                {
+                    // You must implement equals and GetHashCode()
+                    return oldValue.Equals(newValue);
+                }
+            }
+
+            return false;
         }
     }
 }

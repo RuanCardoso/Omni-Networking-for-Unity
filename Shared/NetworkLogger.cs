@@ -293,10 +293,12 @@ namespace Omni.Shared
                     bool hasStacktraceAttribute = method.GetCustomAttribute<StackTraceAttribute>(true) != null ||
                                                   method.DeclaringType.GetCustomAttribute<StackTraceAttribute>(true) !=
                                                   null;
+
                     bool hasBaseClasses = declaringType.Contains("NetworkBehaviour") ||
                                           declaringType.Contains("ServerBehaviour") ||
                                           declaringType.Contains("ClientBehaviour") ||
                                           declaringType.Contains("DualBehaviour");
+
                     if (hasStacktraceAttribute || hasBaseClasses)
                     {
                         int indexOf = filePath.IndexOf("/Assets");

@@ -324,9 +324,9 @@ namespace Omni.Core
             if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
             {
                 byte id = buffer.BufferAsSpan[0];
-                if (networkVariables.TryGetValue(id, out NetworkVariableField property))
+                if (networkVariables.TryGetValue(id, out NetworkVariableField field))
                 {
-                    isClientAuthority = property.IsClientAuthority;
+                    isClientAuthority = field.IsClientAuthority;
                 }
 
                 if (!AllowNetworkVariablesFromClients && !isClientAuthority)

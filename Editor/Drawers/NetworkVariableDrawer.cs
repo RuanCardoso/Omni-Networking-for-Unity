@@ -19,48 +19,63 @@ using UnityEngine;
 
 namespace Omni.Editor
 {
-	[CustomPropertyDrawer(typeof(NetworkVariableAttribute), true)]
-	[CanEditMultipleObjects]
-	public class NetworkVariableDrawer : PropertyDrawer
-	{
-		private Texture2D quadTexture;
+    [CustomPropertyDrawer(typeof(NetworkVariableAttribute), true)]
+    public class NetworkVariableDrawer : PropertyDrawer
+    {
+        private Texture2D quadTexture;
 
-		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-		{
-			return EditorGUI.GetPropertyHeight(property, label, true);
-		}
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            if (attribute is NetworkVariableAttribute attr)
+            {
+                if (attr.HideInInspector)
+                {
+                    return 0f;
+                }
+            }
 
-		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-		{
-			label.text = $" {property.displayName}";
-			label.image = GetTexture(Color.red);
-			EditorGUI.PropertyField(position, property, label, true);
-		}
+            return EditorGUI.GetPropertyHeight(property, label, true);
+        }
 
-		private Texture2D GetTexture(Color color)
-		{
-			if (quadTexture == null)
-			{
-				Texture2D whiteTxt = Texture2D.whiteTexture;
-				quadTexture = new(whiteTxt.width, whiteTxt.height);
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        {
+            if (attribute is NetworkVariableAttribute attr)
+            {
+                if (attr.HideInInspector)
+                {
+                    return;
+                }
+            }
 
-				#region Set Color
+            label.text = $" {property.displayName}";
+            label.image = GetTexture(Color.red);
+            EditorGUI.PropertyField(position, property, label, true);
+        }
 
-				for (int y = 0; y < quadTexture.height; y++)
-				{
-					for (int x = 0; x < quadTexture.width; x++)
-					{
-						quadTexture.SetPixel(x, y, color);
-					}
-				}
+        private Texture2D GetTexture(Color color)
+        {
+            if (quadTexture == null)
+            {
+                Texture2D whiteTxt = Texture2D.whiteTexture;
+                quadTexture = new(whiteTxt.width, whiteTxt.height);
 
-				#endregion
+                #region Set Color
 
-				quadTexture.Apply();
-			}
+                for (int y = 0; y < quadTexture.height; y++)
+                {
+                    for (int x = 0; x < quadTexture.width; x++)
+                    {
+                        quadTexture.SetPixel(x, y, color);
+                    }
+                }
 
-			return quadTexture;
-		}
-	}
+                #endregion
+
+                quadTexture.Apply();
+            }
+
+            return quadTexture;
+        }
+    }
 }
 #endif

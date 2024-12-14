@@ -1,7 +1,7 @@
 using MemoryPack;
 using Newtonsoft.Json;
 using Omni.Shared;
-using Omni.Shared.Collections;
+using Omni.Collections;
 using System;
 using System.Collections.Generic;
 using System.Linq;

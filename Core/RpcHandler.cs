@@ -196,7 +196,7 @@ namespace Omni.Core
                         // Security flag:
                         bool requiresOwnership = true;
                         if (attr is ServerAttribute serverAttribute)
-                            requiresOwnership = serverAttribute.requiresOwnership;
+                            requiresOwnership = serverAttribute.RequiresOwnership;
 
                         if (t_methods.TryAdd(attr.Id, new RpcMethod(attr.Id, argsCount, requiresOwnership)))
                         {

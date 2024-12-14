@@ -63,10 +63,6 @@ namespace Omni.Core
 
         protected virtual void OnValidate()
         {
-            // Obsolete: Editor is fully supported!
-            //if (remote != null || local != null)
-            //	___NotifyEditorChange___(); // Override by the source generator.
-
             if (m_Id == 0)
             {
                 m_Id = NetworkHelper.GenerateSceneUniqueId();

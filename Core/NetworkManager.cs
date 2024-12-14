@@ -9,7 +9,7 @@ using Omni.Core.Modules.Matchmaking;
 using Omni.Core.Modules.Ntp;
 using Omni.Core.Modules.UConsole;
 using Omni.Shared;
-using Omni.Shared.Collections;
+using Omni.Collections;
 #if UNITY_EDITOR
 using ParrelSync;
 #endif

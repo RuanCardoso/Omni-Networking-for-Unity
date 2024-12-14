@@ -7,4 +7,9 @@ namespace Omni.Core
     public sealed class SerializeProperty : ShowInInspectorAttribute
     {
     }
+
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public sealed class HidePicker : HideReferencePickerAttribute
+    {
+    }
 }

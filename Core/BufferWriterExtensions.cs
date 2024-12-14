@@ -547,10 +547,18 @@ namespace Omni.Core
         public static void WriteAsBinary<T>(this DataBuffer buffer, T value,
             MemoryPackSerializerOptions settings = null)
         {
-            settings ??= DefaultMemoryPackSettings;
-            ReadOnlySpan<byte> data = MemoryPackSerializer.Serialize(value, settings);
-            Write7BitEncodedInt(buffer, data.Length);
-            buffer.Write(data);
+            try
+            {
+                settings ??= DefaultMemoryPackSettings;
+                ReadOnlySpan<byte> data = MemoryPackSerializer.Serialize(value, settings);
+                Write7BitEncodedInt(buffer, data.Length);
+                buffer.Write(data);
+            }
+            catch (MemoryPackSerializationException ex)
+            {
+                NetworkLogger.PrintHyperlink(ex);
+                throw;
+            }
         }
 
         /// <summary>

@@ -799,7 +799,7 @@ namespace Omni.Core
         {
             // Synchronizes all network variables with the client to ensure that the client has 
             // the most up-to-date data from the server immediately after the spawning process.
-            SyncNetworkState();
+            SyncNetworkState(null);
         }
 
         /// <summary>
@@ -824,9 +824,9 @@ namespace Omni.Core
         protected internal void Register()
         {
             CheckIfOverridden();
+            FindAllNetworkVariables();
             if (Identity.IsServer)
             {
-                FindAllNetworkVariables();
                 serverRpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
                 Server = new NetworkBehaviourServer(this);
             }
@@ -1070,10 +1070,10 @@ namespace Omni.Core
                 if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
                 {
                     byte id = buffer.BufferAsSpan[0];
-                    if (networkVariables.TryGetValue(id, out NetworkVariableField property))
+                    if (networkVariables.TryGetValue(id, out NetworkVariableField field))
                     {
-                        requiresOwnership = property.RequiresOwnership;
-                        isClientAuthority = property.IsClientAuthority;
+                        requiresOwnership = field.RequiresOwnership;
+                        isClientAuthority = field.IsClientAuthority;
                     }
 
                     if (!NetworkManager.AllowNetworkVariablesFromClients && !isClientAuthority)
@@ -1123,10 +1123,6 @@ namespace Omni.Core
 
         protected virtual void OnValidate()
         {
-            // Obsolete: Editor is fully supported!
-            //if (_identity != null && _identity.IsRegistered)
-            //	___NotifyEditorChange___(); // Overriden by the source generator.
-
             if (!string.IsNullOrEmpty(m_ServiceName))
                 return;
 
