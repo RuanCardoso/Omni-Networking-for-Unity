@@ -34,10 +34,23 @@ namespace Omni.Collections
         public event Action<TKey, TValue> OnItemAdded;
         public event Action<TKey, TValue> OnItemRemoved;
         public event Action<TKey, TValue> OnItemUpdated;
-        public Action OnUpdate;
+        public Action<bool> OnUpdate;
 
         public ObservableDictionary()
         {
+#if OMNI_DEBUG
+            if (!typeof(TValue).IsSerializable)
+            {
+                throw new InvalidOperationException(
+                    $"The value type '{typeof(TValue).FullName}' must be serializable.");
+            }
+
+            if (!typeof(TKey).IsSerializable)
+            {
+                throw new InvalidOperationException(
+                    $"The key type '{typeof(TKey).FullName}' must be serializable.");
+            }
+#endif
             _internalReference = this;
 #if UNITY_EDITOR
             OnItemAdded = (key, value) =>
@@ -65,7 +78,7 @@ namespace Omni.Collections
                 }
             };
 
-            OnUpdate = () =>
+            OnUpdate = (_) =>
             {
                 _keys = _internalReference.Keys.ToList();
                 _values = _internalReference.Values.ToList();
@@ -125,6 +138,7 @@ namespace Omni.Collections
                 OnItemRemoved?.Invoke(pair.Key, pair.Value);
 
             base.Clear();
+            OnUpdate?.Invoke(true);
         }
 
         [Button("Add Key")]

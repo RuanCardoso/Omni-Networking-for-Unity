@@ -20,10 +20,17 @@ namespace Omni.Collections
         public event Action<int, T> OnItemAdded;
         public event Action<int, T> OnItemRemoved;
         public event Action<int, T> OnItemUpdated;
-        public Action OnUpdate;
+        public Action<bool> OnUpdate;
 
         public ObservableList()
         {
+#if OMNI_DEBUG
+            if (!typeof(T).IsSerializable)
+            {
+                throw new InvalidOperationException(
+                    $"The value type '{typeof(T).FullName}' must be serializable.");
+            }
+#endif
             _internalReference = this;
         }
 
@@ -77,6 +84,7 @@ namespace Omni.Collections
                 OnItemRemoved?.Invoke(i, this[i]);
 
             base.Clear();
+            OnUpdate?.Invoke(true);
         }
     }
 }
