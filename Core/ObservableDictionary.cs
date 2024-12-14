@@ -34,6 +34,7 @@ namespace Omni.Collections
         public event Action<TKey, TValue> OnItemAdded;
         public event Action<TKey, TValue> OnItemRemoved;
         public event Action<TKey, TValue> OnItemUpdated;
+        public Action OnUpdate;
 
         public ObservableDictionary()
         {
@@ -62,6 +63,12 @@ namespace Omni.Collections
                         _values.Add(value);
                     }
                 }
+            };
+
+            OnUpdate = () =>
+            {
+                _keys = _internalReference.Keys.ToList();
+                _values = _internalReference.Values.ToList();
             };
 #endif
         }

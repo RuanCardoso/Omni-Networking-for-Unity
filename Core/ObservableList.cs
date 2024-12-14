@@ -20,6 +20,7 @@ namespace Omni.Collections
         public event Action<int, T> OnItemAdded;
         public event Action<int, T> OnItemRemoved;
         public event Action<int, T> OnItemUpdated;
+        public Action OnUpdate;
 
         public ObservableList()
         {
