@@ -279,6 +279,20 @@ namespace Omni.Core
             }
 
             /// <summary>
+            /// Sends a manual 'NetworkVariable' message to a specific client with the specified property and property ID.
+            /// </summary>
+            /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+            /// <param name="property">The property value to synchronize.</param>
+            /// <param name="propertyId">The ID of the property being synchronized.</param>
+            /// <param name="peer">The target client to receive the 'NetworkVariable' message.</param>
+            public void NetworkVariableSyncToPeer<T>(T property, byte propertyId, NetworkPeer peer)
+            {
+                using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
+                RpcToPeer(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, DeliveryMode.ReliableOrdered,
+                    DataCache.None, 0);
+            }
+
+            /// <summary>
             /// Sends a manual 'NetworkVariable' message to clients with the specified property and property ID.
             /// </summary>
             /// <typeparam name="T">The type of the property to synchronize.</typeparam>
@@ -782,24 +796,24 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Called on the server once the client-side object has been fully spawned and registered. 
-        /// This method ensures that all initializations on the client have been completed before 
-        /// allowing the server to perform any post-spawn actions or setups specific to the client. 
-        /// 
-        /// Override this method to implement server-side logic that depends on the client object's 
-        /// full availability and readiness. Typical use cases may include initializing server-side 
-        /// resources linked to the client or sending initial data packets to the client after 
-        /// confirming it has been completely registered on the network.
+        /// Called on the server when a client-side object has been fully spawned and registered.
+        /// This method ensures that the client object is ready and fully initialized on the network 
+        /// before the server performs any post-spawn operations.
+        ///
+        /// Override this method to implement server-side logic that depends on the client's readiness, 
+        /// such as initializing server-side resources, synchronizing data, or sending initial updates 
+        /// to the client. This guarantees that all client-side registrations are completed before 
+        /// the server proceeds with any setup.
         /// </summary>
-        protected internal virtual void OnSpawned()
+        protected virtual void OnServerClientSpawned(NetworkPeer peer)
         {
         }
 
-        private void Internal_OnSpawned()
+        private void Internal_OnServerClientSpawned(NetworkPeer peer)
         {
             // Synchronizes all network variables with the client to ensure that the client has 
             // the most up-to-date data from the server immediately after the spawning process.
-            SyncNetworkState(null);
+            SyncNetworkState(peer);
         }
 
         /// <summary>
@@ -845,8 +859,8 @@ namespace Omni.Core
             }
 
             Identity.OnRequestAction += OnRequestedAction;
-            Identity.OnSpawn += OnSpawned;
-            Identity.OnSpawn += Internal_OnSpawned;
+            Identity.OnSpawn += OnServerClientSpawned;
+            Identity.OnSpawn += Internal_OnServerClientSpawned;
 
             NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnSceneLoaded += OnSceneLoaded;
@@ -858,12 +872,14 @@ namespace Omni.Core
         {
             Type type = GetType();
             MethodInfo method = type.GetMethod(nameof(OnTick));
-
-            if (method.DeclaringType.Name != nameof(NetworkBehaviour) && !NetworkManager.TickSystemModuleEnabled)
+            if (method != null)
             {
-                NetworkLogger.__Log__(
-                    "The Tick System Module is required to use the OnTick method. Please enable the Tick System Module in the inspector to proceed.",
-                    logType: NetworkLogger.LogType.Error);
+                if (method.DeclaringType?.Name != nameof(NetworkBehaviour) && !NetworkManager.TickSystemModuleEnabled)
+                {
+                    NetworkLogger.__Log__(
+                        "The Tick System Module is required to use the OnTick method. Please enable the Tick System Module in the inspector to proceed.",
+                        logType: NetworkLogger.LogType.Error);
+                }
             }
         }
 
@@ -892,8 +908,8 @@ namespace Omni.Core
             }
 
             Identity.OnRequestAction -= OnRequestedAction;
-            Identity.OnSpawn -= OnSpawned;
-            Identity.OnSpawn -= Internal_OnSpawned;
+            Identity.OnSpawn -= OnServerClientSpawned;
+            Identity.OnSpawn -= Internal_OnServerClientSpawned;
 
             if (!Identity.Unregister(m_ServiceName))
             {
