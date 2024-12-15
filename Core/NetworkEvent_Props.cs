@@ -288,6 +288,20 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Sends a manual 'NetworkVariable' message to a specific client with the specified property and property ID.
+        /// </summary>
+        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
+        /// <param name="property">The property value to synchronize.</param>
+        /// <param name="propertyId">The ID of the property being synchronized.</param>
+        /// <param name="peer">The target client to receive the 'NetworkVariable' message.</param>
+        public void NetworkVariableSyncToPeer<T>(T property, byte propertyId, NetworkPeer peer)
+        {
+            using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(property, propertyId);
+            Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, Target.SelfOnly, DeliveryMode.ReliableOrdered,
+                0, default, 0);
+        }
+
+        /// <summary>
         /// Sends a manual 'NetworkVariable' message to all(default) clients with the specified property and property ID.
         /// </summary>
         /// <typeparam name="T">The type of the property to synchronize.</typeparam>
