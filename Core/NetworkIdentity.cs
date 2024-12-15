@@ -13,7 +13,7 @@ namespace Omni.Core
     public sealed class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
     {
         internal string _prefabName;
-        internal Action OnSpawn;
+        internal Action<NetworkPeer> OnSpawn;
         internal Action<DataBuffer> OnRequestAction;
 
         // (Service Name, Service Instance) exclusively to identity
