@@ -378,6 +378,45 @@ namespace Omni.Core
             return value < min ? 0 : value - min;
         }
 
+        /// <summary>
+        /// Shows a debug label on the screen at the position of the given object.
+        /// </summary>
+        /// <param name="label">The label to be displayed.</param>
+        /// <remarks>
+        /// This method is useful for debugging purposes, as it allows you to display a label on the screen at the position of a given object.
+        /// </remarks>
+        [Conditional("OMNI_DEBUG")]
+        public static void ShowGUILabel(string label, Transform transform, float up = 1.0f)
+        {
+            Vector3 worldPosition = transform.position + Vector3.up * up;
+
+            if (Camera.main == null)
+            {
+                NetworkLogger.Print(
+                    "Main camera not found. Please add a camera to the scene or set the camera tag to the main camera.");
+
+                return;
+            }
+
+            Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition);
+
+            if (screenPosition.z > 0)
+            {
+                const float boxWidth = 145;
+                const float boxHeight = 40;
+
+                float x = screenPosition.x - boxWidth / 2;
+                float y = Screen.height - screenPosition.y - boxHeight;
+
+                GUIStyle style = new GUIStyle(GUI.skin.box);
+                style.fontSize = 20;
+                style.alignment = TextAnchor.MiddleCenter;
+
+                for (int i = 0; i < 4; i++) // to make the background and label more visible
+                    GUI.Box(new Rect(x, y, boxWidth, boxHeight), label, style);
+            }
+        }
+
         //		/// <summary>
         //		/// Saves the configuration of a given component to a file in JSON format.
         //		/// This method is intended to be used only on the server side.
