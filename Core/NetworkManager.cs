@@ -1752,9 +1752,9 @@ namespace Omni.Core
                         else
                         {
                             int identityId = header.Read<int>();
-                            if (NetworkManager.ServerSide.TryGetIdentity(identityId, out var identity))
+                            if (ServerSide.TryGetIdentity(identityId, out var identity))
                             {
-                                identity.OnSpawn?.Invoke();
+                                identity.OnSpawn?.Invoke(peer);
                             }
                         }
                     }
@@ -1765,7 +1765,7 @@ namespace Omni.Core
                         int peerId = header.Read<int>();
                         if (!isServer)
                         {
-                            if (NetworkManager.ClientSide.TryGetIdentity(identityId, out var identity))
+                            if (ClientSide.TryGetIdentity(identityId, out var identity))
                             {
                                 identity.IsLocalPlayer = LocalPeer.Id == peerId;
                             }
@@ -1795,7 +1795,7 @@ namespace Omni.Core
                             int identityId = header.Read<int>();
                             using var message = EndOfHeader();
 
-                            if (NetworkManager.ServerSide.TryGetIdentity(identityId, out var identity))
+                            if (ServerSide.TryGetIdentity(identityId, out var identity))
                             {
                                 identity.OnRequestAction?.Invoke(message);
                             }
