@@ -21,11 +21,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Random = System.Random;
 
 #pragma warning disable
 
@@ -1364,9 +1366,20 @@ namespace Omni.Core
                     OnServerPeerConnected?.Invoke(newPeer, Phase.Begin);
                     using var message = Pool.Rent();
                     message.Write(newPeer.Id);
-                    // Write the server's RSA public key to the buffer
-                    // If the public key were modified (MITM) the connection would fail because the public key is validated by the server.
-                    message.WriteString(ServerSide.RsaPublicKey);
+                    // Generate a unique challenge token based on the current UTC timestamp. 
+                    // This token serves as proof of authenticity for the server's public key during the handshake process.
+                    // The token is signed using the server's RSA private key, creating a digital signature.
+                    // Upon receiving the token and its signature, the client will verify the signature using the provided RSA public key.
+                    // If the public key has been tampered with (e.g., a Man-in-the-Middle attack), the signature verification will fail,
+                    // ensuring the integrity and authenticity of the server's public key and protecting the connection.
+                    string token = NetworkHelper.GenerateRandomToken();
+                    byte[] tokenBytes = Encoding.UTF8.GetBytes(token);
+                    byte[] tokenSignature = RsaCryptography.Sign(tokenBytes, ServerSide.RsaPrivateKey);
+                    message.WriteAsBinary(tokenBytes);
+                    // Writes the encrypted server's RSA public key to the buffer
+                    // If the public key were modified (MITM) the connection would fail because the server public key is validated by the server and the client.
+                    message.WriteString(StringCipher.Encrypt(ServerSide.RsaPublicKey, "RUAN"));
+                    message.WriteAsBinary(tokenSignature);
                     SendToClient(MessageType.BeginHandshake, message, newPeer, Target.SelfOnly,
                         DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
                 }
@@ -1445,6 +1458,10 @@ namespace Omni.Core
                     OnServerPeerDisconnected?.Invoke(currentPeer, Phase.End);
                 }
             }
+        }
+
+        public virtual void Internal_OnP2PDataReceived(ReadOnlySpan<byte> data, IPEndPoint source)
+        {
         }
 
         public virtual void Internal_OnDataReceived(ReadOnlySpan<byte> _data, DeliveryMode deliveryMethod,
@@ -1587,7 +1604,14 @@ namespace Omni.Core
                         {
                             // Read the peer ID and RSA public key from the server.
                             int localPeerId = header.Read<int>();
+                            byte[] tokenBytes = header.ReadAsBinary<byte[]>();
                             string rsaServerPublicKey = header.ReadString();
+                            byte[] tokenSignature = header.ReadAsBinary<byte[]>();
+
+                            // Validate server public key
+                            rsaServerPublicKey = StringCipher.Decrypt(rsaServerPublicKey, "RUAN");
+                            if (!RsaCryptography.Verify(tokenBytes, tokenSignature, rsaServerPublicKey))
+                                throw new CryptographicException("The server's public key could not be verified.");
 
                             // Initialize the local peer with the provided ID and endpoint.
                             LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId, isServer: false)
@@ -1608,7 +1632,6 @@ namespace Omni.Core
                             // Send the encrypted AES key to the server to begin the handshake.
                             using DataBuffer authMessage = Pool.Rent();
                             authMessage.WriteAsBinary(encryptedAesKey);
-
                             SendClientAuthenticationMessage(MessageType.BeginHandshake, authMessage, 0);
                         }
                         else
@@ -1626,9 +1649,10 @@ namespace Omni.Core
                             using var message = Pool.Rent();
                             message.WriteAsBinary(iv);
                             message.WriteAsBinary(encryptedServerAesKey);
-
                             SendToClient(MessageType.EndHandshake, message, peer, Target.SelfOnly,
                                 DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
+
+                            OnServerPeerConnected?.Invoke(peer, Phase.Normal);
                         }
                     }
                         break;
@@ -1656,7 +1680,6 @@ namespace Omni.Core
                             // Mark the peer as connected and authenticated.
                             LocalPeer.IsConnected = true;
                             LocalPeer.IsAuthenticated = true;
-
                             // Notify the server that the handshake is complete.
                             SendClientAuthenticationMessage(MessageType.EndHandshake, DataBuffer.Empty, 0);
                         }
@@ -1664,7 +1687,6 @@ namespace Omni.Core
                         {
                             peer.IsAuthenticated = true;
                             OnServerPeerConnected?.Invoke(peer, Phase.End);
-
                             // Send confirmation to the client that the handshake is complete.
                             SendToClient(MessageType.EndHandshake, DataBuffer.Empty, peer, Target.SelfOnly,
                                 DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);

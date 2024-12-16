@@ -6,9 +6,11 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using Random = System.Random;
 
 #pragma warning disable
 
@@ -16,6 +18,11 @@ namespace Omni.Core
 {
     public static class NetworkHelper
     {
+        private static readonly Random random = new Random();
+
+        private const string randomString =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{};:,.<>/?`~";
+
         private static int d_UniqueId = 1; // 0 - is reserved for server
 
         internal static async Task<bool> OpenPortAsync(int port, Protocol protocol)
@@ -80,6 +87,25 @@ namespace Omni.Core
             }
 
             return d_UniqueId++;
+        }
+
+        /// <summary>
+        /// Generates a random token string of variable length between 16 and 128 characters.
+        /// </summary>
+        /// <remarks>
+        /// The token is constructed using random characters from a predefined string and is then
+        /// encoded in Base64 format to ensure safe transmission over protocols that require plain-text data.
+        /// </remarks>
+        /// <returns>A Base64 encoded string representing the random token.</returns>
+        internal static string GenerateRandomToken()
+        {
+            StringBuilder tokenBuilder = new StringBuilder();
+            int length = random.Next(16, 128);
+            while (tokenBuilder.Length < length)
+                tokenBuilder.Append(randomString[random.Next(0, randomString.Length)]);
+
+            byte[] base64bytes = Encoding.UTF8.GetBytes(tokenBuilder.ToString());
+            return Convert.ToBase64String(base64bytes);
         }
 
         internal static void Destroy(int identityId, bool isServer)

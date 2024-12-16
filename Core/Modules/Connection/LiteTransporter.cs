@@ -201,7 +201,8 @@ namespace Omni.Core.Modules.Connection
         [ClientOnly]
         private void OnP2PMessage(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
         {
-            NetworkLogger.Print("Received a P2P Message from: " + remoteEndPoint);
+            ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
+            IManager.Internal_OnP2PDataReceived(data, remoteEndPoint);
             reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
         }
 
@@ -375,7 +376,6 @@ namespace Omni.Core.Modules.Connection
         {
             if (isRunning)
             {
-                print("send unconnected msg");
                 _manager.SendUnconnectedMessage(data, target);
             }
             else
