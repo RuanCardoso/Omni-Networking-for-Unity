@@ -8,6 +8,7 @@ namespace Omni.Core
         // TODO: Add it to the source generator. Don't change, used by Source Generator
         internal const byte NETWORK_VARIABLE_RPC_ID = 255;
         internal const int INVALID_MASTER_CLIENT_ID = -1;
+        internal const string SHARED_ALL_KEYS = "_All_";
     }
 
     internal enum ScriptingBackend
@@ -34,8 +35,8 @@ namespace Omni.Core
         internal const byte SetOwner = 240;
         internal const byte Destroy = 241;
         internal const byte Spawn = 242;
-        internal const byte SyncGroupSerializedData = 243;
-        internal const byte SyncPeerSerializedData = 244;
+        internal const byte SyncGroupSharedData = 243;
+        internal const byte SyncPeerSharedData = 244;
         internal const byte PostResponseAsync = 245;
         internal const byte PostFetchAsync = 246;
         internal const byte GetResponseAsync = 247;
