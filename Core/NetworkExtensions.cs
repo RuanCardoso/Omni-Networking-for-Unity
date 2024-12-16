@@ -23,11 +23,6 @@ namespace Omni.Core
         /// </summary>
         /// <param name="prefab">The network identity prefab to spawn.</param>
         /// <param name="peer">The network peer to receive the spawned object.</param>
-        /// <param name="target">Specifies the target clients for the spawned object.</param>
-        /// <param name="deliveryMode">Defines how the spawned object is delivered over the network.</param>
-        /// <param name="groupId">The group identifier for organizing network messages.</param>
-        /// <param name="dataCache">Optional data cache for storing additional data associated with the spawn operation.</param>
-        /// <param name="sequenceChannel">The sequence channel used for ordering network messages.</param>
         /// <returns>The spawned network identity instance.</returns>
         public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, ServerOptions options)
         {
