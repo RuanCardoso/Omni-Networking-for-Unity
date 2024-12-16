@@ -12,7 +12,7 @@ namespace Omni.Core.Cryptography
     {
         // This constant is used to determine the keysize of the encryption algorithm in bits.
         // We divide this by 8 within the code below to get the equivalent number of bytes.
-        private const int Keysize = 128;
+        private const int KeySize = 128;
 
         // This constant determines the number of iterations for the password bytes generation function.
         private const int DerivationIterations = 1000;
@@ -26,10 +26,10 @@ namespace Omni.Core.Cryptography
             var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
             using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, DerivationIterations))
             {
-                var keyBytes = password.GetBytes(Keysize / 8);
+                var keyBytes = password.GetBytes(KeySize / 8);
                 using (var symmetricKey = Aes.Create())
                 {
-                    symmetricKey.KeySize = Keysize;
+                    symmetricKey.KeySize = KeySize;
                     symmetricKey.BlockSize = 128;
                     symmetricKey.Mode = CipherMode.CBC;
                     symmetricKey.Padding = PaddingMode.PKCS7;
@@ -61,19 +61,19 @@ namespace Omni.Core.Cryptography
             // [16 bytes of Salt] + [16 bytes of IV] + [n bytes of CipherText]
             var cipherTextBytesWithSaltAndIv = Convert.FromBase64String(cipherText);
             // Get the saltbytes by extracting the first 16 bytes from the supplied cipherText bytes.
-            var saltStringBytes = cipherTextBytesWithSaltAndIv.Take(Keysize / 8).ToArray();
+            var saltStringBytes = cipherTextBytesWithSaltAndIv.Take(KeySize / 8).ToArray();
             // Get the IV bytes by extracting the next 16 bytes from the supplied cipherText bytes.
-            var ivStringBytes = cipherTextBytesWithSaltAndIv.Skip(Keysize / 8).Take(Keysize / 8).ToArray();
+            var ivStringBytes = cipherTextBytesWithSaltAndIv.Skip(KeySize / 8).Take(KeySize / 8).ToArray();
             // Get the actual cipher text bytes by removing the first 64 bytes from the cipherText string.
-            var cipherTextBytes = cipherTextBytesWithSaltAndIv.Skip((Keysize / 8) * 2)
-                .Take(cipherTextBytesWithSaltAndIv.Length - ((Keysize / 8) * 2)).ToArray();
+            var cipherTextBytes = cipherTextBytesWithSaltAndIv.Skip((KeySize / 8) * 2)
+                .Take(cipherTextBytesWithSaltAndIv.Length - ((KeySize / 8) * 2)).ToArray();
 
             using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, DerivationIterations))
             {
-                var keyBytes = password.GetBytes(Keysize / 8);
+                var keyBytes = password.GetBytes(KeySize / 8);
                 using (var symmetricKey = Aes.Create())
                 {
-                    symmetricKey.KeySize = Keysize;
+                    symmetricKey.KeySize = KeySize;
                     symmetricKey.BlockSize = 128;
                     symmetricKey.Mode = CipherMode.CBC;
                     symmetricKey.Padding = PaddingMode.PKCS7;
@@ -94,12 +94,9 @@ namespace Omni.Core.Cryptography
 
         private static byte[] Generate128BitsOfRandomEntropy()
         {
-            var randomBytes = new byte[16];
-            using (var rngCsp = RandomNumberGenerator.Create())
-            {
-                rngCsp.GetBytes(randomBytes);
-            }
-
+            byte[] randomBytes = new byte[16];
+            using var rngCsp = RandomNumberGenerator.Create();
+            rngCsp.GetBytes(randomBytes);
             return randomBytes;
         }
     }
