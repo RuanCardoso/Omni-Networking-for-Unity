@@ -35,28 +35,46 @@ namespace Omni.Core.Cryptography
 
         public static void GetRsaKeys(out string privateKey, out string publicKey)
         {
-            using (RSA Rsa = RSA.Create(keySize))
+            using (RSA rsa = RSA.Create(keySize))
             {
-                privateKey = Rsa.ToXmlString(true);
-                publicKey = Rsa.ToXmlString(false);
+                privateKey = rsa.ToXmlString(true);
+                publicKey = rsa.ToXmlString(false);
             }
         }
 
         public static byte[] Encrypt(byte[] data, string publicKey)
         {
-            using (RSA Rsa = RSA.Create(keySize))
+            using (RSA rsa = RSA.Create(keySize))
             {
-                Rsa.FromXmlString(publicKey);
-                return Rsa.Encrypt(data, RSAEncryptionPadding.Pkcs1);
+                rsa.FromXmlString(publicKey);
+                return rsa.Encrypt(data, RSAEncryptionPadding.Pkcs1);
             }
         }
 
         public static byte[] Decrypt(byte[] data, string privateKey)
         {
-            using (RSA Rsa = RSA.Create(keySize))
+            using (RSA rsa = RSA.Create(keySize))
             {
-                Rsa.FromXmlString(privateKey);
-                return Rsa.Decrypt(data, RSAEncryptionPadding.Pkcs1);
+                rsa.FromXmlString(privateKey);
+                return rsa.Decrypt(data, RSAEncryptionPadding.Pkcs1);
+            }
+        }
+
+        public static bool Verify(byte[] data, byte[] signature, string publicKey)
+        {
+            using (RSA rsa = RSA.Create(keySize))
+            {
+                rsa.FromXmlString(publicKey);
+                return rsa.VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            }
+        }
+
+        public static byte[] Sign(byte[] data, string privateKey)
+        {
+            using (RSA rsa = RSA.Create(keySize))
+            {
+                rsa.FromXmlString(privateKey);
+                return rsa.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             }
         }
     }
