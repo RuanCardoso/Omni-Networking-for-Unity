@@ -23,6 +23,7 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
+using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -129,9 +130,25 @@ namespace Omni.Core
         public static event Action<string> OnClientDisconnected;
 
         /// <summary>
-        /// Event triggered when a client-based NetworkIdentity is successfully spawned.
+        /// Event triggered when an identity is successfully spawned on the client. 
         /// </summary>
         public static event Action<NetworkIdentity> OnClientIdentitySpawned;
+
+        /// <summary>
+        /// Event triggered on the client when the server modifies a specific key 
+        /// in the shared data of a network peer.
+        /// </summary>
+        /// <param name="peer">The <see cref="NetworkPeer"/> whose shared data was modified.</param>
+        /// <param name="key">The key in the shared data that was changed.</param>
+        public static event Action<NetworkPeer, string> OnPeerSharedDataChanged;
+
+        /// <summary>
+        /// Event triggered on the client when the server modifies a specific key 
+        /// in the shared data of a network group.
+        /// </summary>
+        /// <param name="group">The <see cref="NetworkGroup"/> whose shared data was modified.</param>
+        /// <param name="key">The key in the shared data that was changed.</param>
+        public static event Action<NetworkGroup, string> OnGroupSharedDataChanged;
 
         private static event Action<byte, DataBuffer, NetworkPeer, int> OnServerCustomMessage;
         private static event Action<byte, DataBuffer, int> OnClientCustomMessage;
@@ -143,7 +160,7 @@ namespace Omni.Core
         internal static event Action<NetworkGroup, NetworkPeer, Phase, string> OnPlayerLeftGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
 
-        static NetworkConsole _console;
+        private static NetworkConsole _console;
 
         /// <summary>
         /// Provides access to the console module for network-related operations
@@ -174,7 +191,7 @@ namespace Omni.Core
             }
         }
 
-        static NetworkConnection _connection;
+        private static NetworkConnection _connection;
 
         private static NetworkConnection Connection
         {
@@ -202,7 +219,7 @@ namespace Omni.Core
             }
         }
 
-        static NetworkMatchmaking _matchmaking;
+        private static NetworkMatchmaking _matchmaking;
 
         /// <summary>
         /// Provides access to the matchmaking functionalities within the network framework.
@@ -233,7 +250,7 @@ namespace Omni.Core
             }
         }
 
-        static SimpleNtp _ntpClock;
+        private static SimpleNtp _ntpClock;
 
         /// <summary>
         /// Provides access to the SimpleNtp instance used by the NetworkManager for network time synchronization.
@@ -264,7 +281,7 @@ namespace Omni.Core
             }
         }
 
-        static NetworkTickSystem _tickSystem;
+        private static NetworkTickSystem _tickSystem;
 
         public static NetworkTickSystem TickSystem
         {
@@ -297,9 +314,9 @@ namespace Omni.Core
         /// This property stores an instance of the NativePeer class, which represents a low-level peer in the network.
         /// It is used to manage native networking operations and interactions.
         /// </summary>
-        static NativePeer LocalNativePeer { get; set; }
+        private static NativePeer LocalNativePeer { get; set; }
 
-        static NetworkPeer _localPeer;
+        private static NetworkPeer _localPeer;
 
         /// <summary>
         /// Gets the local network peer.
@@ -679,24 +696,14 @@ namespace Omni.Core
 #endif
             if (!IsServerActive)
             {
-#if OMNI_DEBUG
+#if OMNI_DEBUG || UNITY_EDITOR || UNITY_SERVER
                 ServerSide.GenerateRsaKeys();
                 Connection.Server.Listen(port);
                 // NetworkHelper.SaveComponent(_manager, "setup.cfg");
 #else
-#if UNITY_EDITOR
-				ServerSide.GenerateRsaKeys();
-				Connection.Server.Listen(port);
-				//NetworkHelper.SaveComponent(_manager, "setup.cfg");
-#elif !UNITY_SERVER
                 NetworkLogger.LogToFile(
-                    "Server is not available in 'release mode' on client build."
+                    "Server functionality is disabled in 'Release Mode' on client builds. To enable the server, run the application in 'Server Mode' or check the build configuration."
                 );
-#else
-                ServerSide.GenerateRsaKeys();
-                Connection.Server.Listen(port);
-                // NetworkHelper.SaveComponent(_manager, "setup.cfg");
-#endif
 #endif
             }
             else
@@ -918,14 +925,14 @@ namespace Omni.Core
                         {
                             case CacheMode.Global | CacheMode.New:
                             case CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy:
-                                ServerSide.CACHES_APPEND_GLOBAL.Add(GetCache(message));
+                                ServerSide.AppendCachesGlobal.Add(GetCache(message));
                                 break;
                             case CacheMode.Group | CacheMode.New:
                             case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
                             {
                                 if (_group != null)
                                 {
-                                    _group.CACHES_APPEND.Add(GetCache(message));
+                                    _group.AppendCaches.Add(GetCache(message));
                                 }
                                 else
                                 {
@@ -941,13 +948,13 @@ namespace Omni.Core
                             case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
                             {
                                 NetworkCache newCache = GetCache(message);
-                                if (ServerSide.CACHES_OVERWRITE_GLOBAL.ContainsKey(dataCache.Id))
+                                if (ServerSide.OverwriteCachesGlobal.ContainsKey(dataCache.Id))
                                 {
-                                    ServerSide.CACHES_OVERWRITE_GLOBAL[dataCache.Id] = newCache;
+                                    ServerSide.OverwriteCachesGlobal[dataCache.Id] = newCache;
                                 }
                                 else
                                 {
-                                    ServerSide.CACHES_OVERWRITE_GLOBAL.Add(dataCache.Id, newCache);
+                                    ServerSide.OverwriteCachesGlobal.Add(dataCache.Id, newCache);
                                 }
 
                                 break;
@@ -958,13 +965,13 @@ namespace Omni.Core
                                 if (_group != null)
                                 {
                                     NetworkCache newCache = GetCache(message);
-                                    if (_group.CACHES_OVERWRITE.ContainsKey(dataCache.Id))
+                                    if (_group.OverwriteCaches.ContainsKey(dataCache.Id))
                                     {
-                                        _group.CACHES_OVERWRITE[dataCache.Id] = newCache;
+                                        _group.OverwriteCaches[dataCache.Id] = newCache;
                                     }
                                     else
                                     {
-                                        _group.CACHES_OVERWRITE.Add(dataCache.Id, newCache);
+                                        _group.OverwriteCaches.Add(dataCache.Id, newCache);
                                     }
                                 }
                                 else
@@ -981,20 +988,20 @@ namespace Omni.Core
                             case CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy:
                             {
                                 NetworkCache newCache = GetCache(message);
-                                if (sender.CACHES_OVERWRITE.ContainsKey(dataCache.Id))
+                                if (sender.OverwriteCaches.ContainsKey(dataCache.Id))
                                 {
-                                    sender.CACHES_OVERWRITE[dataCache.Id] = newCache;
+                                    sender.OverwriteCaches[dataCache.Id] = newCache;
                                 }
                                 else
                                 {
-                                    sender.CACHES_OVERWRITE.Add(dataCache.Id, newCache);
+                                    sender.OverwriteCaches.Add(dataCache.Id, newCache);
                                 }
 
                                 break;
                             }
                             case CacheMode.Peer | CacheMode.New:
                             case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
-                                sender.CACHES_APPEND.Add(GetCache(message));
+                                sender.AppendCaches.Add(GetCache(message));
                                 break;
                             default:
                                 NetworkLogger.__Log__(
@@ -1236,11 +1243,18 @@ namespace Omni.Core
             }
         }
 
+        private void SendClientAuthenticationMessage(byte msgType, DataBuffer buffer, byte sequenceChannel)
+        {
+            NetworkHelper.EnsureRunningOnMainThread();
+            Connection.Client.Send(PrepareClientMessageForSending(msgType, buffer.BufferAsSpan), LocalEndPoint,
+                DeliveryMode.ReliableOrdered, sequenceChannel);
+        }
+
         protected virtual void Internal_SendToServer(byte msgType, ReadOnlySpan<byte> data, DeliveryMode deliveryMode,
             byte sequenceChannel)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            if (IsClientActive)
+            if (_localPeer != null && _localPeer.IsConnected)
             {
                 Connection.Client.Send(PrepareClientMessageForSending(msgType, data), LocalEndPoint, deliveryMode,
                     sequenceChannel);
@@ -1256,7 +1270,7 @@ namespace Omni.Core
 
         private float m_QueryInterval = NetworkClock.DEFAULT_QUERY_INTERVAL;
 
-        private IEnumerator QueryNtp()
+        private async void QueryNtpPeriodically()
         {
             // The purpose of these calls before the while loop may be to ensure that the system clock is initially synchronized before entering the continuous query cycle.
             // This can be helpful to prevent situations where the system clock is not immediately synchronized when the application starts.
@@ -1264,21 +1278,21 @@ namespace Omni.Core
             // Furthermore, the introduction of these initial pauses may serve as a startup measure to allow the system time to stabilize before initiating the repetitive querying of the NTP server.
             // This can be particularly useful if there are other startup or configuration operations that need to occur before the system is fully ready to synchronize the clock continuously.
 
-            if (IsClientActive && m_SntpModule)
-            {
-                Sntp.Client.Query();
-                yield return new WaitForSeconds(0.5f);
-                Sntp.Client.Query();
-                yield return new WaitForSeconds(0.5f);
-                Sntp.Client.Query();
-                yield return new WaitForSeconds(0.5f);
+            if (!IsClientActive || !m_SntpModule)
+                return;
 
-                while (IsClientActive && m_SntpModule)
-                {
-                    // Continuously query the NTP server to ensure that the system clock is continuously synchronized with the NTP server.
-                    Sntp.Client.Query();
-                    yield return new WaitForSeconds(m_QueryInterval);
-                }
+            Sntp.Client.Query();
+            await UniTask.WaitForSeconds(0.5f);
+            Sntp.Client.Query();
+            await UniTask.WaitForSeconds(0.5f);
+            Sntp.Client.Query();
+            await UniTask.WaitForSeconds(0.5f);
+
+            while (IsClientActive && m_SntpModule)
+            {
+                // Continuously query the NTP server to ensure that the system clock is continuously synchronized with the NTP server.
+                Sntp.Client.Query();
+                await UniTask.WaitForSeconds(m_QueryInterval);
             }
         }
 
@@ -1310,6 +1324,12 @@ namespace Omni.Core
         public virtual void Internal_OnClientDisconnected(IPEndPoint peer, string reason)
         {
             NetworkHelper.EnsureRunningOnMainThread();
+            if (_localPeer != null)
+            {
+                _localPeer.IsConnected = false;
+                _localPeer.IsAuthenticated = false;
+            }
+
             IsClientActive = false;
             OnClientDisconnected?.Invoke(reason);
         }
@@ -1317,8 +1337,10 @@ namespace Omni.Core
         public virtual async void Internal_OnServerPeerConnected(IPEndPoint peer, NativePeer nativePeer)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            NetworkPeer newPeer = new(peer, p_UniqueId++);
-            newPeer._nativePeer = nativePeer;
+            NetworkPeer newPeer = new(peer, p_UniqueId++, isServer: true)
+            {
+                _nativePeer = nativePeer
+            };
 
             if (!PeersByIp.TryAdd(peer, newPeer))
             {
@@ -1338,18 +1360,15 @@ namespace Omni.Core
                 }
                 else
                 {
-                    OnServerPeerConnected?.Invoke(newPeer, Phase.Begin);
                     newPeer.IsConnected = true;
+                    OnServerPeerConnected?.Invoke(newPeer, Phase.Begin);
                     using var message = Pool.Rent();
                     message.Write(newPeer.Id);
                     // Write the server's RSA public key to the buffer
                     // If the public key were modified (MITM) the connection would fail because the public key is validated by the server.
                     message.WriteString(ServerSide.RsaPublicKey);
-
                     SendToClient(MessageType.BeginHandshake, message, newPeer, Target.SelfOnly,
                         DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
-
-                    OnServerPeerConnected?.Invoke(newPeer, Phase.Normal);
                 }
             }
         }
@@ -1455,7 +1474,7 @@ namespace Omni.Core
                 {
                     if (msgType != MessageType.BeginHandshake && msgType != MessageType.EndHandshake)
                     {
-                        if (!IsClientActive)
+                        if (_localPeer != null && !_localPeer.IsAuthenticated)
                         {
                             throw new Exception(
                                 "The client received a message while not yet authenticated. Wait until the handshake is completed."
@@ -1480,34 +1499,39 @@ namespace Omni.Core
                         // Implemented By KCP Transporter.
                     }
                         break;
-                    case MessageType.SyncGroupSerializedData:
+                    case MessageType.SyncGroupSharedData:
                     {
-                        int groupId = header.Read<int>();
-                        ImmutableKeyValuePair keyValuePair = header.ReadAsJson<ImmutableKeyValuePair>();
-
-                        var groups = ClientSide.Groups;
-                        if (!groups.ContainsKey(groupId))
+                        if (!isServer)
                         {
-                            // This group is invalid!, Used only for data sync.
-                            groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!"));
-                        }
+                            int groupId = header.Read<int>();
+                            ImmutableKeyValuePair keyValuePair = header.ReadAsJson<ImmutableKeyValuePair>();
 
-                        NetworkGroup fGroup = groups[groupId];
-                        if (keyValuePair.Key != "_AllKeys_")
-                        {
-                            if (!fGroup.SerializedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
+                            var groups = ClientSide.Groups;
+                            if (!groups.ContainsKey(groupId))
                             {
-                                fGroup.SerializedData[keyValuePair.Key] = keyValuePair.Value;
+                                // This group is invalid!, Used only for data sync.
+                                groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!", isServer: false));
                             }
-                        }
-                        else
-                        {
-                            JObject jObject = (JObject)keyValuePair.Value;
-                            fGroup.SerializedData = jObject.ToObject<ObservableDictionary<string, object>>();
+
+                            NetworkGroup fGroup = groups[groupId];
+                            if (keyValuePair.Key != NetworkConstants.SHARED_ALL_KEYS)
+                            {
+                                if (!fGroup.SharedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
+                                {
+                                    fGroup.SharedData[keyValuePair.Key] = keyValuePair.Value;
+                                }
+                            }
+                            else
+                            {
+                                JObject jObject = (JObject)keyValuePair.Value;
+                                fGroup.SharedData = jObject.ToObject<ObservableDictionary<string, object>>();
+                            }
+
+                            OnGroupSharedDataChanged?.Invoke(fGroup, keyValuePair.Key);
                         }
                     }
                         break;
-                    case MessageType.SyncPeerSerializedData:
+                    case MessageType.SyncPeerSharedData:
                     {
                         if (!isServer)
                         {
@@ -1518,22 +1542,24 @@ namespace Omni.Core
                             if (!peers.ContainsKey(peerId))
                             {
                                 // _peer is not valid endpoint in this case!
-                                peers.Add(peerId, new NetworkPeer(endPoint, peerId));
+                                peers.Add(peerId, new NetworkPeer(endPoint, peerId, isServer: false));
                             }
 
                             NetworkPeer fPeer = peers[peerId];
-                            if (keyValuePair.Key != "_AllKeys_")
+                            if (keyValuePair.Key != NetworkConstants.SHARED_ALL_KEYS)
                             {
-                                if (!fPeer.SerializedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
+                                if (!fPeer.SharedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
                                 {
-                                    fPeer.SerializedData[keyValuePair.Key] = keyValuePair.Value;
+                                    fPeer.SharedData[keyValuePair.Key] = keyValuePair.Value;
                                 }
                             }
                             else
                             {
                                 JObject jObject = (JObject)keyValuePair.Value;
-                                fPeer.SerializedData = jObject.ToObject<ObservableDictionary<string, object>>();
+                                fPeer.SharedData = jObject.ToObject<ObservableDictionary<string, object>>();
                             }
+
+                            OnPeerSharedDataChanged?.Invoke(fPeer, keyValuePair.Key);
                         }
                     }
                         break;
@@ -1559,45 +1585,48 @@ namespace Omni.Core
                     {
                         if (!isServer)
                         {
-                            // Client side!
+                            // Read the peer ID and RSA public key from the server.
                             int localPeerId = header.Read<int>();
                             string rsaServerPublicKey = header.ReadString();
 
-                            // Initialize the local peer
-                            LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId);
-                            LocalPeer._nativePeer = LocalNativePeer;
-                            IsClientActive = true; // true: to allow send the aes key to the server.
+                            // Initialize the local peer with the provided ID and endpoint.
+                            LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId, isServer: false)
+                            {
+                                _nativePeer = LocalNativePeer
+                            };
+
                             ClientSide.Peers.Add(localPeerId, LocalPeer);
 
-                            // Generate AES Key and send it to the server(Encrypted by RSA public key).
+                            // Generate an AES session key for encryption.
                             ClientSide.RsaServerPublicKey = rsaServerPublicKey;
                             byte[] aesKey = AesCryptography.GenerateKey();
                             LocalPeer._aesKey = aesKey;
 
-                            // Crypt the AES Key with the server's RSA public key
+                            // Encrypt the AES session key using the server's RSA public key.
                             byte[] encryptedAesKey = RsaCryptography.Encrypt(aesKey, ClientSide.RsaServerPublicKey);
 
-                            // Send the AES Key to the server
+                            // Send the encrypted AES key to the server to begin the handshake.
                             using DataBuffer authMessage = Pool.Rent();
                             authMessage.WriteAsBinary(encryptedAesKey);
-                            SendToServer(MessageType.BeginHandshake, authMessage, DeliveryMode.ReliableOrdered, 0);
-                            IsClientActive = false; // Waiting for server's authorization response.
+
+                            SendClientAuthenticationMessage(MessageType.BeginHandshake, authMessage, 0);
                         }
                         else
                         {
-                            // Server side!
+                            // Read and decrypt the AES key sent by the client using the server's RSA private key.
                             byte[] aesKey = header.ReadAsBinary<byte[]>();
-
-                            // Decrypt the AES Key with the server's RSA private key
                             peer._aesKey = RsaCryptography.Decrypt(aesKey, ServerSide.RsaPrivateKey);
+
+                            // Encrypt the server's AES key using the client's decrypted AES key.
                             byte[] serverAesKey = ServerSide.ServerPeer._aesKey;
-                            byte[] cryptedServerAesKey = AesCryptography.Encrypt(serverAesKey, 0, serverAesKey.Length,
+                            byte[] encryptedServerAesKey = AesCryptography.Encrypt(serverAesKey, 0, serverAesKey.Length,
                                 peer._aesKey, out byte[] iv);
 
+                            // Send the encrypted server AES key and initialization vector (IV) to the client.
                             using var message = Pool.Rent();
                             message.WriteAsBinary(iv);
-                            message.WriteAsBinary(cryptedServerAesKey);
-                            // Send Ok to the client!
+                            message.WriteAsBinary(encryptedServerAesKey);
+
                             SendToClient(MessageType.EndHandshake, message, peer, Target.SelfOnly,
                                 DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
                         }
@@ -1607,34 +1636,38 @@ namespace Omni.Core
                     {
                         if (!isServer)
                         {
-                            // if (_tickSystem == null)
-                            // {
-                            //     TickSystem = new NetworkTickSystem();
-                            //     TickSystem.Initialize(m_TickRate);
-                            // }
+                            if (_localPeer != null && _localPeer.IsAuthenticated)
+                            {
+                                // If the peer is already authenticated, mark the client as active.
+                                IsClientActive = true;
+                                OnClientConnected?.Invoke();
+                                QueryNtpPeriodically();
+                                return;
+                            }
 
-                            // Read server aes key
+                            // Read the server's AES key and IV for final decryption.
                             byte[] iv = header.ReadAsBinary<byte[]>();
-                            byte[] serverAesKeyCrypted = header.ReadAsBinary<byte[]>();
+                            byte[] serverAesKeyEncrypted = header.ReadAsBinary<byte[]>();
 
-                            // decrypt server aes key
-                            ClientSide.ServerPeer._aesKey = AesCryptography.Decrypt(serverAesKeyCrypted, 0,
-                                serverAesKeyCrypted.Length, LocalPeer._aesKey, iv);
+                            // Decrypt the server's AES key using the client's AES key and IV.
+                            ClientSide.ServerPeer._aesKey = AesCryptography.Decrypt(serverAesKeyEncrypted, 0,
+                                serverAesKeyEncrypted.Length, LocalPeer._aesKey, iv);
 
-                            // Connection end & authorized.
+                            // Mark the peer as connected and authenticated.
                             LocalPeer.IsConnected = true;
                             LocalPeer.IsAuthenticated = true;
-                            IsClientActive = true; // connected and authorized(authenticated).
-                            StartCoroutine(QueryNtp());
-                            OnClientConnected?.Invoke();
 
-                            // Send Ok to the server!
-                            SendToServer(MessageType.EndHandshake, DataBuffer.Empty, DeliveryMode.ReliableOrdered, 0);
+                            // Notify the server that the handshake is complete.
+                            SendClientAuthenticationMessage(MessageType.EndHandshake, DataBuffer.Empty, 0);
                         }
                         else
                         {
                             peer.IsAuthenticated = true;
                             OnServerPeerConnected?.Invoke(peer, Phase.End);
+
+                            // Send confirmation to the client that the handshake is complete.
+                            SendToClient(MessageType.EndHandshake, DataBuffer.Empty, peer, Target.SelfOnly,
+                                DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
                         }
                     }
                         break;
