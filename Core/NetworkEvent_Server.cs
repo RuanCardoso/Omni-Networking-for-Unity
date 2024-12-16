@@ -3,6 +3,7 @@ using Omni.Shared;
 using System;
 using System.Collections;
 using System.ComponentModel;
+using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
@@ -113,7 +114,7 @@ namespace Omni.Core
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
-                StartCoroutine(Internal_OnServerStart());
+                Internal_OnServerStart();
 
                 OnStart();
                 Service.UpdateReference(m_ServiceName);
@@ -143,9 +144,9 @@ namespace Omni.Core
             }
         }
 
-        private IEnumerator Internal_OnServerStart()
+        private async void Internal_OnServerStart()
         {
-            yield return new WaitUntil(() => IsServerActive);
+            await UniTask.WaitUntil(() => IsServerActive);
             OnServerStart();
         }
 
@@ -161,7 +162,7 @@ namespace Omni.Core
         {
             FindAllNetworkVariables();
             rpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
-            NetworkManager.ServerSide.AddRpcMessage(m_Id, this);
+            ServerSide.AddRpcMessage(m_Id, this);
             Server = new NetworkEventServer(this, m_BindingFlags);
         }
 
@@ -171,7 +172,7 @@ namespace Omni.Core
             NetworkManager.OnServerInitialized += OnServerInitialized;
             NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
-            NetworkManager.ServerSide.OnMessage += OnMessage;
+            ServerSide.OnMessage += OnMessage;
         }
 
         protected void RegisterMatchmakingEvents()
@@ -192,7 +193,7 @@ namespace Omni.Core
             NetworkManager.OnServerInitialized -= OnServerInitialized;
             NetworkManager.OnServerPeerConnected -= OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
-            NetworkManager.ServerSide.OnMessage -= OnMessage;
+            ServerSide.OnMessage -= OnMessage;
 
             if (MatchmakingModuleEnabled)
             {
