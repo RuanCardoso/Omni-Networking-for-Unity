@@ -231,7 +231,7 @@ namespace Omni.Core.Modules.Connection
         {
             while (Application.isPlaying)
             {
-                if (kcpClient.connected && NetworkManager.IsClientActive && NetworkManager.LocalPeer.IsAuthenticated)
+                if (kcpClient.connected && NetworkManager.IsClientActive)
                 {
                     using var pingRequest = NetworkManager.Pool.Rent();
                     pingRequest.Write(MessageType.KCP_PING_REQUEST_RESPONSE);
