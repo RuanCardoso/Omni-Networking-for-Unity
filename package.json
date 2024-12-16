@@ -2,7 +2,7 @@
   "name": "com.ruancardoso.omni-networking-for-unity",
   "displayName": "Omni-Networking-for-Unity",
   "description": "A Unity framework created with a strong focus on achieving high-performance in the development of multiplayer games.",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "unity": "2021.3",
   "author": "Ruan Cardoso (https://github.com/RuanCardoso)",
   "homepage": "https://github.com/RuanCardoso/Omni-Networking-for-Unity",
