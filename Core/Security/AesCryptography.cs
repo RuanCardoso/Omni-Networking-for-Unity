@@ -33,20 +33,20 @@ namespace Omni.Core.Cryptography
                 );
             }
 
-            using (Aes Aes = Aes.Create())
+            using (Aes aes = Aes.Create())
             {
                 try
                 {
-                    Aes.KeySize = 128; // 128 bit key
-                    Aes.BlockSize = 128; // 128 bit block size
-                    Aes.Mode = CipherMode.CBC; // Cipher Block Chaining
-                    Aes.Padding = PaddingMode.PKCS7;
+                    aes.KeySize = 128; // 128 bit key
+                    aes.BlockSize = 128; // 128 bit block size
+                    aes.Mode = CipherMode.CBC; // Cipher Block Chaining
+                    aes.Padding = PaddingMode.PKCS7;
 
-                    Aes.Key = key;
-                    Aes.GenerateIV(); // Generate unique and random IV
-                    Iv = Aes.IV;
+                    aes.Key = key;
+                    aes.GenerateIV(); // Generate unique and random IV
+                    Iv = aes.IV;
 
-                    ICryptoTransform encryptor = Aes.CreateEncryptor();
+                    ICryptoTransform encryptor = aes.CreateEncryptor();
                     return encryptor.TransformFinalBlock(data, offset, length);
                 }
                 catch (Exception ex)
@@ -67,19 +67,19 @@ namespace Omni.Core.Cryptography
                 );
             }
 
-            using (Aes Aes = Aes.Create())
+            using (Aes aes = Aes.Create())
             {
                 try
                 {
-                    Aes.KeySize = 128;
-                    Aes.BlockSize = 128;
-                    Aes.Mode = CipherMode.CBC;
-                    Aes.Padding = PaddingMode.PKCS7;
+                    aes.KeySize = 128;
+                    aes.BlockSize = 128;
+                    aes.Mode = CipherMode.CBC;
+                    aes.Padding = PaddingMode.PKCS7;
 
-                    Aes.IV = Iv;
-                    Aes.Key = key;
+                    aes.IV = Iv;
+                    aes.Key = key;
 
-                    ICryptoTransform decryptor = Aes.CreateDecryptor();
+                    ICryptoTransform decryptor = aes.CreateDecryptor();
                     return decryptor.TransformFinalBlock(data, offset, length);
                 }
                 catch (Exception ex)
@@ -93,14 +93,14 @@ namespace Omni.Core.Cryptography
 
         public static byte[] GenerateKey()
         {
-            using (Aes Aes = Aes.Create())
+            using (Aes aes = Aes.Create())
             {
-                Aes.KeySize = 128;
-                Aes.BlockSize = 128;
-                Aes.Mode = CipherMode.CBC;
-                Aes.Padding = PaddingMode.PKCS7;
-                Aes.GenerateKey();
-                return Aes.Key;
+                aes.KeySize = 128;
+                aes.BlockSize = 128;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+                aes.GenerateKey();
+                return aes.Key;
             }
         }
     }
