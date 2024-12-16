@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
+using TriInspector;
 using UnityEngine;
 
 #pragma warning disable
@@ -44,18 +45,20 @@ namespace Omni.Core
 
     internal class NetworkVariableField
     {
+        internal string Name { get; }
         internal int PropertyId { get; }
         internal bool RequiresOwnership { get; }
         internal bool IsClientAuthority { get; }
         internal bool CheckEquality { get; }
 
         internal NetworkVariableField(int propertyId, bool requiresOwnership, bool isClientAuthority,
-            bool checkEquality)
+            bool checkEquality, string name)
         {
             PropertyId = propertyId;
             RequiresOwnership = requiresOwnership;
             IsClientAuthority = isClientAuthority;
             CheckEquality = checkEquality;
+            Name = name;
         }
     }
 
@@ -108,7 +111,7 @@ namespace Omni.Core
 
                 if (!networkVariables.TryAdd(propertyAttr.Id,
                         new NetworkVariableField(propertyAttr.Id, fieldAttr.RequiresOwnership,
-                            fieldAttr.IsClientAuthority, fieldAttr.CheckEquality)))
+                            fieldAttr.IsClientAuthority, fieldAttr.CheckEquality, fieldName)))
                 {
                     throw new NotSupportedException(
                         $"[NetworkVariable] -> Duplicate network variable ID found: {propertyAttr.Id}. Ensure all network variable IDs within a class are unique. Field: {field.Name}");
@@ -181,6 +184,7 @@ namespace Omni.Core
         protected virtual void ___OnPropertyChanged___(string propertyName, byte propertyId, NetworkPeer peer,
             DataBuffer buffer)
         {
+            // Overridden by the source generator!
             // The overriden method must call base(SourceGenerator).
             if (peer == null)
             {
@@ -199,6 +203,7 @@ namespace Omni.Core
         [Obsolete("Don't override this method! The source generator will override it.")]
         protected virtual void ___NotifyCollectionChange___()
         {
+            // Overridden by the source generator!
         }
 
         /// <summary>
@@ -228,6 +233,7 @@ namespace Omni.Core
         /// <param name="peer">The network peer to synchronize the state with.</param>
         protected virtual void SyncNetworkState(NetworkPeer peer)
         {
+            // Overridden by the source generator!
         }
 
         /// <summary>
