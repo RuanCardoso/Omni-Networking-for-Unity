@@ -3,6 +3,7 @@ using Omni.Shared;
 using System;
 using System.Collections;
 using System.ComponentModel;
+using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
@@ -132,8 +133,8 @@ namespace Omni.Core
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
-                StartCoroutine(Internal_OnServerStart());
-                StartCoroutine(Internal_OnClientStart());
+                Internal_OnServerStart();
+                Internal_OnClientStart();
 
                 OnStart();
                 Service.UpdateReference(m_ServiceName);
@@ -163,15 +164,15 @@ namespace Omni.Core
             }
         }
 
-        private IEnumerator Internal_OnServerStart()
+        private async void Internal_OnServerStart()
         {
-            yield return new WaitUntil(() => IsServerActive);
+            await UniTask.WaitUntil(() => IsServerActive);
             OnServerStart();
         }
 
-        private IEnumerator Internal_OnClientStart()
+        private async void Internal_OnClientStart()
         {
-            yield return new WaitUntil(() => IsClientActive);
+            await UniTask.WaitUntil(() => IsClientActive);
             OnClientStart();
         }
 
@@ -196,8 +197,8 @@ namespace Omni.Core
             clientRpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
             serverRpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
 
-            NetworkManager.ClientSide.AddRpcMessage(m_Id, this);
-            NetworkManager.ServerSide.AddRpcMessage(m_Id, this);
+            ClientSide.AddRpcMessage(m_Id, this);
+            ServerSide.AddRpcMessage(m_Id, this);
 
             Client = new NetworkEventClient(this, m_BindingFlags);
             Server = new NetworkEventServer(this, m_BindingFlags);
@@ -208,12 +209,14 @@ namespace Omni.Core
             NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
-            NetworkManager.ClientSide.OnMessage += OnClientMessage;
+            NetworkManager.OnClientIdentitySpawned += OnClientIdentitySpawned;
+            NetworkManager.OnPeerSharedDataChanged += OnPeerSharedDataChanged;
+            ClientSide.OnMessage += OnClientMessage;
 
             NetworkManager.OnServerInitialized += OnServerInitialized;
             NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
-            NetworkManager.ServerSide.OnMessage += OnServerMessage;
+            ServerSide.OnMessage += OnServerMessage;
         }
 
         protected void RegisterMatchmakingEvents()
@@ -236,12 +239,14 @@ namespace Omni.Core
             NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
             NetworkManager.OnClientConnected -= OnClientConnected;
             NetworkManager.OnClientDisconnected -= OnClientDisconnected;
-            NetworkManager.ClientSide.OnMessage -= OnClientMessage;
+            NetworkManager.OnClientIdentitySpawned -= OnClientIdentitySpawned;
+            NetworkManager.OnPeerSharedDataChanged -= OnPeerSharedDataChanged;
+            ClientSide.OnMessage -= OnClientMessage;
 
             NetworkManager.OnServerInitialized -= OnServerInitialized;
             NetworkManager.OnServerPeerConnected -= OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
-            NetworkManager.ServerSide.OnMessage -= OnServerMessage;
+            ServerSide.OnMessage -= OnServerMessage;
 
             if (MatchmakingModuleEnabled)
             {
@@ -268,6 +273,14 @@ namespace Omni.Core
         }
 
         #region Client
+
+        protected virtual void OnPeerSharedDataChanged(NetworkPeer peer, string key)
+        {
+        }
+
+        protected virtual void OnClientIdentitySpawned(NetworkIdentity identity)
+        {
+        }
 
         protected virtual void OnClientConnected()
         {

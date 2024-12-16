@@ -3,6 +3,7 @@ using Omni.Shared;
 using System;
 using System.Collections;
 using System.ComponentModel;
+using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
@@ -107,7 +108,7 @@ namespace Omni.Core
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
-                StartCoroutine(Internal_OnClientStart());
+                Internal_OnClientStart();
 
                 OnStart();
                 Service.UpdateReference(m_ServiceName);
@@ -137,9 +138,9 @@ namespace Omni.Core
             }
         }
 
-        private IEnumerator Internal_OnClientStart()
+        private async void Internal_OnClientStart()
         {
-            yield return new WaitUntil(() => IsClientActive);
+            await UniTask.WaitUntil(() => IsClientActive);
             OnClientStart();
         }
 
@@ -155,7 +156,7 @@ namespace Omni.Core
         {
             FindAllNetworkVariables();
             rpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
-            NetworkManager.ClientSide.AddRpcMessage(m_Id, this);
+            ClientSide.AddRpcMessage(m_Id, this);
             Client = new NetworkEventClient(this, m_BindingFlags);
         }
 
@@ -165,7 +166,8 @@ namespace Omni.Core
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
             NetworkManager.OnClientIdentitySpawned += OnClientIdentitySpawned;
-            NetworkManager.ClientSide.OnMessage += OnMessage;
+            NetworkManager.OnPeerSharedDataChanged += OnPeerSharedDataChanged;
+            ClientSide.OnMessage += OnMessage;
         }
 
         protected void RegisterMatchmakingEvents()
@@ -183,7 +185,8 @@ namespace Omni.Core
             NetworkManager.OnClientConnected -= OnClientConnected;
             NetworkManager.OnClientDisconnected -= OnClientDisconnected;
             NetworkManager.OnClientIdentitySpawned -= OnClientIdentitySpawned;
-            NetworkManager.ClientSide.OnMessage -= OnMessage;
+            NetworkManager.OnPeerSharedDataChanged -= OnPeerSharedDataChanged;
+            ClientSide.OnMessage -= OnMessage;
 
             if (MatchmakingModuleEnabled)
             {
@@ -193,6 +196,10 @@ namespace Omni.Core
 
             NetworkService.Unregister(m_ServiceName);
             OnStop();
+        }
+        
+        protected virtual void OnPeerSharedDataChanged(NetworkPeer peer, string key)
+        {
         }
 
         protected virtual void OnClientIdentitySpawned(NetworkIdentity identity)
