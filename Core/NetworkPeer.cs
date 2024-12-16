@@ -10,45 +10,117 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using static Omni.Core.NetworkManager;
 
+#pragma warning disable
+
 namespace Omni.Core
 {
+    /// <summary>
+    /// Represents a network peer that facilitates communication and data synchronization between the client and server in a networked environment.
+    /// This class handles peer data, group memberships, and shared data synchronization 
+    /// between clients and the server.
+    /// </summary> 
     [JsonObject(MemberSerialization.OptIn)]
     [MemoryPackable]
     public partial class NetworkPeer : IEquatable<NetworkPeer>
     {
         [MemoryPackIgnore] internal byte[] _aesKey;
-
         [MemoryPackIgnore] internal NativePeer _nativePeer;
-
         [MemoryPackIgnore] internal Dictionary<int, NetworkGroup> _groups = new();
 
-#pragma warning disable IDE0052
-        [MemoryPackIgnore] readonly string __endpoint__;
-#pragma warning restore IDE0052
-        [MemoryPackIgnore] public IPEndPoint EndPoint { get; }
+        [MemoryPackIgnore] internal List<NetworkCache> AppendCaches { get; } = new();
+        [MemoryPackIgnore] internal Dictionary<int, NetworkCache> OverwriteCaches { get; } = new();
 
-        [MemoryPackIgnore] public int Id { get; }
+        [MemoryPackIgnore] private readonly string __endpoint__;
+        [MemoryPackIgnore] private bool _autoSyncSharedData;
 
-        [MemoryPackIgnore] public NetworkGroup MainGroup { get; internal set; }
+        /// <summary>
+        /// Gets the endpoint (IP and port) associated with this peer.
+        /// </summary>
+        [MemoryPackIgnore]
+        public IPEndPoint EndPoint { get; }
 
-        [MemoryPackIgnore] public bool IsConnected { get; internal set; }
+        /// <summary>
+        /// Gets the unique identifier for this peer, assigned by the server.
+        /// </summary>
+        [MemoryPackIgnore]
+        public int Id { get; }
 
-        [MemoryPackIgnore] public bool IsAuthenticated { get; internal set; }
+        /// <summary>
+        /// Gets or sets the main network group that this peer belongs to.
+        /// </summary>
+        [MemoryPackIgnore]
+        public NetworkGroup MainGroup { get; internal set; }
 
-        [MemoryPackIgnore] public bool IsInAnyGroup => _groups.Count > 0;
+        /// <summary>
+        /// Gets a value indicating whether the peer is currently connected to the network.
+        /// </summary>
+        [MemoryPackIgnore]
+        public bool IsConnected { get; internal set; }
 
-        [MemoryPackIgnore] public ObservableDictionary<string, object> Data { get; } = new();
+        /// <summary>
+        /// Gets a value indicating whether the peer has been successfully connected and authenticated.
+        /// </summary>
+        [MemoryPackIgnore]
+        public bool IsAuthenticated { get; internal set; }
 
-        [MemoryPackIgnore, JsonProperty("Data")]
-        public ObservableDictionary<string, object> SerializedData { get; internal set; } = new();
+        /// <summary>
+        /// Gets a value indicating whether the peer belongs to any network group.
+        /// </summary>
+        [MemoryPackIgnore]
+        public bool IsInAnyGroup => _groups.Count > 0;
 
-        [MemoryPackIgnore] internal List<NetworkCache> CACHES_APPEND { get; } = new();
+        /// <summary>
+        /// Gets a dictionary of non-synchronized data available exclusively on the server-side.
+        /// This data is not sent to clients.
+        /// </summary>
+        [MemoryPackIgnore]
+        public ObservableDictionary<string, object> Data { get; } = new();
 
-        [MemoryPackIgnore] internal Dictionary<int, NetworkCache> CACHES_OVERWRITE { get; } = new();
+        /// <summary>
+        /// Gets or sets a value indicating whether changes to <see cref="SharedData"/> 
+        /// should be automatically synchronized across the network.
+        /// </summary>
+        [MemoryPackIgnore]
+        public bool AutoSyncSharedData
+        {
+            get => _autoSyncSharedData;
+            set
+            {
+                if (value)
+                {
+                    SharedData.OnItemAdded += RegisterSharedDataHandler;
+                    SharedData.OnItemUpdated += RegisterSharedDataHandler;
+                    SharedData.OnItemRemoved += RegisterSharedDataHandler;
+                }
+                else
+                {
+                    SharedData.OnItemAdded -= RegisterSharedDataHandler;
+                    SharedData.OnItemUpdated -= RegisterSharedDataHandler;
+                    SharedData.OnItemRemoved -= RegisterSharedDataHandler;
+                }
 
-        [MemoryPackIgnore] public double Time => _nativePeer.Time;
+                _autoSyncSharedData = value;
+            }
+        }
 
-        [MemoryPackIgnore] public double Ping => _nativePeer.Ping;
+        /// <summary>
+        /// Gets or sets a dictionary of shared data that is synchronized between the server and clients.
+        /// Changes to this data are propagated to all connected peers if <see cref="AutoSyncSharedData"/> is enabled. 
+        /// </summary>
+        [MemoryPackIgnore, JsonProperty("SharedData")]
+        public ObservableDictionary<string, object> SharedData { get; internal set; } = new();
+
+        /// <summary>
+        /// Gets the current network time for this peer.
+        /// </summary>
+        [MemoryPackIgnore]
+        public double Time => _nativePeer.Time;
+
+        /// <summary>
+        /// Gets the current network ping (latency) for this peer in milliseconds.
+        /// </summary>
+        [MemoryPackIgnore]
+        public double Ping => _nativePeer.Ping;
 
         [MemoryPackConstructor]
         [JsonConstructor]
@@ -56,7 +128,7 @@ namespace Omni.Core
         {
         }
 
-        internal NetworkPeer(IPEndPoint endPoint, int id)
+        internal NetworkPeer(IPEndPoint endPoint, int id, bool isServer)
         {
             // Avoid self reference loop when serializing.
             __endpoint__ = endPoint.ToString();
@@ -66,6 +138,16 @@ namespace Omni.Core
             // - id: The ID of the peer used in server-side.
             EndPoint = endPoint;
             Id = id;
+
+            if (isServer)
+            {
+                AutoSyncSharedData = true;
+            }
+        }
+
+        private void RegisterSharedDataHandler(string key, object item)
+        {
+            SyncSharedData(key);
         }
 
         public void ClearGroups()
@@ -78,7 +160,7 @@ namespace Omni.Core
         {
             EnsureServerActive();
             Data.Clear();
-            SerializedData.Clear();
+            SharedData.Clear();
         }
 
         public void Disconnect()
@@ -87,58 +169,56 @@ namespace Omni.Core
             DisconnectPeer(this);
         }
 
-        public void SyncSerializedData(ServerOptions options)
+        public void SyncSharedData(ServerOptions options)
         {
-            SyncSerializedData(options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
+            SyncSharedData(options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
                 options.SequenceChannel);
         }
 
-        public void SyncSerializedData(Target target = Target.SelfOnly,
+        public void SyncSharedData(Target target = Target.Auto,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
             byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
-            SyncSerializedData("_AllKeys_", target, deliveryMode, groupId, dataCache, sequenceChannel);
+            SyncSharedData(NetworkConstants.SHARED_ALL_KEYS, target, deliveryMode, groupId, dataCache,
+                sequenceChannel);
         }
 
-        public void SyncSerializedData(string key, ServerOptions options)
+        public void SyncSharedData(string key, ServerOptions options)
         {
-            SyncSerializedData(key, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
+            SyncSharedData(key, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
                 options.SequenceChannel);
         }
 
-        public void SyncSerializedData(string key, Target target = Target.SelfOnly,
+        public void SyncSharedData(string key, Target target = Target.Auto,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
             byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
-            Internal_SyncSerializedData(key, target, deliveryMode, groupId, dataCache, sequenceChannel);
+            Internal_SyncSharedData(key, target, deliveryMode, groupId, dataCache, sequenceChannel);
         }
 
-        private void Internal_SyncSerializedData(string key = "_AllKeys_", Target target = Target.SelfOnly,
+        private void Internal_SyncSharedData(string key, Target target = Target.Auto,
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
             byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
-            if (!IsServerActive)
-            {
-                throw new Exception("SyncSerializedData Error: Can't use this method on client.");
-            }
+            EnsureServerActive();
 
-            if (SerializedData.TryGetValue(key, out object value) || key == "_AllKeys_")
+            if (SharedData.TryGetValue(key, out object value) || key == NetworkConstants.SHARED_ALL_KEYS)
             {
-                value = key != "_AllKeys_" ? value : SerializedData;
+                value = key != NetworkConstants.SHARED_ALL_KEYS ? value : SharedData;
                 ImmutableKeyValuePair keyValuePair = new(key, value);
                 using var message = Pool.Rent();
                 message.Write(Id);
                 message.WriteAsJson(keyValuePair);
-                ServerSide.SendMessage(MessageType.SyncPeerSerializedData, this, message, target, deliveryMode, groupId,
+                ServerSide.SendMessage(MessageType.SyncPeerSharedData, this, message, target, deliveryMode, groupId,
                     dataCache, sequenceChannel);
             }
             else
             {
                 NetworkLogger.__Log__(
-                    $"SyncSerializedData Error: Failed to sync '{key}' because it doesn't exist.",
+                    $"SyncSharedData Peer Error: Failed to sync '{key}' because it doesn't exist.",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -146,15 +226,16 @@ namespace Omni.Core
 
         public void DeleteCache(DataCache dataCache)
         {
+            EnsureServerActive();
             switch (dataCache.Mode)
             {
                 case CacheMode.Peer | CacheMode.New:
                 case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
-                    CACHES_APPEND.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
+                    AppendCaches.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
                     break;
                 case CacheMode.Peer | CacheMode.Overwrite:
                 case CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                    CACHES_OVERWRITE.Remove(dataCache.Id);
+                    OverwriteCaches.Remove(dataCache.Id);
                     break;
                 default:
                     NetworkLogger.__Log__(
@@ -167,12 +248,13 @@ namespace Omni.Core
 
         public void DestroyAllCaches()
         {
-            CACHES_APPEND.RemoveAll(x => x.AutoDestroyCache);
-            var caches = CACHES_OVERWRITE.Values.Where(x => x.AutoDestroyCache).ToList();
+            EnsureServerActive();
+            AppendCaches.RemoveAll(x => x.AutoDestroyCache);
+            var caches = OverwriteCaches.Values.Where(x => x.AutoDestroyCache).ToList();
 
             foreach (var cache in caches)
             {
-                if (!CACHES_OVERWRITE.Remove(cache.Id))
+                if (!OverwriteCaches.Remove(cache.Id))
                 {
                     NetworkLogger.__Log__(
                         $"Destroy All Cache Error: Failed to remove cache {cache.Id} from peer {Id}.",
@@ -184,8 +266,9 @@ namespace Omni.Core
 
         public void ClearCaches()
         {
-            CACHES_APPEND.Clear();
-            CACHES_OVERWRITE.Clear();
+            EnsureServerActive();
+            AppendCaches.Clear();
+            OverwriteCaches.Clear();
         }
 
         [Conditional("OMNI_DEBUG")]
@@ -193,7 +276,7 @@ namespace Omni.Core
         {
             if (!IsServerActive)
             {
-                throw new Exception($"[{caller}] -> Can't use this method on client.");
+                throw new NotSupportedException($"[{caller}] -> Can't use this method on client.");
             }
         }
 
@@ -205,7 +288,7 @@ namespace Omni.Core
         public override bool Equals(object obj)
         {
             NetworkPeer other = (NetworkPeer)obj;
-            return Id == other.Id;
+            return other != null && Id == other.Id;
         }
 
         public override int GetHashCode()
@@ -215,7 +298,7 @@ namespace Omni.Core
 
         public bool Equals(NetworkPeer other)
         {
-            return Id == other.Id;
+            return other != null && Id == other.Id;
         }
     }
 }
