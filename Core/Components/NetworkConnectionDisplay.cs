@@ -1,5 +1,6 @@
 using UnityEngine;
 using TriInspector;
+using Omni.Threading.Tasks;
 
 #if UNITY_EDITOR
 using ParrelSync;
@@ -33,11 +34,8 @@ namespace Omni.Core
         }
 
 #if OMNI_DEBUG
-        void OnGUI()
+        private void OnGUI()
         {
-            if (NetworkManager.IsClientActive || NetworkManager.IsServerActive)
-                return;
-
             bool isClone = false;
 #if UNITY_EDITOR
             if (ClonesManager.IsClone())
@@ -52,12 +50,47 @@ namespace Omni.Core
             var labelFontSize = new GUIStyle(GUI.skin.label) { fontSize = m_FontSize };
             var textFieldFontSize = new GUIStyle(GUI.skin.textField) { fontSize = m_FontSize };
 
-            // Calcula posi��o centralizada
             float centerX = (Screen.width - m_Width) / 2;
-            float centerY = (Screen.height - (m_Height * 8)) / 2; // 6 linhas de altura
+            float centerY = (Screen.height - (m_Height * 8)) / 2;
+
+            if (NetworkManager.IsClientActive || NetworkManager.IsServerActive)
+            {
+                GUILayout.BeginArea(new Rect(10, centerY, m_Width, m_Height * 8));
+                if (NetworkManager.IsClientActive && NetworkManager.IsServerActive)
+                {
+                    if (GUILayout.Button("Stop Client & Server", buttonFontSize, width, height))
+                    {
+                        UniTask.Void(async () =>
+                        {
+                            NetworkManager.StopClient();
+                            await UniTask.WaitForSeconds(0.5f);
+                            NetworkManager.StopServer();
+                        });
+                    }
+                }
+                else
+                {
+                    if (NetworkManager.IsClientActive)
+                    {
+                        if (GUILayout.Button("Stop Client", buttonFontSize, width, height))
+                        {
+                            NetworkManager.StopClient();
+                        }
+                    }
+                    else if (NetworkManager.IsServerActive)
+                    {
+                        if (GUILayout.Button("Stop Server", buttonFontSize, width, height))
+                        {
+                            NetworkManager.StopServer();
+                        }
+                    }
+                }
+
+                GUILayout.EndArea();
+                return;
+            }
 
             GUILayout.BeginArea(new Rect(centerX, centerY, m_Width, m_Height * 8));
-
             GUILayout.Label("Host:", labelFontSize);
             host = GUILayout.TextField(host, textFieldFontSize, width, height);
             GUILayout.Label("Port:", labelFontSize);
@@ -73,16 +106,22 @@ namespace Omni.Core
             {
                 // WebGL can't start server.
 #if !UNITY_WEBGL || UNITY_EDITOR
-                if (GUILayout.Button("Start Server", buttonFontSize, width, height))
+                if (!NetworkManager.IsServerActive)
                 {
-                    NetworkManager.StartServer(hostPort);
+                    if (GUILayout.Button("Start Server", buttonFontSize, width, height))
+                    {
+                        NetworkManager.StartServer(hostPort);
+                    }
                 }
 #endif
             }
 
-            if (GUILayout.Button("Start Client", buttonFontSize, width, height))
+            if (!NetworkManager.IsClientActive)
             {
-                NetworkManager.Connect(host, hostPort);
+                if (GUILayout.Button("Start Client", buttonFontSize, width, height))
+                {
+                    NetworkManager.Connect(host, hostPort);
+                }
             }
 
             if (!isClone)
@@ -91,8 +130,12 @@ namespace Omni.Core
 #if !UNITY_WEBGL || UNITY_EDITOR
                 if (GUILayout.Button("Start Server & Client", buttonFontSize, width, height))
                 {
-                    NetworkManager.StartServer(hostPort);
-                    NetworkManager.Connect(host, hostPort);
+                    UniTask.Void(async () =>
+                    {
+                        NetworkManager.StartServer(hostPort);
+                        await UniTask.WaitForSeconds(0.1f);
+                        NetworkManager.Connect(host, hostPort);
+                    });
                 }
 #endif
             }
