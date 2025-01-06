@@ -58,8 +58,10 @@ namespace Omni.Core
         public static NetworkIdentity SpawnOnClient(NetworkIdentity prefab, int peerId, int identityId)
         {
             bool isLocalPlayer = LocalPeer.Id == peerId;
-            NetworkIdentity @obj = NetworkHelper.Instantiate(prefab, peerId != 0 ? LocalPeer : ServerSide.ServerPeer,
+            NetworkIdentity @obj = NetworkHelper.Instantiate(prefab,
+                peerId != 0 ? isLocalPlayer ? LocalPeer : ClientSide.GetOrCreatePeer(peerId) : ServerSide.ServerPeer,
                 identityId, false, isLocalPlayer);
+
             if (isLocalPlayer && (prefab.name.Contains("Player") || prefab.tag.Contains("Player")))
             {
                 NetworkIdentity.LocalPlayer = @obj;
