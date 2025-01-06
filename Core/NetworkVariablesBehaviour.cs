@@ -6,7 +6,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 #pragma warning disable
