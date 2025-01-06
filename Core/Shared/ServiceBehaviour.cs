@@ -1,7 +1,7 @@
 using Omni.Core.Interfaces;
 using System;
 using System.ComponentModel;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -10,7 +10,7 @@ using UnityEngine.SceneManagement;
 namespace Omni.Core
 {
     [DefaultExecutionOrder(-10500)]
-    [DeclareBoxGroup("Service Settings")]
+    [DeclareFoldoutGroup("Service Settings")]
     [StackTrace]
     public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
     {
