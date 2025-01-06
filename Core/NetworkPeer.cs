@@ -282,7 +282,7 @@ namespace Omni.Core
 
         public override string ToString()
         {
-            return ToJson(this);
+            return $"Peer Id: {Id} - Peer EndPoint: {EndPoint}";
         }
 
         public override bool Equals(object obj)
