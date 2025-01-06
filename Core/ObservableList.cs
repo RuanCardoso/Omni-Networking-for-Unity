@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using MemoryPack;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 namespace Omni.Collections

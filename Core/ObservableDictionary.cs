@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using MemoryPack;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 using System.Linq;
 using Debug = UnityEngine.Debug;
