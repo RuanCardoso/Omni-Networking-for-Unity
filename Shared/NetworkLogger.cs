@@ -349,6 +349,7 @@ namespace Omni.Shared
             StackTrace stack = exception == null
                 ? new StackTrace(fNeedFileInfo: true)
                 : new StackTrace(exception, fNeedFileInfo: true);
+
             for (int i = stack.FrameCount - 1; i >= 0; i--)
             {
                 StackFrame frame = stack.GetFrame(i);
