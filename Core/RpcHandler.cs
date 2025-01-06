@@ -171,7 +171,7 @@ namespace Omni.Core
             for (int i = 0; i < methodInfos.Length; i++)
             {
                 MethodInfo method = methodInfos[i];
-                var attributes = method.GetCustomAttributes<T>().ToList();
+                var attributes = method.GetCustomAttributes<T>(inherit: true).ToList();
                 foreach (T attr in attributes)
                 {
                     if (attr != null)
