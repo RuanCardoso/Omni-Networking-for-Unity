@@ -19,74 +19,90 @@ namespace Omni.Core.Cryptography
 
         public static string Encrypt(string plainText, string passPhrase)
         {
-            // Salt and IV is randomly generated each time, but is preprended to encrypted cipher text
-            // so that the same Salt and IV values can be used when decrypting.  
-            var saltStringBytes = Generate128BitsOfRandomEntropy();
-            var ivStringBytes = Generate128BitsOfRandomEntropy();
-            var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
-            using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, DerivationIterations))
+            try
             {
-                var keyBytes = password.GetBytes(KeySize / 8);
-                using (var symmetricKey = Aes.Create())
+                // Salt and IV is randomly generated each time, but is preprended to encrypted cipher text
+                // so that the same Salt and IV values can be used when decrypting.  
+                var saltStringBytes = Generate128BitsOfRandomEntropy();
+                var ivStringBytes = Generate128BitsOfRandomEntropy();
+                var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+                using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, DerivationIterations))
                 {
-                    symmetricKey.KeySize = KeySize;
-                    symmetricKey.BlockSize = 128;
-                    symmetricKey.Mode = CipherMode.CBC;
-                    symmetricKey.Padding = PaddingMode.PKCS7;
-                    using (var encryptor = symmetricKey.CreateEncryptor(keyBytes, ivStringBytes))
+                    var keyBytes = password.GetBytes(KeySize / 8);
+                    using (var symmetricKey = Aes.Create())
                     {
-                        using (var memoryStream = new MemoryStream())
+                        symmetricKey.KeySize = KeySize;
+                        symmetricKey.BlockSize = 128;
+                        symmetricKey.Mode = CipherMode.CBC;
+                        symmetricKey.Padding = PaddingMode.PKCS7;
+                        using (var encryptor = symmetricKey.CreateEncryptor(keyBytes, ivStringBytes))
                         {
-                            using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
+                            using (var memoryStream = new MemoryStream())
                             {
-                                cryptoStream.Write(plainTextBytes, 0, plainTextBytes.Length);
-                                cryptoStream.FlushFinalBlock();
-                                // Create the final bytes as a concatenation of the random salt bytes, the random iv bytes and the cipher bytes.
-                                var cipherTextBytes = saltStringBytes;
-                                cipherTextBytes = cipherTextBytes.Concat(ivStringBytes).ToArray();
-                                cipherTextBytes = cipherTextBytes.Concat(memoryStream.ToArray()).ToArray();
-                                return Convert.ToBase64String(cipherTextBytes);
+                                using (var cryptoStream =
+                                       new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
+                                {
+                                    cryptoStream.Write(plainTextBytes, 0, plainTextBytes.Length);
+                                    cryptoStream.FlushFinalBlock();
+                                    // Create the final bytes as a concatenation of the random salt bytes, the random iv bytes and the cipher bytes.
+                                    var cipherTextBytes = saltStringBytes;
+                                    cipherTextBytes = cipherTextBytes.Concat(ivStringBytes).ToArray();
+                                    cipherTextBytes = cipherTextBytes.Concat(memoryStream.ToArray()).ToArray();
+                                    return Convert.ToBase64String(cipherTextBytes);
+                                }
                             }
                         }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                throw new CryptographicException(ex.Message);
+            }
         }
 
         public static string Decrypt(string cipherText, string passPhrase)
         {
-            // Get the complete stream of bytes that represent:
-            // [16 bytes of Salt] + [16 bytes of IV] + [n bytes of CipherText]
-            var cipherTextBytesWithSaltAndIv = Convert.FromBase64String(cipherText);
-            // Get the saltbytes by extracting the first 16 bytes from the supplied cipherText bytes.
-            var saltStringBytes = cipherTextBytesWithSaltAndIv.Take(KeySize / 8).ToArray();
-            // Get the IV bytes by extracting the next 16 bytes from the supplied cipherText bytes.
-            var ivStringBytes = cipherTextBytesWithSaltAndIv.Skip(KeySize / 8).Take(KeySize / 8).ToArray();
-            // Get the actual cipher text bytes by removing the first 64 bytes from the cipherText string.
-            var cipherTextBytes = cipherTextBytesWithSaltAndIv.Skip((KeySize / 8) * 2)
-                .Take(cipherTextBytesWithSaltAndIv.Length - ((KeySize / 8) * 2)).ToArray();
-
-            using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, DerivationIterations))
+            try
             {
-                var keyBytes = password.GetBytes(KeySize / 8);
-                using (var symmetricKey = Aes.Create())
+                // Get the complete stream of bytes that represent:
+                // [16 bytes of Salt] + [16 bytes of IV] + [n bytes of CipherText]
+                var cipherTextBytesWithSaltAndIv = Convert.FromBase64String(cipherText);
+                // Get the saltbytes by extracting the first 16 bytes from the supplied cipherText bytes.
+                var saltStringBytes = cipherTextBytesWithSaltAndIv.Take(KeySize / 8).ToArray();
+                // Get the IV bytes by extracting the next 16 bytes from the supplied cipherText bytes.
+                var ivStringBytes = cipherTextBytesWithSaltAndIv.Skip(KeySize / 8).Take(KeySize / 8).ToArray();
+                // Get the actual cipher text bytes by removing the first 64 bytes from the cipherText string.
+                var cipherTextBytes = cipherTextBytesWithSaltAndIv.Skip((KeySize / 8) * 2)
+                    .Take(cipherTextBytesWithSaltAndIv.Length - ((KeySize / 8) * 2)).ToArray();
+
+                using (var password = new Rfc2898DeriveBytes(passPhrase, saltStringBytes, DerivationIterations))
                 {
-                    symmetricKey.KeySize = KeySize;
-                    symmetricKey.BlockSize = 128;
-                    symmetricKey.Mode = CipherMode.CBC;
-                    symmetricKey.Padding = PaddingMode.PKCS7;
-                    using (var decryptor = symmetricKey.CreateDecryptor(keyBytes, ivStringBytes))
+                    var keyBytes = password.GetBytes(KeySize / 8);
+                    using (var symmetricKey = Aes.Create())
                     {
-                        using (var memoryStream = new MemoryStream(cipherTextBytes))
+                        symmetricKey.KeySize = KeySize;
+                        symmetricKey.BlockSize = 128;
+                        symmetricKey.Mode = CipherMode.CBC;
+                        symmetricKey.Padding = PaddingMode.PKCS7;
+                        using (var decryptor = symmetricKey.CreateDecryptor(keyBytes, ivStringBytes))
                         {
-                            using (var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
-                            using (var streamReader = new StreamReader(cryptoStream, Encoding.UTF8))
+                            using (var memoryStream = new MemoryStream(cipherTextBytes))
                             {
-                                return streamReader.ReadToEnd();
+                                using (var cryptoStream =
+                                       new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
+                                using (var streamReader = new StreamReader(cryptoStream, Encoding.UTF8))
+                                {
+                                    return streamReader.ReadToEnd();
+                                }
                             }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new CryptographicException(ex.Message);
             }
         }
 

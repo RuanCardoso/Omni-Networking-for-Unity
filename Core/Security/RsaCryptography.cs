@@ -12,6 +12,7 @@
     License: Open Source (MIT)
     ===========================================================*/
 
+using System;
 using System.Security.Cryptography;
 
 #pragma warning disable IDE0063
@@ -44,37 +45,65 @@ namespace Omni.Core.Cryptography
 
         public static byte[] Encrypt(byte[] data, string publicKey)
         {
-            using (RSA rsa = RSA.Create(keySize))
+            try
             {
-                rsa.FromXmlString(publicKey);
-                return rsa.Encrypt(data, RSAEncryptionPadding.Pkcs1);
+                using (RSA rsa = RSA.Create(keySize))
+                {
+                    rsa.FromXmlString(publicKey);
+                    return rsa.Encrypt(data, RSAEncryptionPadding.Pkcs1);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new CryptographicException(ex.Message);
             }
         }
 
         public static byte[] Decrypt(byte[] data, string privateKey)
         {
-            using (RSA rsa = RSA.Create(keySize))
+            try
             {
-                rsa.FromXmlString(privateKey);
-                return rsa.Decrypt(data, RSAEncryptionPadding.Pkcs1);
+                using (RSA rsa = RSA.Create(keySize))
+                {
+                    rsa.FromXmlString(privateKey);
+                    return rsa.Decrypt(data, RSAEncryptionPadding.Pkcs1);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new CryptographicException(ex.Message);
             }
         }
 
         public static bool Verify(byte[] data, byte[] signature, string publicKey)
         {
-            using (RSA rsa = RSA.Create(keySize))
+            try
             {
-                rsa.FromXmlString(publicKey);
-                return rsa.VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                using (RSA rsa = RSA.Create(keySize))
+                {
+                    rsa.FromXmlString(publicKey);
+                    return rsa.VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new CryptographicException(ex.Message);
             }
         }
 
         public static byte[] Sign(byte[] data, string privateKey)
         {
-            using (RSA rsa = RSA.Create(keySize))
+            try
             {
-                rsa.FromXmlString(privateKey);
-                return rsa.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                using (RSA rsa = RSA.Create(keySize))
+                {
+                    rsa.FromXmlString(privateKey);
+                    return rsa.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new CryptographicException(ex.Message);
             }
         }
     }
