@@ -23,13 +23,13 @@ using static Omni.Core.NetworkManager;
 namespace Omni.Core
 {
     /// <summary>
-    /// The SimpleRoutes class provides static instances for client and server route management,
-    /// enabling GET and POST request handling through the FetchClient and RoutesServer classes.
-    /// It facilitates asynchronous operations and event management for network communication within an application.
+    /// This class is responsible for managing routes on both the client and server sides.
+    /// It provides an interface for registering GET and POST routes, and for sending and receiving data
+    /// through these routes.
     /// </summary>
-    public static class SimpleRoutes
+    public class TransporterRouteManager
     {
-        public class FetchClient
+        public class ClientRouteManager
         {
             private int m_RouteId = 1;
             internal readonly Dictionary<int, UniTaskCompletionSource<DataBuffer>> m_Tasks = new();
@@ -232,7 +232,7 @@ namespace Omni.Core
             }
         }
 
-        public class RoutesServer
+        public class ServerRouteManager
         {
             // Get tasks async
             internal readonly Dictionary<string, Func<DataBuffer, NetworkPeer, UniTask>> m_g_Tasks = new();
@@ -382,28 +382,30 @@ namespace Omni.Core
         /// <summary>
         /// Provides methods to simulate GET and POST requests on the client side.
         /// </summary>
-        public static FetchClient Fetch { get; } = new();
+        public ClientRouteManager Client { get; } = new();
 
         /// <summary>
         /// Handles asynchronous GET and POST requests by maintaining lists of routes on the server side.
         /// and their associated callback functions, simulating an Express.js-like behavior.
         /// </summary>
-        public static RoutesServer Routes { get; } = new();
+        public ServerRouteManager Server { get; } = new();
 
-        internal static void Initialize()
+        internal void Initialize()
         {
             ClientSide.OnMessage += OnClientMessage;
             ServerSide.OnMessage += OnServerMessage;
+
+            NetworkService.Register(this);
         }
 
-        private static async void OnServerMessage(byte msgId, DataBuffer buffer, NetworkPeer peer, int sequenceChannel)
+        private async void OnServerMessage(byte msgId, DataBuffer buffer, NetworkPeer peer, int sequenceChannel)
         {
             buffer.SeekToBegin();
             string routeName = buffer.ReadString();
             int routeId = buffer.Internal_Read();
             if (msgId == MessageType.GetFetchAsync)
             {
-                if (Routes.m_g_Tasks.TryGetValue(routeName, out Func<DataBuffer, NetworkPeer, UniTask> asyncCallback))
+                if (Server.m_g_Tasks.TryGetValue(routeName, out Func<DataBuffer, NetworkPeer, UniTask> asyncCallback))
                 {
                     try
                     {
@@ -418,7 +420,7 @@ namespace Omni.Core
                         throw;
                     }
                 }
-                else if (Routes.m_Tasks.TryGetValue(routeName, out Action<DataBuffer, NetworkPeer> callback))
+                else if (Server.m_Tasks.TryGetValue(routeName, out Action<DataBuffer, NetworkPeer> callback))
                 {
                     try
                     {
@@ -442,7 +444,7 @@ namespace Omni.Core
             }
             else if (msgId == MessageType.PostFetchAsync)
             {
-                if (Routes.m_p_Tasks.TryGetValue(routeName,
+                if (Server.m_p_Tasks.TryGetValue(routeName,
                         out Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> asyncCallback))
                 {
                     using var request = Pool.Rent();
@@ -469,7 +471,7 @@ namespace Omni.Core
                         throw;
                     }
                 }
-                else if (Routes.m_a_Tasks.TryGetValue(routeName,
+                else if (Server.m_a_Tasks.TryGetValue(routeName,
                              out Action<DataBuffer, DataBuffer, NetworkPeer> callback))
                 {
                     using var request = Pool.Rent();
@@ -547,7 +549,7 @@ namespace Omni.Core
             }
         }
 
-        private static void OnClientMessage(byte msgId, DataBuffer buffer, int sequenceChannel)
+        private void OnClientMessage(byte msgId, DataBuffer buffer, int sequenceChannel)
         {
             buffer.SeekToBegin();
             if (msgId == MessageType.GetResponseAsync || msgId == MessageType.PostResponseAsync)
@@ -555,7 +557,7 @@ namespace Omni.Core
                 string routeName = buffer.ReadString();
                 int routeId = buffer.Internal_Read();
 
-                if (Fetch.m_Tasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source))
+                if (Client.m_Tasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source))
                 {
                     var message = Pool.Rent(); // Disposed by the caller!
                     message.Write(buffer.Internal_GetSpan(buffer.Length));
@@ -582,7 +584,7 @@ namespace Omni.Core
 
                     if (msgId == MessageType.GetResponseAsync)
                     {
-                        if (Fetch.m_Events.TryGetValue((routeName, 0), out Action<DataBuffer> callback))
+                        if (Client.m_Events.TryGetValue((routeName, 0), out Action<DataBuffer> callback))
                         {
                             try
                             {
@@ -597,7 +599,7 @@ namespace Omni.Core
                     }
                     else if (msgId == MessageType.PostResponseAsync)
                     {
-                        if (Fetch.m_Events.TryGetValue((routeName, 1), out Action<DataBuffer> callback))
+                        if (Client.m_Events.TryGetValue((routeName, 1), out Action<DataBuffer> callback))
                         {
                             try
                             {
