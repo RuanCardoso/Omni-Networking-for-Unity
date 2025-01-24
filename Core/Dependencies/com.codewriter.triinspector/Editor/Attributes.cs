@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
     public class RegisterTriValueDrawerAttribute : Attribute

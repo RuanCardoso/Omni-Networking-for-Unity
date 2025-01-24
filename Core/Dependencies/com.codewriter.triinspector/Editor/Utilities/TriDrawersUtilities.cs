@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using TriInspector.Elements;
+using Omni.Inspector.Elements;
 using UnityEngine;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     internal class TriDrawersUtilities
     {

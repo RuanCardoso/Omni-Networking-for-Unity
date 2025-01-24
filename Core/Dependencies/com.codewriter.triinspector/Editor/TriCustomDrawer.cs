@@ -1,4 +1,4 @@
-﻿namespace TriInspector
+﻿namespace Omni.Inspector
 {
     public abstract class TriCustomDrawer : TriPropertyExtension
     {

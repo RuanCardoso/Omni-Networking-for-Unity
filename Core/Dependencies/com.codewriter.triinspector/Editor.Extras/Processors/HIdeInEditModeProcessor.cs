@@ -1,10 +1,10 @@
-﻿using TriInspector.Processors;
-using TriInspector;
+﻿using Omni.Inspector.Processors;
+using Omni.Inspector;
 using UnityEngine;
 
 [assembly: RegisterTriPropertyHideProcessor(typeof(HideInEditModeProcessor))]
 
-namespace TriInspector.Processors
+namespace Omni.Inspector.Processors
 {
     public class HideInEditModeProcessor : TriPropertyHideProcessor<HideInEditModeAttribute>
     {

@@ -1,6 +1,6 @@
 ﻿using UnityEditor;
 
-namespace TriInspector.Editors
+namespace Omni.Inspector.Editors
 {
     public class TriSettingsProvider : SettingsProvider
     {

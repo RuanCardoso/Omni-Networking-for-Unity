@@ -1,13 +1,13 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Editors;
-using TriInspector.Elements;
-using TriInspector.Utilities;
+﻿using Omni.Inspector.Editors;
+using Omni.Inspector.Elements;
+using Omni.Inspector.Utilities;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using TriInspectorUnityInternalBridge;
 
 [assembly: RegisterTriValueDrawer(typeof(CustomBuiltInDrawer), TriDrawerOrder.Fallback - 999)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class CustomBuiltInDrawer : TriValueDrawer<object>
     {

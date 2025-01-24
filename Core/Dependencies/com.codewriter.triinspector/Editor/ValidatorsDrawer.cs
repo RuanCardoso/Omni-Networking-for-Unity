@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using TriInspector.Elements;
+using Omni.Inspector.Elements;
 using UnityEditor;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     internal class ValidatorsDrawer : TriCustomDrawer
     {

@@ -1,10 +1,10 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Resolvers;
+﻿using Omni.Inspector.Resolvers;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 
 [assembly: RegisterTriAttributeDrawer(typeof(OnValueChangedDrawer), TriDrawerOrder.System)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class OnValueChangedDrawer : TriAttributeDrawer<OnValueChangedAttribute>
     {

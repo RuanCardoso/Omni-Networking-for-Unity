@@ -1,11 +1,11 @@
 ﻿using JetBrains.Annotations;
-using TriInspector.Validators;
-using TriInspector;
-using TriInspector.Resolvers;
+using Omni.Inspector.Resolvers;
+using Omni.Inspector.Validators;
+using Omni.Inspector;
 
 [assembly: RegisterTriAttributeValidator(typeof(RequiredValidator), ApplyOnArrayElement = true)]
 
-namespace TriInspector.Validators
+namespace Omni.Inspector.Validators
 {
     public class RequiredValidator : TriAttributeValidator<RequiredAttribute>
     {

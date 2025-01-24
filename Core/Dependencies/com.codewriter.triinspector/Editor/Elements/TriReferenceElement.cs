@@ -1,9 +1,9 @@
 ﻿using System;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     internal class TriReferenceElement : TriPropertyCollectionBaseElement
     {

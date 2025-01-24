@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public abstract class TriHeaderGroupBaseElement : TriPropertyCollectionBaseElement
     {

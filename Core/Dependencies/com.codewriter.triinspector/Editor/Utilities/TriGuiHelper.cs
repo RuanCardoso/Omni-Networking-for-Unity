@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     public static class TriGuiHelper
     {

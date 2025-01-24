@@ -2,7 +2,7 @@
 using System.Linq;
 using JetBrains.Annotations;
 
-namespace TriInspector.Resolvers
+namespace Omni.Inspector.Resolvers
 {
     public class DropdownValuesResolver<T>
     {

@@ -1,11 +1,11 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Elements;
-using TriInspector.Resolvers;
+﻿using Omni.Inspector.Elements;
+using Omni.Inspector.Resolvers;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 
 [assembly: RegisterTriAttributeDrawer(typeof(DropdownDrawer<>), TriDrawerOrder.Decorator)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class DropdownDrawer<T> : TriAttributeDrawer<DropdownAttribute>
     {

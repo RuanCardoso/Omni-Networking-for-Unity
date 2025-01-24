@@ -1,4 +1,4 @@
-﻿using TriInspector;
+﻿using Omni.Inspector;
 using UnityEngine;
 
 [DeclareBoxGroup("box", Title = "Box")]

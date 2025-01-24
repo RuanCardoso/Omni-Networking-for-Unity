@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
-namespace TriInspector.Editor.Samples
+namespace Omni.Inspector.Editor.Samples
 {
     internal class TriSamplesWindow : EditorWindow
     {

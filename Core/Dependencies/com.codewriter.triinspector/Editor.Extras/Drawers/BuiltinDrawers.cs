@@ -1,6 +1,6 @@
 ﻿using System;
-using TriInspector;
-using TriInspector.Drawers;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -26,7 +26,7 @@ using UnityEngine;
 [assembly: RegisterTriValueDrawer(typeof(RectIntDrawer), TriDrawerOrder.Fallback)]
 [assembly: RegisterTriValueDrawer(typeof(BoundsIntDrawer), TriDrawerOrder.Fallback)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class StringDrawer : BuiltinDrawerBase<string>
     {

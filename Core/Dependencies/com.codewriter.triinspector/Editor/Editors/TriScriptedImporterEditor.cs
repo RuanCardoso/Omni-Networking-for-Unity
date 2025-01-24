@@ -8,7 +8,7 @@ using UnityEditor.AssetImporters;
 using UnityEditor.Experimental.AssetImporters;
 #endif
 
-namespace TriInspector.Editors
+namespace Omni.Inspector.Editors
 {
     [CanEditMultipleObjects]
     [CustomEditor(typeof(ScriptedImporter), editorForChildClasses: true)]

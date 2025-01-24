@@ -1,11 +1,11 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
+﻿using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEditor;
 using UnityEngine;
 
 [assembly: RegisterTriAttributeDrawer(typeof(LabelWidthDrawer), TriDrawerOrder.Decorator)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class LabelWidthDrawer : TriAttributeDrawer<LabelWidthAttribute>
     {

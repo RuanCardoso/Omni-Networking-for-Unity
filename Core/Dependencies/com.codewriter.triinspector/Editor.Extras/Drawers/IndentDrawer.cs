@@ -1,11 +1,11 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Utilities;
+﻿using Omni.Inspector.Utilities;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEngine;
 
 [assembly: RegisterTriAttributeDrawer(typeof(IndentDrawer), TriDrawerOrder.Decorator)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class IndentDrawer : TriAttributeDrawer<IndentAttribute>
     {

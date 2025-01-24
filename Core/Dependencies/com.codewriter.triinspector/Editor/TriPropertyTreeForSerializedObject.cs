@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using JetBrains.Annotations;
 using UnityEditor;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public sealed class TriPropertyTreeForSerializedObject : TriPropertyTree
     {

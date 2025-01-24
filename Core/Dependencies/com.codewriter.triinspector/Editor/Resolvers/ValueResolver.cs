@@ -1,6 +1,6 @@
 ﻿using JetBrains.Annotations;
 
-namespace TriInspector.Resolvers
+namespace Omni.Inspector.Resolvers
 {
     public static class ValueResolver
     {

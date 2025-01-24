@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using TriInspector.Resolvers;
+using Omni.Inspector.Resolvers;
 using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public class TriTabGroupElement : TriHeaderGroupBaseElement
     {

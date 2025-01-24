@@ -1,11 +1,11 @@
-﻿using TriInspector;
-using TriInspector.Validators;
+﻿using Omni.Inspector;
+using Omni.Inspector.Validators;
 using UnityEditor;
 using UnityEngine;
 
 [assembly: RegisterTriAttributeValidator(typeof(AssetsOnlyValidator))]
 
-namespace TriInspector.Validators
+namespace Omni.Inspector.Validators
 {
     public class AssetsOnlyValidator : TriAttributeValidator<AssetsOnlyAttribute>
     {

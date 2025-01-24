@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Linq;
+using Omni.Inspector.Utilities;
 using TriInspectorUnityInternalBridge;
-using TriInspector.Utilities;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public class TriListElement : TriElement
     {

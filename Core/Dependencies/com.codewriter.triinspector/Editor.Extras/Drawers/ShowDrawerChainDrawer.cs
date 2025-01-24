@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Elements;
+using Omni.Inspector.Elements;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 
 [assembly: RegisterTriAttributeDrawer(typeof(ShowDrawerChainDrawer), TriDrawerOrder.System)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class ShowDrawerChainDrawer : TriAttributeDrawer<ShowDrawerChainAttribute>
     {

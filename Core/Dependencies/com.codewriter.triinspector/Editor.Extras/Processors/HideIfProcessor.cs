@@ -1,10 +1,10 @@
-﻿using TriInspector;
-using TriInspector.Processors;
-using TriInspector.Resolvers;
+﻿using Omni.Inspector.Resolvers;
+using Omni.Inspector;
+using Omni.Inspector.Processors;
 
 [assembly: RegisterTriPropertyHideProcessor(typeof(HideIfProcessor))]
 
-namespace TriInspector.Processors
+namespace Omni.Inspector.Processors
 {
     public class HideIfProcessor : TriPropertyHideProcessor<HideIfAttribute>
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     [Flags]
     public enum InlineEditorModes

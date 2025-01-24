@@ -4,11 +4,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-using TriInspector.Resolvers;
-using TriInspector.Utilities;
+using Omni.Inspector.Resolvers;
+using Omni.Inspector.Utilities;
 using UnityEngine;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public class TriPropertyDefinition
     {

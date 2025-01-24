@@ -1,12 +1,12 @@
 ﻿using JetBrains.Annotations;
-using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Resolvers;
+using Omni.Inspector.Resolvers;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEngine;
 
 [assembly: RegisterTriAttributeDrawer(typeof(GUIColorDrawer), TriDrawerOrder.Decorator)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class GUIColorDrawer : TriAttributeDrawer<GUIColorAttribute>
     {

@@ -1,10 +1,10 @@
-﻿using TriInspector;
-using TriInspector.Elements;
-using TriInspector.GroupDrawers;
+﻿using Omni.Inspector.Elements;
+using Omni.Inspector;
+using Omni.Inspector.GroupDrawers;
 
 [assembly: RegisterTriGroupDrawer(typeof(TriVerticalGroupDrawer))]
 
-namespace TriInspector.GroupDrawers
+namespace Omni.Inspector.GroupDrawers
 {
     public class TriVerticalGroupDrawer : TriGroupDrawer<DeclareVerticalGroupAttribute>
     {

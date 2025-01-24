@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public class TriDropdownList<T> : List<TriDropdownItem<T>>
     {

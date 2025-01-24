@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Editors
+namespace Omni.Inspector.Editors
 {
     [CanEditMultipleObjects]
     [CustomEditor(typeof(MonoBehaviour), editorForChildClasses: true, isFallback = true)]

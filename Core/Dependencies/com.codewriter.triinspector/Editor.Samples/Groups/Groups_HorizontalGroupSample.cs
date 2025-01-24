@@ -1,4 +1,4 @@
-﻿using TriInspector;
+﻿using Omni.Inspector;
 using UnityEngine;
 
 [DeclareHorizontalGroup("vars")]

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using TriInspector;
-using TriInspector.TypeProcessors;
-using TriInspector.Utilities;
+using Omni.Inspector;
+using Omni.Inspector.TypeProcessors;
+using Omni.Inspector.Utilities;
 
 [assembly: RegisterTriTypeProcessor(typeof(TriSortPropertiesTypeProcessor), 10000)]
 
-namespace TriInspector.TypeProcessors
+namespace Omni.Inspector.TypeProcessors
 {
     public class TriSortPropertiesTypeProcessor : TriTypeProcessor
     {

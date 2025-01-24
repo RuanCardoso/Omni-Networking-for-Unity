@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public class TriDropdownElement : TriElement
     {

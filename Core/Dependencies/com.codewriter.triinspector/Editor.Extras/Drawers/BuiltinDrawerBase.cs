@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public abstract class BuiltinDrawerBase<T> : TriValueDrawer<T>
     {

@@ -1,10 +1,10 @@
-﻿using TriInspector;
-using TriInspector.Elements;
-using TriInspector.GroupDrawers;
+﻿using Omni.Inspector.Elements;
+using Omni.Inspector;
+using Omni.Inspector.GroupDrawers;
 
 [assembly: RegisterTriGroupDrawer(typeof(TriToggleGroupDrawer))]
 
-namespace TriInspector.GroupDrawers
+namespace Omni.Inspector.GroupDrawers
 {
     public class TriToggleGroupDrawer : TriGroupDrawer<DeclareToggleGroupAttribute>
     {

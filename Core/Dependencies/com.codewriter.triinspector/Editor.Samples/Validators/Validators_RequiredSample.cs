@@ -1,5 +1,5 @@
 ﻿using System.Linq;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 public class Validators_RequiredSample : ScriptableObject

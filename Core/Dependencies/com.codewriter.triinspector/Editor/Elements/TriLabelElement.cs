@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public class TriLabelElement : TriElement
     {

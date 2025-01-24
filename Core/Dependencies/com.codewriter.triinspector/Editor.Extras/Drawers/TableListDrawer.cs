@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Elements;
-using TriInspector.Utilities;
+using Omni.Inspector.Elements;
+using Omni.Inspector.Utilities;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using TriInspectorUnityInternalBridge;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
@@ -12,7 +12,7 @@ using UnityEngine;
 
 [assembly: RegisterTriAttributeDrawer(typeof(TableListDrawer), TriDrawerOrder.Drawer)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class TableListDrawer : TriAttributeDrawer<TableListAttribute>
     {

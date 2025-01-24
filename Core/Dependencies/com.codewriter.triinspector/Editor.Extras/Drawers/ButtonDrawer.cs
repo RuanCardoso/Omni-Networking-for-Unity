@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Reflection;
-using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Elements;
-using TriInspector.Resolvers;
-using TriInspector.Utilities;
+using Omni.Inspector.Elements;
+using Omni.Inspector.Resolvers;
+using Omni.Inspector.Utilities;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEditor;
 using UnityEngine;
 
 [assembly: RegisterTriAttributeDrawer(typeof(ButtonDrawer), TriDrawerOrder.Drawer)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class ButtonDrawer : TriAttributeDrawer<ButtonAttribute>
     {

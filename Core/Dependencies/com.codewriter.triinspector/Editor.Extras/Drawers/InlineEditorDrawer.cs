@@ -1,7 +1,7 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Elements;
-using TriInspector.Utilities;
+﻿using Omni.Inspector.Elements;
+using Omni.Inspector.Utilities;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -9,7 +9,7 @@ using Object = UnityEngine.Object;
 [assembly: RegisterTriAttributeDrawer(typeof(InlineEditorDrawer), TriDrawerOrder.Decorator,
     ApplyOnArrayElement = true)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class InlineEditorDrawer : TriAttributeDrawer<InlineEditorAttribute>
     {

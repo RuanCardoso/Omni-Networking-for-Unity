@@ -2,7 +2,7 @@
 using System.Reflection;
 using UnityEngine;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     public class TriUnityInspectorUtilities
     {

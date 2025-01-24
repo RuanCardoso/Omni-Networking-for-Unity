@@ -4,7 +4,7 @@ using System.Reflection;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     internal static class TriUnitySerializationUtilities
     {

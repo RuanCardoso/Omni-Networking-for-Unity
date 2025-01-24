@@ -1,5 +1,5 @@
 ﻿using System;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 [DeclareBoxGroup("box", HideTitle = true)]

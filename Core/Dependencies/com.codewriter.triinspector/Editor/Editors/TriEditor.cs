@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine.UIElements;
 
-namespace TriInspector.Editors
+namespace Omni.Inspector.Editors
 {
     public abstract class TriEditor : Editor
     {

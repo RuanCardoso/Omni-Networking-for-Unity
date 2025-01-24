@@ -1,10 +1,10 @@
-﻿using TriInspector;
-using TriInspector.Validators;
+﻿using Omni.Inspector;
+using Omni.Inspector.Validators;
 using UnityEditor;
 
 [assembly: RegisterTriAttributeValidator(typeof(SceneValidator), ApplyOnArrayElement = true)]
 
-namespace TriInspector.Validators
+namespace Omni.Inspector.Validators
 {
     public class SceneValidator : TriAttributeValidator<SceneAttribute>
     {

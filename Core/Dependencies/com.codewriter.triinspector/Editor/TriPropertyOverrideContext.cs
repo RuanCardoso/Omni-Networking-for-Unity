@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public abstract class TriPropertyOverrideContext
     {

@@ -1,8 +1,8 @@
 ﻿using System;
 using JetBrains.Annotations;
-using TriInspector.Elements;
+using Omni.Inspector.Elements;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public abstract class TriGroupDrawer
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Method |
                     AttributeTargets.Class | AttributeTargets.Struct)]

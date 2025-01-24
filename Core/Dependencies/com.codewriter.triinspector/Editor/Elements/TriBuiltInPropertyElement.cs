@@ -2,7 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     internal class TriBuiltInPropertyElement : TriElement
     {

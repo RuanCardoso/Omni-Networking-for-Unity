@@ -1,7 +1,7 @@
 ﻿using JetBrains.Annotations;
 using UnityEngine;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public abstract class TriValueDrawer : TriCustomDrawer
     {

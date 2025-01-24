@@ -1,11 +1,11 @@
-﻿using TriInspector;
-using TriInspector.Elements;
-using TriInspector.GroupDrawers;
+﻿using Omni.Inspector.Elements;
+using Omni.Inspector;
+using Omni.Inspector.GroupDrawers;
 using UnityEngine;
 
 [assembly: RegisterTriGroupDrawer(typeof(TriHorizontalGroupDrawer))]
 
-namespace TriInspector.GroupDrawers
+namespace Omni.Inspector.GroupDrawers
 {
     public class TriHorizontalGroupDrawer : TriGroupDrawer<DeclareHorizontalGroupAttribute>
     {

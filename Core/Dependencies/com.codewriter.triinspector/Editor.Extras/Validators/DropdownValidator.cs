@@ -1,10 +1,10 @@
-﻿using TriInspector;
-using TriInspector.Resolvers;
-using TriInspector.Validators;
+﻿using Omni.Inspector.Resolvers;
+using Omni.Inspector;
+using Omni.Inspector.Validators;
 
 [assembly: RegisterTriAttributeValidator(typeof(DropdownValidator<>))]
 
-namespace TriInspector.Validators
+namespace Omni.Inspector.Validators
 {
     public class DropdownValidator<T> : TriAttributeValidator<DropdownAttribute>
     {

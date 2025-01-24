@@ -1,7 +1,7 @@
 ﻿using System;
 using JetBrains.Annotations;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public abstract class TriPropertyExtension
     {

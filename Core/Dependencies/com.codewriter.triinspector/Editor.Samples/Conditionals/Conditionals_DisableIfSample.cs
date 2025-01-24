@@ -1,4 +1,4 @@
-﻿using TriInspector;
+﻿using Omni.Inspector;
 using UnityEngine;
 
 public class Conditionals_DisableIfSample : ScriptableObject

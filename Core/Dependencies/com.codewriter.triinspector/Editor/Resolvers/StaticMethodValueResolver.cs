@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Reflection;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 using UnityEngine;
 
-namespace TriInspector.Resolvers
+namespace Omni.Inspector.Resolvers
 {
     public class StaticMethodValueResolver<T> : ValueResolver<T>
     {

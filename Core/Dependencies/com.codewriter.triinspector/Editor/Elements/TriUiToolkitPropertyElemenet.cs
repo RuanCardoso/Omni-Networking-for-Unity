@@ -4,7 +4,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     internal class TriUiToolkitPropertyElement : TriElement
     {

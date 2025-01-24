@@ -1,10 +1,10 @@
 ﻿using System;
-using TriInspector.Elements;
+using Omni.Inspector.Elements;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Profiling;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public abstract class TriPropertyTree : IDisposable
     {

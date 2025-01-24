@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     public static class TriEditorGUI
     {

@@ -1,7 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Editor.Samples
+namespace Omni.Inspector.Editor.Samples
 {
     internal static class SampleWindowStyles
     {

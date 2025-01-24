@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     internal static class TriAttributeUtilities
     {

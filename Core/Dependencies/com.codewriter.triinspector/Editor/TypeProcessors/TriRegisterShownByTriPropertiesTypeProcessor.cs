@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using TriInspector;
-using TriInspector.TypeProcessors;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
+using Omni.Inspector;
+using Omni.Inspector.TypeProcessors;
 
 [assembly: RegisterTriTypeProcessor(typeof(TriRegisterShownByTriPropertiesTypeProcessor), 1)]
 
-namespace TriInspector.TypeProcessors
+namespace Omni.Inspector.TypeProcessors
 {
     public class TriRegisterShownByTriPropertiesTypeProcessor : TriTypeProcessor
     {

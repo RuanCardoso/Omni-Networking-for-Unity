@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public abstract class TriPropertyCollectionBaseElement : TriElement
     {

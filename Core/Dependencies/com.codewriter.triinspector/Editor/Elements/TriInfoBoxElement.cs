@@ -1,10 +1,10 @@
 ﻿using System;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 using TriInspectorUnityInternalBridge;
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public class TriInfoBoxElement : TriElement
     {

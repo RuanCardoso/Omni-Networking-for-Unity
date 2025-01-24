@@ -1,4 +1,4 @@
-﻿namespace TriInspector
+﻿namespace Omni.Inspector
 {
     public static class TriDrawerOrder
     {

@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     public static class TriEqualityComparer
     {

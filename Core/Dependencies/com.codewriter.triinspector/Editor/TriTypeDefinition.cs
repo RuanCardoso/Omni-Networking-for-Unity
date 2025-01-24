@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public class TriTypeDefinition
     {

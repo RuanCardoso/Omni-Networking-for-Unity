@@ -7,7 +7,7 @@ using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     internal static class TriManagedReferenceGui
     {

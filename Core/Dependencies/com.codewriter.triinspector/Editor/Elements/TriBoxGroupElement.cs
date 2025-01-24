@@ -1,11 +1,11 @@
 ﻿using System;
 using JetBrains.Annotations;
-using TriInspector.Resolvers;
-using TriInspector.Utilities;
+using Omni.Inspector.Resolvers;
+using Omni.Inspector.Utilities;
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector.Elements
+namespace Omni.Inspector.Elements
 {
     public class TriBoxGroupElement : TriHeaderGroupBaseElement
     {

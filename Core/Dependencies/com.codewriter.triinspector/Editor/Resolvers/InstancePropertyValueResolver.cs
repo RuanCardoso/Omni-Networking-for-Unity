@@ -2,7 +2,7 @@
 using System.Reflection;
 using UnityEngine;
 
-namespace TriInspector.Resolvers
+namespace Omni.Inspector.Resolvers
 {
     internal sealed class InstancePropertyValueResolver<T> : ValueResolver<T>
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
     [Conditional("UNITY_EDITOR")]

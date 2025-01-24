@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 
-namespace TriInspector.Utilities
+namespace Omni.Inspector.Utilities
 {
     internal static class TriReflectionUtilities
     {

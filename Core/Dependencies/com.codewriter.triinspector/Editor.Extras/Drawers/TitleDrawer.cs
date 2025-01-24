@@ -1,12 +1,12 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
-using TriInspector.Resolvers;
+﻿using Omni.Inspector.Resolvers;
+using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEditor;
 using UnityEngine;
 
 [assembly: RegisterTriAttributeDrawer(typeof(TitleDrawer), TriDrawerOrder.Inspector)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class TitleDrawer : TriAttributeDrawer<TitleAttribute>
     {

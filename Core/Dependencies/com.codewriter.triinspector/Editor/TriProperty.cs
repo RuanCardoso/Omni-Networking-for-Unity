@@ -5,11 +5,11 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public sealed class TriProperty
     {

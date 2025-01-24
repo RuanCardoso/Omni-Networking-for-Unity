@@ -1,11 +1,11 @@
-﻿using TriInspector;
-using TriInspector.Drawers;
+﻿using Omni.Inspector;
+using Omni.Inspector.Drawers;
 using UnityEditor;
 using UnityEngine;
 
 [assembly: RegisterTriValueDrawer(typeof(ObjectReferenceDrawer), TriDrawerOrder.Fallback)]
 
-namespace TriInspector.Drawers
+namespace Omni.Inspector.Drawers
 {
     public class ObjectReferenceDrawer : TriValueDrawer<Object>
     {

@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using TriInspector;
-using TriInspector.TypeProcessors;
+using Omni.Inspector;
+using Omni.Inspector.TypeProcessors;
 using UnityEngine;
 
 [assembly: RegisterTriTypeProcessor(typeof(TriRectOffsetTypeProcessor), 1)]
 
-namespace TriInspector.TypeProcessors
+namespace Omni.Inspector.TypeProcessors
 {
     public class TriRectOffsetTypeProcessor : TriTypeProcessor
     {

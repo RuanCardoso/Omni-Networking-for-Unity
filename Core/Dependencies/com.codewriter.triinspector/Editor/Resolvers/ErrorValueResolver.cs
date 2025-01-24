@@ -1,4 +1,4 @@
-﻿namespace TriInspector.Resolvers
+﻿namespace Omni.Inspector.Resolvers
 {
     internal class ErrorValueResolver<T> : ValueResolver<T>
     {

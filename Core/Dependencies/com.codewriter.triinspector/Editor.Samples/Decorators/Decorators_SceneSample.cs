@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 public class Decorators_SceneSample : ScriptableObject

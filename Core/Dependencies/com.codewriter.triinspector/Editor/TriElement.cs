@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
 
-namespace TriInspector
+namespace Omni.Inspector
 {
     public class TriElement
     {

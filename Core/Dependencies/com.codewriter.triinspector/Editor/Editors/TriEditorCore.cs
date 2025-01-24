@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
-using TriInspector.Utilities;
+using Omni.Inspector.Utilities;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace TriInspector.Editors
+namespace Omni.Inspector.Editors
 {
     public class TriEditorCore
     {

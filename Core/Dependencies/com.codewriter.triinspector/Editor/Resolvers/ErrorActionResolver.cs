@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace TriInspector.Resolvers
+namespace Omni.Inspector.Resolvers
 {
     internal sealed class ErrorActionResolver : ActionResolver
     {

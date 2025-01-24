@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 public class Collections_ListDrawerSettingsSample : ScriptableObject
