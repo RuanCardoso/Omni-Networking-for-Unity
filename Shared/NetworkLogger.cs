@@ -134,6 +134,7 @@ namespace Omni.Shared
             }
             catch
             {
+                Log("Error writing to log file. Maybe the file is in use? or multiple threads are logging at the same time.", false, LogType.Error);
                 // Ignored -> IOException: Sharing violation
             }
         }
