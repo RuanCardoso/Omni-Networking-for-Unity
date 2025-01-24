@@ -47,7 +47,7 @@
 using System;
 using System.Threading;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   internal class HttpListenerAsyncResult : IAsyncResult
   {

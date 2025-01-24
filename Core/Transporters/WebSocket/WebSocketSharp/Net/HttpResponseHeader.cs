@@ -37,7 +37,7 @@
  */
 #endregion
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   /// <summary>
   /// Indicates the HTTP header that can be specified in a server response.

@@ -40,9 +40,9 @@
 using System;
 using System.Security.Principal;
 using System.Text;
-using WebSocketSharp.Net.WebSockets;
+using Omni.Core.Web.Net.WebSockets;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   /// <summary>
   /// Provides the access to the HTTP request and response objects used by

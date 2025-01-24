@@ -28,7 +28,7 @@
 
 using System;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   internal class HttpHeaderInfo
   {

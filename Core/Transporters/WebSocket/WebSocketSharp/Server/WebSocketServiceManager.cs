@@ -30,7 +30,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace WebSocketSharp.Server
+namespace Omni.Core.Web.Server
 {
   /// <summary>
   /// Provides the management function for the WebSocket services.

@@ -50,10 +50,10 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
-using WebSocketSharp.Net;
-using WebSocketSharp.Net.WebSockets;
+using Omni.Core.Web.Net;
+using Omni.Core.Web.Net.WebSockets;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   /// <summary>
   /// Implements the WebSocket interface.

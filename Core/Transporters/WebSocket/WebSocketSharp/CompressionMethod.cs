@@ -28,7 +28,7 @@
 
 using System;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   /// <summary>
   /// Specifies the method for compression.

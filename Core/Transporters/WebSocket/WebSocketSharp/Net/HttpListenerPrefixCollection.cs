@@ -41,7 +41,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   /// <summary>
   /// Provides a collection used to store the URI prefixes for a instance of

@@ -36,7 +36,7 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   internal class AuthenticationResponse
   {

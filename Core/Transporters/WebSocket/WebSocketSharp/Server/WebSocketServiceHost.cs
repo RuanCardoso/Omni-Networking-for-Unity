@@ -34,9 +34,9 @@
 #endregion
 
 using System;
-using WebSocketSharp.Net.WebSockets;
+using Omni.Core.Web.Net.WebSockets;
 
-namespace WebSocketSharp.Server
+namespace Omni.Core.Web.Server
 {
   /// <summary>
   /// Exposes the methods and properties used to access the information in

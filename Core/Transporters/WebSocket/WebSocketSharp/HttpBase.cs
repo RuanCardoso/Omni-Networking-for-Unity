@@ -33,9 +33,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using WebSocketSharp.Net;
+using Omni.Core.Web.Net;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   internal abstract class HttpBase
   {

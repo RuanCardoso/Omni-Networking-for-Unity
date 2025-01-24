@@ -28,7 +28,7 @@
 
 using System;
 
-namespace WebSocketSharp.Server
+namespace Omni.Core.Web.Server
 {
   internal class WebSocketServiceHost<TBehavior> : WebSocketServiceHost
     where TBehavior : WebSocketBehavior, new ()

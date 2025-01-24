@@ -53,11 +53,11 @@ using System.IO.Compression;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using WebSocketSharp.Net;
-using WebSocketSharp.Net.WebSockets;
-using WebSocketSharp.Server;
+using Omni.Core.Web.Net;
+using Omni.Core.Web.Net.WebSockets;
+using Omni.Core.Web.Server;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   /// <summary>
   /// Provides a set of static methods for websocket-sharp.

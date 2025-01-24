@@ -28,7 +28,7 @@
 
 using System;
 
-namespace WebSocketSharp.Server
+namespace Omni.Core.Web.Server
 {
   internal enum ServerState
   {

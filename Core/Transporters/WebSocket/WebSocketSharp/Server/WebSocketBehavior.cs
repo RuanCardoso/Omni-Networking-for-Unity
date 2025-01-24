@@ -30,10 +30,10 @@ using System;
 using System.Collections.Specialized;
 using System.IO;
 using System.Security.Principal;
-using WebSocketSharp.Net;
-using WebSocketSharp.Net.WebSockets;
+using Omni.Core.Web.Net;
+using Omni.Core.Web.Net.WebSockets;
 
-namespace WebSocketSharp.Server
+namespace Omni.Core.Web.Server
 {
   /// <summary>
   /// Exposes a set of methods and properties used to define the behavior of
@@ -1436,7 +1436,7 @@ namespace WebSocketSharp.Server
     /// </summary>
     /// <value>
     ///   <para>
-    ///   A <see cref="WebSocketSharp.WebSocket"/> that represents
+    ///   A <see cref="Web"/> that represents
     ///   the WebSocket interface.
     ///   </para>
     ///   <para>

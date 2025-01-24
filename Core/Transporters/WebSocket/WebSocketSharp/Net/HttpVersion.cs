@@ -38,7 +38,7 @@
 
 using System;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   /// <summary>
   /// Provides the HTTP version numbers.

@@ -30,7 +30,7 @@ using System;
 using System.Diagnostics;
 using System.Text;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   /// <summary>
   /// Represents a log data used by the <see cref="Logger"/> class.

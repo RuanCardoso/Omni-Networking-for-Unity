@@ -37,9 +37,9 @@ using System;
 using System.Collections.Specialized;
 using System.IO;
 using System.Text;
-using WebSocketSharp.Net;
+using Omni.Core.Web.Net;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   internal class HttpRequest : HttpBase
   {

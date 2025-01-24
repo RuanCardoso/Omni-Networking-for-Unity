@@ -49,7 +49,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   internal sealed class EndPointManager
   {

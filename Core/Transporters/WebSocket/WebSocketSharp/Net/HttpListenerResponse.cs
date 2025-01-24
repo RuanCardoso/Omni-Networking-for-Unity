@@ -50,7 +50,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   /// <summary>
   /// Represents an HTTP response to an HTTP request received by

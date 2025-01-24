@@ -30,7 +30,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   internal class PayloadData : IEnumerable<byte>
   {

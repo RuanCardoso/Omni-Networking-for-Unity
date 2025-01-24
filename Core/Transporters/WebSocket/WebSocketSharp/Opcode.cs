@@ -28,7 +28,7 @@
 
 using System;
 
-namespace WebSocketSharp
+namespace Omni.Core.Web
 {
   /// <summary>
   /// Indicates the WebSocket frame type.

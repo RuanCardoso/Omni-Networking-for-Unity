@@ -45,7 +45,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace WebSocketSharp.Net
+namespace Omni.Core.Web.Net
 {
   /// <summary>
   /// Provides a collection of instances of the <see cref="Cookie"/> class.
