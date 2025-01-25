@@ -1,6 +1,6 @@
 using System;
 using System.ComponentModel;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 #pragma warning disable
@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Omni.Core
 {
     [DeclareFoldoutGroup("Network Variables", Expanded = true, Title = "Network Variables - (Auto Synced)")]
-    [DeclareBoxGroup("Service Settings")]
+    [DeclareFoldoutGroup("Service Settings")]
     [StackTrace]
     public class NetworkEventBase : NetworkVariablesBehaviour
     {
