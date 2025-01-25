@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 namespace Omni.Core.Modules.Connection

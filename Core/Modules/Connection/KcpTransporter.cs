@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 //// EXPERIMENTAL
