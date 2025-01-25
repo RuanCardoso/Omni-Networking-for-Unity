@@ -1,6 +1,6 @@
 using Omni.Shared;
 using System;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 namespace Omni.Core.Components

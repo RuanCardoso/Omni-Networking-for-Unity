@@ -1,5 +1,5 @@
 using UnityEngine;
-using TriInspector;
+using Omni.Inspector;
 using Omni.Threading.Tasks;
 
 #if UNITY_EDITOR
@@ -64,7 +64,10 @@ namespace Omni.Core
                         {
                             NetworkManager.StopClient();
                             await UniTask.WaitForSeconds(0.5f);
-                            NetworkManager.StopServer();
+                            if (NetworkManager.IsServerActive)
+                            {
+                                NetworkManager.StopServer();
+                            }
                         });
                     }
                 }

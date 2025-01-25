@@ -1,5 +1,5 @@
 using Omni.Core;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 [DisallowMultipleComponent]
