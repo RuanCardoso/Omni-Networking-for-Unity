@@ -150,19 +150,29 @@ namespace Omni.Core
             SyncSharedData(key);
         }
 
-        public void ClearGroups()
+        /// <summary>
+        /// Clears all network groups associated with this peer.
+        /// </summary>
+        public void ClearAllGroups()
         {
             EnsureServerActive();
             _groups.Clear();
         }
 
-        public void ClearData()
+        /// <summary>
+        /// Clears the data collections associated with this group. This includes
+        /// the <see cref="Data"/> and <see cref="SharedData"/> collections.
+        /// </summary>
+        public void ResetDataCollections()
         {
             EnsureServerActive();
             Data.Clear();
             SharedData.Clear();
         }
 
+        /// <summary>
+        /// Disconnects the current network peer from the server.
+        /// </summary>
         public void Disconnect()
         {
             EnsureServerActive();
@@ -224,7 +234,11 @@ namespace Omni.Core
             }
         }
 
-        public void DeleteCache(DataCache dataCache)
+        /// <summary>
+        /// Removes a cache from the peer based on the provided data cache.
+        /// </summary>
+        /// <param name="dataCache">The data cache to remove.</param>
+        public void RemoveCache(DataCache dataCache)
         {
             EnsureServerActive();
             switch (dataCache.Mode)
@@ -246,7 +260,7 @@ namespace Omni.Core
             }
         }
 
-        public void DestroyAllCaches()
+        internal void Internal_RemoveAllCaches()
         {
             EnsureServerActive();
             AppendCaches.RemoveAll(x => x.AutoDestroyCache);
@@ -264,7 +278,10 @@ namespace Omni.Core
             }
         }
 
-        public void ClearCaches()
+        /// <summary>
+        /// Resets the cache collections for the current network peer, clearing both the append and overwrite caches.
+        /// </summary>
+        public void ResetCacheCollections()
         {
             EnsureServerActive();
             AppendCaches.Clear();
@@ -280,22 +297,61 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Converts the <see cref="NetworkPeer"/> instance to its equivalent string representation.
+        /// </summary>
+        /// <returns>A string that represents the value of this instance.</returns>
         public override string ToString()
         {
-            return $"Peer Id: {Id} - Peer EndPoint: {EndPoint}";
+            object peer = new
+            {
+                Id,
+                EndPoint = __endpoint__,
+                MainGroup = MainGroup?.Name,
+                Data,
+                SharedData,
+            };
+
+            return NetworkManager.ToJson(peer);
         }
 
+        /// <summary>
+        /// Determines whether the specified <see cref="object"/> is equal to the current <see cref="NetworkPeer"/>.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current <see cref="NetworkPeer"/>.</param>
+        /// <returns>
+        /// <c>true</c> if the specified <see cref="object"/> is equal to the current <see cref="NetworkPeer"/>;
+        /// otherwise, <c>false</c>.
+        /// </returns>
+        /// <remarks>
+        /// This method is used to compare the current instance with another object.
+        /// </remarks>
         public override bool Equals(object obj)
         {
             NetworkPeer other = (NetworkPeer)obj;
             return other != null && Id == other.Id;
         }
 
+        /// <summary>
+        /// Serves as the default hash function.
+        /// </summary>
+        /// <returns>A hash code for the current <see cref="NetworkPeer"/>.</returns>
+        /// <remarks>
+        /// This method is used to generate a hash code of the current <see cref="NetworkPeer"/> instance.
+        /// </remarks>
         public override int GetHashCode()
         {
             return Id.GetHashCode();
         }
 
+        /// <summary>
+        /// Determines whether the specified <see cref="NetworkPeer"/> is equal to the current <see cref="NetworkPeer"/>.
+        /// </summary>
+        /// <param name="other">The object to compare with the current <see cref="NetworkPeer"/>.</param>
+        /// <returns>
+        /// <c>true</c> if the specified <see cref="NetworkPeer"/> is equal to the current <see cref="NetworkPeer"/>;
+        /// otherwise, <c>false</c>.
+        /// </returns>
         public bool Equals(NetworkPeer other)
         {
             return other != null && Id == other.Id;
