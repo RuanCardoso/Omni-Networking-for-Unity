@@ -2,17 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace Omni.Core.Components
 {
-    [DefaultExecutionOrder(-2800)] // It must be the last thing to happen, user scripts must take priority.
+    [DefaultExecutionOrder(-2800)] // It should be the last thing to happen, user scripts should take priority.
     public sealed class NetworkIdentitySpawner : ServerBehaviour
     {
         [SerializeField] private NetworkIdentity m_LocalPlayer;
-
-        [FormerlySerializedAs("m_ObjectsToSpawn")] [SerializeField]
-        private List<NetworkIdentity> m_IdentitiesToSpawn;
+        [SerializeField] private List<NetworkIdentity> m_IdentitiesToSpawn;
 
         private readonly DataCache m_InstantiateCache = new(CachePresets.ServerNew);
 

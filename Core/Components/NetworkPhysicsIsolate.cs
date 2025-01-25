@@ -6,7 +6,7 @@ using Omni.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 using static Omni.Core.NetworkManager;
 
