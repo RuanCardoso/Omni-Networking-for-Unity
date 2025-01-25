@@ -1,7 +1,7 @@
 using Omni.Core.Interfaces;
 using System;
 using System.Collections.Generic;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
@@ -42,7 +42,8 @@ namespace Omni.Core
         public static NetworkIdentity LocalPlayer { get; internal set; }
 
         /// <summary>
-        /// Owner of this object. Only available on server, returns <c>NetworkManager.LocalPeer</c> on client.
+        /// The owner of this object, available on both server and client side. 
+        /// On the client side, only a few properties are accessible, such as <c>SharedData</c>.
         /// </summary>
         public NetworkPeer Owner { get; internal set; }
 
@@ -474,16 +475,16 @@ namespace Omni.Core
         /// Automatic destroys a network identity on the client.
         /// </summary>
         /// <returns>The instantiated network identity.</returns>
-        public void Destroy(ServerOptions options)
+        public void Despawn(ServerOptions options)
         {
-            Destroy(options.Target, options.DeliveryMode, options.GroupId, options.DataCache, options.SequenceChannel);
+            Despawn(options.Target, options.DeliveryMode, options.GroupId, options.DataCache, options.SequenceChannel);
         }
 
         /// <summary>
         /// Automatic destroys a network identity on the client and server for a specific peer.
         /// </summary>
         /// <returns>The instantiated network identity.</returns>
-        public void DestroyByPeer(NetworkPeer peer, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+        public void DespawnToPeer(NetworkPeer peer, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             DataCache dataCache = default, byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
@@ -512,7 +513,7 @@ namespace Omni.Core
         /// Automatic destroys a network identity on the client and server.
         /// </summary>
         /// <returns>The instantiated network identity.</returns>
-        public void Destroy(Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+        public void Despawn(Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0, DataCache dataCache = default, byte sequenceChannel = 0)
         {
             dataCache ??= DataCache.None;
