@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using TriInspector;
+using Omni.Inspector;
 
 namespace Omni.Core
 {
