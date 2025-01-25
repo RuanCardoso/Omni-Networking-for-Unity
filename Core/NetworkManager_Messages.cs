@@ -204,6 +204,18 @@ namespace Omni.Core
                 SendMessage(MessageType.Spawn, message, DeliveryMode.ReliableOrdered, 0);
                 OnClientIdentitySpawned?.Invoke(identity);
             }
+
+            internal static NetworkPeer GetOrCreatePeer(int peerId)
+            {
+                if (Peers.TryGetValue(peerId, out NetworkPeer peer))
+                {
+                    return peer;
+                }
+
+                peer = new NetworkPeer(new IPEndPoint(IPAddress.None, 0), peerId, false);
+                Peers.Add(peerId, peer);
+                return peer;
+            }
         }
 
         public static class ServerSide
@@ -538,7 +550,7 @@ namespace Omni.Core
 
                         // Dereferencing to allow for GC(Garbage Collector).
                         // All resources should be released at this point.
-                        group.DestroyAllCaches(peer);
+                        group.Internal_RemoveAllCachesFrom(peer);
                         if (group.DestroyWhenEmpty)
                         {
                             DestroyGroup(group);
@@ -584,9 +596,9 @@ namespace Omni.Core
                     }
 
                     // Dereferencing to allow for GC(Garbage Collector).
-                    group.ClearPeers();
-                    group.ClearData();
-                    group.ClearCaches();
+                    group.ClearAllPeers();
+                    group.ResetDataCollections();
+                    group.ResetCacheCollections();
                 }
             }
 
