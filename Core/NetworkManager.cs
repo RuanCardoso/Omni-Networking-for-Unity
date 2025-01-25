@@ -21,9 +21,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using Omni.Core.Web;
 using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -387,6 +389,13 @@ namespace Omni.Core
                 return;
             }
 
+            // Http Server
+            if (m_EnableHttpServer)
+            {
+                var webServer = gameObject.AddComponent<HttpRouteManager>();
+                webServer.StartServices(m_EnableHttpSsl, m_HttpServerPort);
+            }
+
             Pool = new DataBufferPool(m_PoolCapacity, m_PoolSize);
             BufferWriterExtensions.UseBinarySerialization = m_UseBinarySerialization;
             BufferWriterExtensions.EnableBandwidthOptimization = m_EnableBandwidthOptimization;
@@ -412,7 +421,7 @@ namespace Omni.Core
                 Application.targetFrameRate = -1;
             }
 #endif
-            AotHelper.EnsureDictionary<string, object>();
+            AotHelper.EnsureDictionary<string, object>(); // Add IL2CPP Support to Dictionary for AOT
             MainThreadId = Thread.CurrentThread.ManagedThreadId;
             DisableAutoStartIfHasHud();
 
@@ -439,7 +448,8 @@ namespace Omni.Core
             // This module should be initialized last, as it needs the other modules to be initialized.
             if (m_ConnectionModule)
             {
-                SimpleRoutes.Initialize();
+                TransporterRouteManager transporterRouteManager = new();
+                transporterRouteManager.Initialize();
                 InitializeModule(Module.Connection);
             }
 
@@ -544,135 +554,142 @@ namespace Omni.Core
             switch (module)
             {
                 case Module.TickSystem:
-                {
-                    if (_tickSystem == null)
                     {
-                        TickSystem = new NetworkTickSystem();
-                        TickSystem.Initialize(Manager.m_TickRate);
+                        if (_tickSystem == null)
+                        {
+                            TickSystem = new NetworkTickSystem();
+                            TickSystem.Initialize(Manager.m_TickRate);
+                        }
                     }
-                }
                     break;
                 case Module.NtpClock:
-                {
-                    NetworkClock nClock = Manager.GetComponent<NetworkClock>();
-                    if (nClock != null)
                     {
-                        Manager.m_QueryInterval = nClock.QueryInterval;
-                        UseTickTiming = nClock.UseTickTiming;
-                    }
+                        NetworkClock nClock = Manager.GetComponent<NetworkClock>();
+                        if (nClock != null)
+                        {
+                            Manager.m_QueryInterval = nClock.QueryInterval;
+                            UseTickTiming = nClock.UseTickTiming;
+                        }
 
-                    Sntp = new SimpleNtp();
-                    Sntp.Initialize(nClock);
-                }
+                        Sntp = new SimpleNtp();
+                        Sntp.Initialize(nClock);
+                    }
                     break;
                 case Module.Console:
-                {
-                    Console = new NetworkConsole();
-                    Console.Initialize();
-                }
+                    {
+                        Console = new NetworkConsole();
+                        Console.Initialize();
+                    }
                     break;
                 case Module.Connection:
-                {
-                    if (!Manager.TryGetComponent<TransporterBehaviour>(out var currentTransporter))
                     {
-                        throw new NullReferenceException(
-                            "Transporter component is missing in NetworkManager. Please add and configure a transporter component to ensure proper functioning of the network system."
+                        if (!Manager.TryGetComponent<TransporterBehaviour>(out var currentTransporter))
+                        {
+                            throw new NullReferenceException(
+                                "Transporter component is missing in NetworkManager. Please add and configure a transporter component to ensure proper functioning of the network system."
+                            );
+                        }
+
+                        GameObject clientTransporter = new("Client Transporter");
+                        GameObject serverTransporter = new("Server Transporter");
+
+                        clientTransporter.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+                        serverTransporter.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+
+                        clientTransporter.transform.parent = Manager.transform;
+                        serverTransporter.transform.parent = Manager.transform;
+
+                        Manager.m_ClientTransporter =
+                            clientTransporter.AddComponent(currentTransporter.GetType()) as TransporterBehaviour;
+
+                        Manager.m_ServerTransporter =
+                            serverTransporter.AddComponent(currentTransporter.GetType()) as TransporterBehaviour;
+
+                        if (Manager.m_ClientTransporter == null || Manager.m_ServerTransporter == null)
+                        {
+                            throw new NullReferenceException(
+                                "Transporter component is missing in NetworkManager. Please add and configure a transporter component to ensure proper functioning of the network system."
+                            );
+                        }
+
+                        currentTransporter.ITransporter.CopyTo(Manager.m_ClientTransporter.ITransporter);
+                        currentTransporter.ITransporter.CopyTo(Manager.m_ServerTransporter.ITransporter);
+
+                        // Don't destroy the manager!
+                        DontDestroyOnLoad(Manager);
+
+                        Connection = new NetworkConnection();
+                        Connection.Server.StartTransporter(
+                            Manager.m_ServerTransporter.ITransporter,
+                            Manager
                         );
-                    }
 
-                    GameObject clientTransporter = new("Client Transporter");
-                    GameObject serverTransporter = new("Server Transporter");
-
-                    clientTransporter.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
-                    serverTransporter.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
-
-                    clientTransporter.transform.parent = Manager.transform;
-                    serverTransporter.transform.parent = Manager.transform;
-
-                    clientTransporter.AddComponent(currentTransporter.GetType());
-                    serverTransporter.AddComponent(currentTransporter.GetType());
-
-                    Manager.m_ClientTransporter = clientTransporter.GetComponent<TransporterBehaviour>();
-                    Manager.m_ServerTransporter = serverTransporter.GetComponent<TransporterBehaviour>();
-
-                    currentTransporter.ITransporter.CopyTo(Manager.m_ClientTransporter.ITransporter);
-                    currentTransporter.ITransporter.CopyTo(Manager.m_ServerTransporter.ITransporter);
-
-                    // Don't destroy the manager!
-                    DontDestroyOnLoad(Manager);
-
-                    Connection = new NetworkConnection();
-                    Connection.Server.StartTransporter(
-                        Manager.m_ServerTransporter.ITransporter,
-                        Manager
-                    );
-
-                    Connection.Client.StartTransporter(
-                        Manager.m_ClientTransporter.ITransporter,
-                        Manager
-                    );
+                        Connection.Client.StartTransporter(
+                            Manager.m_ClientTransporter.ITransporter,
+                            Manager
+                        );
 
 #if OMNI_RELEASE || (UNITY_SERVER && !UNITY_EDITOR)
 						Manager.m_AutoStartServer = true;
 						Manager.m_AutoStartClient = true;
 #else
-                    if (Manager.m_AutoStartServer)
-                    {
-                        if (
-                            ConnectAddress.ToLower() != "localhost"
-                            && ConnectAddress.ToLower() != "::1" // IPv6 localhost
-                            && ConnectAddress != "127.0.0.1" // IPv4 localhost
-                            && ConnectAddress != Manager.PublicIPv4
-                            && ConnectAddress != Manager.PublicIPv6
-                        )
+                        if (Manager.m_AutoStartServer)
                         {
-                            bool isMe = false;
-                            if (!IPAddress.TryParse(ConnectAddress, out _))
+                            if (
+                                ConnectAddress.ToLower() != "localhost"
+                                && ConnectAddress.ToLower() != "::1" // IPv6 localhost
+                                && ConnectAddress != "127.0.0.1" // IPv4 localhost
+                                && ConnectAddress != Manager.PublicIPv4
+                                && ConnectAddress != Manager.PublicIPv6
+                            )
                             {
-                                IPAddress[] addresses = Dns.GetHostAddresses(ConnectAddress);
-                                isMe = addresses.Any(x =>
-                                    x.ToString() == Manager.PublicIPv4 || x.ToString() == Manager.PublicIPv6);
-                            }
+                                bool isMe = false;
+                                if (!IPAddress.TryParse(ConnectAddress, out _))
+                                {
+                                    IPAddress[] addresses = Dns.GetHostAddresses(ConnectAddress);
+                                    isMe = addresses.Any(x =>
+                                        x.ToString() == Manager.PublicIPv4 || x.ToString() == Manager.PublicIPv6);
+                                }
 
-                            if (!isMe)
-                            {
-                                Manager.m_AutoStartServer = false;
-                                NetworkLogger.__Log__(
-                                    "Server auto-start has been disabled because the provided client address is not a recognized localhost or matches the server's public IPv4/IPv6 address. "
-                                    + "Starting a server in this scenario is not practical, as the client will be unable to connect. You can start the server manually if required.",
-                                    NetworkLogger.LogType.Warning
-                                );
+                                if (!isMe)
+                                {
+                                    Manager.m_AutoStartServer = false;
+                                    NetworkLogger.__Log__(
+                                        "Server auto-start has been disabled because the provided client address is not a recognized localhost or matches the server's public IPv4/IPv6 address. "
+                                        + "Starting a server in this scenario is not practical, as the client will be unable to connect. You can start the server manually if required.",
+                                        NetworkLogger.LogType.Warning
+                                    );
+                                }
                             }
                         }
-                    }
 #endif
 
-                    if (Manager.m_AutoStartServer)
-                    {
-                        bool isClone = false;
+                        if (Manager.m_AutoStartServer)
+                        {
+                            bool isClone = false;
 #if UNITY_EDITOR
-                        if (ClonesManager.IsClone())
-                        {
-                            isClone = true;
-                        }
+                            if (ClonesManager.IsClone())
+                            {
+                                isClone = true;
+                            }
 #endif
-                        if (!isClone)
+                            if (!isClone)
+                            {
+                                StartServer();
+                            }
+                        }
+
+                        if (Manager.m_AutoStartClient)
                         {
-                            StartServer();
+                            Connect();
                         }
                     }
-
-                    if (Manager.m_AutoStartClient)
-                    {
-                        Connect();
-                    }
-                }
                     break;
                 case Module.Matchmaking:
-                {
-                    Matchmaking = new NetworkMatchmaking();
-                    Matchmaking.Initialize();
-                }
+                    {
+                        Matchmaking = new NetworkMatchmaking();
+                        Matchmaking.Initialize();
+                    }
                     break;
             }
         }
@@ -734,6 +751,49 @@ namespace Omni.Core
             }
         }
 
+        internal static void ClearServerState()
+        {
+            // Clear peers references
+            PeersByIp.Clear();
+            PeersById.Clear();
+
+            // Clear group references
+            GroupsById.Clear();
+            ServerSide.Groups.Clear();
+
+            // Clear RPC references
+            ServerSide.GlobalRpcHandlers.Clear();
+            ServerSide.LocalRpcHandlers.Clear();
+
+            // Clear other references
+            ServerSide.Identities.Clear();
+            ServerSide.Peers.Clear();
+            ServerSide.ClearCaches();
+        }
+
+        internal static void ClearClientState()
+        {
+            // Destroy all identities from the client
+            foreach (var (id, identity) in Enumerable.ToList(ClientSide.Identities))
+            {
+                if (identity != null)
+                {
+                    NetworkHelper.Destroy(id, false);
+                }
+            }
+
+            // Clear group references
+            ClientSide.Groups.Clear();
+
+            // Clear RPC references
+            ClientSide.GlobalRpcHandlers.Clear();
+            ClientSide.LocalRpcHandlers.Clear();
+
+            // Clear other references
+            ClientSide.Identities.Clear();
+            ClientSide.Peers.Clear();
+        }
+
         /// <summary>
         /// Stops the server if it is currently active.
         /// </summary>
@@ -745,6 +805,8 @@ namespace Omni.Core
         {
             if (IsServerActive)
             {
+                ClearServerState();
+                // Stop server: Shutdown and release all server resources.
                 Connection.Server.Stop();
                 IsServerActive = false;
             }
@@ -810,6 +872,7 @@ namespace Omni.Core
         {
             if (IsClientActive)
             {
+                ClearClientState();
                 Connection.Client.Disconnect(LocalPeer);
                 IsClientActive = false;
             }
@@ -830,6 +893,7 @@ namespace Omni.Core
         {
             if (IsClientActive)
             {
+                ClearClientState();
                 Connection.Client.Stop();
                 IsClientActive = false;
             }
@@ -931,76 +995,76 @@ namespace Omni.Core
                                 break;
                             case CacheMode.Group | CacheMode.New:
                             case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
-                            {
-                                if (_group != null)
                                 {
-                                    _group.AppendCaches.Add(GetCache(message));
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Cache Error: Group not found. Ensure the group exists and the group id '{groupId}' is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
-
-                                break;
-                            }
-                            case CacheMode.Global | CacheMode.Overwrite:
-                            case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                NetworkCache newCache = GetCache(message);
-                                if (ServerSide.OverwriteCachesGlobal.ContainsKey(dataCache.Id))
-                                {
-                                    ServerSide.OverwriteCachesGlobal[dataCache.Id] = newCache;
-                                }
-                                else
-                                {
-                                    ServerSide.OverwriteCachesGlobal.Add(dataCache.Id, newCache);
-                                }
-
-                                break;
-                            }
-                            case CacheMode.Group | CacheMode.Overwrite:
-                            case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                if (_group != null)
-                                {
-                                    NetworkCache newCache = GetCache(message);
-                                    if (_group.OverwriteCaches.ContainsKey(dataCache.Id))
+                                    if (_group != null)
                                     {
-                                        _group.OverwriteCaches[dataCache.Id] = newCache;
+                                        _group.AppendCaches.Add(GetCache(message));
                                     }
                                     else
                                     {
-                                        _group.OverwriteCaches.Add(dataCache.Id, newCache);
+                                        NetworkLogger.__Log__(
+                                            $"Cache Error: Group not found. Ensure the group exists and the group id '{groupId}' is correct.",
+                                            NetworkLogger.LogType.Error
+                                        );
                                     }
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        "Cache Error: Group not found. Verify that the group exists and the group id is correct. If the issue persists, ensure that the group was properly initialized before accessing it.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
 
-                                break;
-                            }
+                                    break;
+                                }
+                            case CacheMode.Global | CacheMode.Overwrite:
+                            case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                                {
+                                    NetworkCache newCache = GetCache(message);
+                                    if (ServerSide.OverwriteCachesGlobal.ContainsKey(dataCache.Id))
+                                    {
+                                        ServerSide.OverwriteCachesGlobal[dataCache.Id] = newCache;
+                                    }
+                                    else
+                                    {
+                                        ServerSide.OverwriteCachesGlobal.Add(dataCache.Id, newCache);
+                                    }
+
+                                    break;
+                                }
+                            case CacheMode.Group | CacheMode.Overwrite:
+                            case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                                {
+                                    if (_group != null)
+                                    {
+                                        NetworkCache newCache = GetCache(message);
+                                        if (_group.OverwriteCaches.ContainsKey(dataCache.Id))
+                                        {
+                                            _group.OverwriteCaches[dataCache.Id] = newCache;
+                                        }
+                                        else
+                                        {
+                                            _group.OverwriteCaches.Add(dataCache.Id, newCache);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            "Cache Error: Group not found. Verify that the group exists and the group id is correct. If the issue persists, ensure that the group was properly initialized before accessing it.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
+
+                                    break;
+                                }
                             case CacheMode.Peer | CacheMode.Overwrite:
                             case CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                NetworkCache newCache = GetCache(message);
-                                if (sender.OverwriteCaches.ContainsKey(dataCache.Id))
                                 {
-                                    sender.OverwriteCaches[dataCache.Id] = newCache;
-                                }
-                                else
-                                {
-                                    sender.OverwriteCaches.Add(dataCache.Id, newCache);
-                                }
+                                    NetworkCache newCache = GetCache(message);
+                                    if (sender.OverwriteCaches.ContainsKey(dataCache.Id))
+                                    {
+                                        sender.OverwriteCaches[dataCache.Id] = newCache;
+                                    }
+                                    else
+                                    {
+                                        sender.OverwriteCaches.Add(dataCache.Id, newCache);
+                                    }
 
-                                break;
-                            }
+                                    break;
+                                }
                             case CacheMode.Peer | CacheMode.New:
                             case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
                                 sender.AppendCaches.Add(GetCache(message));
@@ -1103,79 +1167,19 @@ namespace Omni.Core
                 {
                     case Target.UngroupedPlayers:
                     case Target.UngroupedPlayersExceptSelf:
-                    {
-                        if (groupId != 0 && !cacheIsEnabled)
                         {
-                            NetworkLogger.__Log__(
-                                "Send: Target.UngroupedPlayers cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
-                                NetworkLogger.LogType.Error
-                            );
-
-                            return;
-                        }
-
-                        var peers = peersById.Values.Where(p => p._groups.Count == 0);
-                        foreach (var peer in peers)
-                        {
-                            if (!peer.IsAuthenticated)
+                            if (groupId != 0 && !cacheIsEnabled)
                             {
                                 NetworkLogger.__Log__(
-                                    "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
-                                    NetworkLogger.LogType.Warning
+                                    "Send: Target.UngroupedPlayers cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
+                                    NetworkLogger.LogType.Error
                                 );
 
-                                continue;
+                                return;
                             }
 
-                            if (peer.Id == ServerSide.ServerPeer.Id)
-                                continue;
-
-                            if (peer.Equals(sender) && target == Target.UngroupedPlayersExceptSelf)
-                                continue;
-
-                            Send(message, peer);
-                        }
-                    }
-                        break;
-                    case Target.GroupExceptSelf:
-                    case Target.GroupOnly:
-                    {
-                        if (groupId != 0 && !cacheIsEnabled)
-                        {
-                            NetworkLogger.__Log__(
-                                "Send: Target.Group cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
-                                NetworkLogger.LogType.Error
-                            );
-
-                            return;
-                        }
-
-                        if (sender.Id == 0)
-                        {
-                            NetworkLogger.__Log__(
-                                "Send Error: Matchmaking is not supported by the server peer. Use a specific group to broadcast.",
-                                NetworkLogger.LogType.Error
-                            );
-
-                            return;
-                        }
-
-                        if (sender._groups.Count == 0)
-                        {
-                            NetworkLogger.__Log__(
-                                "Send Error: You are not currently a member of any groups. Please ensure you join a group before sending this message.",
-                                NetworkLogger.LogType.Error
-                            );
-
-                            return;
-                        }
-
-                        foreach (var (_, group) in sender._groups)
-                        {
-                            if (group.IsSubGroup)
-                                continue;
-
-                            foreach (var (_, peer) in group._peersById)
+                            var peers = peersById.Values.Where(p => p._groups.Count == 0);
+                            foreach (var peer in peers)
                             {
                                 if (!peer.IsAuthenticated)
                                 {
@@ -1190,54 +1194,114 @@ namespace Omni.Core
                                 if (peer.Id == ServerSide.ServerPeer.Id)
                                     continue;
 
-                                if (peer.Equals(sender) && target == Target.GroupExceptSelf)
+                                if (peer.Equals(sender) && target == Target.UngroupedPlayersExceptSelf)
                                     continue;
 
                                 Send(message, peer);
                             }
                         }
-                    }
+                        break;
+                    case Target.GroupExceptSelf:
+                    case Target.GroupOnly:
+                        {
+                            if (groupId != 0 && !cacheIsEnabled)
+                            {
+                                NetworkLogger.__Log__(
+                                    "Send: Target.Group cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+                                return;
+                            }
+
+                            if (sender.Id == 0)
+                            {
+                                NetworkLogger.__Log__(
+                                    "Send Error: Matchmaking is not supported by the server peer. Use a specific group to broadcast.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+                                return;
+                            }
+
+                            if (sender._groups.Count == 0)
+                            {
+                                NetworkLogger.__Log__(
+                                    "Send Error: You are not currently a member of any groups. Please ensure you join a group before sending this message.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+                                return;
+                            }
+
+                            foreach (var (_, group) in sender._groups)
+                            {
+                                if (group.IsSubGroup)
+                                    continue;
+
+                                foreach (var (_, peer) in group._peersById)
+                                {
+                                    if (!peer.IsAuthenticated)
+                                    {
+                                        NetworkLogger.__Log__(
+                                            "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
+                                            NetworkLogger.LogType.Warning
+                                        );
+
+                                        continue;
+                                    }
+
+                                    if (peer.Id == ServerSide.ServerPeer.Id)
+                                        continue;
+
+                                    if (peer.Equals(sender) && target == Target.GroupExceptSelf)
+                                        continue;
+
+                                    Send(message, peer);
+                                }
+                            }
+                        }
                         break;
                     case Target.AllPlayers:
                     case Target.AllPlayersExceptSelf:
-                    {
-                        foreach (var (_, peer) in peersById)
                         {
-                            if (!peer.IsAuthenticated)
+                            foreach (var (_, peer) in peersById)
+                            {
+                                if (!peer.IsAuthenticated)
+                                {
+                                    NetworkLogger.__Log__(
+                                        "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
+                                        NetworkLogger.LogType.Warning
+                                    );
+
+                                    continue;
+                                }
+
+                                if (peer.Id == ServerSide.ServerPeer.Id)
+                                    continue;
+
+                                if (peer.Equals(sender) && target == Target.AllPlayersExceptSelf)
+                                    continue;
+
+                                Send(message, peer);
+                            }
+                        }
+                        break;
+                    case Target.SelfOnly:
+                        {
+                            if (!sender.IsAuthenticated)
                             {
                                 NetworkLogger.__Log__(
                                     "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
                                     NetworkLogger.LogType.Warning
                                 );
 
-                                continue;
+                                return;
                             }
 
-                            if (peer.Id == ServerSide.ServerPeer.Id)
-                                continue;
-
-                            if (peer.Equals(sender) && target == Target.AllPlayersExceptSelf)
-                                continue;
-
-                            Send(message, peer);
+                            // group id doesn't make sense here, because peersById is not used for target.Self.
+                            Send(message, sender);
                         }
-                    }
-                        break;
-                    case Target.SelfOnly:
-                    {
-                        if (!sender.IsAuthenticated)
-                        {
-                            NetworkLogger.__Log__(
-                                "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
-                                NetworkLogger.LogType.Warning
-                            );
-
-                            return;
-                        }
-
-                        // group id doesn't make sense here, because peersById is not used for target.Self.
-                        Send(message, sender);
-                    }
                         break;
                 }
 
@@ -1366,7 +1430,7 @@ namespace Omni.Core
                     OnServerPeerConnected?.Invoke(newPeer, Phase.Begin);
                     using var message = Pool.Rent();
                     message.Write(newPeer.Id);
-                    // Generate a unique challenge token based on the current UTC timestamp. 
+                    // Generate a unique challenge token. 
                     // This token serves as proof of authenticity for the server's public key during the handshake process.
                     // The token is signed using the server's RSA private key, creating a digital signature.
                     // Upon receiving the token and its signature, the client will verify the signature using the provided RSA public key.
@@ -1378,7 +1442,8 @@ namespace Omni.Core
                     message.WriteAsBinary(tokenBytes);
                     // Writes the encrypted server's RSA public key to the buffer
                     // If the public key were modified (MITM) the connection would fail because the server public key is validated by the server and the client.
-                    message.WriteString(StringCipher.Encrypt(ServerSide.RsaPublicKey, "RUAN"));
+                    string encryptedRsaPublicKey = StringCipher.Encrypt(ServerSide.RsaPublicKey, GUID);
+                    message.WriteString(encryptedRsaPublicKey);
                     message.WriteAsBinary(tokenSignature);
                     SendToClient(MessageType.BeginHandshake, message, newPeer, Target.SelfOnly,
                         DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
@@ -1414,7 +1479,7 @@ namespace Omni.Core
                         {
                             // Dereferencing to allow for GC(Garbage Collector).
                             // All resources should be released at this point.
-                            group.DestroyAllCaches(currentPeer);
+                            group.Internal_RemoveAllCachesFrom(currentPeer);
 
                             OnPlayerLeftGroup?.Invoke(group, currentPeer, Phase.End,
                                 "Leave event called by disconnect event.");
@@ -1446,12 +1511,12 @@ namespace Omni.Core
                     OnServerPeerDisconnected?.Invoke(currentPeer, Phase.Normal);
 
                     // Dereferencing to allow for GC(Garbage Collector).
-                    currentPeer.ClearGroups();
-                    currentPeer.ClearData();
+                    currentPeer.ClearAllGroups();
+                    currentPeer.ResetDataCollections();
 
                     // All resources should be released at this point.
                     ServerSide.DestroyAllCaches(currentPeer);
-                    currentPeer.DestroyAllCaches();
+                    currentPeer.Internal_RemoveAllCaches();
                     currentPeer.IsConnected = false;
 
                     // Finished disconnection
@@ -1470,415 +1535,432 @@ namespace Omni.Core
             NetworkHelper.EnsureRunningOnMainThread();
             if (PeersByIp.TryGetValue(endPoint, out NetworkPeer peer) || !isServer)
             {
-                using DataBuffer header = Pool.Rent();
-                header.Write(_data);
-                header.SeekToBegin();
+                try
+                {
+                    using DataBuffer header = Pool.Rent();
+                    header.Write(_data);
+                    header.SeekToBegin();
 
-                // Note: On Message event
-                msgType = header.Read<byte>();
+                    // Note: On Message event
+                    msgType = header.Read<byte>();
 #if OMNI_DEBUG || (UNITY_SERVER && !UNITY_EDITOR)
-                if (isServer)
-                {
-                    Connection.Server.ReceivedBandwidth.Add(_data.Length);
-                }
-                else
-                {
-                    Connection.Client.ReceivedBandwidth.Add(_data.Length);
-                }
+                    if (isServer)
+                    {
+                        Connection.Server.ReceivedBandwidth.Add(_data.Length);
+                    }
+                    else
+                    {
+                        Connection.Client.ReceivedBandwidth.Add(_data.Length);
+                    }
 #endif
-                int length = _data.Length;
-                if (!isServer)
-                {
-                    if (msgType != MessageType.BeginHandshake && msgType != MessageType.EndHandshake)
+                    int length = _data.Length;
+                    if (!isServer)
                     {
-                        if (_localPeer != null && !_localPeer.IsAuthenticated)
+                        if (msgType != MessageType.BeginHandshake && msgType != MessageType.EndHandshake)
                         {
-                            throw new Exception(
-                                "The client received a message while not yet authenticated. Wait until the handshake is completed."
-                            );
+                            if (_localPeer != null && !_localPeer.IsAuthenticated)
+                            {
+                                throw new Exception(
+                                    "The client received a message while not yet authenticated. Wait until the handshake is completed."
+                                );
+                            }
                         }
                     }
-                }
 
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                DataBuffer EndOfHeader() // Disposed by the caller!
-                {
-                    DataBuffer message = Pool.Rent();
-                    message.Write(header.Internal_GetSpan(length));
-                    message.SeekToBegin();
-                    return message;
-                }
-
-                switch (msgType)
-                {
-                    case MessageType.KCP_PING_REQUEST_RESPONSE:
+                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                    DataBuffer EndOfHeader() // Disposed by the caller!
                     {
-                        // Implemented By KCP Transporter.
+                        DataBuffer message = Pool.Rent();
+                        message.Write(header.Internal_GetSpan(length));
+                        message.SeekToBegin();
+                        return message;
                     }
-                        break;
-                    case MessageType.SyncGroupSharedData:
+
+                    switch (msgType)
                     {
-                        if (!isServer)
-                        {
-                            int groupId = header.Read<int>();
-                            ImmutableKeyValuePair keyValuePair = header.ReadAsJson<ImmutableKeyValuePair>();
-
-                            var groups = ClientSide.Groups;
-                            if (!groups.ContainsKey(groupId))
+                        case MessageType.KCP_PING_REQUEST_RESPONSE:
                             {
-                                // This group is invalid!, Used only for data sync.
-                                groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!", isServer: false));
+                                // Implemented By KCP Transporter.
                             }
-
-                            NetworkGroup fGroup = groups[groupId];
-                            if (keyValuePair.Key != NetworkConstants.SHARED_ALL_KEYS)
+                            break;
+                        case MessageType.SyncGroupSharedData:
                             {
-                                if (!fGroup.SharedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
+                                if (!isServer)
                                 {
-                                    fGroup.SharedData[keyValuePair.Key] = keyValuePair.Value;
+                                    int groupId = header.Read<int>();
+                                    ImmutableKeyValuePair keyValuePair = header.ReadAsJson<ImmutableKeyValuePair>();
+
+                                    var groups = ClientSide.Groups;
+                                    if (!groups.ContainsKey(groupId))
+                                    {
+                                        // This group is invalid!, Used only for data sync.
+                                        groups.Add(groupId, new NetworkGroup(groupId, "NOT SERIALIZED!", isServer: false));
+                                    }
+
+                                    NetworkGroup fGroup = groups[groupId];
+                                    if (keyValuePair.Key != NetworkConstants.SHARED_ALL_KEYS)
+                                    {
+                                        if (!fGroup.SharedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
+                                        {
+                                            fGroup.SharedData[keyValuePair.Key] = keyValuePair.Value;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        JObject jObject = (JObject)keyValuePair.Value;
+                                        fGroup.SharedData = jObject.ToObject<ObservableDictionary<string, object>>();
+                                    }
+
+                                    OnGroupSharedDataChanged?.Invoke(fGroup, keyValuePair.Key);
                                 }
                             }
-                            else
+                            break;
+                        case MessageType.SyncPeerSharedData:
                             {
-                                JObject jObject = (JObject)keyValuePair.Value;
-                                fGroup.SharedData = jObject.ToObject<ObservableDictionary<string, object>>();
-                            }
-
-                            OnGroupSharedDataChanged?.Invoke(fGroup, keyValuePair.Key);
-                        }
-                    }
-                        break;
-                    case MessageType.SyncPeerSharedData:
-                    {
-                        if (!isServer)
-                        {
-                            int peerId = header.Read<int>();
-                            ImmutableKeyValuePair keyValuePair = header.ReadAsJson<ImmutableKeyValuePair>();
-
-                            var peers = ClientSide.Peers;
-                            if (!peers.ContainsKey(peerId))
-                            {
-                                // _peer is not valid endpoint in this case!
-                                peers.Add(peerId, new NetworkPeer(endPoint, peerId, isServer: false));
-                            }
-
-                            NetworkPeer fPeer = peers[peerId];
-                            if (keyValuePair.Key != NetworkConstants.SHARED_ALL_KEYS)
-                            {
-                                if (!fPeer.SharedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
+                                if (!isServer)
                                 {
-                                    fPeer.SharedData[keyValuePair.Key] = keyValuePair.Value;
+                                    int peerId = header.Read<int>();
+                                    ImmutableKeyValuePair keyValuePair = header.ReadAsJson<ImmutableKeyValuePair>();
+
+                                    var peers = ClientSide.Peers;
+                                    if (!peers.ContainsKey(peerId))
+                                    {
+                                        // _peer is not valid endpoint in this case!
+                                        peers.Add(peerId, new NetworkPeer(endPoint, peerId, isServer: false));
+                                    }
+
+                                    NetworkPeer fPeer = peers[peerId];
+                                    if (keyValuePair.Key != NetworkConstants.SHARED_ALL_KEYS)
+                                    {
+                                        if (!fPeer.SharedData.TryAdd(keyValuePair.Key, keyValuePair.Value))
+                                        {
+                                            fPeer.SharedData[keyValuePair.Key] = keyValuePair.Value;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        JObject jObject = (JObject)keyValuePair.Value;
+                                        fPeer.SharedData = jObject.ToObject<ObservableDictionary<string, object>>();
+                                    }
+
+                                    OnPeerSharedDataChanged?.Invoke(fPeer, keyValuePair.Key);
                                 }
                             }
-                            else
+                            break;
+                        case MessageType.NtpQuery:
                             {
-                                JObject jObject = (JObject)keyValuePair.Value;
-                                fPeer.SharedData = jObject.ToObject<ObservableDictionary<string, object>>();
+                                if (isServer)
+                                {
+                                    double time = header.Read<double>();
+                                    float t = header.Read<float>();
+                                    Sntp.Server.SendNtpResponse(time, peer, t);
+                                }
+                                else
+                                {
+                                    double a = header.Read<double>();
+                                    double x = header.Read<double>();
+                                    double y = header.Read<double>();
+                                    float t = header.Read<float>();
+                                    Sntp.Client.Evaluate(a, x, y, t);
+                                }
                             }
-
-                            OnPeerSharedDataChanged?.Invoke(fPeer, keyValuePair.Key);
-                        }
-                    }
-                        break;
-                    case MessageType.NtpQuery:
-                    {
-                        if (isServer)
-                        {
-                            double time = header.Read<double>();
-                            float t = header.Read<float>();
-                            Sntp.Server.SendNtpResponse(time, peer, t);
-                        }
-                        else
-                        {
-                            double a = header.Read<double>();
-                            double x = header.Read<double>();
-                            double y = header.Read<double>();
-                            float t = header.Read<float>();
-                            Sntp.Client.Evaluate(a, x, y, t);
-                        }
-                    }
-                        break;
-                    case MessageType.BeginHandshake:
-                    {
-                        if (!isServer)
-                        {
-                            // Read the peer ID and RSA public key from the server.
-                            int localPeerId = header.Read<int>();
-                            byte[] tokenBytes = header.ReadAsBinary<byte[]>();
-                            string rsaServerPublicKey = header.ReadString();
-                            byte[] tokenSignature = header.ReadAsBinary<byte[]>();
-
-                            // Validate server public key
-                            rsaServerPublicKey = StringCipher.Decrypt(rsaServerPublicKey, "RUAN");
-                            if (!RsaCryptography.Verify(tokenBytes, tokenSignature, rsaServerPublicKey))
-                                throw new CryptographicException("The server's public key could not be verified.");
-
-                            // Initialize the local peer with the provided ID and endpoint.
-                            LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId, isServer: false)
+                            break;
+                        case MessageType.BeginHandshake:
                             {
-                                _nativePeer = LocalNativePeer
-                            };
+                                if (!isServer)
+                                {
+                                    // Read the peer ID and RSA public key from the server.
+                                    int localPeerId = header.Read<int>();
+                                    byte[] tokenBytes = header.ReadAsBinary<byte[]>();
+                                    string rsaServerPublicKey = header.ReadString();
+                                    byte[] tokenSignature = header.ReadAsBinary<byte[]>();
 
-                            ClientSide.Peers.Add(localPeerId, LocalPeer);
+                                    // Validate server public key
+                                    rsaServerPublicKey = StringCipher.Decrypt(rsaServerPublicKey, GUID);
+                                    if (!RsaCryptography.Verify(tokenBytes, tokenSignature, rsaServerPublicKey))
+                                        throw new CryptographicException("The server's public key could not be verified.");
 
-                            // Generate an AES session key for encryption.
-                            ClientSide.RsaServerPublicKey = rsaServerPublicKey;
-                            byte[] aesKey = AesCryptography.GenerateKey();
-                            LocalPeer._aesKey = aesKey;
+                                    // Initialize the local peer with the provided ID and endpoint.
+                                    LocalPeer = new NetworkPeer(LocalEndPoint, localPeerId, isServer: false)
+                                    {
+                                        _nativePeer = LocalNativePeer
+                                    };
 
-                            // Encrypt the AES session key using the server's RSA public key.
-                            byte[] encryptedAesKey = RsaCryptography.Encrypt(aesKey, ClientSide.RsaServerPublicKey);
+                                    ClientSide.Peers.Add(localPeerId, LocalPeer);
 
-                            // Send the encrypted AES key to the server to begin the handshake.
-                            using DataBuffer authMessage = Pool.Rent();
-                            authMessage.WriteAsBinary(encryptedAesKey);
-                            SendClientAuthenticationMessage(MessageType.BeginHandshake, authMessage, 0);
-                        }
-                        else
-                        {
-                            // Read and decrypt the AES key sent by the client using the server's RSA private key.
-                            byte[] aesKey = header.ReadAsBinary<byte[]>();
-                            peer._aesKey = RsaCryptography.Decrypt(aesKey, ServerSide.RsaPrivateKey);
+                                    // Generate an AES session key for encryption.
+                                    ClientSide.RsaServerPublicKey = rsaServerPublicKey;
+                                    byte[] aesKey = AesCryptography.GenerateKey();
+                                    LocalPeer._aesKey = aesKey;
 
-                            // Encrypt the server's AES key using the client's decrypted AES key.
-                            byte[] serverAesKey = ServerSide.ServerPeer._aesKey;
-                            byte[] encryptedServerAesKey = AesCryptography.Encrypt(serverAesKey, 0, serverAesKey.Length,
-                                peer._aesKey, out byte[] iv);
+                                    // Encrypt the AES session key using the server's RSA public key.
+                                    byte[] encryptedAesKey = RsaCryptography.Encrypt(aesKey, ClientSide.RsaServerPublicKey);
 
-                            // Send the encrypted server AES key and initialization vector (IV) to the client.
-                            using var message = Pool.Rent();
-                            message.WriteAsBinary(iv);
-                            message.WriteAsBinary(encryptedServerAesKey);
-                            SendToClient(MessageType.EndHandshake, message, peer, Target.SelfOnly,
-                                DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
+                                    // Send the encrypted AES key to the server to begin the handshake.
+                                    using DataBuffer authMessage = Pool.Rent();
+                                    authMessage.WriteAsBinary(encryptedAesKey);
+                                    SendClientAuthenticationMessage(MessageType.BeginHandshake, authMessage, 0);
+                                }
+                                else
+                                {
+                                    // Read and decrypt the AES key sent by the client using the server's RSA private key.
+                                    byte[] aesKey = header.ReadAsBinary<byte[]>();
+                                    peer._aesKey = RsaCryptography.Decrypt(aesKey, ServerSide.RsaPrivateKey);
 
-                            OnServerPeerConnected?.Invoke(peer, Phase.Normal);
-                        }
-                    }
-                        break;
-                    case MessageType.EndHandshake:
-                    {
-                        if (!isServer)
-                        {
-                            if (_localPeer != null && _localPeer.IsAuthenticated)
-                            {
-                                // If the peer is already authenticated, mark the client as active.
-                                IsClientActive = true;
-                                OnClientConnected?.Invoke();
-                                QueryNtpPeriodically();
-                                return;
+                                    // Encrypt the server's AES key using the client's decrypted AES key.
+                                    byte[] serverAesKey = ServerSide.ServerPeer._aesKey;
+                                    byte[] encryptedServerAesKey = AesCryptography.Encrypt(serverAesKey, 0,
+                                        serverAesKey.Length,
+                                        peer._aesKey, out byte[] iv);
+
+                                    // Send the encrypted server AES key and initialization vector (IV) to the client.
+                                    using var message = Pool.Rent();
+                                    message.WriteAsBinary(iv);
+                                    message.WriteAsBinary(encryptedServerAesKey);
+                                    SendToClient(MessageType.EndHandshake, message, peer, Target.SelfOnly,
+                                        DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
+
+                                    OnServerPeerConnected?.Invoke(peer, Phase.Normal);
+                                }
                             }
-
-                            // Read the server's AES key and IV for final decryption.
-                            byte[] iv = header.ReadAsBinary<byte[]>();
-                            byte[] serverAesKeyEncrypted = header.ReadAsBinary<byte[]>();
-
-                            // Decrypt the server's AES key using the client's AES key and IV.
-                            ClientSide.ServerPeer._aesKey = AesCryptography.Decrypt(serverAesKeyEncrypted, 0,
-                                serverAesKeyEncrypted.Length, LocalPeer._aesKey, iv);
-
-                            // Mark the peer as connected and authenticated.
-                            LocalPeer.IsConnected = true;
-                            LocalPeer.IsAuthenticated = true;
-                            // Notify the server that the handshake is complete.
-                            SendClientAuthenticationMessage(MessageType.EndHandshake, DataBuffer.Empty, 0);
-                        }
-                        else
-                        {
-                            peer.IsAuthenticated = true;
-                            OnServerPeerConnected?.Invoke(peer, Phase.End);
-                            // Send confirmation to the client that the handshake is complete.
-                            SendToClient(MessageType.EndHandshake, DataBuffer.Empty, peer, Target.SelfOnly,
-                                DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
-                        }
-                    }
-                        break;
-                    case MessageType.LocalRpc:
-                    {
-                        int identityId = header.Internal_Read();
-                        byte instanceId = header.Read<byte>();
-                        byte rpcId = header.Read<byte>();
-
-                        using var message = EndOfHeader();
-                        var key = (identityId, instanceId);
-                        var eventBehaviours = isServer
-                            ? ServerSide.LocalRpcHandlers
-                            : ClientSide.LocalRpcHandlers;
-
-                        if (eventBehaviours.TryGetValue(key, out IRpcMessage behaviour))
-                        {
-                            behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
-                        }
-                        else
-                        {
-                            NetworkLogger.__Log__(
-                                $"Local Invoke Error: Did you spawn the identity? -> Failed to find 'Local Event Behaviour' with Identity Id: [{identityId}] and instance Id: [{instanceId}] on the {(isServer ? "Server" : "Client")} side. "
-                                + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
-                                + "Ensure it is registered first or ignore it if intended.",
-                                NetworkLogger.LogType.Error
-                            );
-                        }
-                    }
-                        break;
-                    case MessageType.GlobalRpc:
-                    {
-                        int identityId = header.Read<int>();
-                        byte rpcId = header.Read<byte>();
-
-                        using var message = EndOfHeader();
-                        var eventBehaviours = isServer
-                            ? ServerSide.GlobalRpcHandlers
-                            : ClientSide.GlobalRpcHandlers;
-
-                        if (eventBehaviours.TryGetValue(identityId, out IRpcMessage behaviour))
-                        {
-                            behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
-                        }
-                        else
-                        {
-                            NetworkLogger.__Log__(
-                                $"Global Invoke Error: Failed to find 'Global Event Behaviour' with Id: [{identityId}] on the {(isServer ? "Server" : "Client")} side. "
-                                + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
-                                + "Ensure it is registered first or ignore it if intended.",
-                                NetworkLogger.LogType.Error
-                            );
-                        }
-                    }
-                        break;
-                    case MessageType.LeaveGroup:
-                    {
-                        string groupName = header.ReadString();
-                        string reason = header.ReadString();
-
-                        if (isServer)
-                        {
-                            ServerSide.LeaveGroup(groupName, reason, peer);
-                        }
-                        else
-                        {
-                            OnLeftGroup?.Invoke(groupName, reason);
-                        }
-                    }
-                        break;
-                    case MessageType.JoinGroup:
-                    {
-                        string groupName = header.ReadString();
-                        using var message = EndOfHeader();
-
-                        if (isServer)
-                        {
-                            if (string.IsNullOrEmpty(groupName))
+                            break;
+                        case MessageType.EndHandshake:
                             {
-                                NetworkLogger.__Log__(
-                                    "JoinGroup: Group name cannot be null or empty.",
-                                    NetworkLogger.LogType.Error
-                                );
+                                if (!isServer)
+                                {
+                                    if (_localPeer != null && _localPeer.IsAuthenticated)
+                                    {
+                                        // If the peer is already authenticated, mark the client as active.
+                                        IsClientActive = true;
+                                        OnClientConnected?.Invoke();
+                                        QueryNtpPeriodically();
+                                        return;
+                                    }
 
-                                return;
-                            }
+                                    // Read the server's AES key and IV for final decryption.
+                                    byte[] iv = header.ReadAsBinary<byte[]>();
+                                    byte[] serverAesKeyEncrypted = header.ReadAsBinary<byte[]>();
 
-                            if (groupName.Length > 256)
-                            {
-                                NetworkLogger.__Log__(
-                                    "JoinGroup: Group name cannot be longer than 256 characters.",
-                                    NetworkLogger.LogType.Error
-                                );
+                                    // Decrypt the server's AES key using the client's AES key and IV.
+                                    ClientSide.ServerPeer._aesKey = AesCryptography.Decrypt(serverAesKeyEncrypted, 0,
+                                        serverAesKeyEncrypted.Length, LocalPeer._aesKey, iv);
 
-                                return;
+                                    // Mark the peer as connected and authenticated.
+                                    LocalPeer.IsConnected = true;
+                                    LocalPeer.IsAuthenticated = true;
+                                    // Notify the server that the handshake is complete.
+                                    SendClientAuthenticationMessage(MessageType.EndHandshake, DataBuffer.Empty, 0);
+                                }
+                                else
+                                {
+                                    peer.IsAuthenticated = true;
+                                    OnServerPeerConnected?.Invoke(peer, Phase.End);
+                                    // Send confirmation to the client that the handshake is complete.
+                                    SendToClient(MessageType.EndHandshake, DataBuffer.Empty, peer, Target.SelfOnly,
+                                        DeliveryMode.ReliableOrdered, 0, DataCache.None, 0);
+                                }
                             }
+                            break;
+                        case MessageType.LocalRpc:
+                            {
+                                int identityId = header.Internal_Read();
+                                byte instanceId = header.Read<byte>();
+                                byte rpcId = header.Read<byte>();
 
-                            ServerSide.JoinGroup(groupName, message, peer, false);
-                        }
-                        else
-                        {
-                            OnJoinedGroup?.Invoke(groupName, message);
-                        }
-                    }
-                        break;
-                    case MessageType.Spawn:
-                    {
-                        if (!isServer)
-                        {
-                            string prefabName = header.ReadString();
-                            header.ReadIdentity(out int peerId, out int identityId);
-                            NetworkIdentity prefab = GetPrefab(prefabName);
-                            prefab.SpawnOnClient(peerId, identityId);
-                        }
-                        else
-                        {
-                            int identityId = header.Read<int>();
-                            if (ServerSide.TryGetIdentity(identityId, out var identity))
-                            {
-                                identity.OnSpawn?.Invoke(peer);
-                            }
-                        }
-                    }
-                        break;
-                    case MessageType.SetOwner:
-                    {
-                        int identityId = header.Read<int>();
-                        int peerId = header.Read<int>();
-                        if (!isServer)
-                        {
-                            if (ClientSide.TryGetIdentity(identityId, out var identity))
-                            {
-                                identity.IsLocalPlayer = LocalPeer.Id == peerId;
-                            }
-                            else
-                            {
-                                NetworkLogger.__Log__(
-                                    $"[Error][SetOwner]: Identity with ID [{identityId}] was not found. Ensure the object has been correctly spawned before attempting to set ownership. This might indicate a synchronization issue or an unregistered identity.",
-                                    NetworkLogger.LogType.Error
-                                );
-                            }
-                        }
-                    }
-                        break;
-                    case MessageType.Destroy:
-                    {
-                        if (!isServer)
-                        {
-                            int identityId = header.Read<int>();
-                            NetworkHelper.Destroy(identityId, isServer);
-                        }
-                    }
-                        break;
-                    case MessageType.RequestEntityAction:
-                    {
-                        if (isServer)
-                        {
-                            int identityId = header.Read<int>();
-                            using var message = EndOfHeader();
+                                using var message = EndOfHeader();
+                                var key = (identityId, instanceId);
+                                var rpcHandlers = isServer
+                                    ? ServerSide.LocalRpcHandlers
+                                    : ClientSide.LocalRpcHandlers;
 
-                            if (ServerSide.TryGetIdentity(identityId, out var identity))
-                            {
-                                identity.OnRequestAction?.Invoke(message);
+                                if (rpcHandlers.TryGetValue(key, out IRpcMessage behaviour))
+                                {
+                                    behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Local Invoke Error: Did you spawn the identity? -> Failed to find 'Local Event Behaviour' with Identity Id: [{identityId}] and instance Id: [{instanceId}] on the {(isServer ? "Server" : "Client")} side. "
+                                        + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
+                                        + "Ensure it is registered first or ignore it if intended.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
                             }
-                            else
+                            break;
+                        case MessageType.GlobalRpc:
                             {
-                                NetworkLogger.__Log__(
-                                    $"[Error][RequestEntity]: Identity with ID [{identityId}] was not found. Ensure the object has been correctly spawned before attempting to set ownership. This might indicate a synchronization issue or an unregistered identity.",
-                                    NetworkLogger.LogType.Error
-                                );
+                                int identityId = header.Read<int>();
+                                byte rpcId = header.Read<byte>();
+
+                                using var message = EndOfHeader();
+                                var rpcHandlers = isServer
+                                    ? ServerSide.GlobalRpcHandlers
+                                    : ClientSide.GlobalRpcHandlers;
+
+                                if (rpcHandlers.TryGetValue(identityId, out IRpcMessage behaviour))
+                                {
+                                    behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
+                                }
+                                else
+                                {
+                                    NetworkLogger.__Log__(
+                                        $"Global Invoke Error: Failed to find 'Global Event Behaviour' with Id: [{identityId}] on the {(isServer ? "Server" : "Client")} side. "
+                                        + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
+                                        + "Ensure it is registered first or ignore it if intended.",
+                                        NetworkLogger.LogType.Error
+                                    );
+                                }
                             }
-                        }
+                            break;
+                        case MessageType.LeaveGroup:
+                            {
+                                string groupName = header.ReadString();
+                                string reason = header.ReadString();
+
+                                if (isServer)
+                                {
+                                    ServerSide.LeaveGroup(groupName, reason, peer);
+                                }
+                                else
+                                {
+                                    OnLeftGroup?.Invoke(groupName, reason);
+                                }
+                            }
+                            break;
+                        case MessageType.JoinGroup:
+                            {
+                                string groupName = header.ReadString();
+                                using var message = EndOfHeader();
+
+                                if (isServer)
+                                {
+                                    if (string.IsNullOrEmpty(groupName))
+                                    {
+                                        NetworkLogger.__Log__(
+                                            "JoinGroup: Group name cannot be null or empty.",
+                                            NetworkLogger.LogType.Error
+                                        );
+
+                                        return;
+                                    }
+
+                                    if (groupName.Length > 256)
+                                    {
+                                        NetworkLogger.__Log__(
+                                            "JoinGroup: Group name cannot be longer than 256 characters.",
+                                            NetworkLogger.LogType.Error
+                                        );
+
+                                        return;
+                                    }
+
+                                    ServerSide.JoinGroup(groupName, message, peer, false);
+                                }
+                                else
+                                {
+                                    OnJoinedGroup?.Invoke(groupName, message);
+                                }
+                            }
+                            break;
+                        case MessageType.Spawn:
+                            {
+                                if (!isServer)
+                                {
+                                    string prefabName = header.ReadString();
+                                    header.ReadIdentity(out int peerId, out int identityId);
+                                    NetworkIdentity prefab = GetPrefab(prefabName);
+                                    prefab.SpawnOnClient(peerId, identityId);
+                                }
+                                else
+                                {
+                                    int identityId = header.Read<int>();
+                                    if (ServerSide.TryGetIdentity(identityId, out var identity))
+                                    {
+                                        identity.OnSpawn?.Invoke(peer);
+                                    }
+                                }
+                            }
+                            break;
+                        case MessageType.SetOwner:
+                            {
+                                int identityId = header.Read<int>();
+                                int peerId = header.Read<int>();
+                                if (!isServer)
+                                {
+                                    if (ClientSide.TryGetIdentity(identityId, out var identity))
+                                    {
+                                        identity.IsLocalPlayer = LocalPeer.Id == peerId;
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"[Error][SetOwner]: Identity with ID [{identityId}] was not found. Ensure the object has been correctly spawned before attempting to set ownership. This might indicate a synchronization issue or an unregistered identity.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
+                                }
+                            }
+                            break;
+                        case MessageType.Destroy:
+                            {
+                                if (!isServer)
+                                {
+                                    int identityId = header.Read<int>();
+                                    NetworkHelper.Destroy(identityId, isServer);
+                                }
+                            }
+                            break;
+                        case MessageType.RequestEntityAction:
+                            {
+                                if (isServer)
+                                {
+                                    int identityId = header.Read<int>();
+                                    using var message = EndOfHeader();
+
+                                    if (ServerSide.TryGetIdentity(identityId, out var identity))
+                                    {
+                                        identity.OnRequestAction?.Invoke(message);
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"[Error][RequestEntity]: Identity with ID [{identityId}] was not found. Ensure the object has been correctly spawned before attempting to set ownership. This might indicate a synchronization issue or an unregistered identity.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            {
+                                // Global RPC/Custom Messages
+                                if (isServer)
+                                {
+                                    using var message = EndOfHeader();
+                                    OnServerCustomMessage?.Invoke(msgType, message, peer, sequenceChannel);
+                                }
+                                else
+                                {
+                                    using var message = EndOfHeader();
+                                    OnClientCustomMessage?.Invoke(msgType, message, sequenceChannel);
+                                }
+                            }
+                            break;
                     }
-                        break;
-                    default:
-                    {
-                        // Global RPC/Custom Messages
-                        if (isServer)
-                        {
-                            using var message = EndOfHeader();
-                            OnServerCustomMessage?.Invoke(msgType, message, peer, sequenceChannel);
-                        }
-                        else
-                        {
-                            using var message = EndOfHeader();
-                            OnClientCustomMessage?.Invoke(msgType, message, sequenceChannel);
-                        }
-                    }
-                        break;
+                }
+                catch (CryptographicException ex)
+                {
+                    NetworkLogger.__Log__("A cryptographic error has occurred: " + ex.Message,
+                        NetworkLogger.LogType.Error);
+
+                    msgType = 0;
+                }
+                catch (Exception ex)
+                {
+                    NetworkLogger.PrintHyperlink(ex);
+                    NetworkLogger.__Log__("A general error has occurred: " + ex.Message, NetworkLogger.LogType.Error);
+                    msgType = 0;
                 }
             }
             else
