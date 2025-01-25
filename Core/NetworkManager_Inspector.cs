@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 
 #if OMNI_DEBUG
@@ -56,64 +56,100 @@ namespace Omni.Core
         private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
         private static Dictionary<int, NetworkPeer> PeersById { get; } = new();
 
-        [SerializeField] [ReadOnly] [Group("Infor")]
+        [SerializeField]
+        [ReadOnly]
+        [Group("Infor")]
         private string m_CurrentVersion = "v2.0.9";
 
-        [SerializeField] [LabelText("Public IPv4")] [ReadOnly] [Group("Infor")]
+        [SerializeField]
+        [LabelText("Public IPv4")]
+        [ReadOnly]
+        [Group("Infor")]
         private string PublicIPv4 = "127.0.0.1";
 
-        [SerializeField] [LabelText("Public IPv6")] [ReadOnly] [Group("Infor")]
+        [SerializeField]
+        [LabelText("Public IPv6")]
+        [ReadOnly]
+        [Group("Infor")]
         private string PublicIPv6 = "::1";
+
+        [SerializeField]
+        [ReadOnly]
+        [Group("Infor")]
+        private string GUID;
 
         private bool m_ConnectionModule = true;
         private bool m_ConsoleModule = true;
         private bool m_MatchModule = true;
 
-        [SerializeField] [Group("Modules")] private bool m_TickModule = false;
+        [SerializeField][Group("Modules")] private bool m_TickModule = false;
 
-        [SerializeField] [Group("Modules")] private bool m_SntpModule = false;
+        [SerializeField][Group("Modules")] private bool m_SntpModule = false;
 
-        [SerializeField] [Group("Listen")] [LabelText("Server Port")]
+        [SerializeField]
+        [Group("Listen")]
+        [LabelText("Server Port")]
         private int m_ServerListenPort = 7777;
 
-        [SerializeField] [Group("Listen")] [LabelText("Client Port")]
+        [SerializeField]
+        [Group("Listen")]
+        [LabelText("Client Port")]
         private int m_ClientListenPort = 7778;
 
-        [SerializeField] [Group("Connection")] [LabelText("Hosts")]
+        [SerializeField]
+        [Group("Connection")]
+        [LabelText("Hosts")]
         private List<string> m_ConnectAddresses = new List<string>()
         {
             "127.0.0.1",
             "::1"
         };
 
-        [SerializeField] [Group("Connection")] [LabelText("Port")]
+        [SerializeField]
+        [Group("Connection")]
+        [LabelText("Port")]
         private int m_ConnectPort = 7777;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Basic")] [LabelWidth(140)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Basic")]
+        [LabelWidth(140)]
 #if OMNI_RELEASE
 		[HideInInspector]
 #endif
         private bool m_AutoStartClient = true;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Basic")] [LabelWidth(140)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Basic")]
+        [LabelWidth(140)]
 #if OMNI_RELEASE
 		[HideInInspector]
 #endif
         private bool m_AutoStartServer = true;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Basic")] [LabelText("Use UTF-8 Encoding")] [LabelWidth(140)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Basic")]
+        [LabelText("Use UTF-8 Encoding")]
+        [LabelWidth(140)]
         private bool m_UseUtf8 = false;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Basic")] [Range(10, 120)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Basic")]
+        [Range(10, 120)]
         private int m_TickRate = 15;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [Min(1)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [Min(1)]
         private int m_PoolCapacity = DataBuffer.DefaultBufferSize;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [Min(1)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [Min(1)]
         private int m_PoolSize = 32;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Basic")] [Min(0)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Basic")]
+        [Min(0)]
         private int m_LockClientFps = 60;
 
         [SerializeField]
@@ -123,20 +159,28 @@ namespace Omni.Core
             "Dapper has limited 'IL2CPP' support. Disable for JSON mapping. Tip: Use 'Mono' for Server, 'IL2CPP' for Client for database operations.")]
         private bool m_UseDapper = true;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [LabelWidth(190)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [LabelWidth(190)]
         private bool m_UseSecureRoutes = false;
 
         // [SerializeField]
         // [ReadOnly]
         private bool m_UseBinarySerialization = false;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [LabelWidth(190)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [LabelWidth(190)]
         private bool m_UseUnalignedMemory = false;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [LabelWidth(190)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [LabelWidth(190)]
         private bool m_EnableBandwidthOptimization = true;
 
-        [SerializeField] [Group("MiscTabs"), Tab("Advanced")] [LabelWidth(190)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [LabelWidth(190)]
         private bool m_RunInBackground = true;
 
         [SerializeField]
@@ -155,10 +199,30 @@ namespace Omni.Core
         [LabelText("Server Backend")]
         private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
 
-        [SerializeField] [Group("Permissions")] [LabelWidth(230)]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Http Server")]
+        [LabelWidth(120)]
+        private bool m_EnableHttpServer = false;
+
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Http Server")]
+        [LabelWidth(120)]
+        private bool m_EnableHttpSsl = false;
+
+        [InfoBox("When SSL is enabled, the default port will automatically change to 443 if set to 80.")]
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Http Server")]
+        [LabelWidth(120)]
+        private int m_HttpServerPort = 80;
+
+        [SerializeField]
+        [Group("Permissions")]
+        [LabelWidth(230)]
         private bool m_AllowNetworkVariablesFromClients = false;
 
-        [SerializeField] [Group("Permissions")] [LabelWidth(230)]
+        [SerializeField]
+        [Group("Permissions")]
+        [LabelWidth(230)]
         private bool m_AllowAcrossGroupMessage = false;
 
         // [SerializeField]
@@ -184,12 +248,23 @@ namespace Omni.Core
 
         public virtual void Reset()
         {
-            PlayerPrefs.DeleteKey("IPLastReceiveDate");
+            PlayerPrefs.DeleteKey("lastIpUpdate");
             OnValidate();
         }
 
         public virtual void OnValidate()
         {
+            if (m_HttpServerPort == 80 && m_EnableHttpSsl)
+            {
+                m_HttpServerPort = 443;
+                NetworkHelper.EditorSaveObject(gameObject);
+            }
+            else if (m_HttpServerPort == 443 && !m_EnableHttpSsl)
+            {
+                m_HttpServerPort = 80;
+                NetworkHelper.EditorSaveObject(gameObject);
+            }
+
 #if OMNI_DEBUG
             m_ClientScriptingBackend = ScriptingBackend.Mono;
             m_ServerScriptingBackend = ScriptingBackend.Mono;
@@ -201,6 +276,11 @@ namespace Omni.Core
                 {
                     m_ClientTransporter = m_ServerTransporter = null;
                     throw new Exception("Transporter cannot be set. Is automatically initialized.");
+                }
+
+                if (string.IsNullOrEmpty(GUID))
+                {
+                    GenerateGUID();
                 }
 
                 GetExternalIp();
@@ -241,6 +321,7 @@ namespace Omni.Core
             }
             catch
             {
+                // Suppress any errors!
             }
         }
 
@@ -286,22 +367,25 @@ namespace Omni.Core
             }
         }
 
+        [ContextMenu("Generate GUID")]
+        private void GenerateGUID()
+        {
+            GUID = Guid.NewGuid().ToString();
+            NetworkHelper.EditorSaveObject(gameObject);
+        }
+
         [ContextMenu("Force Get Public IP")]
         private void ForceGetExternalIp()
         {
-            PlayerPrefs.DeleteKey("IPLastReceiveDate");
+            PlayerPrefs.DeleteKey("lastIpUpdate");
             GetExternalIp();
         }
 
         [Conditional("UNITY_EDITOR")]
         private async void GetExternalIp()
         {
-            string lastDateTime = PlayerPrefs.GetString(
-                "IPLastReceiveDate",
-                DateTime.UnixEpoch.ToString()
-            );
-
-            int minutes = 15;
+            const int minutes = 15;
+            string lastDateTime = PlayerPrefs.GetString("lastIpUpdate", DateTime.UnixEpoch.ToString());
             TimeSpan timeLeft = DateTime.Now - DateTime.Parse(lastDateTime);
             // Check if the last call was successful or if an {minutes} time has passed since the last call to avoid spamming.
             if (timeLeft.TotalMinutes >= minutes)
@@ -352,7 +436,7 @@ namespace Omni.Core
                 }
 
                 // Update the player preference with the current timestamp.
-                PlayerPrefs.SetString("IPLastReceiveDate", DateTime.Now.ToString());
+                PlayerPrefs.SetString("lastIpUpdate", DateTime.Now.ToString());
             }
             else
             {
