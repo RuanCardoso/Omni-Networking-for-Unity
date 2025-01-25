@@ -328,7 +328,11 @@ namespace Omni.Core
             }
         }
 
-        public void DeleteCache(DataCache dataCache)
+        /// <summary>
+        /// Removes a cache from the group based on the provided data cache.
+        /// </summary>
+        /// <param name="dataCache">The data cache to remove.</param>
+        public void RemoveCache(DataCache dataCache)
         {
             EnsureServerActive();
             switch (dataCache.Mode)
@@ -350,7 +354,12 @@ namespace Omni.Core
             }
         }
 
-        public void DeleteCache(DataCache dataCache, NetworkPeer peer)
+        /// <summary>
+        /// Removes the specified cache from the group for the specified network peer.
+        /// </summary>
+        /// <param name="dataCache">The cache to remove.</param>
+        /// <param name="peer">The network peer from which to remove the cache.</param>
+        public void RemoveCacheFrom(DataCache dataCache, NetworkPeer peer)
         {
             EnsureServerActive();
             switch (dataCache.Mode)
@@ -374,7 +383,29 @@ namespace Omni.Core
             }
         }
 
-        public void DestroyAllCaches(NetworkPeer peer)
+        /// <summary>
+        /// Removes all caches associated with the specified network peer from the group.
+        /// </summary>
+        /// <param name="peer">The network peer from which to remove all caches.</param>
+        public void RemoveAllCachesFrom(NetworkPeer peer)
+        {
+            EnsureServerActive();
+            AppendCaches.RemoveAll(x => x.Peer.Id == peer.Id);
+            var caches = OverwriteCaches.Values.Where(x => x.Peer.Id == peer.Id).ToList();
+
+            foreach (var cache in caches)
+            {
+                if (!OverwriteCaches.Remove(cache.Id))
+                {
+                    NetworkLogger.__Log__(
+                        $"RemoveAllCachesFrom: Failed to remove cache {cache.Id} from peer {peer.Id}.",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+            }
+        }
+
+        internal void Internal_RemoveAllCachesFrom(NetworkPeer peer)
         {
             EnsureServerActive();
             AppendCaches.RemoveAll(x => x.Peer.Id == peer.Id && x.AutoDestroyCache);
@@ -387,27 +418,38 @@ namespace Omni.Core
                 if (!OverwriteCaches.Remove(cache.Id))
                 {
                     NetworkLogger.__Log__(
-                        $"Destroy All Cache Error: Failed to remove cache {cache.Id} from peer {peer.Id}.",
+                        $"InternalRemoveAllCachesFrom: Failed to remove cache {cache.Id} from peer {peer.Id}.",
                         NetworkLogger.LogType.Error
                     );
                 }
             }
         }
 
-        public void ClearPeers()
+        /// <summary>
+        /// Clears all peers associated with this group.
+        /// </summary>
+        public void ClearAllPeers()
         {
             EnsureServerActive();
             _peersById.Clear();
         }
 
-        public void ClearData()
+        /// <summary>
+        /// Clears the data collections associated with this group. This includes
+        /// the <see cref="Data"/> and <see cref="SharedData"/> collections.
+        /// </summary>
+        public void ResetDataCollections()
         {
             EnsureServerActive();
             Data.Clear();
             SharedData.Clear();
         }
 
-        public void ClearCaches()
+        /// <summary>
+        /// Clears the cache collections associated with this group, including
+        /// the append and overwrite caches.
+        /// </summary>
+        public void ResetCacheCollections()
         {
             EnsureServerActive();
             AppendCaches.Clear();
@@ -423,22 +465,62 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Converts the <see cref="NetworkGroup"/> instance to its equivalent string representation.
+        /// </summary>
+        /// <returns>A string that represents the value of this instance.</returns>
         public override string ToString()
         {
-            return ToJson(this);
+            object peer = new
+            {
+                Id,
+                Identifier,
+                Name,
+                MainGroup = MainGroup?.Name,
+                Data,
+                SharedData,
+                PeerCount,
+                IsSubGroup
+            };
+
+            return NetworkManager.ToJson(peer);
         }
 
+
+        /// <summary>
+        /// Determines whether the specified <see cref="object"/> is equal to the current <see cref="NetworkGroup"/>.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current <see cref="NetworkGroup"/>.</param>
+        /// <returns>
+        /// <c>true</c> if the specified <see cref="object"/> is equal to the current <see cref="NetworkGroup"/>;
+        /// otherwise, <c>false</c>.
+        /// </returns>
         public override bool Equals(object obj)
         {
             NetworkGroup other = (NetworkGroup)obj;
             return other != null && Id == other.Id;
         }
 
+        /// <summary>
+        /// Serves as the default hash function.
+        /// </summary>
+        /// <returns>A hash code for the current <see cref="NetworkGroup"/>.</returns>
+        /// <remarks>
+        /// This method is used to generate a hash code of the current <see cref="NetworkGroup"/> instance.
+        /// </remarks>
         public override int GetHashCode()
         {
             return Id.GetHashCode();
         }
 
+        /// <summary>
+        /// Determines whether the specified <see cref="NetworkGroup"/> is equal to the current <see cref="NetworkGroup"/>.
+        /// </summary>
+        /// <param name="other">The <see cref="NetworkGroup"/> to compare with the current <see cref="NetworkGroup"/>.</param>
+        /// <returns>
+        /// <c>true</c> if the specified <see cref="NetworkGroup"/> is equal to the current <see cref="NetworkGroup"/>;
+        /// otherwise, <c>false</c>.
+        /// </returns>
         public bool Equals(NetworkGroup other)
         {
             return other != null && Id == other.Id;
