@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using TriInspector;
+using Omni.Inspector;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -23,7 +23,7 @@ namespace Omni.Core
     /// It includes auto-synced network variables and supports client and server execution contexts.
     /// </remarks>
     [DeclareFoldoutGroup("Network Variables", Expanded = true, Title = "Network Variables - (Auto Synced)")]
-    [DeclareBoxGroup("Service Settings")]
+    [DeclareFoldoutGroup("Service Settings")]
     [StackTrace]
     public class NetworkBehaviour : NetworkVariablesBehaviour, IRpcMessage, ITickSystem, IEquatable<NetworkBehaviour>
     {
@@ -567,10 +567,12 @@ namespace Omni.Core
         private readonly RpcHandler<DataBuffer, int, Null, Null, Null> clientRpcHandler = new();
         private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> serverRpcHandler = new();
 
-        [SerializeField] [Group("Service Settings")]
+        [SerializeField]
+        [Group("Service Settings")]
         private string m_ServiceName = "";
 
-        [SerializeField] [Group("Service Settings")]
+        [SerializeField]
+        [Group("Service Settings")]
         private byte m_Id = 0;
 
         internal BindingFlags m_BindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
@@ -851,7 +853,7 @@ namespace Omni.Core
             }
 
             InitializeServiceLocator();
-            AddEventBehaviour();
+            AddRpcHandler();
 
             if (NetworkManager.TickSystemModuleEnabled)
             {
@@ -890,12 +892,12 @@ namespace Omni.Core
         /// </summary>
         protected internal void Unregister()
         {
-            var eventBehaviours = Identity.IsServer
+            var rpcHandlers = Identity.IsServer
                 ? NetworkManager.ServerSide.LocalRpcHandlers
                 : NetworkManager.ClientSide.LocalRpcHandlers;
 
             var key = (IdentityId, m_Id);
-            if (!eventBehaviours.Remove(key))
+            if (!rpcHandlers.Remove(key))
             {
                 NetworkLogger.__Log__(
                     $"[Unregister Error] The NetworkBehaviour with ID '{m_Id}' and peer ID '{IdentityId}' could not be found. This indicates it was not registered or may have already been unregistered. Please verify that the NetworkBehaviour is properly registered before attempting to unregister it.",
@@ -993,16 +995,16 @@ namespace Omni.Core
             }
         }
 
-        private void AddEventBehaviour()
+        private void AddRpcHandler()
         {
-            var eventBehaviours = Identity.IsServer
+            var rpcHandlers = Identity.IsServer
                 ? NetworkManager.ServerSide.LocalRpcHandlers
                 : NetworkManager.ClientSide.LocalRpcHandlers;
 
             var key = (IdentityId, m_Id);
-            if (!eventBehaviours.TryAdd(key, this))
+            if (!rpcHandlers.TryAdd(key, this))
             {
-                eventBehaviours[key] = this;
+                rpcHandlers[key] = this;
             }
         }
 
@@ -1129,10 +1131,12 @@ namespace Omni.Core
                     }
                 }
 
+                serverRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
                 TryCallServerRpc(rpcId, buffer, peer, seqChannel);
             }
             else
             {
+                clientRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
                 TryCallClientRpc(rpcId, buffer, seqChannel);
             }
         }
