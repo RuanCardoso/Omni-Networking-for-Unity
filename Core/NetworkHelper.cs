@@ -1,7 +1,11 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Omni.Shared;
 using Omni.Threading.Tasks;
 using OpenNat;
 using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
@@ -493,6 +497,50 @@ namespace Omni.Core
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(target);
 #endif
+        }
+
+        internal static Dictionary<string, string> ParseQueryStringToDictionary(NameValueCollection queryString)
+        {
+            string[] allKeys = queryString.AllKeys;
+            Dictionary<string, string> parameters = new(allKeys.Length);
+            foreach (string key in allKeys)
+            {
+                if (string.IsNullOrEmpty(key))
+                    continue;
+
+                parameters[key] = queryString[key];
+            }
+
+            return parameters;
+        }
+
+        internal static bool IsValidJson(string strInput)
+        {
+            if (string.IsNullOrWhiteSpace(strInput))
+                return false;
+
+            strInput = strInput.Trim();
+            if ((strInput.StartsWith("{") && strInput.EndsWith("}")) || // For object
+                (strInput.StartsWith("[") && strInput.EndsWith("]"))) // For array
+            {
+                try
+                {
+                    JToken.Parse(strInput);
+                    return true;
+                }
+                catch (JsonReaderException)
+                {
+                    return false;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }
