@@ -5,23 +5,52 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using TriInspector;
+using System.Text;
+using Omni.Core.Web;
+using Omni.Threading.Tasks;
+using Omni.Inspector;
 using UnityEngine;
+using HttpListenerRequest = Omni.Core.Web.Net.HttpListenerRequest;
+using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
 using WebClient = NativeWebSocket;
-using WebServer = WebSocketSharp.Server;
+using WebServer = Omni.Core.Web.Server;
 
 #pragma warning disable
+
+namespace Omni.Core.Web
+{
+    public class WebSocketService : WebServer.WebSocketBehavior
+    {
+        public WebSocketService()
+        {
+        }
+    }
+
+    public class HttpService : WebSocketService
+    {
+        protected override void OnOpen()
+        {
+
+        }
+
+        protected override void OnMessage(Web.MessageEventArgs e)
+        {
+            Send(e.Data);
+        }
+    }
+}
 
 namespace Omni.Core.Modules.Connection
 {
     [DefaultExecutionOrder(-1100)]
     [DisallowMultipleComponent]
     [AddComponentMenu("Omni/Transporters/Web Transporter")]
-    [DeclareBoxGroup("SSL Settings")]
+    [DeclareBoxGroup("Ssl Settings")]
     internal class WebTransporter : TransporterBehaviour, ITransporter
     {
-        private class WebServerListener : WebServer.WebSocketBehavior
+        private class WebServerListener : WebSocketService
         {
+            internal WebTransporter Transporter { get; set; }
             internal ITransporterReceive IManager { get; set; }
             internal Dictionary<IPEndPoint, WebServerListener> Peers { get; set; }
             internal WebServer.WebSocketServer WebServer { get; set; }
@@ -34,7 +63,7 @@ namespace Omni.Core.Modules.Connection
                     if (WebServer.IsSecure)
                     {
                         NetworkLogger.__Log__(
-                            $"Web Transporter: A secure connection was successfully established for {UserEndPoint}.");
+                            $"Web Transporter: A secure connection(Ssl) was successfully established for {UserEndPoint}.");
                     }
 #endif
                     if (!Peers.TryAdd(UserEndPoint, this))
@@ -51,7 +80,7 @@ namespace Omni.Core.Modules.Connection
                 });
             }
 
-            protected override void OnClose(WebSocketSharp.CloseEventArgs e)
+            protected override void OnClose(Web.CloseEventArgs e)
             {
                 NetworkHelper.RunOnMainThread(() =>
                 {
@@ -69,7 +98,7 @@ namespace Omni.Core.Modules.Connection
                 });
             }
 
-            protected override void OnMessage(WebSocketSharp.MessageEventArgs e)
+            protected override void OnMessage(Web.MessageEventArgs e)
             {
                 if (e.IsBinary && !e.IsPing)
                 {
@@ -79,6 +108,10 @@ namespace Omni.Core.Modules.Connection
                             true, out _);
                     });
                 }
+                else if (e.IsText && !e.IsPing)
+                {
+                    Transporter.Internal_OnStringDataReceived(e.Data, UserEndPoint, true);
+                }
             }
 
             internal void Send(byte[] data)
@@ -86,7 +119,17 @@ namespace Omni.Core.Modules.Connection
                 base.Send(data);
             }
 
-            internal void Disconnect(WebSocketSharp.CloseStatusCode statusCode, string reason)
+            internal void Send(string data)
+            {
+                base.Send(data);
+            }
+
+            internal void Send(Stream stream, int length)
+            {
+                base.Send(stream, length);
+            }
+
+            internal void Disconnect(Web.CloseStatusCode statusCode, string reason)
             {
                 base.Close(statusCode, reason);
             }
@@ -96,16 +139,37 @@ namespace Omni.Core.Modules.Connection
         private bool isRunning;
 
         private ITransporterReceive IManager;
+        internal event Action<string, IPEndPoint, bool> OnStringDataReceived;
+        internal event Action<HttpListenerRequest, HttpListenerResponse> OnGetRequest;
+        internal event Action<HttpListenerRequest, HttpListenerResponse> OnPostRequest;
 
-        private WebServer.WebSocketServer webServer;
+        private WebServer.HttpServer httpServer;
+        private WebServer.WebSocketServer webSocketServer;
         private WebClient.WebSocket webClient;
         private readonly Dictionary<IPEndPoint, WebServerListener> _peers = new();
 
-        [SerializeField] [Group("SSL Settings")] [ReadOnly]
+        [SerializeField]
+        [Group("Ssl Settings")]
+        [ReadOnly]
         private string certificateConfig = "cert_conf.json";
 
-        [SerializeField] [Group("SSL Settings")]
+        [SerializeField]
+        [Group("Ssl Settings")]
         private bool enableSsl = false;
+
+        internal bool EnableWebSocket { get; set; } = true;
+
+        internal bool EnableWebSocketSsl
+        {
+            get => enableSsl;
+            set => enableSsl = value;
+        }
+
+        // Http Server Settings
+        internal int HttpServerPort { get; set; } = 8080;
+        internal bool EnableHttpServer { get; set; } = false;
+        internal bool EnableHttpServerSsl { get; set; } = false;
+        internal string HttpServerDocumentRootPath { get; set; } = "";
 
         public void Initialize(ITransporterReceive IManager, bool isServer)
         {
@@ -117,7 +181,7 @@ namespace Omni.Core.Modules.Connection
                 throw new Exception("Web Transporter is already initialized.");
             }
 
-            if (enableSsl && isServer)
+            if (EnableWebSocketSsl && isServer)
             {
                 if (!File.Exists(certificateConfig))
                 {
@@ -132,53 +196,83 @@ namespace Omni.Core.Modules.Connection
         {
             if (isServer)
             {
-                webServer = new WebServer.WebSocketServer($"{(enableSsl ? "wss" : "ws")}://{IPAddress.Any}:{port}");
-                if (enableSsl)
+                httpServer = new WebServer.HttpServer(HttpServerPort, EnableHttpServerSsl);
+                if (EnableHttpServer)
                 {
-                    if (File.Exists(certificateConfig))
-                    {
-                        try
-                        {
-                            var dict = NetworkManager.FromJson<Dictionary<string, string>>(
-                                File.ReadAllText(certificateConfig));
-                            webServer.SslConfiguration.ServerCertificate =
-                                new X509Certificate2(dict["cert"], dict["password"]);
-                        }
-                        catch (Exception ex)
-                        {
-                            NetworkLogger.__Log__(
-                                "Web Transporter: Failed to load SSL certificate. Exception: " + ex.Message,
-                                NetworkLogger.LogType.Error);
-                        }
-                    }
-                    else
-                    {
-                        NetworkLogger.__Log__(
-                            "Web Transporter: Certificate configuration file not found at path: " + "./" +
-                            certificateConfig, NetworkLogger.LogType.Error);
-                    }
+                    httpServer.AddWebSocketService<HttpService>("/");
+                    httpServer.DocumentRootPath = HttpServerDocumentRootPath;
+
+                    httpServer.OnGet += (sender, e) => OnGetRequest?.Invoke(e.Request, e.Response);
+                    httpServer.OnPost += (sender, e) => OnPostRequest?.Invoke(e.Request, e.Response);
                 }
 
-                webServer.AddWebSocketService<WebServerListener>("/", (listener) =>
-                {
-                    listener.IManager = IManager;
-                    listener.Peers = _peers;
-                    listener.WebServer = webServer;
-                });
+                webSocketServer =
+                    new WebServer.WebSocketServer($"{(EnableWebSocketSsl ? "wss" : "ws")}://{IPAddress.Any}:{port}");
 
-                webServer.Start();
+                if (File.Exists(certificateConfig))
+                {
+                    try
+                    {
+                        var dict = NetworkManager.FromJson<Dictionary<string, string>>(
+                            File.ReadAllText(certificateConfig));
+
+                        // Setup SSL(Secure Socket Layer)
+                        if (EnableWebSocket && EnableWebSocketSsl)
+                        {
+                            webSocketServer.SslConfiguration.ServerCertificate =
+                                new X509Certificate2(dict["cert"], dict["password"]);
+                        }
+
+                        if (EnableHttpServer && EnableHttpServerSsl)
+                        {
+                            httpServer.SslConfiguration.ServerCertificate =
+                                new X509Certificate2(dict["cert"], dict["password"]);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        NetworkLogger.__Log__(
+                            "Web Transporter: Failed to load SSL certificate. Exception: " + ex.Message,
+                            NetworkLogger.LogType.Error);
+                    }
+                }
+                else
+                {
+                    NetworkLogger.__Log__(
+                        "Web Transporter: Certificate configuration file not found at path: " + "./" +
+                        certificateConfig, NetworkLogger.LogType.Error);
+                }
+
+                if (EnableWebSocket)
+                {
+                    webSocketServer.AddWebSocketService<WebServerListener>("/", (listener) =>
+                    {
+                        listener.Transporter = this;
+                        listener.IManager = IManager;
+                        listener.Peers = _peers;
+                        listener.WebServer = webSocketServer;
+                    });
+
+                    webSocketServer.Start();
+                }
+
+                if (EnableHttpServer)
+                {
+                    httpServer.Start();
+                }
+
                 // Set to 'true' to indicate that the server is running.
                 isRunning = true;
                 IManager.Internal_OnServerInitialized();
             }
         }
 
-        private void Awake()
+        internal void Awake()
         {
             ITransporter = this;
         }
 
-        void Update()
+        internal void Update()
         {
             if (!isServer && isRunning)
             {
@@ -190,7 +284,7 @@ namespace Omni.Core.Modules.Connection
 
         public async void Connect(string address, int port)
         {
-            if (enableSsl)
+            if (EnableWebSocketSsl)
             {
                 if (IPAddress.TryParse(address, out _))
                 {
@@ -200,7 +294,7 @@ namespace Omni.Core.Modules.Connection
             }
 
             IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Loopback, port);
-            webClient = new WebClient.WebSocket($"{(enableSsl ? "wss" : "ws")}://{address}:{port}");
+            webClient = new WebClient.WebSocket($"{(EnableWebSocketSsl ? "wss" : "ws")}://{address}:{port}");
             webClient.OnOpen += () =>
             {
                 // Set to 'true' to indicate that the client is running.
@@ -210,12 +304,11 @@ namespace Omni.Core.Modules.Connection
 
             webClient.OnMessage += (data) =>
             {
-                IManager.Internal_OnDataReceived(data, DeliveryMode.ReliableOrdered, localEndPoint, 0, false,
-                    out _);
+                Internal_OnStringDataReceived(Encoding.UTF8.GetString(data), localEndPoint, false);
+                IManager.Internal_OnDataReceived(data, DeliveryMode.ReliableOrdered, localEndPoint, 0, false, out _);
             };
 
             webClient.OnClose += (e) => { IManager.Internal_OnClientDisconnected(localEndPoint, $"code: {e}"); };
-
             await webClient.Connect(); // While Loop -> 'Receive()' when is opened.
         }
 
@@ -224,7 +317,7 @@ namespace Omni.Core.Modules.Connection
             if (isServer)
             {
                 WebServerListener listener = _peers[peer.EndPoint];
-                listener.Disconnect(WebSocketSharp.CloseStatusCode.Normal, "Normally closed.");
+                listener.Disconnect(Web.CloseStatusCode.Normal, "Normally closed.");
             }
             else
             {
@@ -256,9 +349,78 @@ namespace Omni.Core.Modules.Connection
             }
         }
 
+        internal void Send(string data, IPEndPoint target)
+        {
+            if (isServer)
+            {
+                if (_peers.TryGetValue(target, out WebServerListener peer))
+                {
+                    peer.Send(data);
+                }
+            }
+            else
+            {
+                if (webClient.State == WebClient.WebSocketState.Open)
+                {
+                    webClient.SendText(data);
+                }
+            }
+        }
+
+        internal void Disconnect(IPEndPoint endPoint)
+        {
+            if (isServer)
+            {
+                WebServerListener listener = _peers[endPoint];
+                listener.Disconnect(Web.CloseStatusCode.Normal, "Normally closed.");
+            }
+            else
+            {
+                if (webClient.State == WebClient.WebSocketState.Open)
+                {
+                    webClient.Close();
+                }
+            }
+        }
+
+        internal WebSocketService GetDefaultWebSocketService(IPEndPoint endPoint)
+        {
+            if (isServer)
+            {
+                return _peers[endPoint];
+            }
+
+            throw new NullReferenceException();
+        }
+
         public void SendP2P(ReadOnlySpan<byte> data, IPEndPoint target)
         {
             throw new NotSupportedException("The web transporter does not support P2P connections.");
+        }
+
+        internal async void AddWebSocketService<T>(string serviceName, Action<T> initializer)
+            where T : WebSocketService, new()
+        {
+            if (!EnableWebSocket)
+                return;
+
+            await UniTask.WaitUntil(() => webSocketServer != null);
+            webSocketServer.AddWebSocketService<T>(serviceName, initializer);
+        }
+
+        internal async void AddHttpService<T>(string serviceName, Action<T> initializer)
+            where T : HttpService, new()
+        {
+            if (!EnableHttpServer)
+                return;
+
+            await UniTask.WaitUntil(() => httpServer != null);
+            httpServer.AddWebSocketService<T>(serviceName, initializer);
+        }
+
+        internal void Internal_OnStringDataReceived(string data, IPEndPoint source, bool isServer)
+        {
+            OnStringDataReceived?.Invoke(data, source, isServer);
         }
 
         public async void Stop()
@@ -267,7 +429,11 @@ namespace Omni.Core.Modules.Connection
             {
                 if (isServer)
                 {
-                    webServer.Stop();
+                    webSocketServer.Stop();
+                    if (EnableHttpServer)
+                    {
+                        httpServer.Stop();
+                    }
                 }
                 else
                 {
@@ -281,7 +447,7 @@ namespace Omni.Core.Modules.Connection
             WebTransporter webTransporter = ITransporter as WebTransporter;
             if (webTransporter != null)
             {
-                webTransporter.enableSsl = enableSsl;
+                webTransporter.EnableWebSocketSsl = EnableWebSocketSsl;
                 webTransporter.certificateConfig = certificateConfig;
             }
         }
