@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Omni.Inspector;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
 #endif
@@ -98,6 +99,20 @@ namespace Omni.Core
         {
             get { return isOwnedByTheServer; }
             internal set { isOwnedByTheServer = value; }
+        }
+
+        void Start()
+        {
+            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
+        }
+
+        private void OnBeforeSceneLoad(Scene scene, SceneOperationMode mode)
+        {
+            if (!NetworkHelper.IsDontDestroyOnLoad(gameObject))
+            {
+                NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+                Destroy();
+            }
         }
 
         /// <summary>
