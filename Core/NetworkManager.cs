@@ -1980,6 +1980,12 @@ namespace Omni.Core
             }
 
             _allowLoadScene = true;
+            // OnBeforeSceneLoad is invoked only in Single mode because:
+            // - In Single mode, the current scene will be unloaded automatically. 
+            //   Therefore, it's necessary to perform cleanup operations, such as removing registered events,
+            //   destroying objects, and preparing for the next scene.
+            // - In Additive mode, existing scenes are not unloaded, so global cleanup is usually unnecessary.
+            //   The focus is on loading the new scene alongside the existing ones.
             if (mode == LoadSceneMode.Single)
             {
                 // This event is used to perform some operations before the scene is loaded.
