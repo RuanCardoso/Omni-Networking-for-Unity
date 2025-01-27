@@ -50,10 +50,14 @@ namespace Omni.Core
         /// It is intended for performance-sensitive scenarios where the type is known at compile-time and type safety is ensured by the caller.
         /// If the key is not found in the dictionary, this method will throw a KeyNotFoundException.
         /// </remarks>
-        public static T FastGet<T>(this IDictionary<string, object> @this, string name) where T : class
+        public static T UnsafeGet<T>(this IDictionary<string, object> @this, string name) where T : class
         {
             var @ref = @this[name];
+#if OMNI_RELEASE
             return Unsafe.As<T>(@ref);
+#else
+            return (T)@ref;
+#endif
         }
 
         /// <summary>
@@ -93,12 +97,16 @@ namespace Omni.Core
         /// It is intended for performance-sensitive scenarios where the type is known at compile-time and type safety is ensured by the caller.
         /// If the key is found in the dictionary, the value is assigned to the <paramref name="value"/> parameter and the method returns true; otherwise, it returns false.
         /// </remarks>
-        public static bool TryFastGet<T>(this IDictionary<string, object> @this, string name, out T value)
+        public static bool TryUnsafeGet<T>(this IDictionary<string, object> @this, string name, out T value)
             where T : class
         {
             if (@this.TryGetValue(name, out object @ref))
             {
+#if OMNI_RELEASE
                 value = Unsafe.As<T>(@ref);
+#else
+                value = (T)@ref;
+#endif
                 return true;
             }
 

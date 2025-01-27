@@ -144,6 +144,17 @@ namespace Omni.Core
             {
                 if (m_Services.TryGetValue(serviceName, out object service))
                 {
+#if OMNI_DEBUG
+                    if (service is MonoBehaviour behaviour)
+                    {
+                        if (behaviour == null)
+                        {
+                            throw new NullReferenceException(
+                                $"The requested MonoBehaviour service '{serviceName}' is null or has been destroyed. Ensure the service is correctly initialized and has not been destroyed during runtime."
+                            );
+                        }
+                    }
+#endif
 #if OMNI_RELEASE
                     return Unsafe.As<T>(service);
 #else
