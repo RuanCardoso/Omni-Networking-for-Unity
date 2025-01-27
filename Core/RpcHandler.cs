@@ -20,12 +20,14 @@ namespace Omni.Core
     internal class RpcMethod
     {
         internal int MethodId { get; }
+        internal string MethodName { get; }
         internal int ArgsCount { get; }
         internal bool RequiresOwnership { get; }
 
-        internal RpcMethod(int methodId, int argsCount, bool requiresOwnership)
+        internal RpcMethod(int methodId, string methodName, int argsCount, bool requiresOwnership)
         {
             MethodId = methodId;
+            MethodName = methodName;
             ArgsCount = argsCount;
             RequiresOwnership = requiresOwnership;
         }
@@ -198,7 +200,7 @@ namespace Omni.Core
                         if (attr is ServerAttribute serverAttribute)
                             requiresOwnership = serverAttribute.RequiresOwnership;
 
-                        if (t_methods.TryAdd(attr.Id, new RpcMethod(attr.Id, argsCount, requiresOwnership)))
+                        if (t_methods.TryAdd(attr.Id, new RpcMethod(attr.Id, method.Name, argsCount, requiresOwnership)))
                         {
                             switch (argsCount)
                             {
@@ -446,6 +448,16 @@ namespace Omni.Core
                     NetworkLogger.LogType.Error
                 );
             }
+        }
+
+        internal string GetRpcName(int methodId)
+        {
+            if (t_methods.TryGetValue(methodId, out RpcMethod method))
+            {
+                return method.MethodName;
+            }
+
+            return NetworkConstants.INVALID_RPC_NAME;
         }
     }
 }
