@@ -104,6 +104,7 @@ namespace Omni.Core
 
         /// <summary>
         /// Event triggered before a scene is loaded, providing the opportunity to perform any pre-load operations.
+        /// Triggered only in single mode.
         /// </summary>
         public static event Action<Scene, SceneOperationMode> OnBeforeSceneLoad;
 
