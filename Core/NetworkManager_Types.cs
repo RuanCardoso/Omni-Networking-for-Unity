@@ -33,7 +33,7 @@ namespace Omni.Core
         internal const byte KCP_PING_REQUEST_RESPONSE = 238;
         internal const byte RequestEntityAction = 239;
         internal const byte SetOwner = 240;
-        internal const byte Destroy = 241;
+        internal const byte Despawn = 241;
         internal const byte Spawn = 242;
         internal const byte SyncGroupSharedData = 243;
         internal const byte SyncPeerSharedData = 244;

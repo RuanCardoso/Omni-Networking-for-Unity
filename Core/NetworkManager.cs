@@ -1902,7 +1902,7 @@ namespace Omni.Core
                                 }
                             }
                             break;
-                        case MessageType.Destroy:
+                        case MessageType.Despawn:
                             {
                                 if (!isServer)
                                 {
