@@ -747,6 +747,18 @@ namespace Omni.Core
             private set => _remote = value;
         }
 
+        /// <summary>
+        /// Gets the name of the service associated with this instance.
+        /// </summary>
+        /// <value>
+        /// The name of the service associated with this instance.
+        /// </value>
+        public string ServiceName
+        {
+            get => m_ServiceName;
+            internal set => m_ServiceName = value;
+        }
+
         [EditorBrowsable(EditorBrowsableState.Never)]
         [Obsolete("Don't override this method! The source generator will override it.")]
         protected internal virtual void ___InjectServices___()
@@ -1019,6 +1031,18 @@ namespace Omni.Core
         protected DataBuffer Rent()
         {
             return NetworkManager.Pool.Rent();
+        }
+
+        /// <summary>
+        /// Removes and destroys this network component, unregistering it from the network system.
+        /// This action cleans up the network identity and ensures that the component is no longer 
+        /// part of the network system.
+        /// This method does not synchronize the component across the network.
+        /// </summary>
+        public void Destroy()
+        {
+            Unregister();
+            UnityEngine.Object.Destroy(this);
         }
 
         private void TryCallClientRpc(byte msgId, DataBuffer buffer, int seqChannel)

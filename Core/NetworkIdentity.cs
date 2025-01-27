@@ -7,6 +7,8 @@ using UnityEngine;
 using System.Runtime.CompilerServices;
 #endif
 
+#pragma warning disable
+
 namespace Omni.Core
 {
     [DeclareBoxGroup("Infor")]
@@ -19,15 +21,24 @@ namespace Omni.Core
         // (Service Name, Service Instance) exclusively to identity
         private readonly Dictionary<string, object> m_Services = new();
 
-        [SerializeField] [ReadOnly] private int m_Id;
+        [SerializeField][ReadOnly] private int m_Id;
 
-        [SerializeField] [ReadOnly] [LabelWidth(150)] [Group("Infor")]
+        [SerializeField]
+        [ReadOnly]
+        [LabelWidth(150)]
+        [Group("Infor")]
         private bool m_IsServer;
 
-        [SerializeField] [ReadOnly] [LabelWidth(150)] [Group("Infor")]
+        [SerializeField]
+        [ReadOnly]
+        [LabelWidth(150)]
+        [Group("Infor")]
         private bool m_IsLocalPlayer;
 
-        [SerializeField] [ReadOnly] [LabelWidth(150)] [Group("Infor")]
+        [SerializeField]
+        [ReadOnly]
+        [LabelWidth(150)]
+        [Group("Infor")]
         private bool isOwnedByTheServer;
 
         public int IdentityId
@@ -472,18 +483,17 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Automatic destroys a network identity on the client.
+        /// Despawns the network identity using the specified server synchronization options.
         /// </summary>
-        /// <returns>The instantiated network identity.</returns>
+        /// <param name="options">The server options containing target, delivery mode, group ID, data cache, and sequence channel settings for despawning.</param>
         public void Despawn(ServerOptions options)
         {
             Despawn(options.Target, options.DeliveryMode, options.GroupId, options.DataCache, options.SequenceChannel);
         }
 
         /// <summary>
-        /// Automatic destroys a network identity on the client and server for a specific peer.
+        /// Despawns the network identity for a specific peer with specified delivery options.
         /// </summary>
-        /// <returns>The instantiated network identity.</returns>
         public void DespawnToPeer(NetworkPeer peer, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             DataCache dataCache = default, byte sequenceChannel = 0)
         {
@@ -498,21 +508,20 @@ namespace Omni.Core
             if (!IsServer)
             {
                 throw new InvalidOperationException(
-                    $"Operation failed: The game object '{name}' can only be destroyed by the server. Ensure the operation is being executed on the server.");
+                    $"Operation failed: The game object '{name}' can only be despawned by the server. Ensure the operation is being executed on the server.");
             }
 
             using var message = NetworkManager.Pool.Rent();
             message.Write(m_Id);
-            NetworkManager.ServerSide.SendMessage(MessageType.Destroy, peer, message, Target.SelfOnly, deliveryMode, 0,
+            NetworkManager.ServerSide.SendMessage(MessageType.Despawn, peer, message, Target.SelfOnly, deliveryMode, 0,
                 dataCache, sequenceChannel);
 
             NetworkHelper.Destroy(m_Id, IsServer);
         }
 
         /// <summary>
-        /// Automatic destroys a network identity on the client and server.
+        /// Despawns the network identity for all connected clients with specified delivery options.
         /// </summary>
-        /// <returns>The instantiated network identity.</returns>
         public void Despawn(Target target = Target.Auto, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             int groupId = 0, DataCache dataCache = default, byte sequenceChannel = 0)
         {
@@ -527,19 +536,20 @@ namespace Omni.Core
             if (!IsServer)
             {
                 throw new InvalidOperationException(
-                    $"Operation failed: The game object '{name}' can only be destroyed by the server. Ensure the operation is being executed on the server.");
+                    $"Operation failed: The game object '{name}' can only be despawned by the server. Ensure the operation is being executed on the server.");
             }
 
             using var message = NetworkManager.Pool.Rent();
             message.Write(m_Id);
-            NetworkManager.ServerSide.SendMessage(MessageType.Destroy, Owner, message, target, deliveryMode, groupId,
+            NetworkManager.ServerSide.SendMessage(MessageType.Despawn, Owner, message, target, deliveryMode, groupId,
                 dataCache, sequenceChannel);
 
             NetworkHelper.Destroy(m_Id, IsServer);
         }
 
         /// <summary>
-        /// Destroys a network identity only on the client, but the object will be destroyed only for you.
+        /// Destroys a network identity on the client only. This action is local to the client 
+        /// and does not synchronize across the network or affect other clients.
         /// </summary>
         public void DestroyOnClient()
         {
@@ -553,10 +563,83 @@ namespace Omni.Core
             if (IsServer)
             {
                 throw new Exception(
-                    $"Only client can destroy the game object '{name}'. But the object will be destroyed only for you.");
+                    $"Only client can destroy the game object '{name}'. But the object will be destroyed only for you(local).");
             }
 
             NetworkHelper.Destroy(IdentityId, false);
+        }
+
+        /// <summary>
+        /// Destroys a network identity on the server only. This action is local to the server 
+        /// and does not synchronize across the network or affect other clients.
+        /// </summary>
+        public void DestroyOnServer()
+        {
+            if (!IsRegistered)
+            {
+                throw new Exception(
+                    $"The game object '{name}' is not registered. Please register it first."
+                );
+            }
+
+            if (!IsServer)
+            {
+                throw new InvalidOperationException(
+                    $"Operation failed: Only the server is authorized to destroy the game object '{name}'. Ensure the operation is being performed on the server.");
+            }
+
+            NetworkHelper.Destroy(IdentityId, true);
+        }
+
+        /// <summary>
+        /// Destroys the network identity, determining the appropriate behavior based on the current context.
+        /// If called on the server, it destroys the object locally on the server.
+        /// If called on a client, it destroys the object locally on that client.
+        /// This method does not synchronize the destruction across the network.
+        /// </summary>
+        public void Destroy()
+        {
+            if (IsServer)
+            {
+                DestroyOnServer();
+            }
+            else
+            {
+                DestroyOnClient();
+            }
+        }
+
+        /// <summary>
+        /// Adds a network component of type <typeparamref name="T"/> to this network identity.
+        /// The component is registered with the network system and initialized with the
+        /// current network identity.
+        /// This method does not synchronize the component across the network.
+        /// </summary>
+        /// <typeparam name="T">The type of the network component to add. Must be a subclass of <see cref="NetworkBehaviour"/>.</typeparam>
+        public T AddNetworkComponent<T>(string serviceName = null) where T : NetworkBehaviour
+        {
+            if (string.IsNullOrEmpty(serviceName))
+            {
+                serviceName = typeof(T).Name;
+            }
+
+            int length = GetComponentsInChildren<NetworkBehaviour>(true).Length;
+
+            T behaviour = gameObject.AddComponent<T>();
+            behaviour.ServiceName = serviceName;
+            behaviour.Identity = this;
+            behaviour.Id = (byte)(length + 1);
+
+            behaviour.Register();
+            behaviour.___InjectServices___();
+
+            behaviour.OnAwake();
+            behaviour.OnStart();
+
+            if (IsLocalPlayer) behaviour.OnStartLocalPlayer();
+            else behaviour.OnStartRemotePlayer();
+
+            return behaviour;
         }
 
         /// <summary>
