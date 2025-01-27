@@ -925,6 +925,10 @@ namespace Omni.Core
             Identity.OnSpawn -= OnServerClientSpawned;
             Identity.OnSpawn -= Internal_OnServerClientSpawned;
 
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+            NetworkManager.OnSceneLoaded -= OnSceneLoaded;
+            NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
+
             if (!Identity.Unregister(m_ServiceName))
             {
                 NetworkLogger.__Log__(
@@ -967,7 +971,6 @@ namespace Omni.Core
         /// </remarks>
         protected virtual void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            NetworkManager.OnSceneLoaded -= OnSceneLoaded;
         }
 
         /// <summary>
@@ -980,11 +983,10 @@ namespace Omni.Core
         /// </remarks>
         protected virtual void OnSceneUnloaded(Scene scene)
         {
-            NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
         }
 
         /// <summary>
-        /// Called before a scene begins to load.
+        /// Called before a single scene begins to load.
         /// </summary>
         /// <param name="scene">The <see cref="Scene"/> that is about to be loaded.</param>
         /// <param name="op">The <see cref="SceneOperationMode"/> indicating the type of operation being performed.</param>
@@ -995,7 +997,6 @@ namespace Omni.Core
         /// </remarks>
         protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
         {
-            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
         }
 
         private void InitializeServiceLocator()
