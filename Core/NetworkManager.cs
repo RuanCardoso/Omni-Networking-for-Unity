@@ -540,7 +540,7 @@ namespace Omni.Core
 #if OMNI_DEBUG
             NetworkLogger.Log("Debug Mode Enabled: Detailed logs and debug features are active.");
 #else
-			NetworkLogger.Log("Release Mode Active: Optimized for production with minimal logging.");
+            NetworkLogger.Log("Release Mode Active: Optimized for production with minimal logging.");
 #endif
         }
 
@@ -1778,15 +1778,6 @@ namespace Omni.Core
                                 {
                                     behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
                                 }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Local Invoke Error: Did you spawn the identity? -> Failed to find 'Local Event Behaviour' with Identity Id: [{identityId}] and instance Id: [{instanceId}] on the {(isServer ? "Server" : "Client")} side. "
-                                        + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
-                                        + "Ensure it is registered first or ignore it if intended.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
                             }
                             break;
                         case MessageType.GlobalRpc:
@@ -1802,15 +1793,6 @@ namespace Omni.Core
                                 if (rpcHandlers.TryGetValue(identityId, out IRpcMessage behaviour))
                                 {
                                     behaviour.OnRpcInvoked(rpcId, message, peer, isServer, sequenceChannel);
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Global Invoke Error: Failed to find 'Global Event Behaviour' with Id: [{identityId}] on the {(isServer ? "Server" : "Client")} side. "
-                                        + $"This function exists on the {(!isServer ? "Server" : "Client")} side, but is missing on the {(!isServer ? "Client" : "Server")} side. "
-                                        + "Ensure it is registered first or ignore it if intended.",
-                                        NetworkLogger.LogType.Error
-                                    );
                                 }
                             }
                             break;
