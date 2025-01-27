@@ -318,25 +318,27 @@ namespace Omni.Core
         {
         }
 
-        public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
+        public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool _, int seqChannel)
         {
-            bool isClientAuthority = false;
-
-            if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+            try
             {
-                byte id = buffer.BufferAsSpan[0];
-                if (networkVariables.TryGetValue(id, out NetworkVariableField field))
-                {
-                    isClientAuthority = field.IsClientAuthority;
-                }
+                bool isClientAuthority = false;
 
-                if (!AllowNetworkVariablesFromClients && !isClientAuthority)
+                if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
                 {
+                    byte id = buffer.BufferAsSpan[0];
+                    if (networkVariables.TryGetValue(id, out NetworkVariableField field))
+                    {
+                        isClientAuthority = field.IsClientAuthority;
+                    }
+
+                    if (!AllowNetworkVariablesFromClients && !isClientAuthority)
+                    {
 #if OMNI_DEBUG
-                    NetworkLogger.__Log__(
-                        "Access Denied: The client attempted to send Network Variables without proper permissions.",
-                        NetworkLogger.LogType.Error
-                    );
+                        NetworkLogger.__Log__(
+                            "Access Denied: The client attempted to send Network Variables without proper permissions.",
+                            NetworkLogger.LogType.Error
+                        );
 #else
                     NetworkLogger.__Log__(
                         "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
@@ -345,12 +347,25 @@ namespace Omni.Core
 
                     peer.Disconnect();
 #endif
-                    return;
+                        return;
+                    }
                 }
-            }
 
-            rpcHandler.ThrowIfNoRpcMethodFound(rpcId);
-            TryCallServerRpc(rpcId, buffer, peer, seqChannel);
+                rpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                TryCallServerRpc(rpcId, buffer, peer, seqChannel);
+            }
+            catch (Exception ex)
+            {
+                string methodName = rpcHandler.GetRpcName(rpcId);
+                NetworkLogger.__Log__(
+                    $"[RPC Error] An exception occurred while processing the RPC -> " +
+                    $"Rpc Id: '{rpcId}', Rpc Name: '{methodName}' in Class: '{GetType().Name}' -> " +
+                    $"Exception Details: {ex.Message}. ",
+                    NetworkLogger.LogType.Error
+                );
+
+                NetworkLogger.PrintHyperlink(ex);
+            }
         }
     }
 }

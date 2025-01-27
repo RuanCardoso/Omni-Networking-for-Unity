@@ -264,10 +264,25 @@ namespace Omni.Core
         {
         }
 
-        public void OnRpcInvoked(byte methodId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
+        public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool _, int seqChannel)
         {
-            rpcHandler.ThrowIfNoRpcMethodFound(methodId);
-            TryCallClientRpc(methodId, buffer, seqChannel);
+            try
+            {
+                rpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                TryCallClientRpc(rpcId, buffer, seqChannel);
+            }
+            catch (Exception ex)
+            {
+                string methodName = rpcHandler.GetRpcName(rpcId);
+                NetworkLogger.__Log__(
+                    $"[RPC Error] An exception occurred while processing the RPC -> " +
+                    $"Rpc Id: '{rpcId}', Rpc Name: '{methodName}' in Class: '{GetType().Name}' -> " +
+                    $"Exception Details: {ex.Message}. ",
+                    NetworkLogger.LogType.Error
+                );
+
+                NetworkLogger.PrintHyperlink(ex);
+            }
         }
     }
 }

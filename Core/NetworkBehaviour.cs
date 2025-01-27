@@ -1104,27 +1104,29 @@ namespace Omni.Core
         [EditorBrowsable(EditorBrowsableState.Never)]
         public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool _, int seqChannel)
         {
-            if (Identity.IsServer)
+            try
             {
-                bool requiresOwnership = true;
-                bool isClientAuthority = false;
-
-                if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+                if (IsServer)
                 {
-                    byte id = buffer.BufferAsSpan[0];
-                    if (networkVariables.TryGetValue(id, out NetworkVariableField field))
-                    {
-                        requiresOwnership = field.RequiresOwnership;
-                        isClientAuthority = field.IsClientAuthority;
-                    }
+                    bool requiresOwnership = true;
+                    bool isClientAuthority = false;
 
-                    if (!NetworkManager.AllowNetworkVariablesFromClients && !isClientAuthority)
+                    if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
                     {
+                        byte id = buffer.BufferAsSpan[0];
+                        if (networkVariables.TryGetValue(id, out NetworkVariableField field))
+                        {
+                            requiresOwnership = field.RequiresOwnership;
+                            isClientAuthority = field.IsClientAuthority;
+                        }
+
+                        if (!NetworkManager.AllowNetworkVariablesFromClients && !isClientAuthority)
+                        {
 #if OMNI_DEBUG
-                        NetworkLogger.__Log__(
-                            "Access Denied: The client attempted to send Network Variables without proper permissions.",
-                            NetworkLogger.LogType.Error
-                        );
+                            NetworkLogger.__Log__(
+                                "Access Denied: The client attempted to send Network Variables without proper permissions.",
+                                NetworkLogger.LogType.Error
+                            );
 #else
                         NetworkLogger.__Log__(
                             "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
@@ -1133,35 +1135,51 @@ namespace Omni.Core
 
                         peer.Disconnect();
 #endif
-                        return;
+                            return;
+                        }
                     }
-                }
-                else requiresOwnership = false;
+                    else requiresOwnership = false;
 
-                // Requires ownership! -> security flag!
-                if ((serverRpcHandler.IsRequiresOwnership(rpcId) &&
-                     rpcId != NetworkConstants.NETWORK_VARIABLE_RPC_ID) || requiresOwnership)
-                {
-                    if (peer.Id != Identity.Owner.Id)
+                    // Requires ownership! -> security flag!
+                    if ((serverRpcHandler.IsRequiresOwnership(rpcId) &&
+                         rpcId != NetworkConstants.NETWORK_VARIABLE_RPC_ID) || requiresOwnership)
                     {
-                        NetworkLogger.__Log__(
-                            "[RPC Ownership Error] RPC rejected: Only the client with ownership of the object can send RPCs to the server. " +
-                            "Ensure the client has authority over the target object before attempting this operation." +
-                            "You can disable this restriction if ownership verification is not required.",
-                            NetworkLogger.LogType.Error
-                        );
+                        if (peer.Id != Identity.Owner.Id)
+                        {
+                            NetworkLogger.__Log__(
+                                "[RPC Ownership Error] RPC rejected: Only the client with ownership of the object can send RPCs to the server. " +
+                                "Ensure the client has authority over the target object before attempting this operation." +
+                                "You can disable this restriction if ownership verification is not required.",
+                                NetworkLogger.LogType.Error
+                            );
 
-                        return;
+                            return;
+                        }
                     }
-                }
 
-                serverRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
-                TryCallServerRpc(rpcId, buffer, peer, seqChannel);
+                    serverRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                    TryCallServerRpc(rpcId, buffer, peer, seqChannel);
+                }
+                else
+                {
+                    clientRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                    TryCallClientRpc(rpcId, buffer, seqChannel);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                clientRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
-                TryCallClientRpc(rpcId, buffer, seqChannel);
+                string methodName = NetworkConstants.INVALID_RPC_NAME;
+                if (IsServer) methodName = serverRpcHandler.GetRpcName(rpcId);
+                else methodName = clientRpcHandler.GetRpcName(rpcId);
+
+                NetworkLogger.__Log__(
+                    $"[RPC Error] An exception occurred while processing the RPC -> " +
+                    $"Rpc Id: '{rpcId}', Rpc Name: '{methodName}' in Class: '{GetType().Name}' -> " +
+                    $"Exception Details: {ex.Message}. ",
+                    NetworkLogger.LogType.Error
+                );
+
+                NetworkLogger.PrintHyperlink(ex);
             }
         }
 
