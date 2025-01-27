@@ -14,7 +14,8 @@ namespace Omni.Core
     [StackTrace]
     public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
     {
-        [GroupNext("Service Settings")] [SerializeField]
+        [GroupNext("Service Settings")]
+        [SerializeField]
         private string m_ServiceName;
 
         private bool m_UnregisterOnLoad = true;
@@ -60,12 +61,12 @@ namespace Omni.Core
         /// </summary>
         public virtual void Start()
         {
-            ___InjectServices___();
             InitStart();
         }
 
         private void InitStart()
         {
+            ___InjectServices___();
             if (m_UnregisterOnLoad)
             {
                 OnStart();

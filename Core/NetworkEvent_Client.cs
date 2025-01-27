@@ -99,12 +99,12 @@ namespace Omni.Core
         /// </summary>
         public virtual void Start()
         {
-            ___InjectServices___();
             InitStart();
         }
 
         private void InitStart()
         {
+            ___InjectServices___();
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
@@ -197,7 +197,7 @@ namespace Omni.Core
             NetworkService.Unregister(m_ServiceName);
             OnStop();
         }
-        
+
         protected virtual void OnPeerSharedDataChanged(NetworkPeer peer, string key)
         {
         }

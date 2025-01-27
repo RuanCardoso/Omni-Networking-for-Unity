@@ -124,12 +124,12 @@ namespace Omni.Core
         /// </summary>
         public virtual void Start()
         {
-            ___InjectServices___();
             InitStart();
         }
 
         private void InitStart()
         {
+            ___InjectServices___();
             if (m_UnregisterOnLoad)
             {
                 RegisterMatchmakingEvents();
