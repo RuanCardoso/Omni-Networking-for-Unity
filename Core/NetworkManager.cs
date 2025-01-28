@@ -947,7 +947,7 @@ namespace Omni.Core
             // Auto-Target
             if (target == Target.Auto)
             {
-                if (groupId <= 0)
+                if (groupId == 0)
                 {
                     if (sender.IsInAnyGroup)
                     {
