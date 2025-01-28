@@ -1125,16 +1125,16 @@ namespace Omni.Core
                         {
 #if OMNI_DEBUG
                             NetworkLogger.__Log__(
-                                "Access Denied: The client attempted to send Network Variables without proper permissions.",
+                                $"Access Denied: The client attempted to send Network Variables without proper permissions -> Name: {field.Name} | Id: {id}",
                                 NetworkLogger.LogType.Error
                             );
 #else
-                        NetworkLogger.__Log__(
-                            "Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation.",
-                            NetworkLogger.LogType.Error
-                        );
+                            NetworkLogger.__Log__(
+                                $"Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation -> Name: {field.Name} | Id: {id}",
+                                NetworkLogger.LogType.Error
+                            );
 
-                        peer.Disconnect();
+                            peer.Disconnect();
 #endif
                             return;
                         }
@@ -1150,7 +1150,8 @@ namespace Omni.Core
                             NetworkLogger.__Log__(
                                 "[RPC Ownership Error] RPC rejected: Only the client with ownership of the object can send RPCs to the server. " +
                                 "Ensure the client has authority over the target object before attempting this operation." +
-                                "You can disable this restriction if ownership verification is not required.",
+                                "You can disable this restriction if ownership verification is not required." +
+                                $"Rpc Id: '{rpcId}', Rpc Name: '{serverRpcHandler.GetRpcName(rpcId)}' in Class: '{GetType().Name}'.",
                                 NetworkLogger.LogType.Error
                             );
 
