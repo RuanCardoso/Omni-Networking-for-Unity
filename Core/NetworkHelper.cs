@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -118,7 +119,7 @@ namespace Omni.Core
                 ? NetworkManager.ServerSide.Identities
                 : NetworkManager.ClientSide.Identities;
 
-            if (identities.Remove(identityId, out var identity))
+            if (identities.Remove(identityId, out NetworkIdentity identity))
             {
                 if (!isServer && NetworkIdentity.LocalPlayer != null)
                 {
@@ -134,6 +135,23 @@ namespace Omni.Core
                 for (int i = 0; i < networkBehaviours.Length; i++)
                 {
                     networkBehaviours[i].Unregister();
+                }
+
+                // Retrieve all NetworkIdentity components in the hierarchy, including the parent.
+                // Filter out the parent itself, as it will be destroyed explicitly outside the loop.
+                // The loop processes child NetworkIdentities in reverse order (from the deepest child to the closest).
+                // This ensures that recursive calls to Destroy handle and remove deeper children first, 
+                // preserving the integrity of the hierarchy and avoiding issues with prematurely destroying parents.
+                // Each child NetworkIdentity triggers a recursive call to Destroy, which follows the same logic
+                // to process its own children (if any) before destroying itself.
+                var recursiveIdentities = identity.GetComponentsInChildren<NetworkIdentity>(true).Where(x => x.transform.parent == identity.transform).ToArray();
+                for (int i = recursiveIdentities.Length - 1; i >= 0; i--)
+                {
+                    int childIdentityId = recursiveIdentities[i].IdentityId;
+                    if (childIdentityId == identityId) // skip the parent(self), only process children
+                        continue;
+
+                    Destroy(childIdentityId, isServer);
                 }
 
                 UnityEngine.Object.Destroy(identity.gameObject);
