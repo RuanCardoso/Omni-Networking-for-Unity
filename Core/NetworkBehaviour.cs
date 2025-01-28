@@ -288,7 +288,7 @@ namespace Omni.Core
             public void NetworkVariableSyncToPeer<T>(T property, byte propertyId, NetworkPeer peer)
             {
                 using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
-                RpcToPeer(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, DeliveryMode.ReliableOrdered,
+                RpcToPeer(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, Target.SelfOnly, DeliveryMode.ReliableOrdered,
                     DataCache.None, 0);
             }
 
@@ -373,7 +373,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void RpcToPeer(byte msgId, NetworkPeer peer, ServerOptions options)
             {
-                RpcToPeer(msgId, peer, options.Buffer, options.DeliveryMode, options.DataCache,
+                RpcToPeer(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.DataCache,
                     options.SequenceChannel);
             }
 
@@ -387,12 +387,12 @@ namespace Omni.Core
             /// <param name="dataCache">Defines whether the RPC should be cached for later retrieval. Default is <see cref="DataCache.None"/>.</param>
             /// <param name="sequenceChannel">The sequence channel to send the RPC over. Default is 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null,
+            public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.Auto,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, DataCache dataCache = default,
                 byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
-                Internal_RpcToPeer(msgId, peer, buffer, Target.SelfOnly, deliveryMode, 0, dataCache, sequenceChannel);
+                Internal_RpcToPeer(msgId, peer, buffer, target, deliveryMode, 0, dataCache, sequenceChannel);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
