@@ -91,10 +91,13 @@ namespace Omni.Collections
             get { return base[key]; }
             set
             {
-                if (base.TryGetValue(key, out TValue currentValue))
+                if (typeof(TValue).IsValueType)
                 {
-                    if (currentValue.Equals(value))
-                        return;
+                    if (base.TryGetValue(key, out TValue currentValue))
+                    {
+                        if (currentValue.Equals(value))
+                            return;
+                    }
                 }
 
                 base[key] = value;
