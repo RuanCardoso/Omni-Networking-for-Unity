@@ -17,12 +17,13 @@ namespace Omni.Core
         private string host = "127.0.0.1";
         private string port = "7777";
 
-        [SerializeField] [GroupNext("GUI Settings")]
+        [SerializeField]
+        [GroupNext("GUI Settings")]
         private float m_Width = 200;
 
         [SerializeField] private float m_Height = 35;
-
         [SerializeField] private int m_FontSize = 20;
+        [SerializeField] private bool m_HideStopButton = false;
 
         private void Start()
         {
@@ -56,35 +57,38 @@ namespace Omni.Core
             if (NetworkManager.IsClientActive || NetworkManager.IsServerActive)
             {
                 GUILayout.BeginArea(new Rect(10, centerY, m_Width, m_Height * 8));
-                if (NetworkManager.IsClientActive && NetworkManager.IsServerActive)
+                if (!m_HideStopButton)
                 {
-                    if (GUILayout.Button("Stop Client & Server", buttonFontSize, width, height))
+                    if (NetworkManager.IsClientActive && NetworkManager.IsServerActive)
                     {
-                        UniTask.Void(async () =>
+                        if (GUILayout.Button("Stop Client & Server", buttonFontSize, width, height))
                         {
-                            NetworkManager.StopClient();
-                            await UniTask.WaitForSeconds(0.5f);
-                            if (NetworkManager.IsServerActive)
+                            UniTask.Void(async () =>
+                            {
+                                NetworkManager.StopClient();
+                                await UniTask.WaitForSeconds(0.5f);
+                                if (NetworkManager.IsServerActive)
+                                {
+                                    NetworkManager.StopServer();
+                                }
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (NetworkManager.IsClientActive)
+                        {
+                            if (GUILayout.Button("Stop Client", buttonFontSize, width, height))
+                            {
+                                NetworkManager.StopClient();
+                            }
+                        }
+                        else if (NetworkManager.IsServerActive)
+                        {
+                            if (GUILayout.Button("Stop Server", buttonFontSize, width, height))
                             {
                                 NetworkManager.StopServer();
                             }
-                        });
-                    }
-                }
-                else
-                {
-                    if (NetworkManager.IsClientActive)
-                    {
-                        if (GUILayout.Button("Stop Client", buttonFontSize, width, height))
-                        {
-                            NetworkManager.StopClient();
-                        }
-                    }
-                    else if (NetworkManager.IsServerActive)
-                    {
-                        if (GUILayout.Button("Stop Server", buttonFontSize, width, height))
-                        {
-                            NetworkManager.StopServer();
                         }
                     }
                 }

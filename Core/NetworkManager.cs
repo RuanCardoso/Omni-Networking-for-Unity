@@ -2182,6 +2182,9 @@ namespace Omni.Core
 
         void OnGUI()
         {
+            if (m_HideDebugInfo)
+                return;
+
             bool isClone = false;
 #if UNITY_EDITOR
             if (ClonesManager.IsClone())

@@ -231,6 +231,10 @@ namespace Omni.Core
         private bool m_AllowZeroGroupMessage = true;
 
         [SerializeField] private List<NetworkIdentity> m_NetworkPrefabs = new();
+#if OMNI_RELEASE
+        [HideInInspector]
+#endif
+        [SerializeField] private bool m_HideDebugInfo = false;
 
         public static string ConnectAddress => Manager.m_ConnectAddresses[0];
 
