@@ -14,6 +14,7 @@ using HttpListenerRequest = Omni.Core.Web.Net.HttpListenerRequest;
 using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
 using WebClient = NativeWebSocket;
 using WebServer = Omni.Core.Web.Server;
+using System.Net.Sockets;
 
 #pragma warning disable
 
@@ -181,13 +182,28 @@ namespace Omni.Core.Modules.Connection
                 throw new Exception("Web Transporter is already initialized.");
             }
 
-            if (EnableWebSocketSsl && isServer)
+            if ((EnableWebSocketSsl || EnableHttpServerSsl) && isServer)
             {
-                if (!File.Exists(certificateConfig))
+#if UNITY_WEBGL && !UNITY_EDITOR
+			return;
+#endif
+                try
                 {
-                    using var fileStream = File.Create(certificateConfig);
-                    using StreamWriter sw = new(fileStream);
-                    sw.WriteLine("{\"cert\": \"cert.pfx\", \"password\": \"password for cert.pfx\"}");
+#if OMNI_DEBUG || UNITY_EDITOR || UNITY_SERVER
+                    if (!NetworkHelper.CanHostServer())
+                        return;
+
+                    if (!File.Exists(certificateConfig))
+                    {
+                        using var fileStream = File.Create(certificateConfig);
+                        using StreamWriter sw = new(fileStream);
+                        sw.WriteLine("{\"cert\": \"cert.pfx\", \"password\": \"password for cert.pfx\"}");
+                    }
+#endif
+                }
+                catch (Exception ex)
+                {
+                    NetworkLogger.__Log__("Web Transporter: Failed to create the certificate configuration file. Exception: " + ex.Message, NetworkLogger.LogType.Error);
                 }
             }
         }
@@ -209,38 +225,41 @@ namespace Omni.Core.Modules.Connection
                 webSocketServer =
                     new WebServer.WebSocketServer($"{(EnableWebSocketSsl ? "wss" : "ws")}://{IPAddress.Any}:{port}");
 
-                if (File.Exists(certificateConfig))
+                if ((EnableWebSocket && EnableWebSocketSsl) || (EnableHttpServer && EnableHttpServerSsl))
                 {
-                    try
+                    if (File.Exists(certificateConfig))
                     {
-                        var dict = NetworkManager.FromJson<Dictionary<string, string>>(
-                            File.ReadAllText(certificateConfig));
-
-                        // Setup SSL(Secure Socket Layer)
-                        if (EnableWebSocket && EnableWebSocketSsl)
+                        try
                         {
-                            webSocketServer.SslConfiguration.ServerCertificate =
-                                new X509Certificate2(dict["cert"], dict["password"]);
+                            var dict = NetworkManager.FromJson<Dictionary<string, string>>(
+                                File.ReadAllText(certificateConfig));
+
+                            // Setup SSL(Secure Socket Layer)
+                            if (EnableWebSocket && EnableWebSocketSsl)
+                            {
+                                webSocketServer.SslConfiguration.ServerCertificate =
+                                    new X509Certificate2(dict["cert"], dict["password"]);
+                            }
+
+                            if (EnableHttpServer && EnableHttpServerSsl)
+                            {
+                                httpServer.SslConfiguration.ServerCertificate =
+                                    new X509Certificate2(dict["cert"], dict["password"]);
+                            }
                         }
-
-                        if (EnableHttpServer && EnableHttpServerSsl)
+                        catch (Exception ex)
                         {
-                            httpServer.SslConfiguration.ServerCertificate =
-                                new X509Certificate2(dict["cert"], dict["password"]);
+                            NetworkLogger.__Log__(
+                                "Web Transporter: Failed to load SSL certificate. Exception: " + ex.Message,
+                                NetworkLogger.LogType.Error);
                         }
                     }
-                    catch (Exception ex)
+                    else
                     {
                         NetworkLogger.__Log__(
-                            "Web Transporter: Failed to load SSL certificate. Exception: " + ex.Message,
-                            NetworkLogger.LogType.Error);
+                            "Web Transporter: Certificate configuration file not found at path: " + "./" +
+                            certificateConfig, NetworkLogger.LogType.Error);
                     }
-                }
-                else
-                {
-                    NetworkLogger.__Log__(
-                        "Web Transporter: Certificate configuration file not found at path: " + "./" +
-                        certificateConfig, NetworkLogger.LogType.Error);
                 }
 
                 if (EnableWebSocket)
@@ -253,12 +272,37 @@ namespace Omni.Core.Modules.Connection
                         listener.WebServer = webSocketServer;
                     });
 
-                    webSocketServer.Start();
+                    try
+                    {
+                        webSocketServer.Start();
+                    }
+                    catch (Exception ex)
+                    {
+                        NetworkLogger.__Log__("Web Transporter: Failed to start the WebSocket server. Exception: " + ex.Message, NetworkLogger.LogType.Error);
+                    }
                 }
 
                 if (EnableHttpServer)
                 {
-                    httpServer.Start();
+                    try
+                    {
+                        httpServer.Start();
+                    }
+                    catch (SocketException ex)
+                    {
+                        if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+                        {
+                            NetworkLogger.__Log__($"Web Transporter: Failed to start the HTTP server. The port {HttpServerPort} is already in use by another application.", NetworkLogger.LogType.Error);
+                        }
+                        else
+                        {
+                            NetworkLogger.__Log__("Web Transporter: Failed to start the HTTP server. Exception: " + ex.Message, NetworkLogger.LogType.Error);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        NetworkLogger.__Log__("Web Transporter: Failed to start the HTTP server. Exception: " + ex.Message, NetworkLogger.LogType.Error);
+                    }
                 }
 
                 // Set to 'true' to indicate that the server is running.
