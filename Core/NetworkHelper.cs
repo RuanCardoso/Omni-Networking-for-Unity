@@ -510,6 +510,24 @@ namespace Omni.Core
         //			}
         //		}
 
+        /// <summary>
+        /// Checks if the current platform supports server hosting capabilities.
+        /// </summary>
+        /// <returns>
+        /// Returns true if running on Unity Standalone (Windows, macOS, Linux), Server, or Editor platforms.
+        /// Returns false on other platforms (mobile, consoles, etc).
+        /// </returns>
+        public static bool CanHostServer()
+        {
+#if UNITY_STANDALONE || UNITY_SERVER || UNITY_EDITOR
+            // Desktop platforms (Windows, macOS, Linux) and Server platforms (Linux) will return true
+            return true;
+#else
+            // Mobile platforms (iOS, Android), Consoles (PS4, Xbox, Switch) and others will return false
+            return false;
+#endif
+        }
+
         public static void EditorSaveObject(GameObject target)
         {
 #if UNITY_EDITOR
