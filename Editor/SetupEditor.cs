@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using Newtonsoft.Json;
+using Omni.Shared;
 using ParrelSync;
 using System.IO;
 using UnityEditor;
@@ -23,7 +24,7 @@ namespace Omni.Editor
             IActiveBuildTargetChanged,
             IPreprocessBuildWithReport
     {
-        private const string OMNI_VERSION = "3.0.2"; // VERY VERY IMPORTANT!
+        private const string OMNI_VERSION = NetworkLogger.Version;
         public int callbackOrder => 0;
 
         public void OnPreprocessBuild(BuildReport report)
