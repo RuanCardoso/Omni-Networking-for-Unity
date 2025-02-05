@@ -883,7 +883,7 @@ namespace Omni.Core.Web.Server
 
       evt (this, e);
 
-      context.Response.Close ();
+      // context.Response.Close ();
     }
 
     private void processRequest (HttpListenerWebSocketContext context)

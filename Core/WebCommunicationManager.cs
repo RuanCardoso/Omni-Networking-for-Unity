@@ -347,6 +347,8 @@ namespace Omni.Core.Web
                         {
                             SetDefaultOptions(req, res, path);
                             await getCallback(req, res);
+                            ValidateContentLength(res);
+                            res.Close();
                         }
                         else
                         {
@@ -378,6 +380,8 @@ namespace Omni.Core.Web
                         {
                             SetDefaultOptions(req, res, path);
                             await postCallback(req, res);
+                            ValidateContentLength(res);
+                            res.Close();
                         }
                         else
                         {
@@ -394,6 +398,14 @@ namespace Omni.Core.Web
                     NetworkLogger.PrintHyperlink(ex);
                     NetworkLogger.__Log__(ex.Message, NetworkLogger.LogType.Error);
                     res.Reject("An unexpected error occurred while processing the request. Please try again later.");
+                }
+            }
+
+            private void ValidateContentLength(HttpListenerResponse res)
+            {
+                if (res.ContentLength64 <= 0)
+                {
+                    res.Reject("The server response content length is invalid. Please verify the response content and try again.");
                 }
             }
 
