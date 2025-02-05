@@ -553,5 +553,45 @@ namespace Omni.Core
             string sessionId = cookie.Value;
             return _sessions.Remove(sessionId);
         }
+
+        /// <summary>
+        /// Creates a deep copy of an object through serialization and deserialization.
+        /// </summary>
+        /// <typeparam name="T">The type of object to clone. Must be serializable.</typeparam>
+        /// <param name="obj">The source object to clone.</param>
+        /// <param name="useBinarySerializer">
+        /// When true, uses binary serialization for better performance.
+        /// When false (default), uses JSON serialization for better compatibility.
+        /// </param>
+        /// <returns>A new instance of type T with all properties deeply copied.</returns>
+        /// <exception cref="Exception">Thrown when serialization/deserialization fails.</exception>
+        /// <remarks>
+        /// Binary serialization is faster but less flexible than JSON serialization.
+        /// JSON serialization better handles circular references and complex object graphs.
+        /// </remarks>
+        /// <example>
+        /// var player = new PlayerData { Name = "Player1", Score = 100 };
+        /// var clone = player.DeepClone(); // JSON serialization
+        /// var fastClone = player.DeepClone(useBinarySerializer: true); // Binary serialization
+        /// </example>
+        public static T DeepClone<T>(this T obj, bool useBinarySerializer = false)
+        {
+            try
+            {
+                if (!useBinarySerializer)
+                {
+                    string json = NetworkManager.ToJson(obj);
+                    return NetworkManager.FromJson<T>(json);
+                }
+
+                byte[] data = NetworkManager.ToBinary(obj);
+                return NetworkManager.FromBinary<T>(data);
+            }
+            catch (Exception ex)
+            {
+                NetworkLogger.__Log__($"Failed to deep clone object: {ex.Message}", NetworkLogger.LogType.Error);
+                throw;
+            }
+        }
     }
 }

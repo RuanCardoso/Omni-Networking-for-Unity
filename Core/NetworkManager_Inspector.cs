@@ -8,10 +8,7 @@ using System.IO;
 using System.Net;
 using Omni.Inspector;
 using UnityEngine;
-
-#if OMNI_DEBUG
 using Omni.Shared;
-#endif
 
 #pragma warning disable
 
@@ -114,7 +111,7 @@ namespace Omni.Core
         [Group("MiscTabs"), Tab("Basic")]
         [LabelWidth(140)]
 #if OMNI_RELEASE
-		[HideInInspector]
+        [HideInInspector]
 #endif
         private bool m_AutoStartClient = true;
 
@@ -122,7 +119,7 @@ namespace Omni.Core
         [Group("MiscTabs"), Tab("Basic")]
         [LabelWidth(140)]
 #if OMNI_RELEASE
-		[HideInInspector]
+        [HideInInspector]
 #endif
         private bool m_AutoStartServer = true;
 
@@ -259,6 +256,7 @@ namespace Omni.Core
 
         public virtual void OnValidate()
         {
+            m_CurrentVersion = NetworkLogger.Version;
             if (m_HttpServerPort == 80 && m_EnableHttpSsl)
             {
                 m_HttpServerPort = 443;
@@ -310,14 +308,14 @@ namespace Omni.Core
                 var clientObject = transform.GetChild(1);
 
 #if OMNI_RELEASE
-				name = "Network Manager";
+                name = "Network Manager";
 
 #if UNITY_SERVER
                 SetTag(clientObject, "EditorOnly");
                 SetTag(serverObject, "Untagged");
 #else
-				SetTag(serverObject, "EditorOnly");
-				SetTag(clientObject, "Untagged");
+                SetTag(serverObject, "EditorOnly");
+                SetTag(clientObject, "Untagged");
 #endif
 #elif OMNI_DEBUG
                 SetTag(clientObject, "Untagged");
