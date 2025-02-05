@@ -382,6 +382,7 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
+            NetworkLogger.Initialize();
             // NetworkHelper.LoadComponent(this, "setup.cfg");
             if (_manager != null)
             {
@@ -717,6 +718,9 @@ namespace Omni.Core
             if (!IsServerActive)
             {
 #if OMNI_DEBUG || UNITY_EDITOR || UNITY_SERVER
+                if (!NetworkHelper.CanHostServer()) // Eg: OMNI_DEBUG defined with Android platform will return false.
+                    return;
+
                 ServerSide.GenerateRsaKeys();
                 Connection.Server.Listen(port);
                 // NetworkHelper.SaveComponent(_manager, "setup.cfg");
