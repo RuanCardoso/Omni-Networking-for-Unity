@@ -25,19 +25,33 @@ using System.Threading;
 using Debug = UnityEngine.Debug;
 using System.Reflection;
 using Omni.Core;
+using UnityEngine;
+using System.ComponentModel;
 
 namespace Omni.Shared
 {
     public static class NetworkLogger
     {
-        private const string LogPath = "omni_player_log.txt";
+        public const string Version = "3.1.1"; // Omni Networking Version, change this value to the current version of the package.json(Open UPM)
         public static StreamWriter fileStream = null;
+        public static string LogPath = "omni_player_log.txt";
 
         public enum LogType
         {
             Error = 0,
             Warning = 2,
             Log = 3,
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public static void Initialize()
+        {
+            // Using Application.persistentDataPath ensures:
+            // - Write permissions are automatically handled by Unity
+            // - Storage location is secure and sandboxed per application
+            // - Avoids filesystem access errors across all platforms
+            // - Path remains valid after app updates or system changes
+            LogPath = Application.persistentDataPath + "/" + LogPath;
         }
 
         /// <summary>
@@ -132,9 +146,9 @@ namespace Omni.Shared
                     fileStream.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                Log("Error writing to log file. Maybe the file is in use? or multiple threads are logging at the same time.", false, LogType.Error);
+                Log("Error writing to log file. Maybe the file is in use or has permissions issues? or multiple threads are logging at the same time. -> " + ex.Message, false, LogType.Error);
                 // Ignored -> IOException: Sharing violation
             }
         }
@@ -280,7 +294,8 @@ namespace Omni.Shared
                     // do not change the name of the omni folder!!
                     if (filePath.Contains("/Assets/Omni-Networking-for-Unity") ||
                         filePath.Contains("/Packages/Omni-Networking-for-Unity") ||
-                        filePath.Contains("/OmniNetSourceGenerator"))
+                        filePath.Contains("/OmniNetSourceGenerator") ||
+                        filePath.Contains("/Library/PackageCache"))
                         continue;
 
                     MethodBase method = frame.GetMethod();
