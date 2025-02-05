@@ -59,7 +59,7 @@ namespace Omni.Core
         [SerializeField]
         [ReadOnly]
         [Group("Infor")]
-        private string m_CurrentVersion = "v2.0.9";
+        private string m_CurrentVersion = NetworkLogger.Version;
 
         [SerializeField]
         [LabelText("Public IPv4")]
@@ -243,6 +243,7 @@ namespace Omni.Core
         internal static bool UseSecureRoutes => Manager.m_UseSecureRoutes;
         internal static bool AllowNetworkVariablesFromClients => Manager.m_AllowNetworkVariablesFromClients;
 
+        public static string GuidVersion => Manager.GUID;
         public static int ServerListenPort => Manager.m_ServerListenPort;
         public static int ClientListenPort => Manager.m_ClientListenPort;
         public static int ConnectPort => Manager.m_ConnectPort;
