@@ -84,16 +84,6 @@ namespace Omni.Core
         [SerializeField][Group("Modules")] private bool m_SntpModule = false;
 
         [SerializeField]
-        [Group("Listen")]
-        [LabelText("Server Port")]
-        private int m_ServerListenPort = 7777;
-
-        [SerializeField]
-        [Group("Listen")]
-        [LabelText("Client Port")]
-        private int m_ClientListenPort = 7778;
-
-        [SerializeField]
         [Group("Connection")]
         [LabelText("Hosts")]
         private List<string> m_ConnectAddresses = new List<string>()
@@ -104,8 +94,7 @@ namespace Omni.Core
 
         [SerializeField]
         [Group("Connection")]
-        [LabelText("Port")]
-        private int m_ConnectPort = 7777;
+        private int m_Port = 7777;
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
@@ -113,7 +102,7 @@ namespace Omni.Core
 #if OMNI_RELEASE
         [HideInInspector]
 #endif
-        private bool m_AutoStartClient = true;
+        private bool m_StartClient = true;
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
@@ -121,7 +110,7 @@ namespace Omni.Core
 #if OMNI_RELEASE
         [HideInInspector]
 #endif
-        private bool m_AutoStartServer = true;
+        private bool m_StartServer = true;
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
@@ -148,6 +137,11 @@ namespace Omni.Core
         [Group("MiscTabs"), Tab("Basic")]
         [Min(0)]
         private int m_LockClientFps = 60;
+
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Basic")]
+        [Min(0)]
+        private int m_LockServerFps = 240;
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Advanced")]
@@ -241,9 +235,7 @@ namespace Omni.Core
         internal static bool AllowNetworkVariablesFromClients => Manager.m_AllowNetworkVariablesFromClients;
 
         public static string GuidVersion => Manager.GUID;
-        public static int ServerListenPort => Manager.m_ServerListenPort;
-        public static int ClientListenPort => Manager.m_ClientListenPort;
-        public static int ConnectPort => Manager.m_ConnectPort;
+        public static int Port => Manager.m_Port;
 
         public static float Framerate { get; private set; }
         public static float CpuTimeMs { get; private set; }
@@ -387,7 +379,7 @@ namespace Omni.Core
         [Conditional("UNITY_EDITOR")]
         private async void GetExternalIp()
         {
-            const int minutes = 15;
+            const int minutes = 5;
             string lastDateTime = PlayerPrefs.GetString("lastIpUpdate", DateTime.UnixEpoch.ToString());
             TimeSpan timeLeft = DateTime.Now - DateTime.Parse(lastDateTime);
             // Check if the last call was successful or if an {minutes} time has passed since the last call to avoid spamming.
@@ -441,16 +433,6 @@ namespace Omni.Core
                 // Update the player preference with the current timestamp.
                 PlayerPrefs.SetString("lastIpUpdate", DateTime.Now.ToString());
             }
-            else
-            {
-#if OMNI_DEBUG
-                timeLeft = TimeSpan.FromMinutes(minutes) - timeLeft;
-                NetworkLogger.Log(
-                    $"You should wait {minutes} minutes before you can get the external IP again. Go to the context menu and click \"Force Get Public IP\" to force it. Remaining time: {timeLeft.Minutes:0} minutes and {timeLeft.Seconds} seconds.",
-                    logType: NetworkLogger.LogType.Warning
-                );
-#endif
-            }
         }
 
         private void DisableAutoStartIfHasHud()
@@ -458,8 +440,8 @@ namespace Omni.Core
 #if OMNI_DEBUG
             if (TryGetComponent<NetworkConnectionDisplay>(out _))
             {
-                m_AutoStartClient = false;
-                m_AutoStartServer = false;
+                m_StartClient = false;
+                m_StartServer = false;
                 NetworkHelper.EditorSaveObject(gameObject);
             }
 #endif
