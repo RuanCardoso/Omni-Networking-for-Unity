@@ -10,6 +10,7 @@ using HttpListenerRequest = Omni.Core.Web.Net.HttpListenerRequest;
 using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
 using Cookie = Omni.Core.Web.Net.Cookie;
 using Omni.Shared;
+using Omni.Threading.Tasks;
 
 namespace Omni.Core
 {
