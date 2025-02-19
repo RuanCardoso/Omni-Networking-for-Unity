@@ -115,6 +115,11 @@ namespace Omni.Core
             }
         }
 
+        private void OnDestroy()
+        {
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+        }
+
         /// <summary>
         /// Retrieves a service instance by its name from the service locator.
         /// Throws an exception if the service is not found or cannot be cast to the specified type.
