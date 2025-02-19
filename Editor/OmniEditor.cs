@@ -38,7 +38,7 @@ namespace Omni.Editor
         [MenuItem("Omni Networking/Print Player Log", false, 30)]
         static void PrintPlayerLog()
         {
-            NetworkLogger.Initialize();
+            NetworkLogger.Initialize("EditorLog");
             NetworkLogger.PrintPlayerLog();
         }
     }
