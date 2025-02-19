@@ -28,7 +28,7 @@ namespace Omni.Core
         private void Start()
         {
             host = NetworkManager.ConnectAddress;
-            port = NetworkManager.ConnectPort.ToString();
+            port = NetworkManager.Port.ToString();
 #if UNITY_SERVER && !UNITY_EDITOR
 			Destroy(this);
 #endif
