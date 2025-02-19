@@ -343,12 +343,16 @@ namespace Omni.Core.Web
                             }
                         }
 
+                        if (path == "/favicon.ico")
+                        {
+                            return;
+                        }
+
                         if (GetRoutesAsync.TryGetValue(path, out var getCallback))
                         {
                             SetDefaultOptions(req, res, path);
                             await getCallback(req, res);
                             ValidateContentLength(res);
-                            res.Close();
                         }
                         else
                         {
@@ -366,6 +370,10 @@ namespace Omni.Core.Web
                     NetworkLogger.__Log__(ex.Message, NetworkLogger.LogType.Error);
                     res.Reject("An unexpected error occurred while processing the request. Please try again later.");
                 }
+                finally
+                {
+                    res.Close();
+                }
             }
 
             private async void OnPost(HttpListenerRequest req, HttpListenerResponse res)
@@ -381,7 +389,6 @@ namespace Omni.Core.Web
                             SetDefaultOptions(req, res, path);
                             await postCallback(req, res);
                             ValidateContentLength(res);
-                            res.Close();
                         }
                         else
                         {
@@ -398,6 +405,10 @@ namespace Omni.Core.Web
                     NetworkLogger.PrintHyperlink(ex);
                     NetworkLogger.__Log__(ex.Message, NetworkLogger.LogType.Error);
                     res.Reject("An unexpected error occurred while processing the request. Please try again later.");
+                }
+                finally
+                {
+                    res.Close();
                 }
             }
 
