@@ -49,20 +49,25 @@ namespace Omni.Core.Modules.Connection
         [Range(1000, 5000)]
         private int m_pingInterval = 1000;
 
-        [SerializeField] [Tooltip("Specifies the maximum number of connections allowed at the same time.")] [Min(1)]
+        [SerializeField]
+        [Tooltip("Specifies the maximum number of connections allowed at the same time.")]
+        [Min(1)]
         private int m_MaxConnections = 256;
 
-        [SerializeField] [Tooltip("Max events that will be processed per frame.")] [Min(0)]
+        [SerializeField]
+        [Tooltip("Max events that will be processed per frame.")]
+        [Min(0)]
         private int m_MaxEventsPerFrame = 0;
 
-        [SerializeField] [Range(1, 64)] private byte m_ChannelsCount = 3;
+        [SerializeField][Range(1, 64)] private byte m_ChannelsCount = 3;
 
         [SerializeField]
         [Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
         [LabelText("IPv6 Enabled")]
         private bool m_IPv6Enabled = false;
 
-        [SerializeField] [Tooltip("Specifies whether port forwarding is enabled with PMP or UPnP protocols.")]
+        [SerializeField]
+        [Tooltip("Specifies whether port forwarding is enabled with PMP or UPnP protocols.")]
         private bool m_UsePortForwarding = false;
 
         [SerializeField]
@@ -77,19 +82,26 @@ namespace Omni.Core.Modules.Connection
         )]
         private bool m_useSafeMtu = false;
 
-        [GroupNext("Lag Simulator [Debug only!]")] [SerializeField]
+        [GroupNext("Lag Simulator [Debug only!]")]
+        [SerializeField]
         private bool m_SimulateLag = false;
 
-        [SerializeField] [EnableIf("m_SimulateLag")] [Min(0)]
+        [SerializeField]
+        [EnableIf("m_SimulateLag")]
+        [Min(0)]
         private int m_MinLatency = 60;
 
-        [SerializeField] [EnableIf("m_SimulateLag")] [Min(0)]
+        [SerializeField]
+        [EnableIf("m_SimulateLag")]
+        [Min(0)]
         private int m_MaxLatency = 60;
 
-        [SerializeField] [EnableIf("m_SimulateLag")] [Range(0, 100)]
+        [SerializeField]
+        [EnableIf("m_SimulateLag")]
+        [Range(0, 100)]
         private int m_LossPercent = 0;
 
-        private ITransporterReceive IManager;
+        private ITransporterReceive transporter;
         private NetPeer localPeer;
         private readonly Dictionary<IPEndPoint, NetPeer> _peers = new();
 
@@ -132,17 +144,17 @@ namespace Omni.Core.Modules.Connection
             set => m_useSafeMtu = value;
         }
 
-        public void Initialize(ITransporterReceive IManager, bool isServer)
+        public void Initialize(ITransporterReceive transporter, bool isServer)
         {
 #if !OMNI_DEBUG // Lag Simulator [Debug only!] - Disabled in Release(Production)
             m_SimulateLag = false;
 #endif
             this.isServer = isServer;
-            this.IManager = IManager;
+            this.transporter = transporter;
 
             if (isRunning)
             {
-                throw new Exception("Lite Transporter is already initialized.");
+                throw new InvalidOperationException("[LiteTransporter] Cannot initialize: Instance is already running. Call Stop() before reinitializing.");
             }
 
             _listener = new EventBasedNetListener();
@@ -179,7 +191,7 @@ namespace Omni.Core.Modules.Connection
                     if (peer.ConnectionState == ConnectionState.Connected)
                     {
                         localPeer ??= peer;
-                        IManager.Internal_OnClientConnected(peer,
+                        transporter.Internal_OnClientConnected(peer,
                             new NativePeer(() => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
                                 () => peer.Ping));
                     }
@@ -187,7 +199,7 @@ namespace Omni.Core.Modules.Connection
 
                 _listener.PeerDisconnectedEvent += (peer, info) =>
                 {
-                    IManager.Internal_OnClientDisconnected(localPeer,
+                    transporter.Internal_OnClientDisconnected(localPeer,
                         $"code: {info.SocketErrorCode} | reason: {info.Reason}");
                 };
 
@@ -202,7 +214,7 @@ namespace Omni.Core.Modules.Connection
         private void OnP2PMessage(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
         {
             ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
-            IManager.Internal_OnP2PDataReceived(data, remoteEndPoint);
+            transporter.Internal_OnP2PDataReceived(data, remoteEndPoint);
             reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
         }
 
@@ -211,7 +223,7 @@ namespace Omni.Core.Modules.Connection
             ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
             DeliveryMode mode = GetDeliveryMode(deliveryMode);
 
-            IManager.Internal_OnDataReceived(data, mode, peer, seqChannel, isServer, out _);
+            transporter.Internal_OnDataReceived(data, mode, peer, seqChannel, isServer, out _);
             reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
         }
 
@@ -221,13 +233,13 @@ namespace Omni.Core.Modules.Connection
             if (!_peers.Remove(peer))
             {
                 NetworkLogger.__Log__(
-                    $"Lite Transporter: The peer: {peer} is already disconnected.",
+                    $"[LiteTransporter] Failed to remove peer {peer} - Peer is already disconnected or not found in active connections",
                     NetworkLogger.LogType.Error
                 );
             }
             else
             {
-                IManager.Internal_OnServerPeerDisconnected(peer, info.Reason.ToString());
+                transporter.Internal_OnServerPeerDisconnected(peer, info.Reason.ToString());
             }
         }
 
@@ -237,13 +249,13 @@ namespace Omni.Core.Modules.Connection
             if (!_peers.TryAdd(peer, peer))
             {
                 NetworkLogger.__Log__(
-                    $"Lite Transporter: The peer: {peer} is already connected.",
+                    $"[LiteTransporter] Duplicate connection attempt - Peer {peer} is already registered in the active connections",
                     NetworkLogger.LogType.Error
                 );
             }
             else
             {
-                IManager.Internal_OnServerPeerConnected(peer,
+                transporter.Internal_OnServerPeerConnected(peer,
                     new NativePeer(() => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
                         () => peer.Ping));
             }
@@ -257,7 +269,7 @@ namespace Omni.Core.Modules.Connection
                 if (request.AcceptIfKey(m_VersionName) == null)
                 {
                     NetworkLogger.__Log__(
-                        "Lite Transporter: The connection was rejected! because the version is not the same.",
+                        $"[LiteTransporter] Version mismatch detected - Connection rejected (Client version differs from server version: {m_VersionName})",
                         NetworkLogger.LogType.Error
                     );
                 }
@@ -266,7 +278,7 @@ namespace Omni.Core.Modules.Connection
             {
                 request.Reject();
                 NetworkLogger.__Log__(
-                    "Lite Transporter: Max connections reached! The connection was rejected!",
+                    $"[LiteTransporter] Connection rejected - Server at maximum capacity ({m_MaxConnections} connections)",
                     NetworkLogger.LogType.Warning
                 );
             }
@@ -290,7 +302,7 @@ namespace Omni.Core.Modules.Connection
             ThrowAnErrorIfNotInitialized();
             if (isServer)
             {
-                throw new Exception("The Connect() is not available for server.");
+                throw new InvalidOperationException("Connect() method is not available on server instances. This operation is client-only.");
             }
 
             localPeer = _manager.Connect(address, port, m_VersionName);
@@ -312,19 +324,17 @@ namespace Omni.Core.Modules.Connection
         public void Listen(int port)
         {
             ThrowAnErrorIfNotInitialized();
-            if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Udp, m_IPv6Enabled))
+            if (isServer)
             {
-                if (isServer)
+                if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Udp, m_IPv6Enabled))
                 {
                     NetworkLogger.__Log__(
-                        "Lite Transporter: Detected that the server is already initialized in another instance. Only the client will be initialized in this instance.",
-                        NetworkLogger.LogType.Warning
+                        $"[LiteTransporter] Port {port} is already in use by another server instance. This instance will operate in client-only mode.",
+                        NetworkLogger.LogType.Log
                     );
 
                     return;
                 }
-
-                port = NetworkHelper.GetAvailablePort(port, m_IPv6Enabled);
             }
 
             if (m_UsePortForwarding)
@@ -336,14 +346,14 @@ namespace Omni.Core.Modules.Connection
             {
                 if (isServer && isRunning)
                 {
-                    IManager.Internal_OnServerInitialized();
+                    transporter.Internal_OnServerInitialized();
                 }
 
 #if UNITY_SERVER
                 if (_manager.UseNativeSockets)
                 {
                     NetworkLogger.__Log__(
-                        "Lite Transporter: Native sockets are being used for networking operations.",
+                        $"[LiteTransporter] Native socket optimization enabled - This experimental feature may improve server performance on Windows/Linux platforms",
                         NetworkLogger.LogType.Warning
                     );
                 }
@@ -362,27 +372,20 @@ namespace Omni.Core.Modules.Connection
 
             if (await NetworkHelper.OpenPortAsync(port, Protocol.Udp))
             {
-                NetworkLogger.Print("[Port Forwarding] Successfully opened UDP port forwarding on port " + port + ".",
+                NetworkLogger.Print($"[Port Forwarding] Successfully mapped UDP port {port} using UPnP/PMP protocol",
                     NetworkLogger.LogType.Log);
             }
             else
             {
-                NetworkLogger.Print("[Port Forwarding] Failed to open UDP port forwarding on port " + port + ".",
+                NetworkLogger.Print($"[Port Forwarding] Failed to map UDP port {port} using UPnP/PMP protocol - Check if your router supports port forwarding",
                     NetworkLogger.LogType.Error);
             }
         }
 
         public void SendP2P(ReadOnlySpan<byte> data, IPEndPoint target)
         {
-            if (isRunning)
-            {
-                _manager.SendUnconnectedMessage(data, target);
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    "Lite Transporter: The transporter is not initialized. Ensure that the transporter is properly initialized before attempting this operation.");
-            }
+            ThrowAnErrorIfNotInitialized();
+            _manager.SendUnconnectedMessage(data, target);
         }
 
         public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
@@ -418,7 +421,7 @@ namespace Omni.Core.Modules.Connection
                 DeliveryMode.Unreliable => DeliveryMethod.Unreliable,
                 DeliveryMode.Sequenced => DeliveryMethod.Sequenced,
                 _ => throw new NotImplementedException(
-                    $"The delivery mode '{deliveryMode}' is not recognized or implemented."),
+                     $"[LiteTransporter] Unsupported delivery mode '{deliveryMode}'"),
             };
         }
 
@@ -433,7 +436,7 @@ namespace Omni.Core.Modules.Connection
                 DeliveryMethod.Unreliable => DeliveryMode.Unreliable,
                 DeliveryMethod.Sequenced => DeliveryMode.Sequenced,
                 _ => throw new NotImplementedException(
-                    $"The delivery mode '{deliveryMethod}' is not recognized or implemented."),
+                    $"[LiteTransporter] Unsupported delivery method '{deliveryMethod}'"),
             };
         }
 
@@ -448,8 +451,7 @@ namespace Omni.Core.Modules.Connection
         {
             if (!isRunning)
             {
-                throw new InvalidOperationException(
-                    "Lite Transporter: The transporter is not initialized. Ensure that the transporter is properly initialized before attempting this operation.");
+                throw new InvalidOperationException("[LiteTransporter] Operation failed - Transporter is not initialized. Call Initialize() before performing any network operations.");
             }
         }
 
