@@ -8,13 +8,13 @@ using UnityEngine;
 /// </summary>
 public sealed class BandwidthMonitor
 {
-    private const int windowSize = 5;
+    private const int MovingAveragePeriod = 5;
 
     private readonly IMovingAverage _bytesMeasurementMovingAverage;
     private readonly IMovingAverage _ppsMeasurementMovingAverage;
 
-    private double _bytesMeasurementTotal;
-    private int _ppsMeasurementTotal;
+    private double _accumulatedBytes;
+    private int _accumulatedPps;
 
     /// <summary>
     /// Event triggered when the moving average of bandwidth usage changes.
@@ -30,13 +30,11 @@ public sealed class BandwidthMonitor
 
     internal BandwidthMonitor()
     {
-        // Bytes Per Second
         _bytesMeasurementMovingAverage = new SimpleMovingAverage();
-        _bytesMeasurementMovingAverage.SetPeriods(windowSize);
+        _bytesMeasurementMovingAverage.SetPeriods(MovingAveragePeriod);
 
-        // Packets Per Second
         _ppsMeasurementMovingAverage = new SimpleMovingAverage();
-        _ppsMeasurementMovingAverage.SetPeriods(windowSize);
+        _ppsMeasurementMovingAverage.SetPeriods(MovingAveragePeriod);
     }
 
     internal async void Start()
@@ -49,12 +47,11 @@ public sealed class BandwidthMonitor
 
             // Add the current measurements to the moving average calculations.
             // These measurements are accumulated over the 1-second interval.
-            _bytesMeasurementMovingAverage.Add(_bytesMeasurementTotal);
-            _ppsMeasurementMovingAverage.Add(_ppsMeasurementTotal);
+            _bytesMeasurementMovingAverage.Add(_accumulatedBytes);
+            _ppsMeasurementMovingAverage.Add(_accumulatedPps);
 
             // Reset the total measurements for the next interval.
-            _bytesMeasurementTotal = 0;
-            _ppsMeasurementTotal = 0;
+            _accumulatedBytes = _accumulatedPps = 0;
 
             // Invoke the callback with the rounded averages to estimate bandwidth usage.
             OnAverageChanged?.Invoke(Math.Round(_bytesMeasurementMovingAverage.Average, 0),
@@ -64,7 +61,7 @@ public sealed class BandwidthMonitor
 
     internal void Add(double value)
     {
-        _bytesMeasurementTotal += value;
-        _ppsMeasurementTotal++;
+        _accumulatedPps++;
+        _accumulatedBytes += value;
     }
 }
