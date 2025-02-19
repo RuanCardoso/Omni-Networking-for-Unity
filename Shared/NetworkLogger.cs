@@ -34,7 +34,7 @@ namespace Omni.Shared
     {
         public const string Version = "3.1.2"; // Omni Networking Version, change this value to the current version of the package.json(Open UPM)
         public static StreamWriter fileStream = null;
-        public static string LogPath = "omni_log.txt";
+        public static string LogPath = "OmniDefaultLog.log";
 
         public enum LogType
         {
@@ -44,14 +44,14 @@ namespace Omni.Shared
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public static void Initialize()
+        public static void Initialize(string uniqueId)
         {
             // Using Application.persistentDataPath ensures:
             // - Write permissions are automatically handled by Unity
             // - Storage location is secure and sandboxed per application
             // - Avoids filesystem access errors across all platforms
             // - Path remains valid after app updates or system changes
-            LogPath = Application.persistentDataPath + "/" + LogPath;
+            LogPath = Path.Combine(Application.persistentDataPath, $"OmniLog_{uniqueId}.log");
         }
 
         /// <summary>
@@ -109,7 +109,10 @@ namespace Omni.Shared
             if (File.Exists(LogPath))
             {
                 Log($"Log Path: {Path.GetFullPath(LogPath)}");
-                Log($"Player Log:\n\r{File.ReadAllText(LogPath)}");
+                if (fileStream == null)
+                {
+                    Log($"Player Log:\n\r{File.ReadAllText(LogPath)}");
+                }
             }
             else
             {
@@ -191,9 +194,13 @@ namespace Omni.Shared
                 _ => ConsoleColor.White,
             };
 
+            string fmessage = $"[{logType}] -> {message}";
             Console.ForegroundColor = logColor;
-            Console.WriteLine($"[{logType}] -> {message}");
-            Console.WriteLine(new string('-', Console.WindowWidth - 1));
+            Console.WriteLine(fmessage);
+            int length = Console.WindowWidth - 1;
+            if (length <= 0)
+                length = fmessage.Length;
+            Console.WriteLine(new string('-', length));
 #else
 #if OMNI_DEBUG
             Debug.LogFormat((UnityEngine.LogType)logType, UnityEngine.LogOption.None, null, "{0}", message);
@@ -245,9 +252,13 @@ namespace Omni.Shared
                 _ => ConsoleColor.White,
             };
 
+            string fmessage = $"[{logType}] -> {message}";
             Console.ForegroundColor = logColor;
-            Console.WriteLine($"[{logType}] -> {message}");
-            Console.WriteLine(new string('-', Console.WindowWidth - 1));
+            Console.WriteLine(fmessage);
+            int length = Console.WindowWidth - 1;
+            if (length <= 0)
+                length = fmessage.Length;
+            Console.WriteLine(new string('-', length));
 #else
             Debug.LogFormat(
                 (UnityEngine.LogType)logType,
