@@ -48,7 +48,8 @@ namespace Omni.Core.Modules.Connection
         [SerializeField]
         private uint m_Interval = 10;
 
-        [Tooltip("KCP timeout in milliseconds. Note that KCP sends a ping automatically.")] [SerializeField]
+        [Tooltip("KCP timeout in milliseconds. Note that KCP sends a ping automatically.")]
+        [SerializeField]
         private int m_Timeout = 10000;
 
         [Tooltip(
@@ -76,7 +77,8 @@ namespace Omni.Core.Modules.Connection
         [SerializeField]
         private uint m_ReceiveWindowSize = 4096; //Kcp.WND_RCV; 128 by default. sends a lot, so we need a lot more.
 
-        [Tooltip("KCP window size can be modified to support higher loads.")] [SerializeField]
+        [Tooltip("KCP window size can be modified to support higher loads.")]
+        [SerializeField]
         private uint m_SendWindowSize = 4096; //Kcp.WND_SND; 32 by default. sends a lot, so we need a lot more.
 
         [Tooltip(
@@ -109,17 +111,17 @@ namespace Omni.Core.Modules.Connection
         private bool isServer;
         private bool isRunning;
 
-        private ITransporterReceive IManager;
+        private ITransporterReceive transporter;
         private readonly Dictionary<IPEndPoint, int> _peers = new();
 
-        public void Initialize(ITransporterReceive IManager, bool isServer)
+        public void Initialize(ITransporterReceive transporter, bool isServer)
         {
             this.isServer = isServer;
-            this.IManager = IManager;
+            this.transporter = transporter;
 
             if (isRunning)
             {
-                throw new InvalidOperationException("The Kcp Transporter has already been initialized.");
+                throw new InvalidOperationException("[KcpTransporter] Cannot initialize - Instance is already running. Call Stop() before reinitializing.");
             }
 
             KcpConfig kcpConf = new KcpConfig(m_DualMode, m_RecvBufferSize, m_SendBufferSize, MTU, m_NoDelay,
@@ -135,22 +137,22 @@ namespace Omni.Core.Modules.Connection
                         if (!_peers.TryAdd(conn.remoteEndPoint, connId))
                         {
                             NetworkLogger.__Log__(
-                                $"Kcp: The peer: {conn.remoteEndPoint} is already connected!",
+                                $"[KcpTransporter] Connection rejected - Peer {conn.remoteEndPoint} is already registered",
                                 NetworkLogger.LogType.Error
                             );
                         }
                         else
                         {
-                            IManager.Internal_OnServerPeerConnected(conn.remoteEndPoint,
+                            transporter.Internal_OnServerPeerConnected(conn.remoteEndPoint,
                                 new NativePeer(() => conn.time,
                                     () => throw new NotImplementedException(
-                                        "[KCP] Individual ping not implemented! Use SNTP clock.")));
+                                        "[KcpTransporter] Individual ping measurement not supported - Use SNTP clock for time synchronization")));
                         }
                     },
                     (connId, data, channel) =>
                     {
                         var conn = kcpServer.connections[connId];
-                        IManager.Internal_OnDataReceived(data, GetDeliveryMode(channel), conn.remoteEndPoint, 0,
+                        transporter.Internal_OnDataReceived(data, GetDeliveryMode(channel), conn.remoteEndPoint, 0,
                             isServer, out byte msgType);
 
                         if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
@@ -164,22 +166,22 @@ namespace Omni.Core.Modules.Connection
                         if (!_peers.Remove(conn.remoteEndPoint))
                         {
                             NetworkLogger.__Log__(
-                                $"Kcp: The peer: {conn.remoteEndPoint} is already disconnected!",
+                                $"[KcpTransporter] Failed to remove peer {conn.remoteEndPoint} - Peer is already disconnected or not in active connections",
                                 NetworkLogger.LogType.Error
                             );
                         }
                         else
                         {
-                            IManager.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, "[Normally Disconnected]");
+                            transporter.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, "[KcpTransporter] Peer disconnected normally");
                         }
                     },
                     (connId, error, reason) =>
                     {
                         var conn = kcpServer.connections[connId];
-                        IManager.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, reason);
+                        transporter.Internal_OnServerPeerDisconnected(conn.remoteEndPoint, reason);
 
                         NetworkLogger.__Log__(
-                            $"[KCP] OnServerError({connId}, {error}, {reason}",
+                            $"[KcpTransporter] Server error occurred - Connection ID: {connId}, Error: {error}, Reason: {reason}",
                             NetworkLogger.LogType.Error
                         );
                     },
@@ -192,7 +194,7 @@ namespace Omni.Core.Modules.Connection
                     () =>
                     {
                         kcpClientConnectTime = kcpClient.time;
-                        IManager.Internal_OnClientConnected(kcpClient.remoteEndPoint,
+                        transporter.Internal_OnClientConnected(kcpClient.remoteEndPoint,
                             new NativePeer(() => (kcpClient.time - kcpClientConnectTime) / 1000d,
                                 () => (int)Math.Round(m_PingAvg.Average * 1000d, 0)));
 
@@ -200,7 +202,7 @@ namespace Omni.Core.Modules.Connection
                     },
                     (data, channel) =>
                     {
-                        IManager.Internal_OnDataReceived(data, GetDeliveryMode(channel), kcpClient.remoteEndPoint, 0,
+                        transporter.Internal_OnDataReceived(data, GetDeliveryMode(channel), kcpClient.remoteEndPoint, 0,
                             isServer, out byte msgType);
 
                         if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
@@ -210,12 +212,12 @@ namespace Omni.Core.Modules.Connection
                             m_PingAvg.Add(NetworkHelper.MinMax(halfRtt, PING_TIME_PRECISION));
                         }
                     },
-                    () => IManager.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, "Disconnected!"),
+                    () => transporter.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, "[KcpTransporter] Client disconnected normally"),
                     (error, reason) =>
                     {
-                        IManager.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, reason);
+                        transporter.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, reason);
                         NetworkLogger.__Log__(
-                            $"[KCP] OnServerError({error}, {reason}",
+                             $"[KcpTransporter] Client error occurred - Error: {error}, Reason: {reason}",
                             NetworkLogger.LogType.Error
                         );
                     },
@@ -283,25 +285,23 @@ namespace Omni.Core.Modules.Connection
         public void Listen(int port)
         {
             ThrowAnErrorIfNotInitialized();
-            if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Udp, m_DualMode))
+            if (isServer)
             {
-                if (isServer)
+                if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Udp, m_DualMode))
                 {
                     NetworkLogger.__Log__(
-                        "Kcp: Server is already initialized in another instance, only the client will be initialized.",
-                        NetworkLogger.LogType.Warning
+                        $"[KcpTransporter] Port {port} is already in use by another server instance - Operating in client-only mode",
+                        NetworkLogger.LogType.Log
                     );
 
                     return;
                 }
-
-                port = NetworkHelper.GetAvailablePort(port, m_DualMode);
             }
 
             if (isServer && isRunning)
             {
                 kcpServer.Start((ushort)port);
-                IManager.Internal_OnServerInitialized();
+                transporter.Internal_OnServerInitialized();
             }
         }
 
@@ -310,7 +310,7 @@ namespace Omni.Core.Modules.Connection
             ThrowAnErrorIfNotInitialized();
             if (isServer)
             {
-                throw new Exception("The Connect() is not available for server.");
+                throw new InvalidOperationException("[KcpTransporter] Connect() method is not available on server instances - This operation is client-only");
             }
 
             kcpClient.Connect(address, (ushort)port);
@@ -336,9 +336,18 @@ namespace Omni.Core.Modules.Connection
         }
 
         // Span to array is very fast!
-        public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte channel)
+        public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
             ThrowAnErrorIfNotInitialized();
+
+            if (sequenceChannel > 0)
+            {
+                NetworkLogger.__Log__(
+                    $"[KcpTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
+                    NetworkLogger.LogType.Warning
+                );
+            }
+
             if (isServer)
             {
                 if (_peers.TryGetValue(target, out int peer))
@@ -369,14 +378,19 @@ namespace Omni.Core.Modules.Connection
 
         private KcpChannel GetKcpChannel(DeliveryMode deliveryMode)
         {
+            if (deliveryMode != DeliveryMode.Unreliable && deliveryMode != DeliveryMode.ReliableOrdered)
+            {
+                NetworkLogger.__Log__(
+                    $"[KcpTransporter] Unsupported delivery mode '{deliveryMode}' - Falling back to ReliableOrdered",
+                    NetworkLogger.LogType.Warning
+                );
+            }
+
             return deliveryMode switch
             {
                 DeliveryMode.Unreliable => KcpChannel.Unreliable,
                 DeliveryMode.ReliableOrdered => KcpChannel.Reliable,
-                _
-                    => throw new NotSupportedException(
-                        "Unknown delivery mode! this mode is not supported!"
-                    ),
+                _ => KcpChannel.Reliable
             };
         }
 
@@ -386,10 +400,7 @@ namespace Omni.Core.Modules.Connection
             {
                 KcpChannel.Unreliable => DeliveryMode.Unreliable,
                 KcpChannel.Reliable => DeliveryMode.ReliableOrdered,
-                _
-                    => throw new NotSupportedException(
-                        "Unknown delivery method! this mode is not supported!"
-                    ),
+                _ => DeliveryMode.ReliableOrdered
             };
         }
 
@@ -398,7 +409,7 @@ namespace Omni.Core.Modules.Connection
         {
             if (!isRunning)
             {
-                throw new Exception("The KcpTransporter is not initialized.");
+                throw new Exception("[KcpTransporter] Operation failed - Transporter is not initialized. Call Initialize() before performing any network operations.");
             }
         }
 
