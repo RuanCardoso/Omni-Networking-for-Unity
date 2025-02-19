@@ -11,25 +11,45 @@ namespace Omni.Core
 {
     public sealed class HalfJsonConverter : JsonConverter<Half>
     {
-        // Deserialization
         public override Half ReadJson(JsonReader reader, Type objectType, Half existingValue, bool hasExistingValue,
             JsonSerializer serializer)
         {
-            if (reader.TokenType == JsonToken.Float || reader.TokenType == JsonToken.Integer)
+            JsonToken tokenType = reader.TokenType;
+            if (tokenType == JsonToken.Null)
             {
-                float value = Convert.ToSingle(reader.Value);
-                return new Half(value);
+                throw new JsonSerializationException("Cannot convert null value to Half.");
             }
 
-            throw new JsonSerializationException(
-                "HalfConverter: Unexpected token type: " + reader.TokenType
-            );
+            switch (tokenType)
+            {
+                case JsonToken.Float:
+                    {
+                        float value = Convert.ToSingle(reader.Value, CultureInfo.InvariantCulture);
+                        return new Half(value);
+                    }
+
+                case JsonToken.Integer:
+                    {
+                        int value = Convert.ToInt32(reader.Value, CultureInfo.InvariantCulture);
+                        return new Half(value);
+                    }
+
+                case JsonToken.String:
+                    {
+                        string value = Convert.ToString(reader.Value, CultureInfo.InvariantCulture);
+                        return Half.Parse(value, CultureInfo.InvariantCulture);
+                    }
+                default:
+                    {
+                        throw new JsonSerializationException(
+                            $"Unexpected token or value when parsing half. Token: {tokenType}, Value: {reader.Value}");
+                    }
+            }
         }
 
-        // Serialization
         public override void WriteJson(JsonWriter writer, Half value, JsonSerializer serializer)
         {
-            writer.WriteValue(value);
+            writer.WriteValue((float)value);
         }
     }
 
