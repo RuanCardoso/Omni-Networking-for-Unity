@@ -382,7 +382,13 @@ namespace Omni.Core
 
         protected virtual void Awake()
         {
-            NetworkLogger.Initialize();
+#if UNITY_EDITOR
+            NetworkLogger.Initialize("EditorLog");
+#else
+            string _uniqueLogId = Guid.NewGuid().ToString();
+            NetworkLogger.Log($"The log ID for this session is: {_uniqueLogId}");
+            NetworkLogger.Initialize(_uniqueLogId);
+#endif
             // NetworkHelper.LoadComponent(this, "setup.cfg");
             if (_manager != null)
             {
@@ -391,7 +397,11 @@ namespace Omni.Core
                 return;
             }
 
-            // Http Server
+#if OMNI_SERVER && !UNITY_EDITOR
+            ShowDefaultOmniLog();
+#endif
+
+            // Start http server
             if (m_EnableHttpServer)
             {
                 var webServer = gameObject.AddComponent<HttpRouteManager>();
@@ -411,17 +421,11 @@ namespace Omni.Core
             }
 
             _manager = this;
+            QualitySettings.vSyncCount = 0;
 #if !UNITY_SERVER || UNITY_EDITOR
-            if (m_LockClientFps > 0)
-            {
-                QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = m_LockClientFps;
-            }
-            else if (m_LockClientFps <= 0)
-            {
-                QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = -1;
-            }
+            Application.targetFrameRate = m_LockClientFps > 0 ? m_LockClientFps : -1;
+#else
+            Application.targetFrameRate = m_LockServerFps > 0 ? m_LockServerFps : -1;
 #endif
             AotHelper.EnsureDictionary<string, object>(); // Add IL2CPP Support to Dictionary for AOT
             MainThreadId = Thread.CurrentThread.ManagedThreadId;
@@ -480,14 +484,6 @@ namespace Omni.Core
             SceneManager.sceneUnloaded += (scene) => OnSceneUnloaded?.Invoke(scene);
         }
 
-        protected virtual void Start()
-        {
-#if OMNI_SERVER && !UNITY_EDITOR
-            SkipDefaultUnityLog();
-            ShowDefaultOmniLog();
-#endif
-        }
-
         private void Update()
         {
             if (m_TickModule && _tickSystem != null)
@@ -529,12 +525,7 @@ namespace Omni.Core
             }
         }
 
-        private void SkipDefaultUnityLog() // Referenced!
-        {
-            System.Console.Clear();
-        }
-
-        private void ShowDefaultOmniLog() // Referenced!
+        private void ShowDefaultOmniLog() // Referenced! don't remove
         {
             NetworkLogger.Log(
                 "Welcome to Omni Server Console. The server is now ready to handle connections and process requests.");
@@ -632,10 +623,10 @@ namespace Omni.Core
                         );
 
 #if OMNI_RELEASE || (UNITY_SERVER && !UNITY_EDITOR)
-						Manager.m_AutoStartServer = true;
-						Manager.m_AutoStartClient = true;
+						Manager.m_StartServer = true;
+						Manager.m_StartClient = true;
 #else
-                        if (Manager.m_AutoStartServer)
+                        if (Manager.m_StartServer)
                         {
                             if (
                                 ConnectAddress.ToLower() != "localhost"
@@ -655,7 +646,7 @@ namespace Omni.Core
 
                                 if (!isMe)
                                 {
-                                    Manager.m_AutoStartServer = false;
+                                    Manager.m_StartServer = false;
                                     NetworkLogger.__Log__(
                                         "Server auto-start has been disabled because the provided client address is not a recognized localhost or matches the server's public IPv4/IPv6 address. "
                                         + "Starting a server in this scenario is not practical, as the client will be unable to connect. You can start the server manually if required.",
@@ -666,7 +657,7 @@ namespace Omni.Core
                         }
 #endif
 
-                        if (Manager.m_AutoStartServer)
+                        if (Manager.m_StartServer)
                         {
                             bool isClone = false;
 #if UNITY_EDITOR
@@ -681,7 +672,7 @@ namespace Omni.Core
                             }
                         }
 
-                        if (Manager.m_AutoStartClient)
+                        if (Manager.m_StartClient)
                         {
                             Connect();
                         }
@@ -702,7 +693,7 @@ namespace Omni.Core
         /// <returns>None</returns>
         public static void StartServer()
         {
-            StartServer(Manager.m_ServerListenPort);
+            StartServer(Manager.m_Port);
         }
 
         /// <summary>
@@ -824,36 +815,26 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Initiates a network connection using the default connection address, port, and client listen port.
+        /// Initiates a network connection using the default connection address, port.
         /// </summary>
         /// <returns>None</returns>
         public static void Connect()
         {
-            Connect(ConnectAddress, ConnectPort, ClientListenPort);
+            Connect(ConnectAddress, Port);
         }
 
         /// <summary>
-        /// Connects to a network server using the specified address and port.
-        /// </summary>
-        /// <param name="address">The address of the server to connect to.</param>
-        /// <param name="port">The port number of the server to connect to.</param>
-        public static void Connect(string address, int port)
-        {
-            Connect(address, port, ClientListenPort);
-        }
-
-        /// <summary>
-        /// Establishes a connection to a network using the specified address, port, and listenPort.
+        /// Establishes a connection to a network using the specified address, port.
         /// </summary>
         /// <param name="address">The address to connect to.</param>
         /// <param name="port">The port number to connect on the target address.</param>
         /// <param name="listenPort">The local port to listen on for incoming data.</param>
-        public static void Connect(string address, int port, int listenPort)
+        public static void Connect(string address, int port)
         {
             if (!IsClientActive)
             {
 #if !UNITY_SERVER || UNITY_EDITOR // Don't connect to the server in server build!
-                Connection.Client.Listen(listenPort);
+                Connection.Client.Listen(0); // The OS will assign a random available port.
                 Connection.Client.Connect(address, port);
 #elif UNITY_SERVER && !UNITY_EDITOR
                 NetworkLogger.__Log__("Client functionality is not available in a server build.");
@@ -1526,6 +1507,7 @@ namespace Omni.Core
 
                     // Finished disconnection
                     OnServerPeerDisconnected?.Invoke(currentPeer, Phase.End);
+                    NetworkLogger.__Log__($"[NetworkManager] Client disconnected from {peer.Address}:{peer.Port} - Reason: {reason}");
                 }
             }
         }
@@ -1735,6 +1717,11 @@ namespace Omni.Core
                                 {
                                     if (_localPeer != null && _localPeer.IsAuthenticated)
                                     {
+                                        NetworkLogger.__Log__(
+                                             $"[NetworkManager] Successfully connected to server at {ConnectAddress}:{Port}",
+                                             NetworkLogger.LogType.Log
+                                        );
+
                                         // If the peer is already authenticated, mark the client as active.
                                         IsClientActive = true;
                                         OnClientConnected?.Invoke();
@@ -1758,6 +1745,11 @@ namespace Omni.Core
                                 }
                                 else
                                 {
+                                    NetworkLogger.__Log__(
+                                        $"[NetworkManager] Server accepted connection from client at {endPoint.Address}:{endPoint.Port}",
+                                        NetworkLogger.LogType.Log
+                                    );
+
                                     peer.IsAuthenticated = true;
                                     OnServerPeerConnected?.Invoke(peer, Phase.End);
                                     // Send confirmation to the client that the handshake is complete.
@@ -2177,7 +2169,9 @@ namespace Omni.Core
             // Dispose the log file stream
             if (NetworkLogger.fileStream != null)
             {
+                NetworkLogger.fileStream.Close();
                 NetworkLogger.fileStream.Dispose();
+                NetworkLogger.fileStream = null; // Bug fix
             }
 
             IsClientActive = false;
