@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -252,6 +253,17 @@ namespace Omni.Core
         {
             try
             {
+                // This method checks if a given port is available for use.
+                // It attempts to bind a socket to the port, which will throw an exception if the port is already in use.
+                // However, simply using a "using" statement does not immediately free the port after execution.
+                // Calling Close() explicitly is necessary because, without it, the port might still appear occupied due to the previous Bind() call.
+                // Additionally, the second verification using IPGlobalProperties would fail without calling Close().
+                // This is because Bind() would temporarily mark the port as occupied, leading to a false positive in IPGlobalProperties,
+                // incorrectly indicating that the port is still in use even if it's actually free.
+                // Additionally, in some environments (e.g., Docker, VMs), Bind() alone may not accurately detect all active ports.
+                // Therefore, after closing the socket, we perform an additional check using IPGlobalProperties to ensure correctness.
+
+                IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
                 if (protocolType == ProtocolType.Udp)
                 {
                     using Socket socket =
@@ -263,8 +275,18 @@ namespace Omni.Core
                         socket.DualMode = true;
                     }
 
+                    // Bind throws an exception if the port is already in use.
                     socket.Bind(new IPEndPoint(useIPv6 ? IPAddress.IPv6Any : IPAddress.Any, port));
+                    // If an exception doesn't occur, the port is available.
+                    // Close the socket to release the resource.
+                    // Explicitly close the socket to ensure the port is freed for rechecking.
+                    // Without this, IPGlobalProperties would give a false positive, incorrectly marking the port as occupied.
                     socket.Close();
+
+                    // After closing the socket, check if the port is still available.
+                    // eg: Docker, Vms etc will return false if the port is still in use.
+                    IPEndPoint[] endpoints = properties.GetActiveUdpListeners();
+                    return !endpoints.Any(x => x.Port == port);
                 }
                 else if (protocolType == ProtocolType.Tcp)
                 {
@@ -277,30 +299,28 @@ namespace Omni.Core
                         socket.DualMode = true;
                     }
 
+                    // Bind throws an exception if the port is already in use.
                     socket.Bind(new IPEndPoint(useIPv6 ? IPAddress.IPv6Any : IPAddress.Any, port));
+                    // If an exception doesn't occur, the port is available.
+                    // Close the socket to release the resource.
+                    // Explicitly close the socket to ensure the port is freed for rechecking.
+                    // Without this, IPGlobalProperties would give a false positive, incorrectly marking the port as occupied.
                     socket.Close();
+
+                    // After closing the socket, check if the port is still available.
+                    // eg: Docker, Vms etc will return false if the port is still in use.
+                    TcpConnectionInformation[] tcpConnections = properties.GetActiveTcpConnections();
+                    return !tcpConnections.Any(x => x.LocalEndPoint.Port == port && (x.State == TcpState.Listen || x.State == TcpState.Established));
                 }
 
+                // Return true by default if no specific check was performed
                 return true;
             }
             catch
             {
+                // If an exception occurs, it means the port is already in use
                 return false;
             }
-        }
-
-        internal static int GetAvailablePort(int port, bool useIPv6)
-        {
-            while (!IsPortAvailable(port, ProtocolType.Udp, useIPv6))
-            {
-                port++;
-                if (port > 65535)
-                {
-                    port = 7777;
-                }
-            }
-
-            return port;
         }
 
         [Conditional("OMNI_DEBUG")]
@@ -361,11 +381,33 @@ namespace Omni.Core
         /// Schedules the specified action to be executed on the main thread asynchronously.
         /// </summary>
         /// <param name="action">The action to be executed on the main thread.</param>
-        public static async UniTask<T> RunOnMainThread<T>(Func<T> func)
+        public static async UniTask RunOnMainThreadAsync(Action func, bool continueOnCapturedContext = true)
         {
             await UniTask.SwitchToMainThread();
             // Run on main thread
-            return func();
+            func();
+            if (!continueOnCapturedContext)
+            {
+                await UniTask.SwitchToThreadPool();
+                // Exit from main thread, like ConfigureAwait();
+            }
+        }
+
+        /// <summary>
+        /// Schedules the specified action to be executed on the main thread asynchronously.
+        /// </summary>
+        /// <param name="action">The action to be executed on the main thread.</param>
+        public static async UniTask<T> RunOnMainThreadAsync<T>(Func<T> func, bool continueOnCapturedContext = true)
+        {
+            await UniTask.SwitchToMainThread();
+            // Run on main thread
+            T value = func();
+            if (!continueOnCapturedContext)
+            {
+                await UniTask.SwitchToThreadPool();
+                // Exit from main thread, like ConfigureAwait();
+            }
+            return value;
         }
 
         /// <summary>
