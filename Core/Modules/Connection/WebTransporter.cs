@@ -29,11 +29,6 @@ namespace Omni.Core.Web
 
     public class HttpService : WebSocketService
     {
-        protected override void OnOpen()
-        {
-
-        }
-
         protected override void OnMessage(Web.MessageEventArgs e)
         {
             Send(e.Data);
@@ -64,13 +59,13 @@ namespace Omni.Core.Modules.Connection
                     if (WebServer.IsSecure)
                     {
                         NetworkLogger.__Log__(
-                            $"Web Transporter: A secure connection(Ssl) was successfully established for {UserEndPoint}.");
+                            $"[WebTransporter] Secure SSL connection established for endpoint {UserEndPoint}");
                     }
 #endif
                     if (!Peers.TryAdd(UserEndPoint, this))
                     {
                         NetworkLogger.__Log__(
-                            $"Web Transporter: The peer: {UserEndPoint} is already connected.",
+                            $"[WebTransporter] Connection rejected - Peer {UserEndPoint} is already registered",
                             NetworkLogger.LogType.Error
                         );
                     }
@@ -88,7 +83,7 @@ namespace Omni.Core.Modules.Connection
                     if (!Peers.Remove(UserEndPoint))
                     {
                         NetworkLogger.__Log__(
-                            $"Web Transporter: The peer: {UserEndPoint} is already disconnected.",
+                            $"[WebTransporter] Failed to remove peer {UserEndPoint} - Peer already disconnected",
                             NetworkLogger.LogType.Error
                         );
                     }
@@ -179,7 +174,7 @@ namespace Omni.Core.Modules.Connection
 
             if (isRunning)
             {
-                throw new Exception("Web Transporter is already initialized.");
+                throw new InvalidOperationException("[WebTransporter] Cannot initialize: Instance is already running. Call Stop() before reinitializing.");
             }
 
             if ((EnableWebSocketSsl || EnableHttpServerSsl) && isServer)
@@ -203,7 +198,7 @@ namespace Omni.Core.Modules.Connection
                 }
                 catch (Exception ex)
                 {
-                    NetworkLogger.__Log__("Web Transporter: Failed to create the certificate configuration file. Exception: " + ex.Message, NetworkLogger.LogType.Error);
+                    NetworkLogger.__Log__("[WebTransporter] Failed to create the certificate configuration file. Exception: " + ex.Message, NetworkLogger.LogType.Error);
                 }
             }
         }
@@ -250,15 +245,14 @@ namespace Omni.Core.Modules.Connection
                         catch (Exception ex)
                         {
                             NetworkLogger.__Log__(
-                                "Web Transporter: Failed to load SSL certificate. Exception: " + ex.Message,
+                                $"[WebTransporter] SSL certificate loading failed - {ex.Message}",
                                 NetworkLogger.LogType.Error);
                         }
                     }
                     else
                     {
                         NetworkLogger.__Log__(
-                            "Web Transporter: Certificate configuration file not found at path: " + "./" +
-                            certificateConfig, NetworkLogger.LogType.Error);
+                            $"[WebTransporter] Certificate configuration not found at: {Path.GetFullPath(certificateConfig)}", NetworkLogger.LogType.Error);
                     }
                 }
 
@@ -274,11 +268,28 @@ namespace Omni.Core.Modules.Connection
 
                     try
                     {
+                        if (!NetworkHelper.IsPortAvailable(port, ProtocolType.Tcp, false))
+                        {
+                            NetworkLogger.__Log__(
+                                $"[WebTransporter] WebSocket server cannot start - Port {port} is unavailable.",
+                                NetworkLogger.LogType.Log
+                            );
+
+                            return;
+                        }
+
                         webSocketServer.Start();
+                        if (webSocketServer.IsListening)
+                        {
+                            NetworkLogger.__Log__(
+                                $"[WebTransporter] WebSocket server started successfully on port {port}{(webSocketServer.IsSecure ? " (SSL enabled)" : "")}",
+                                NetworkLogger.LogType.Log
+                            );
+                        }
                     }
                     catch (Exception ex)
                     {
-                        NetworkLogger.__Log__("Web Transporter: Failed to start the WebSocket server. Exception: " + ex.Message, NetworkLogger.LogType.Error);
+                        NetworkLogger.__Log__("[WebTransporter] Failed to start the WebSocket server -> Exception: " + ex.Message, NetworkLogger.LogType.Error);
                     }
                 }
 
@@ -286,22 +297,39 @@ namespace Omni.Core.Modules.Connection
                 {
                     try
                     {
+                        if (!NetworkHelper.IsPortAvailable(HttpServerPort, ProtocolType.Tcp, false))
+                        {
+                            NetworkLogger.__Log__(
+                                $"[WebTransporter] HTTP server cannot start - Port {HttpServerPort} is unavailable.",
+                                NetworkLogger.LogType.Log
+                            );
+
+                            return;
+                        }
+
                         httpServer.Start();
+                        if (httpServer.IsListening)
+                        {
+                            NetworkLogger.__Log__(
+                                $"[WebTransporter] HTTP server started successfully on port {HttpServerPort}{(httpServer.IsSecure ? " (SSL enabled)" : "")}",
+                                NetworkLogger.LogType.Log
+                            );
+                        }
                     }
                     catch (SocketException ex)
                     {
                         if (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
                         {
-                            NetworkLogger.__Log__($"Web Transporter: Failed to start the HTTP server. The port {HttpServerPort} is already in use by another application.", NetworkLogger.LogType.Error);
+                            NetworkLogger.__Log__($"[WebTransporter] Failed to start HTTP server - Port {HttpServerPort} is already in use", NetworkLogger.LogType.Error);
                         }
                         else
                         {
-                            NetworkLogger.__Log__("Web Transporter: Failed to start the HTTP server. Exception: " + ex.Message, NetworkLogger.LogType.Error);
+                            NetworkLogger.__Log__($"[WebTransporter] Failed to start HTTP server - {ex.Message}", NetworkLogger.LogType.Error);
                         }
                     }
                     catch (Exception ex)
                     {
-                        NetworkLogger.__Log__("Web Transporter: Failed to start the HTTP server. Exception: " + ex.Message, NetworkLogger.LogType.Error);
+                        NetworkLogger.__Log__($"[WebTransporter] Failed to start HTTP server - {ex.Message}", NetworkLogger.LogType.Error);
                     }
                 }
 
@@ -332,8 +360,7 @@ namespace Omni.Core.Modules.Connection
             {
                 if (IPAddress.TryParse(address, out _))
                 {
-                    throw new NotSupportedException(
-                        "Web Transporter: SSL is not supported for IP addresses. Please use a hostname(domain name) instead.");
+                    throw new NotSupportedException("[WebTransporter] SSL connection failed - IP addresses are not supported for SSL connections. Use a hostname (e.g., 'example.com') instead of an IP address.");
                 }
             }
 
@@ -361,7 +388,7 @@ namespace Omni.Core.Modules.Connection
             if (isServer)
             {
                 WebServerListener listener = _peers[peer.EndPoint];
-                listener.Disconnect(Web.CloseStatusCode.Normal, "Normally closed.");
+                listener.Disconnect(Web.CloseStatusCode.Normal, "[WebTransporter] Normally closed.");
             }
             else
             {
@@ -375,6 +402,22 @@ namespace Omni.Core.Modules.Connection
         // Span.ToArray() is very fast
         public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
+            if (sequenceChannel > 0)
+            {
+                NetworkLogger.__Log__(
+                    $"[WebTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
+                    NetworkLogger.LogType.Warning
+                );
+            }
+
+            if (deliveryMode != DeliveryMode.ReliableOrdered)
+            {
+                NetworkLogger.__Log__(
+                    $"[KcpTransporter] Unsupported delivery mode '{deliveryMode}' - Falling back to ReliableOrdered",
+                    NetworkLogger.LogType.Warning
+                );
+            }
+
             if (isServer)
             {
                 if (_peers.TryGetValue(target, out WebServerListener peer))
@@ -416,7 +459,7 @@ namespace Omni.Core.Modules.Connection
             if (isServer)
             {
                 WebServerListener listener = _peers[endPoint];
-                listener.Disconnect(Web.CloseStatusCode.Normal, "Normally closed.");
+                listener.Disconnect(Web.CloseStatusCode.Normal, "[WebTransporter] Normally closed.");
             }
             else
             {
@@ -439,7 +482,7 @@ namespace Omni.Core.Modules.Connection
 
         public void SendP2P(ReadOnlySpan<byte> data, IPEndPoint target)
         {
-            throw new NotSupportedException("The web transporter does not support P2P connections.");
+            throw new NotSupportedException("[WebTransporter] P2P connections are not supported.");
         }
 
         internal async void AddWebSocketService<T>(string serviceName, Action<T> initializer)
