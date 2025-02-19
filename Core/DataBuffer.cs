@@ -559,6 +559,12 @@ namespace Omni.Core
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector4(DataBuffer buffer)
+        {
+            return buffer.Read<Vector4>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static implicit operator Vector3(DataBuffer buffer)
         {
             return buffer.Read<Vector3>();
@@ -574,6 +580,48 @@ namespace Omni.Core
         public static implicit operator Quaternion(DataBuffer buffer)
         {
             return buffer.Read<Quaternion>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Rect(DataBuffer buffer)
+        {
+            return buffer.Read<Rect>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Bounds(DataBuffer buffer)
+        {
+            return buffer.Read<Bounds>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Matrix4x4(DataBuffer buffer)
+        {
+            return buffer.Read<Matrix4x4>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector2Int(DataBuffer buffer)
+        {
+            return buffer.Read<Vector2Int>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector3Int(DataBuffer buffer)
+        {
+            return buffer.Read<Vector3Int>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Half(DataBuffer buffer)
+        {
+            return buffer.Read<Half>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator HalfVector4(DataBuffer buffer)
+        {
+            return buffer.Read<HalfVector4>();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -604,6 +652,66 @@ namespace Omni.Core
         public static implicit operator Color32(DataBuffer buffer)
         {
             return buffer.Read<Color32>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Guid(DataBuffer buffer)
+        {
+            return buffer.Read<Guid>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator byte[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<byte>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator int[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<int>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator float[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<float>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector2[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<Vector2>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector3[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<Vector3>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Vector4[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<Vector4>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Quaternion[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<Quaternion>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Color[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<Color>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static implicit operator Color32[](DataBuffer buffer)
+        {
+            return buffer.ReadArray<Color32>();
         }
 
         /// <summary>
