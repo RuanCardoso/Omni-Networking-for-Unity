@@ -365,11 +365,21 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a Remote Procedure Call (RPC) to a specific network peer using server options.
+            /// Sends a Remote Procedure Call (RPC) to a specific peer, bypassing the standard ownership-based RPC routing.
+            /// Unlike regular RPCs that are sent from the object's owner to other peers, this method allows sending RPCs
+            /// directly to any connected peer regardless of object ownership.
             /// </summary>
-            /// <param name="msgId">The unique identifier of the RPC to send.</param>
-            /// <param name="peer">The target network peer to receive the RPC.</param>
-            /// <param name="options">The server options containing configuration for the RPC.</param>
+            /// <remarks>
+            /// This method is particularly useful for:
+            /// <list type="bullet">
+            ///   <item><description>Targeted communication with specific peers</description></item>
+            ///   <item><description>Implementing private messaging systems</description></item>
+            ///   <item><description>Sending peer-specific updates or notifications</description></item>
+            ///   <item><description>Selective state synchronization</description></item>
+            /// </list>
+            /// </remarks>
+            /// <param name="msgId">The unique identifier for the RPC message.</param>
+            /// <param name="peer">The specific peer that should receive this RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void RpcToPeer(byte msgId, NetworkPeer peer, ServerOptions options)
             {
@@ -378,14 +388,26 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a Remote Procedure Call (RPC) to a specific peer with detailed configuration.
+            /// Sends a Remote Procedure Call (RPC) to a specific peer, bypassing the standard ownership-based RPC routing.
+            /// Unlike regular RPCs that are sent from the object's owner to other peers, this method allows sending RPCs
+            /// directly to any connected peer regardless of object ownership.
             /// </summary>
-            /// <param name="msgId">The unique identifier of the RPC to send.</param>
-            /// <param name="peer">The target network peer to receive the RPC.</param>
-            /// <param name="buffer">The buffer containing the RPC data. Default is null.</param>
-            /// <param name="deliveryMode">Specifies the delivery mode of the RPC. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-            /// <param name="dataCache">Defines whether the RPC should be cached for later retrieval. Default is <see cref="DataCache.None"/>.</param>
-            /// <param name="sequenceChannel">The sequence channel to send the RPC over. Default is 0.</param>
+            /// <remarks>
+            /// This method is particularly useful for:
+            /// <list type="bullet">
+            ///   <item><description>Targeted communication with specific peers</description></item>
+            ///   <item><description>Implementing private messaging systems</description></item>
+            ///   <item><description>Sending peer-specific updates or notifications</description></item>
+            ///   <item><description>Selective state synchronization</description></item>
+            /// </list>
+            /// </remarks>
+            /// <param name="msgId">The unique identifier for the RPC message.</param>
+            /// <param name="peer">The specific peer that should receive this RPC.</param>
+            /// <param name="buffer">Optional data buffer containing additional RPC parameters.</param>
+            /// <param name="target">Defines the target scope for the RPC. Defaults to Target.Auto.</param>
+            /// <param name="deliveryMode">Specifies how the RPC should be delivered. Defaults to DeliveryMode.ReliableOrdered.</param>
+            /// <param name="dataCache">Determines if and how the RPC should be cached. Defaults to DataCache.None.</param>
+            /// <param name="sequenceChannel">The sequence channel for organizing RPC messages. Defaults to 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.Auto,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, DataCache dataCache = default,
