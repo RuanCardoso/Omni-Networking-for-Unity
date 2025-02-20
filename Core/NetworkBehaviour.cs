@@ -955,7 +955,7 @@ namespace Omni.Core
         /// This method should be overridden to define the specific action that will be performed 
         /// by the server in response to a client request.
         /// </summary>
-        protected virtual void OnRequestedAction(DataBuffer data)
+        protected virtual void OnRequestedAction(DataBuffer data, NetworkPeer peer)
         {
         }
 

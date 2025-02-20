@@ -17,7 +17,7 @@ namespace Omni.Core
     {
         internal string _prefabName;
         internal Action<NetworkPeer> OnSpawn;
-        internal Action<DataBuffer> OnRequestAction;
+        internal Action<DataBuffer, NetworkPeer> OnRequestAction;
 
         // (Service Name, Service Instance) exclusively to identity
         private readonly Dictionary<string, object> m_Services = new();

@@ -1899,7 +1899,7 @@ namespace Omni.Core
 
                                     if (ServerSide.TryGetIdentity(identityId, out var identity))
                                     {
-                                        identity.OnRequestAction?.Invoke(message);
+                                        identity.OnRequestAction?.Invoke(message, peer);
                                     }
                                     else
                                     {
