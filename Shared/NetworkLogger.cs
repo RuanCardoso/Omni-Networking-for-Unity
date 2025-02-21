@@ -32,7 +32,7 @@ namespace Omni.Shared
 {
     public static class NetworkLogger
     {
-        public const string Version = "3.1.6"; // Omni Networking Version, change this value to the current version of the package.json(Open UPM)
+        public const string Version = "3.1.7"; // Omni Networking Version, change this value to the current version of the package.json(Open UPM)
         public static StreamWriter fileStream = null;
         public static string LogPath = "OmniDefaultLog.log";
 
