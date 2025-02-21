@@ -10,11 +10,3 @@ namespace Omni.Core.Attributes
     {
     }
 }
-
-namespace Omni.Core
-{
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = true)]
-    public class SkipCodeGen : Attribute
-    {
-    }
-}
