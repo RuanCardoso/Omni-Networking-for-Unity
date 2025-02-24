@@ -512,6 +512,16 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Despawns the network identity for a specific peer with specified server options.
+        /// </summary>
+        /// <param name="peer"></param>
+        /// <param name="options"></param>
+        public void DespawnToPeer(NetworkPeer peer, ServerOptions options)
+        {
+            DespawnToPeer(peer, options.DeliveryMode, options.DataCache, options.SequenceChannel);
+        }
+
+        /// <summary>
         /// Despawns the network identity for a specific peer with specified delivery options.
         /// </summary>
         public void DespawnToPeer(NetworkPeer peer, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
@@ -535,8 +545,6 @@ namespace Omni.Core
             message.Write(m_Id);
             NetworkManager.ServerSide.SendMessage(MessageType.Despawn, peer, message, Target.SelfOnly, deliveryMode, 0,
                 dataCache, sequenceChannel);
-
-            NetworkHelper.Destroy(m_Id, IsServer);
         }
 
         /// <summary>
