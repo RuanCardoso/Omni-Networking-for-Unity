@@ -1482,7 +1482,7 @@ namespace Omni.Core
 
                             if (group.DestroyWhenEmpty)
                             {
-                                ServerSide.DestroyGroup(group);
+                                ServerSide.DestroyGroupWhenEmpty(group);
                             }
                         }
                         else
