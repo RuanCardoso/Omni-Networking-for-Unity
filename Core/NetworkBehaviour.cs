@@ -404,12 +404,12 @@ namespace Omni.Core
             /// <param name="msgId">The unique identifier for the RPC message.</param>
             /// <param name="peer">The specific peer that should receive this RPC.</param>
             /// <param name="buffer">Optional data buffer containing additional RPC parameters.</param>
-            /// <param name="target">Defines the target scope for the RPC. Defaults to Target.Auto.</param>
+            /// <param name="target">Defines the target scope for the RPC. Defaults to Target.SelfOnly.</param>
             /// <param name="deliveryMode">Specifies how the RPC should be delivered. Defaults to DeliveryMode.ReliableOrdered.</param>
             /// <param name="dataCache">Determines if and how the RPC should be cached. Defaults to DataCache.None.</param>
             /// <param name="sequenceChannel">The sequence channel for organizing RPC messages. Defaults to 0.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.Auto,
+            public void RpcToPeer(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.SelfOnly,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, DataCache dataCache = default,
                 byte sequenceChannel = 0)
             {
