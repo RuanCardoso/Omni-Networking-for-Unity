@@ -553,7 +553,7 @@ namespace Omni.Core
                         group.Internal_RemoveAllCachesFrom(peer);
                         if (group.DestroyWhenEmpty)
                         {
-                            DestroyGroup(group);
+                            DestroyGroupWhenEmpty(group);
                         }
                     }
                     else
@@ -583,7 +583,7 @@ namespace Omni.Core
                 }
             }
 
-            internal static void DestroyGroup(NetworkGroup group)
+            internal static void DestroyGroupWhenEmpty(NetworkGroup group)
             {
                 if (group._peersById.Count == 0)
                 {
@@ -649,32 +649,8 @@ namespace Omni.Core
                         {
                             case CacheMode.Global | CacheMode.New:
                             case CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy:
-                            {
-                                List<NetworkCache> caches = AppendCachesGlobal
-                                    .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
-
-                                foreach (NetworkCache cache in caches)
                                 {
-                                    if (!sendMyOwnCacheToMe)
-                                    {
-                                        if (cache.Peer.Id == toPeer.Id)
-                                        {
-                                            continue;
-                                        }
-                                    }
-
-                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
-                                        cache.SequenceChannel);
-                                }
-
-                                break;
-                            }
-                            case CacheMode.Group | CacheMode.New:
-                            case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
-                            {
-                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
-                                {
-                                    List<NetworkCache> caches = group.AppendCaches
+                                    List<NetworkCache> caches = AppendCachesGlobal
                                         .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
 
                                     foreach (NetworkCache cache in caches)
@@ -690,55 +666,46 @@ namespace Omni.Core
                                         Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
                                             cache.SequenceChannel);
                                     }
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Send Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
 
-                                break;
-                            }
-                            case CacheMode.Global | CacheMode.Overwrite:
-                            case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                if (
-                                    OverwriteCachesGlobal.TryGetValue(dataCache.Id, out NetworkCache cache)
-                                )
+                                    break;
+                                }
+                            case CacheMode.Group | CacheMode.New:
+                            case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
                                 {
-                                    if (!sendMyOwnCacheToMe)
+                                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                                     {
-                                        if (cache.Peer.Id == toPeer.Id)
+                                        List<NetworkCache> caches = group.AppendCaches
+                                            .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
+
+                                        foreach (NetworkCache cache in caches)
                                         {
-                                            return;
+                                            if (!sendMyOwnCacheToMe)
+                                            {
+                                                if (cache.Peer.Id == toPeer.Id)
+                                                {
+                                                    continue;
+                                                }
+                                            }
+
+                                            Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                                cache.SequenceChannel);
                                         }
                                     }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"Send Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
 
-                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
-                                        cache.SequenceChannel);
+                                    break;
                                 }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Cache Error: Cache with Id: {dataCache.Id} and search mode: [{dataCache.Mode}] not found.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
-
-                                break;
-                            }
-                            case CacheMode.Group | CacheMode.Overwrite:
-                            case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                            case CacheMode.Global | CacheMode.Overwrite:
+                            case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
                                 {
                                     if (
-                                        group.OverwriteCaches.TryGetValue(
-                                            dataCache.Id,
-                                            out NetworkCache cache
-                                        )
+                                        OverwriteCachesGlobal.TryGetValue(dataCache.Id, out NetworkCache cache)
                                     )
                                     {
                                         if (!sendMyOwnCacheToMe)
@@ -759,58 +726,91 @@ namespace Omni.Core
                                             NetworkLogger.LogType.Error
                                         );
                                     }
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
 
-                                break;
-                            }
+                                    break;
+                                }
+                            case CacheMode.Group | CacheMode.Overwrite:
+                            case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
+                                {
+                                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                    {
+                                        if (
+                                            group.OverwriteCaches.TryGetValue(
+                                                dataCache.Id,
+                                                out NetworkCache cache
+                                            )
+                                        )
+                                        {
+                                            if (!sendMyOwnCacheToMe)
+                                            {
+                                                if (cache.Peer.Id == toPeer.Id)
+                                                {
+                                                    return;
+                                                }
+                                            }
+
+                                            Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                                cache.SequenceChannel);
+                                        }
+                                        else
+                                        {
+                                            NetworkLogger.__Log__(
+                                                $"Cache Error: Cache with Id: {dataCache.Id} and search mode: [{dataCache.Mode}] not found.",
+                                                NetworkLogger.LogType.Error
+                                            );
+                                        }
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
+
+                                    break;
+                                }
                             case CacheMode.Peer | CacheMode.New:
                             case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
-                            {
-                                List<NetworkCache> caches = fromPeer.AppendCaches
-                                    .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
-
-                                foreach (NetworkCache cache in caches)
                                 {
-                                    if (!sendMyOwnCacheToMe)
+                                    List<NetworkCache> caches = fromPeer.AppendCaches
+                                        .Where(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id).ToList();
+
+                                    foreach (NetworkCache cache in caches)
                                     {
-                                        if (cache.Peer.Id == toPeer.Id)
+                                        if (!sendMyOwnCacheToMe)
                                         {
-                                            continue;
+                                            if (cache.Peer.Id == toPeer.Id)
+                                            {
+                                                continue;
+                                            }
                                         }
+
+                                        Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                            cache.SequenceChannel);
                                     }
 
-                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
-                                        cache.SequenceChannel);
+                                    break;
                                 }
-
-                                break;
-                            }
                             case CacheMode.Peer | CacheMode.Overwrite:
                             case CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                if (fromPeer.OverwriteCaches.TryGetValue(dataCache.Id, out NetworkCache cache))
                                 {
-                                    if (!sendMyOwnCacheToMe)
+                                    if (fromPeer.OverwriteCaches.TryGetValue(dataCache.Id, out NetworkCache cache))
                                     {
-                                        if (cache.Peer.Id == toPeer.Id)
+                                        if (!sendMyOwnCacheToMe)
                                         {
-                                            return;
+                                            if (cache.Peer.Id == toPeer.Id)
+                                            {
+                                                return;
+                                            }
                                         }
+
+                                        Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
+                                            cache.SequenceChannel);
                                     }
 
-                                    Connection.Server.Send(cache.Data, toPeer.EndPoint, cache.DeliveryMode,
-                                        cache.SequenceChannel);
+                                    break;
                                 }
-
-                                break;
-                            }
                             default:
                                 NetworkLogger.__Log__(
                                     "Cache Error: Unsupported cache mode set.",
@@ -856,43 +856,43 @@ namespace Omni.Core
                                 break;
                             case CacheMode.Group | CacheMode.New:
                             case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
-                            {
-                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                                 {
-                                    group.AppendCaches.RemoveAll(x =>
-                                        x.Mode == dataCache.Mode && x.Id == dataCache.Id);
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
+                                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                    {
+                                        group.AppendCaches.RemoveAll(x =>
+                                            x.Mode == dataCache.Mode && x.Id == dataCache.Id);
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
 
-                                break;
-                            }
+                                    break;
+                                }
                             case CacheMode.Global | CacheMode.Overwrite:
                             case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
                                 OverwriteCachesGlobal.Remove(dataCache.Id);
                                 break;
                             case CacheMode.Group | CacheMode.Overwrite:
                             case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                                 {
-                                    group.OverwriteCaches.Remove(dataCache.Id);
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
+                                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                    {
+                                        group.OverwriteCaches.Remove(dataCache.Id);
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
 
-                                break;
-                            }
+                                    break;
+                                }
                             default:
                                 NetworkLogger.__Log__(
                                     "Delete Cache Error: Unsupported cache mode set.",
@@ -940,43 +940,43 @@ namespace Omni.Core
                                 break;
                             case CacheMode.Group | CacheMode.New:
                             case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
-                            {
-                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                                 {
-                                    group.AppendCaches.RemoveAll(x =>
-                                        x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id);
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
+                                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                    {
+                                        group.AppendCaches.RemoveAll(x =>
+                                            x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id);
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
 
-                                break;
-                            }
+                                    break;
+                                }
                             case CacheMode.Global | CacheMode.Overwrite:
                             case CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy:
                                 OverwriteCachesGlobal.Remove(dataCache.Id);
                                 break;
                             case CacheMode.Group | CacheMode.Overwrite:
                             case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                            {
-                                if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                                 {
-                                    group.OverwriteCaches.Remove(dataCache.Id);
-                                }
-                                else
-                                {
-                                    NetworkLogger.__Log__(
-                                        $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
-                                        NetworkLogger.LogType.Error
-                                    );
-                                }
+                                    if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
+                                    {
+                                        group.OverwriteCaches.Remove(dataCache.Id);
+                                    }
+                                    else
+                                    {
+                                        NetworkLogger.__Log__(
+                                            $"Delete Cache Error: Group with ID '{groupId}' not found. Please verify that the group exists and that the provided groupId is correct.",
+                                            NetworkLogger.LogType.Error
+                                        );
+                                    }
 
-                                break;
-                            }
+                                    break;
+                                }
                             case CacheMode.Peer | CacheMode.New:
                             case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
                                 peer.AppendCaches.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
