@@ -1940,6 +1940,9 @@ namespace Omni.Core
                     NetworkLogger.PrintHyperlink(ex);
                     NetworkLogger.__Log__("A general error has occurred: " + ex.Message, NetworkLogger.LogType.Error);
                     msgType = 0;
+#if OMNI_DEBUG
+                    throw;
+#endif
                 }
             }
             else
