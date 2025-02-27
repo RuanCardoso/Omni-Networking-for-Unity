@@ -1,3 +1,4 @@
+using DG.Tweening;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Omni.Shared;
@@ -124,18 +125,17 @@ namespace Omni.Core
             {
                 if (!isServer && NetworkIdentity.LocalPlayer != null)
                 {
-                    if (NetworkIdentity.LocalPlayer.IdentityId == identityId)
+                    if (NetworkIdentity.LocalPlayer.Id == identityId)
                     {
                         NetworkIdentity.LocalPlayer = null;
                     }
                 }
 
-                NetworkBehaviour[] networkBehaviours =
-                    identity.GetComponentsInChildren<NetworkBehaviour>(true);
-
-                for (int i = 0; i < networkBehaviours.Length; i++)
+                // This ensures that all network behaviours are properly cleaned up before the identity is destroyed.
+                var networkBehaviours = identity.GetComponentsInChildren<NetworkBehaviour>(true).Where(b => b.Identity.Id == identityId).ToArray();
+                foreach (NetworkBehaviour networkBehaviour in networkBehaviours)
                 {
-                    networkBehaviours[i].Unregister();
+                    networkBehaviour.Unregister();
                 }
 
                 // Retrieve all NetworkIdentity components in the hierarchy, including the parent.
@@ -145,10 +145,10 @@ namespace Omni.Core
                 // preserving the integrity of the hierarchy and avoiding issues with prematurely destroying parents.
                 // Each child NetworkIdentity triggers a recursive call to Destroy, which follows the same logic
                 // to process its own children (if any) before destroying itself.
-                var recursiveIdentities = identity.GetComponentsInChildren<NetworkIdentity>(true).Where(x => x.transform.parent == identity.transform).ToArray();
+                var recursiveIdentities = identity.GetComponentsInChildren<NetworkIdentity>(true).Where(i => i.transform.parent == identity.transform).ToArray();
                 for (int i = recursiveIdentities.Length - 1; i >= 0; i--)
                 {
-                    int childIdentityId = recursiveIdentities[i].IdentityId;
+                    int childIdentityId = recursiveIdentities[i].Id;
                     if (childIdentityId == identityId) // skip the parent(self), only process children
                         continue;
 
@@ -160,8 +160,10 @@ namespace Omni.Core
             else
             {
                 NetworkLogger.__Log__(
-                    $"[Error] Failed to Destroy: Network Identity with ID '{identity.IdentityId}' was not found in the {(isServer ? "Server" : "Client")} identities. This might indicate a desynchronization issue or an invalid operation.",
-                    NetworkLogger.LogType.Error
+                     $"[Destroy] Failed to destroy Network Identity '{identityId}': Not found in {(isServer ? "Server" : "Client")} identities dictionary. " +
+                     $"This could be caused by: (1) The object was already destroyed, (2) The object exists on the {(isServer ? "client" : "server")} side only, " +
+                     $"or (3) The identityId is invalid. Check network synchronization in previous operations.",
+                     NetworkLogger.LogType.Error
                 );
             }
         }
@@ -171,9 +173,8 @@ namespace Omni.Core
         {
             // Disable the prefab to avoid Awake and Start being called multiple times before the registration.
             prefab.gameObject.SetActive(false);
-
             NetworkIdentity identity = UnityEngine.Object.Instantiate(prefab);
-            identity.IdentityId = identityId;
+            identity.Id = identityId;
             identity.Owner = peer;
             identity.IsServer = isServer;
             identity.IsLocalPlayer = isLocalPlayer;
@@ -191,6 +192,8 @@ namespace Omni.Core
 
                 if (networkBehaviour.Id == 0)
                 {
+                    // Hierarchy ID assignment: the hierarchy ID is assigned based on the order of the NetworkBehaviour components in the hierarchy.
+                    // This ensures that the ID is unique and sequential for each NetworkBehaviour within the same hierarchy.
                     networkBehaviour.Id = (byte)(i + 1);
                 }
 
@@ -209,27 +212,27 @@ namespace Omni.Core
                 ? NetworkManager.ServerSide.Identities
                 : NetworkManager.ClientSide.Identities;
 
-            if (!identities.TryAdd(identity.IdentityId, identity))
+            if (!identities.TryAdd(identity.Id, identity))
             {
-                NetworkIdentity oldRef = identities[identity.IdentityId];
+                NetworkIdentity oldRef = identities[identity.Id];
                 MonoBehaviour.Destroy(oldRef.gameObject);
-                // Update the reference.....
-                identities[identity.IdentityId] = identity;
+                identities[identity.Id] = identity; // Update the reference.....
 
                 NetworkLogger.__Log__(
-                    $"An identity conflict occurred. Identity with Id: '{identity.IdentityId}' already exists. The old instance has been destroyed and replaced with the new one to maintain consistency.",
-                    NetworkLogger.LogType.Warning);
+                     $"[Instantiate] Identity conflict detected for ID '{identity.Id}': An object with this ID already exists in the {(isServer ? "server" : "client")} identities collection. " +
+                     $"The previous object has been destroyed and replaced with the new instance. This may indicate an issue with ID assignment or network synchronization. " +
+                     $"If this happens frequently, consider implementing additional validation in your object creation logic.",
+                     NetworkLogger.LogType.Warning);
             }
 
+            // After registration, enable the prefab again.
             if (IsPrefab(prefab.gameObject))
             {
-                prefab.gameObject.SetActive(true); // After registration, enable the prefab again.
+                prefab.gameObject.SetActive(true);
             }
 
-            // Enable instantiated object!
+            // Enable instantiated object and call the OnStart.... method's.
             identity.gameObject.SetActive(true);
-
-            // After Start
             foreach (var behaviour in networkBehaviours)
             {
                 behaviour.OnStart();
@@ -329,7 +332,7 @@ namespace Omni.Core
             if (type is Target or DeliveryMode or CacheMode)
             {
                 throw new InvalidOperationException(
-                    "The type provided is internal and not permitted as an argument for the DataBuffer. If this was not intentional, use an appropriate alternative overload or consult the documentation for further guidance.");
+                    $"[TypeValidation] The type '{typeof(T).Name}' is internal to Omni Networking and cannot be used as a DataBuffer argument. This protection prevents misuse of system types that could cause serialization or networking errors. Please use appropriate public types or refer to the documentation for the correct DataBuffer overloads.");
             }
         }
 
@@ -340,30 +343,31 @@ namespace Omni.Core
         /// <returns>A Task representing the asynchronous operation, containing the external IP address as an IPAddress object.</returns>
         public static async Task<IPAddress> GetExternalIpAsync(bool useIPv6)
         {
-            try
+            string[] ipv4Sources = { "https://ipv4.icanhazip.com/", "https://api.ipify.org", "https://checkip.amazonaws.com/" };
+            string[] ipv6Sources = { "https://ipv6.icanhazip.com/", "https://api64.ipify.org", "https://ifconfig.co/ip" };
+
+            using var http = new HttpClient();
+            foreach (string url in useIPv6 ? ipv6Sources : ipv4Sources)
             {
-                using var httpClient = new HttpClient();
-                string externalIp = (
-                    await httpClient.GetStringAsync(
-                        useIPv6 ? "http://ipv6.icanhazip.com/" : "http://ipv4.icanhazip.com/"
-                    )
-                );
-
-                externalIp = externalIp.Replace("\\r\\n", "");
-                externalIp = externalIp.Replace("\\n", "");
-                externalIp = externalIp.Trim();
-
-                if (!IPAddress.TryParse(externalIp, out var ipAddress))
+                try
                 {
-                    return !useIPv6 ? IPAddress.Loopback : IPAddress.IPv6Loopback;
-                }
+                    string externalIp = await http.GetStringAsync(url);
+                    externalIp = externalIp.Replace("\\r\\n", "");
+                    externalIp = externalIp.Replace("\\n", "");
+                    externalIp = externalIp.Trim();
 
-                return ipAddress;
+                    if (IPAddress.TryParse(externalIp, out var ipAddress))
+                    {
+                        return ipAddress;
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
             }
-            catch
-            {
-                return !useIPv6 ? IPAddress.Loopback : IPAddress.IPv6Loopback;
-            }
+
+            return !useIPv6 ? IPAddress.Loopback : IPAddress.IPv6Loopback;
         }
 
         /// <summary>
@@ -425,12 +429,13 @@ namespace Omni.Core
             if (!IsRunningOnMainThread())
             {
                 NetworkLogger.__Log__(
-                    "Operation must run on the main thread. Multi-threading is not supported in Omni. " +
-                    "Hint: Use main thread dispatching to handle this operation.", NetworkLogger.LogType.Error);
+                    $"[ThreadViolation] Operation attempted from thread ID {Thread.CurrentThread.ManagedThreadId} but must run on main thread (ID: {NetworkManager.MainThreadId}). " +
+                    $"Unity and Omni Networking APIs are not thread-safe. Use NetworkHelper.RunOnMainThreadAsync() or similar methods to dispatch operations to the main thread.",
+                    NetworkLogger.LogType.Error);
 
                 throw new NotSupportedException(
-                    "Operation must run on the main thread. Multi-threading is not supported in Omni. Hint: Use main thread dispatching to handle this operation."
-                );
+                    $"[ThreadViolation] Operation attempted from thread ID {Thread.CurrentThread.ManagedThreadId} but must run on main thread (ID: {NetworkManager.MainThreadId}). " +
+                    $"Unity and Omni Networking APIs are not thread-safe. Use NetworkHelper.RunOnMainThreadAsync() or similar methods to dispatch operations to the main thread.");
             }
         }
 
@@ -483,7 +488,8 @@ namespace Omni.Core
             if (Camera.main == null)
             {
                 NetworkLogger.Print(
-                    "Main camera not found. Please add a camera to the scene or set the camera tag to the main camera.");
+                     "[NetworkHelper.ShowGUILabel] Main camera not found. Please ensure a camera exists in the scene with the 'MainCamera' tag. Debug labels cannot be displayed without a properly tagged camera.",
+                     NetworkLogger.LogType.Error);
 
                 return;
             }
