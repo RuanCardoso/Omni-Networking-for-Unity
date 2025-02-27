@@ -42,7 +42,10 @@ namespace Omni.Core
         [Group("Infor")]
         private bool isOwnedByTheServer;
 
-        public int IdentityId
+        /// <summary>
+        /// Gets the unique identifier for this network identity.
+        /// </summary>
+        public int Id
         {
             get { return m_Id; }
             internal set { m_Id = value; }
@@ -594,7 +597,7 @@ namespace Omni.Core
                     $"Only client can destroy the game object '{name}'. But the object will be destroyed only for you(local).");
             }
 
-            NetworkHelper.Destroy(IdentityId, false);
+            NetworkHelper.Destroy(Id, false);
         }
 
         /// <summary>
@@ -616,7 +619,7 @@ namespace Omni.Core
                     $"Operation failed: Only the server is authorized to destroy the game object '{name}'. Ensure the operation is being performed on the server.");
             }
 
-            NetworkHelper.Destroy(IdentityId, true);
+            NetworkHelper.Destroy(Id, true);
         }
 
         /// <summary>
@@ -726,7 +729,7 @@ namespace Omni.Core
             {
                 if (obj is NetworkIdentity other)
                 {
-                    return IdentityId == other.IdentityId;
+                    return Id == other.Id;
                 }
             }
 
@@ -737,7 +740,7 @@ namespace Omni.Core
         {
             if (Application.isPlaying)
             {
-                return IdentityId.GetHashCode();
+                return Id.GetHashCode();
             }
 
             return base.GetHashCode();
@@ -747,7 +750,7 @@ namespace Omni.Core
         {
             if (Application.isPlaying)
             {
-                return IdentityId == other.IdentityId;
+                return Id == other.Id;
             }
 
             return false;

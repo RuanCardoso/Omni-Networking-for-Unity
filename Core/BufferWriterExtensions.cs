@@ -706,7 +706,7 @@ namespace Omni.Core
         /// </remarks>
         public static void WriteIdentity(this DataBuffer buffer, NetworkIdentity identity)
         {
-            Write(buffer, identity.IdentityId);
+            Write(buffer, identity.Id);
             Write(buffer, identity.Owner.Id);
         }
 

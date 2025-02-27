@@ -643,7 +643,7 @@ namespace Omni.Core
         /// <value>
         /// An integer representing the identifier of the associated <see cref="NetworkIdentity"/>.
         /// </value>
-        public int IdentityId => Identity.IdentityId;
+        public int IdentityId => Identity.Id;
 
         /// <summary>
         /// Indicates whether this instance represents the local player.
