@@ -115,7 +115,7 @@ namespace Omni.Core
             return Convert.ToBase64String(base64bytes);
         }
 
-        internal static void Destroy(int identityId, bool isServer)
+        internal static void Destroy(int identityId, bool isServer, bool isRoot = true)
         {
             var identities = isServer
                 ? NetworkManager.ServerSide.Identities
@@ -131,28 +131,32 @@ namespace Omni.Core
                     }
                 }
 
-                // This ensures that all network behaviours are properly cleaned up before the identity is destroyed.
-                var networkBehaviours = identity.GetComponentsInChildren<NetworkBehaviour>(true).Where(b => b.Identity.Id == identityId).ToArray();
-                foreach (NetworkBehaviour networkBehaviour in networkBehaviours)
+                // When destroying a root object, all its child NetworkIdentity components 
+                // and nested children will be recursively destroyed as well (handled below)
+
+                if (isRoot)
                 {
-                    networkBehaviour.Unregister();
+                    var behaviours = identity.GetComponentsInChildren<NetworkBehaviour>(true);
+                    foreach (NetworkBehaviour behaviour in behaviours)
+                    {
+                        behaviour.Unregister();
+                    }
                 }
 
-                // Retrieve all NetworkIdentity components in the hierarchy, including the parent.
-                // Filter out the parent itself, as it will be destroyed explicitly outside the loop.
-                // The loop processes child NetworkIdentities in reverse order (from the deepest child to the closest).
-                // This ensures that recursive calls to Destroy handle and remove deeper children first, 
-                // preserving the integrity of the hierarchy and avoiding issues with prematurely destroying parents.
-                // Each child NetworkIdentity triggers a recursive call to Destroy, which follows the same logic
-                // to process its own children (if any) before destroying itself.
-                var recursiveIdentities = identity.GetComponentsInChildren<NetworkIdentity>(true).Where(i => i.transform.parent == identity.transform).ToArray();
-                for (int i = recursiveIdentities.Length - 1; i >= 0; i--)
-                {
-                    int childIdentityId = recursiveIdentities[i].Id;
-                    if (childIdentityId == identityId) // skip the parent(self), only process children
-                        continue;
+                // When destroying a root object, all its child NetworkIdentity components 
+                // and nested children will be recursively destroyed as well (handled below)
 
-                    Destroy(childIdentityId, isServer);
+                if (isRoot)
+                {
+                    var recursiveIdentities = identity.GetComponentsInChildren<NetworkIdentity>(true);
+                    for (int i = recursiveIdentities.Length - 1; i >= 0; i--)
+                    {
+                        int childIdentityId = recursiveIdentities[i].Id;
+                        if (childIdentityId == identityId) // skip the parent(self), only process children
+                            continue;
+
+                        Destroy(childIdentityId, isServer, isRoot: false);
+                    }
                 }
 
                 UnityEngine.Object.Destroy(identity.gameObject);
