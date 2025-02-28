@@ -7,6 +7,7 @@ using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
+using static Omni.Core.Modules.Matchmaking.NetworkMatchmaking;
 
 #pragma warning disable
 
@@ -20,8 +21,7 @@ namespace Omni.Core
 
     /// <summary>
     /// A derivative of <see cref="NetworkEventBase"/> that serves as a dual-behavior system capable of handling
-    /// both client and server operations in a networked environment. Designed to minimize boilerplate code
-    /// and optimize performance while maintaining functionality for both RPC handling and service behavior extensions.
+    /// both client and server operations in a networked environment. Designed to minimize boilerplate code.
     /// </summary>
     /// <remarks>
     /// This class is optimized for high performance and includes unconventional design patterns necessary
@@ -41,6 +41,58 @@ namespace Omni.Core
 
         private NetworkEventClient local;
         private NetworkEventServer remote;
+
+        /// <summary>
+        /// Gets the server-side routing manager that handles network message routing and delivery.
+        /// Provides access to server-specific routing functionality for sending messages to connected clients
+        /// using the underlying transport layer.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the server router without directly
+        /// referencing the NetworkManager's transport system. Use this for managing server-to-client
+        /// message routing, custom packet handling, and optimizing network traffic.
+        /// </remarks>
+        protected TransporterRouteManager.ServerRouteManager ServerRouter => NetworkManager._transporterRouteManager.Server;
+
+        /// <summary>
+        /// Gets the client-side routing manager that handles network message routing and delivery.
+        /// Provides access to client-specific routing functionality for sending messages to the server
+        /// using the underlying transport layer.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the client router without directly
+        /// referencing the NetworkManager's transport system. Use this for managing client-to-server
+        /// message routing, custom packet handling, and optimizing network traffic.
+        /// </remarks>
+        protected TransporterRouteManager.ClientRouteManager ClientRouter => NetworkManager._transporterRouteManager.Client;
+
+        /// <summary>
+        /// Gets the server-side matchmaking manager that handles player grouping, matchmaking, and lobby functionality.
+        /// This property provides access to methods for creating, managing, and monitoring player groups and matches.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the server matchmaking system without directly
+        /// referencing the NetworkManager's matchmaking module. Use this for implementing features such as
+        /// game lobbies, team assignment, custom matchmaking rules, and player grouping logic.
+        /// </remarks>
+        /// <value>
+        /// The <see cref="MatchServer"/> instance for handling server-side matchmaking operations.
+        /// </value>
+        protected MatchServer ServerMatchmaking => NetworkManager.Matchmaking.Server;
+
+        /// <summary>
+        /// Gets the client-side matchmaking manager that handles player grouping, matchmaking, and lobby functionality.
+        /// This property provides access to methods for joining, leaving, and interacting with player groups and matches.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the client matchmaking system without directly
+        /// referencing the NetworkManager's matchmaking module. Use this for implementing features such as
+        /// joining game lobbies, requesting team assignments, and participating in matchmaking services.
+        /// </remarks>
+        /// <value>
+        /// The <see cref="MatchClient"/> instance for handling client-side matchmaking operations.
+        /// </value>
+        protected MatchClient ClientMatchmaking => NetworkManager.Matchmaking.Client;
 
         /// <summary>
         /// Provides access to the <see cref="NetworkEventClient"/> instance, 
