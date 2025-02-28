@@ -407,6 +407,7 @@ namespace Omni.Core
             {
                 var webServer = gameObject.AddComponent<HttpRouteManager>();
                 webServer.StartServices(m_EnableHttpSsl, m_HttpServerPort);
+                NetworkService.Register(webServer);
             }
 
             Pool = new DataBufferPool(m_PoolCapacity, m_PoolSize);
@@ -455,8 +456,11 @@ namespace Omni.Core
             // This module should be initialized last, as it needs the other modules to be initialized.
             if (m_ConnectionModule)
             {
-                _transporterRouteManager.Initialize();
                 InitializeModule(Module.Connection);
+                // Register transporter route manager
+                ClientSide.OnMessage += _transporterRouteManager.OnClientMessage;
+                ServerSide.OnMessage += _transporterRouteManager.OnServerMessage;
+                NetworkService.Register(_transporterRouteManager);
             }
 
             // Used to perform some operations before the scene is loaded.
@@ -552,6 +556,7 @@ namespace Omni.Core
                         {
                             TickSystem = new NetworkTickSystem();
                             TickSystem.Initialize(Manager.m_TickRate);
+                            NetworkService.Register(TickSystem);
                         }
                     }
                     break;
@@ -566,12 +571,14 @@ namespace Omni.Core
 
                         Sntp = new SimpleNtp();
                         Sntp.Initialize(nClock);
+                        NetworkService.Register(Sntp);
                     }
                     break;
                 case Module.Console:
                     {
                         Console = new NetworkConsole();
                         Console.Initialize();
+                        NetworkService.Register(Console);
                     }
                     break;
                 case Module.Connection:
@@ -683,6 +690,7 @@ namespace Omni.Core
                     {
                         Matchmaking = new NetworkMatchmaking();
                         Matchmaking.Initialize();
+                        NetworkService.Register(Matchmaking);
                     }
                     break;
             }
