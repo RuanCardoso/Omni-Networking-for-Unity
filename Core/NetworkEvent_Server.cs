@@ -47,6 +47,18 @@ namespace Omni.Core
         private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> rpcHandler = new();
 
         /// <summary>
+        /// Gets the server-side routing manager that handles network message routing and delivery.
+        /// Provides access to server-specific routing functionality for sending messages to connected clients
+        /// using the underlying transport layer.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the server router without directly
+        /// referencing the NetworkManager's transport system. Use this for managing server-to-client
+        /// message routing, custom packet handling, and optimizing network traffic.
+        /// </remarks>
+        protected TransporterRouteManager.ServerRouteManager Router => NetworkManager._transporterRouteManager.Server;
+
+        /// <summary>
         /// Provides access to the <see cref="NetworkEventServer"/> instance, 
         /// enabling the server to send Remote Procedure Calls (RPCs) to clients.
         /// </summary>

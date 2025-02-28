@@ -40,7 +40,8 @@ namespace Omni.Core
     [JsonObject(MemberSerialization.OptIn)]
     public partial class NetworkManager : MonoBehaviour, ITransporterReceive
     {
-        private static Stopwatch _stopwatch = new Stopwatch();
+        internal readonly static TransporterRouteManager _transporterRouteManager = new();
+        private readonly static Stopwatch _stopwatch = new Stopwatch();
         private static bool _allowLoadScene;
 
         /// <summary>
@@ -454,8 +455,7 @@ namespace Omni.Core
             // This module should be initialized last, as it needs the other modules to be initialized.
             if (m_ConnectionModule)
             {
-                TransporterRouteManager transporterRouteManager = new();
-                transporterRouteManager.Initialize();
+                _transporterRouteManager.Initialize();
                 InitializeModule(Module.Connection);
             }
 
