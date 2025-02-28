@@ -34,8 +34,6 @@ namespace Omni.Core.Web
                 httpServer.EnableSsl = enableSsl;
                 httpServer.Port = port;
             });
-
-            NetworkService.Register(this);
         }
 
         /// <summary>
