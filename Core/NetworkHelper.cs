@@ -186,6 +186,30 @@ namespace Omni.Core
             identity._prefabName = prefab.name;
             identity.name = $"{prefab.name}(On {(isServer ? "Server" : "Client")})";
 
+            var identities = isServer
+                ? NetworkManager.ServerSide.Identities
+                : NetworkManager.ClientSide.Identities;
+
+            if (!identities.TryAdd(identity.Id, identity))
+            {
+                Destroy(identity.Id, isServer, isRoot: true);
+                if (identities.TryAdd(identity.Id, identity))
+                {
+                    NetworkLogger.__Log__(
+                         $"[Instantiate] Identity conflict detected for ID '{identity.Id}': An object with this ID already exists in the {(isServer ? "server" : "client")} identities collection. " +
+                         $"The previous object has been destroyed and replaced with the new instance. This may indicate an issue with ID assignment or network synchronization. " +
+                         $"If this happens frequently, consider implementing additional validation in your object creation logic.",
+                         NetworkLogger.LogType.Warning);
+                }
+                else
+                {
+                    NetworkLogger.__Log__(
+                         $"[Instantiate] Failed to add identity '{identity.Id}' to {(isServer ? "server" : "client")} identities collection: An object with this ID already exists. " +
+                         $"This may indicate an issue with ID assignment or network synchronization. If this happens frequently, consider implementing additional validation in your object creation logic.",
+                         NetworkLogger.LogType.Error);
+                }
+            }
+
             NetworkBehaviour[] networkBehaviours =
                 identity.GetComponentsInChildren<NetworkBehaviour>(true);
 
@@ -210,23 +234,6 @@ namespace Omni.Core
             {
                 behaviour.___InjectServices___();
                 behaviour.OnAwake();
-            }
-
-            var identities = isServer
-                ? NetworkManager.ServerSide.Identities
-                : NetworkManager.ClientSide.Identities;
-
-            if (!identities.TryAdd(identity.Id, identity))
-            {
-                NetworkIdentity oldRef = identities[identity.Id];
-                MonoBehaviour.Destroy(oldRef.gameObject);
-                identities[identity.Id] = identity; // Update the reference.....
-
-                NetworkLogger.__Log__(
-                     $"[Instantiate] Identity conflict detected for ID '{identity.Id}': An object with this ID already exists in the {(isServer ? "server" : "client")} identities collection. " +
-                     $"The previous object has been destroyed and replaced with the new instance. This may indicate an issue with ID assignment or network synchronization. " +
-                     $"If this happens frequently, consider implementing additional validation in your object creation logic.",
-                     NetworkLogger.LogType.Warning);
             }
 
             // After registration, enable the prefab again.
