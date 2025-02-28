@@ -8,6 +8,8 @@ using UnityEngine;
 public sealed class NetworkBandwidthDisplay : MonoBehaviour
 {
     private const float m_Padding = 10f;
+    private const float m_ReferenceScreenWidth = 1920f;
+    private const float m_ReferenceScreenHeight = 1080f;
 
     // Client
     private double clientSentBandwidth;
@@ -22,7 +24,8 @@ public sealed class NetworkBandwidthDisplay : MonoBehaviour
     private int serverReceivedPackets;
 
     // GUI
-    [SerializeField] [GroupNext("GUI Settings")]
+    [SerializeField]
+    [GroupNext("GUI Settings")]
     private float m_Width = 310f;
 
     [SerializeField] private float m_Height = 220f;
@@ -61,12 +64,25 @@ public sealed class NetworkBandwidthDisplay : MonoBehaviour
 #if OMNI_DEBUG
     private void OnGUI()
     {
+        float widthScale = Screen.width / m_ReferenceScreenWidth;
+        float heightScale = Screen.height / m_ReferenceScreenHeight;
+        float scale = Mathf.Min(widthScale, heightScale);
+
+        float scaledWidth = m_Width * scale;
+        float scaledHeight = m_Height * scale;
+        float scaledPadding = m_Padding * scale;
+        int scaledFontSize = Mathf.RoundToInt(m_FontSize * scale);
+
         GUIStyle style = new(GUI.skin.box)
-            { fontSize = m_FontSize, alignment = TextAnchor.UpperLeft, padding = new RectOffset(12, 0, 12, 0) };
+        {
+            fontSize = scaledFontSize,
+            alignment = TextAnchor.UpperLeft,
+            padding = new RectOffset(Mathf.RoundToInt(12 * scale), 0, Mathf.RoundToInt(12 * scale), 0)
+        };
 
         if (NetworkManager.IsClientActive)
         {
-            GUI.Box(new(Screen.width - m_Width - m_Padding, m_Padding, m_Width, m_Height),
+            GUI.Box(new(Screen.width - scaledWidth - scaledPadding, scaledPadding, scaledWidth, scaledHeight),
                 $"<b>Local</b>\r\n\r\nSent: {clientSentBandwidth.ToSizeSuffix()}\r\nReceived: {clientReceivedBandwidth.ToSizeSuffix()}\n\nPackets Sent: {clientSentPackets} p/s\nPackets Received: {clientReceivedPackets} p/s",
                 style);
         }
@@ -74,8 +90,8 @@ public sealed class NetworkBandwidthDisplay : MonoBehaviour
         if (NetworkManager.IsServerActive)
         {
             GUI.Box(
-                new(Screen.width - m_Width - m_Padding,
-                    NetworkManager.IsClientActive ? m_Height + m_Padding * 2 : m_Padding, m_Width, m_Height),
+                new(Screen.width - scaledWidth - scaledPadding,
+                    NetworkManager.IsClientActive ? scaledHeight + scaledPadding * 2 : scaledPadding, scaledWidth, scaledHeight),
                 $"<b>Server</b>\r\n\r\nSent: {serverSentBandwidth.ToSizeSuffix()}\r\nReceived: {serverReceivedBandwidth.ToSizeSuffix()}\n\nPackets Sent: {serverSentPackets} p/s\nPackets Received: {serverReceivedPackets} p/s",
                 style);
         }
