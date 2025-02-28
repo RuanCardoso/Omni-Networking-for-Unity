@@ -390,15 +390,7 @@ namespace Omni.Core
         /// </summary>
         public ServerRouteManager Server { get; } = new();
 
-        internal void Initialize()
-        {
-            ClientSide.OnMessage += OnClientMessage;
-            ServerSide.OnMessage += OnServerMessage;
-
-            NetworkService.Register(this);
-        }
-
-        private async void OnServerMessage(byte msgId, DataBuffer buffer, NetworkPeer peer, int sequenceChannel)
+        internal async void OnServerMessage(byte msgId, DataBuffer buffer, NetworkPeer peer, int sequenceChannel)
         {
             buffer.SeekToBegin();
             string routeName = buffer.ReadString();
@@ -549,7 +541,7 @@ namespace Omni.Core
             }
         }
 
-        private void OnClientMessage(byte msgId, DataBuffer buffer, int sequenceChannel)
+        internal void OnClientMessage(byte msgId, DataBuffer buffer, int sequenceChannel)
         {
             buffer.SeekToBegin();
             if (msgId == MessageType.GetResponseAsync || msgId == MessageType.PostResponseAsync)
