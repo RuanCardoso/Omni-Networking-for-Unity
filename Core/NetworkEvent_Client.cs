@@ -7,6 +7,7 @@ using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
+using static Omni.Core.Modules.Matchmaking.NetworkMatchmaking;
 
 #pragma warning disable
 
@@ -51,6 +52,20 @@ namespace Omni.Core
         /// message routing, custom packet handling, and optimizing network traffic.
         /// </remarks>
         protected TransporterRouteManager.ClientRouteManager Router => NetworkManager._transporterRouteManager.Client;
+
+        /// <summary>
+        /// Gets the client-side matchmaking manager that handles player grouping, matchmaking, and lobby functionality.
+        /// This property provides access to methods for joining, leaving, and interacting with player groups and matches.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the client matchmaking system without directly
+        /// referencing the NetworkManager's matchmaking module. Use this for implementing features such as
+        /// joining game lobbies, requesting team assignments, and participating in matchmaking services.
+        /// </remarks>
+        /// <value>
+        /// The <see cref="MatchClient"/> instance for handling client-side matchmaking operations.
+        /// </value>
+        protected MatchClient Matchmaking => NetworkManager.Matchmaking.Client;
 
         /// <summary>
         /// Provides access to the <see cref="NetworkEventClient"/> instance, 
@@ -186,8 +201,8 @@ namespace Omni.Core
         {
             if (MatchmakingModuleEnabled)
             {
-                Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
-                Matchmaking.Client.OnLeftGroup += OnLeftGroup;
+                NetworkManager.Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
+                NetworkManager.Matchmaking.Client.OnLeftGroup += OnLeftGroup;
             }
         }
 
@@ -202,8 +217,8 @@ namespace Omni.Core
 
             if (MatchmakingModuleEnabled)
             {
-                Matchmaking.Client.OnJoinedGroup -= OnJoinedGroup;
-                Matchmaking.Client.OnLeftGroup -= OnLeftGroup;
+                NetworkManager.Matchmaking.Client.OnJoinedGroup -= OnJoinedGroup;
+                NetworkManager.Matchmaking.Client.OnLeftGroup -= OnLeftGroup;
             }
 
             NetworkService.Unregister(m_ServiceName);
