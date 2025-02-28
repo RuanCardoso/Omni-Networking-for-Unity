@@ -26,7 +26,7 @@ namespace Omni.Core.Components
             else
             {
                 NetworkLogger.__Log__(
-                    "DontDestroy: Only the root object can be set to DontDestroyOnLoad",
+                    $"NetworkDontDestroy Error: Cannot apply DontDestroyOnLoad to '{gameObject.name}' as it is not a root object. This component must be attached to a root GameObject in the hierarchy.",
                     NetworkLogger.LogType.Error
                 );
             }
