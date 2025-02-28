@@ -648,8 +648,9 @@ namespace Omni.Core
                                 {
                                     Manager.m_StartServer = false;
                                     NetworkLogger.__Log__(
-                                        "Server auto-start has been disabled because the provided client address is not a recognized localhost or matches the server's public IPv4/IPv6 address. "
-                                        + "Starting a server in this scenario is not practical, as the client will be unable to connect. You can start the server manually if required.",
+                                        "Server auto-start disabled: Client address '" + ConnectAddress + "' is not localhost or this machine's public IP. " +
+                                        "When connecting to a remote server, starting a local server is unnecessary. " +
+                                        "If you need to run a server on this machine, use NetworkManager.StartServer() manually.",
                                         NetworkLogger.LogType.Warning
                                     );
                                 }
@@ -989,7 +990,7 @@ namespace Omni.Core
                                     else
                                     {
                                         NetworkLogger.__Log__(
-                                            $"Cache Error: Group not found. Ensure the group exists and the group id '{groupId}' is correct.",
+                                            $"Cache Error: Group not found. Verify that the group exists and the group id '{groupId}' is correct. If the issue persists, ensure that the group was properly initialized before accessing it.",
                                             NetworkLogger.LogType.Error
                                         );
                                     }
@@ -1029,8 +1030,8 @@ namespace Omni.Core
                                     else
                                     {
                                         NetworkLogger.__Log__(
-                                            "Cache Error: Group not found. Verify that the group exists and the group id is correct. If the issue persists, ensure that the group was properly initialized before accessing it.",
-                                            NetworkLogger.LogType.Error
+                                             $"Cache Error: Group not found. Verify that the group exists and the group id '{groupId}' is correct. If the issue persists, ensure that the group was properly initialized before accessing it.",
+                                             NetworkLogger.LogType.Error
                                         );
                                     }
 
@@ -1086,7 +1087,7 @@ namespace Omni.Core
                 if (target == Target.SelfOnly && groupId != 0 && !cacheIsEnabled)
                 {
                     NetworkLogger.__Log__(
-                        "Target.SelfOnly cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
+                        $"Warning: Target.SelfOnly with group ID {groupId} is logically inconsistent. When sending to self only, the group ID is irrelevant as messages are routed directly to the sender. Consider using group ID 0 for self-targeted messages.",
                         NetworkLogger.LogType.Warning
                     );
                 }
@@ -1131,7 +1132,7 @@ namespace Omni.Core
                     else
                     {
                         NetworkLogger.__Log__(
-                            $"Error: The specified group with ID '{groupId}' was not found. Ensure the group exists and verify that the provided group id is correct. If the issue persists, check the group initialization process.",
+                            $"Error: Group with ID '{groupId}' not found. Verify the group ID is correct and that the group exists. This could happen if: (1) the group was deleted, (2) the group hasn't been created yet, or (3) you're referencing the wrong group ID.",
                             NetworkLogger.LogType.Error
                         );
 
@@ -1157,7 +1158,7 @@ namespace Omni.Core
                             if (groupId != 0 && !cacheIsEnabled)
                             {
                                 NetworkLogger.__Log__(
-                                    "Send: Target.UngroupedPlayers cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
+                                    $"Error: Cannot use Target.UngroupedPlayers with group ID {groupId}. This target type is specifically designed for peers that don't belong to any group, so specifying a group ID is logically contradictory. Use Target.AllPlayers instead.",
                                     NetworkLogger.LogType.Error
                                 );
 
@@ -1193,8 +1194,8 @@ namespace Omni.Core
                             if (groupId != 0 && !cacheIsEnabled)
                             {
                                 NetworkLogger.__Log__(
-                                    "Send: Target.Group cannot be used with a specific groups. Note that this is not a limitation, it just doesn't make sense.",
-                                    NetworkLogger.LogType.Error
+                                     $"Error: Cannot use Target.GroupOnly with group ID {groupId}. When using Target.GroupOnly, the system automatically broadcasts to all groups the sender belongs to. Specifying a specific group ID conflicts with this behavior. Use Target.AllPlayers instead if you need to target a specific group.",
+                                     NetworkLogger.LogType.Error
                                 );
 
                                 return;
@@ -1203,7 +1204,7 @@ namespace Omni.Core
                             if (sender.Id == 0)
                             {
                                 NetworkLogger.__Log__(
-                                    "Send Error: Matchmaking is not supported by the server peer. Use a specific group to broadcast.",
+                                    "Error: The server peer (ID 0) cannot use group targeting. Server peers must specify an explicit group ID when broadcasting messages.",
                                     NetworkLogger.LogType.Error
                                 );
 
@@ -1213,8 +1214,8 @@ namespace Omni.Core
                             if (sender._groups.Count == 0)
                             {
                                 NetworkLogger.__Log__(
-                                    "Send Error: You are not currently a member of any groups. Please ensure you join a group before sending this message.",
-                                    NetworkLogger.LogType.Error
+                                     "Error: Failed to send group message. The sender is not a member of any groups. Join at least one group before attempting to send group-targeted messages.",
+                                     NetworkLogger.LogType.Error
                                 );
 
                                 return;

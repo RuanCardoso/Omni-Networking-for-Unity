@@ -132,6 +132,7 @@ namespace Omni.Core
             {
                 dbConnection = DbConnection;
                 dbConnection.Open();
+
                 // Initialize the query builder to openned connection!
                 if (dbConnection.State == ConnectionState.Open)
                 {
@@ -140,7 +141,7 @@ namespace Omni.Core
                 else
                 {
                     NetworkLogger.__Log__(
-                        $"Connection to the database for table '{tableName}' is not open. Please check the connection parameters and try again.",
+                        $"Database connection failed for table '{tableName}'. Current connection state: {dbConnection?.State}. Please verify connection string, credentials, and database availability. If problem persists, check firewall settings or network connectivity.",
                         NetworkLogger.LogType.Error
                     );
                 }
@@ -148,19 +149,19 @@ namespace Omni.Core
             catch (Exception ex)
             {
                 NetworkLogger.__Log__(
-                    $"An error occurred while initializing the database connection: {ex.Message}",
+                    $"Database initialization failed for '{tableName}': {ex.Message}",
                     NetworkLogger.LogType.Error
                 );
 
                 if (ex.InnerException != null)
                 {
                     NetworkLogger.__Log__(
-                        $"Inner exception: {ex.InnerException.Message}",
-                        NetworkLogger.LogType.Error
+                         $"Inner exception details: {ex.InnerException.Message}",
+                         NetworkLogger.LogType.Error
                     );
                 }
 
-                throw ex;
+                throw;
             }
         }
 
@@ -177,8 +178,8 @@ namespace Omni.Core
             try
             {
                 dbConnection = DbConnection;
-                // async open connection to ConcurrentDatabaseManager!
                 await dbConnection.OpenAsync(token);
+
                 // Initialize the query builder to openned connection!
                 if (dbConnection.State == ConnectionState.Open)
                 {
@@ -187,8 +188,8 @@ namespace Omni.Core
                 else
                 {
                     NetworkLogger.__Log__(
-                        $"Failed to establish a connection for table '{tableName}'.",
-                        NetworkLogger.LogType.Error
+                         $"Database connection failed for table '{tableName}'. Current connection state: {dbConnection?.State}. Please verify connection string, credentials, and database availability. If problem persists, check firewall settings or network connectivity.",
+                         NetworkLogger.LogType.Error
                     );
                 }
 
@@ -197,15 +198,19 @@ namespace Omni.Core
             catch (Exception ex)
             {
                 NetworkLogger.__Log__(
-                    $"Error while initializing the database: {ex.Message}",
+                    $"Database initialization failed for '{tableName}': {ex.Message}",
                     NetworkLogger.LogType.Error
                 );
+
                 if (ex.InnerException != null)
                 {
-                    NetworkLogger.__Log__(ex.InnerException.Message, NetworkLogger.LogType.Error);
+                    NetworkLogger.__Log__(
+                         $"Inner exception details: {ex.InnerException.Message}",
+                         NetworkLogger.LogType.Error
+                    );
                 }
 
-                throw ex;
+                throw;
             }
         }
 
@@ -262,14 +267,13 @@ namespace Omni.Core
                     Initialize(new MySqlConnection(connectionString), new MySqlCompiler(), timeout);
                     break;
                 default:
-                    throw new Exception("DatabaseType Type not supported!");
+                    throw new NotSupportedException("The specified type of database is not supported!");
             }
         }
 
         /// <summary>
         /// Initializes the Database Management System asynchronously with the specified parameters, allowing connection to various types of databases.
         /// </summary>
-        /// <param name="tableName">The name of the table to be used within the database.</param>
         /// <param name="dbType">The specific type of the database (e.g., MySQL, SQL Server, PostgreSQL).</param>
         /// <param name="connectionString">The connection string used to access the specified database.</param>
         /// <param name="timeout">The timeout value (in seconds) for database operations like Insert, Update, etc. Default is 30 seconds.</param>
@@ -330,7 +334,7 @@ namespace Omni.Core
                         token
                     );
                 default:
-                    throw new Exception("DatabaseType Type not supported!");
+                    throw new NotSupportedException("The specified type of database is not supported!");
             }
         }
 
@@ -544,6 +548,7 @@ namespace Omni.Core
         /// </remarks>
         public void Close()
         {
+            ThrowErrorIfNotInitialized();
             dbConnection.Close();
         }
 
@@ -556,6 +561,7 @@ namespace Omni.Core
         /// </remarks>
         public void CloseAsync()
         {
+            ThrowErrorIfNotInitialized();
             dbConnection.CloseAsync();
         }
 
@@ -569,6 +575,7 @@ namespace Omni.Core
         /// </remarks>
         public ValueTask DisposeAsync()
         {
+            ThrowErrorIfNotInitialized();
             return dbConnection.DisposeAsync();
         }
 
@@ -588,8 +595,8 @@ namespace Omni.Core
         {
             if (queryFactory == null || dbConnection == null)
             {
-                throw new Exception(
-                    $"Call \"{nameof(Initialize)}()\" before accessing the QueryFactory! Connection state: {dbConnection?.State}"
+                throw new InvalidOperationException(
+                    $"Database not initialized: Call \"{nameof(Initialize)}()\" before accessing the QueryFactory. Connection state: {dbConnection?.State ?? ConnectionState.Closed}"
                 );
             }
 
@@ -598,44 +605,42 @@ namespace Omni.Core
                 switch (dbConnection.State)
                 {
                     case ConnectionState.Open:
-                        // Database connection is open.
                         break;
                     case ConnectionState.Closed:
                         NetworkLogger.__Log__(
-                            $"The connection to the database is closed for table '{tableName}'.",
+                            $"Database Error: Connection closed for table '{tableName}'. The connection may have timed out or been closed by the server. Try re-initializing the connection with Initialize().",
                             NetworkLogger.LogType.Error
                         );
-                        // The database connection is closed; unable to perform operations.
                         break;
                     case ConnectionState.Broken:
                         NetworkLogger.__Log__(
-                            $"The connection to the database is broken for table '{tableName}'.",
+                            $"Database Error: Connection broken for table '{tableName}'. Network issues or server shutdown detected. Verify server status and network connectivity before reinitializing.",
                             NetworkLogger.LogType.Error
                         );
-                        // The database connection is broken; requires re-establishment.
                         break;
                     case ConnectionState.Connecting:
                         NetworkLogger.__Log__(
-                            $"The connection to the database is currently in the process of establishing for table '{tableName}'.",
+                            $"Database Error: Connection broken for table '{tableName}'. Network issues or server shutdown detected. Verify server status and network connectivity before reinitializing.",
                             NetworkLogger.LogType.Error
                         );
-                        // The database connection is in the process of establishing a connection.
                         break;
                     case ConnectionState.Executing:
                         NetworkLogger.__Log__(
-                            $"The connection to the database is currently executing a command for table '{tableName}'.",
-                            NetworkLogger.LogType.Error
+                            $"Database Warning: Connection busy executing command for table '{tableName}'. Concurrent operations may lead to contention. Consider using separate connections for parallel operations.",
+                            NetworkLogger.LogType.Warning
                         );
-                        // The database connection is executing a command.
                         break;
                     case ConnectionState.Fetching:
                         NetworkLogger.__Log__(
-                            $"The connection to the database is currently fetching data for table '{tableName}'.",
-                            NetworkLogger.LogType.Error
+                            $"Database Warning: Connection busy fetching data for table '{tableName}'. Wait for ongoing operations to complete before executing new queries.",
+                            NetworkLogger.LogType.Warning
                         );
-                        // The database connection is actively retrieving data.
                         break;
                     default:
+                        NetworkLogger.__Log__(
+                            $"Database Warning: Connection in unknown state ({dbConnection.State}) for table '{tableName}'. This may indicate a driver-specific state.",
+                            NetworkLogger.LogType.Warning
+                        );
                         break;
                 }
             }

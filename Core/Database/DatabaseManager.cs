@@ -85,14 +85,13 @@ namespace Omni.Core
         /// <returns>A task representing the asynchronous operation. The task result contains the initialized database instance.</returns>
         protected Task<DatabaseConnection> GetConnectionAsync(CancellationToken token = default)
         {
-#if OMNI_DEBUG
             if (Credentials == null)
             {
-                throw new NullReferenceException(
-                    "Credentials is null. Did you forget to call SetDatabase()?"
+                throw new InvalidOperationException(
+                    "Database credentials not configured. You must call SetDatabase() before attempting any database operations."
                 );
             }
-#endif
+
             var db = DatabaseConnection.New();
             return db.InitializeAsync(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination,
                 token);
@@ -105,14 +104,13 @@ namespace Omni.Core
         /// <returns>A task representing the asynchronous operation. The task result contains the initialized database instance.</returns>
         protected DatabaseConnection GetConnection()
         {
-#if OMNI_DEBUG
             if (Credentials == null)
             {
-                throw new NullReferenceException(
-                    "Credentials is null. Did you forget to call SetDatabase()?"
+                throw new InvalidOperationException(
+                    "Database credentials not configured. You must call SetDatabase() before attempting any database operations."
                 );
             }
-#endif
+
             var db = DatabaseConnection.New();
             db.Initialize(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination);
             return db;
@@ -132,7 +130,7 @@ namespace Omni.Core
             catch (Exception ex)
             {
                 NetworkLogger.__Log__(
-                    $"The connection to the database could not be established, reason: {ex.Message}",
+                    $"Database connection failed: The connection to the database could not be established, reason: {ex.Message}",
                     NetworkLogger.LogType.Error
                 );
 
@@ -154,7 +152,7 @@ namespace Omni.Core
             catch (Exception ex)
             {
                 NetworkLogger.__Log__(
-                    $"The connection to the database could not be established, reason: {ex.Message}",
+                    $"Database connection failed: The connection to the database could not be established, reason: {ex.Message}",
                     NetworkLogger.LogType.Error
                 );
 

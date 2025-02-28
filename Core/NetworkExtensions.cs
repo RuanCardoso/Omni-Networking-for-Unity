@@ -590,7 +590,13 @@ namespace Omni.Core
             }
             catch (Exception ex)
             {
-                NetworkLogger.__Log__($"Failed to deep clone object: {ex.Message}", NetworkLogger.LogType.Error);
+                NetworkLogger.__Log__(
+                    $"[Serialization] Operation failed for {typeof(T).Name}: {ex.Message}\n" +
+                    $"Method: DeepClone ({(useBinarySerializer ? "Binary" : "JSON")})\n" +
+                    $"Exception: {ex.GetType().Name}",
+                    NetworkLogger.LogType.Error
+                );
+
                 throw;
             }
         }

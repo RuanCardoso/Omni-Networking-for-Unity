@@ -249,8 +249,9 @@ namespace Omni.Core
             if (oldValue == null || newValue == null)
             {
                 NetworkLogger.__Log__(
-                    $"The network variable '{name}' contains a null value. " +
-                    "Ensure the value is properly initialized before performing any operation.",
+                    $"Error: Network variable '{name}' (ID: {id}) contains a null value. " +
+                    "Network variables must be initialized before comparison. " +
+                    "Initialize this variable in OnStart() or OnAwake() to prevent this error.",
                     NetworkLogger.LogType.Error
                 );
 

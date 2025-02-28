@@ -336,12 +336,17 @@ namespace Omni.Core
                     {
 #if OMNI_DEBUG
                         NetworkLogger.__Log__(
-                            "Access Denied: The client attempted to send Network Variables without proper permissions -> Name: {field.Name} | Id: {id}",
+                            $"[Security] Network Variable modification rejected: Client lacks permission to modify '{field.Name}' (ID: {id}). " +
+                            $"This variable is not marked with [ClientAuthority] attribute. " +
+                            $"Client ID: {peer.Id}, Object: {GetType().Name}",
                             NetworkLogger.LogType.Error
                         );
 #else
                         NetworkLogger.__Log__(
-                            $"Client disconnected: Unauthorized attempt to send Network Variables detected. Ensure the client has the required permissions before allowing this operation -> Name: {field.Name} | Id: {id}",
+                            $"[Security] Client {peer.Id} disconnected: Unauthorized network variable modification attempt. " +
+                            $"Attempted to modify '{field.Name}' (ID: {id}) without proper permissions. " +
+                            $"To allow client modifications, either enable 'AllowNetworkVariablesFromClients' in NetworkManager " +
+                            $"or mark the variable with [ClientAuthority] attribute.",
                             NetworkLogger.LogType.Error
                         );
 

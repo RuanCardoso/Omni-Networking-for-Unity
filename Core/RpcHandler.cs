@@ -420,18 +420,22 @@ namespace Omni.Core
                     func.GetParameters().Select(param => param.ParameterType.Name)
                 );
 
+                string rpcName = GetRpcName(attr.Id);
                 NetworkLogger.__Log__(
-                    $"[RPC Delegate Error] Failed to create delegate for method '{func.Name}' associated with RPC attribute ID '{attr.Id}'. " +
-                    $"Exception: {ex.Message}. Ensure the method signature matches the expected arguments: [{expectedArguments}].",
+                    $"[RPC Delegate Error] Failed to create delegate for method '{func.Name}' (RPC name: '{rpcName}', ID: {attr.Id}). " +
+                    $"Exception: {ex.Message}. " +
+                    $"Expected signature: [{expectedArguments}]. " +
+                    $"Check parameter types and ensure they match exactly with the delegate signature.",
                     NetworkLogger.LogType.Error
                 );
             }
 
             void ThrowDuplicatedEventId(T attr)
             {
+                string rpcName = GetRpcName(attr.Id);
                 NetworkLogger.__Log__(
-                    $"[RPC Configuration Error] Duplicate RPC event ID '{attr.Id}' detected. " +
-                    $"Ensure each method annotated with an RPC attribute has a unique ID to avoid conflicts.",
+                    $"[RPC Configuration Error] Duplicate RPC ID '{attr.Id}' detected for method '{rpcName}'. " +
+                    $"Each RPC method must have a unique ID. Check for multiple methods using ID {attr.Id} and assign unique IDs to resolve this conflict.",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -442,9 +446,11 @@ namespace Omni.Core
         {
             if (!Exists(methodId, out _))
             {
+                string rpcName = GetRpcName(methodId);
                 NetworkLogger.__Log__(
-                    $"[RPC Invoke Error] No registered RPC method found with ID '{methodId}'. " +
-                    $"Verify that a method with this ID is properly registered and available for invocation.",
+                    $"[RPC Invoke Error] No registered RPC method found with ID '{methodId}' (expected name: '{rpcName}'). " +
+                    $"Verify that a method with this ID is properly registered and available for invocation. " +
+                    $"This could happen if the method was not decorated with the appropriate RPC attribute or if the method was registered on a different object.",
                     NetworkLogger.LogType.Error
                 );
             }

@@ -9,7 +9,7 @@ namespace Omni.Core
         internal const byte NETWORK_VARIABLE_RPC_ID = 255;
         internal const int INVALID_MASTER_CLIENT_ID = -1;
         internal const string SHARED_ALL_KEYS = "_All_";
-        internal const string INVALID_RPC_NAME = "Unknown";
+        internal const string INVALID_RPC_NAME = "Unknown Rpc";
     }
 
     internal enum ScriptingBackend
