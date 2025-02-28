@@ -1,12 +1,13 @@
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using System;
-using System.Collections;
 using System.ComponentModel;
 using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
+using Omni.Core.Web;
+using static Omni.Core.Modules.Matchmaking.NetworkMatchmaking;
 
 #pragma warning disable
 
@@ -46,6 +47,44 @@ namespace Omni.Core
         private NetworkEventServer remote;
         private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> rpcHandler = new();
 
+        private HttpRouteManager _http;
+        /// <summary>
+        /// Gets the HTTP route manager that provides access to HTTP-based networking functionality.
+        /// This property allows server implementations to handle RESTful endpoints, web hooks,
+        /// and other HTTP-based communication.
+        /// </summary>
+        /// <remarks>
+        /// Accessing this property automatically retrieves the HTTP service instance from the service locator.
+        /// If the HTTP module is not enabled in the NetworkManager inspector, or if accessed too early in
+        /// the initialization process, a NullReferenceException will be thrown with detailed instructions.
+        /// </remarks>
+        /// <exception cref="NullReferenceException">
+        /// Thrown when the HTTP service is not available, either because the HTTP module is not enabled
+        /// in the NetworkManager settings or because the property is accessed before service initialization.
+        /// </exception>
+        /// <value>
+        /// The <see cref="HttpRouteManager"/> instance for handling HTTP routes and requests.
+        /// </value>
+        protected HttpRouteManager Http
+        {
+            get
+            {
+                if (_http == null)
+                {
+                    if (!NetworkService.TryGet(out _http))
+                    {
+                        throw new NullReferenceException(
+                            "HTTP service not available. Make sure the HTTP module is enabled in the Network Manager inspector. " +
+                            "If already enabled, this service may only be available after Start() has completed initialization. " +
+                            "Try accessing this property from OnStart() or later in the execution lifecycle."
+                        );
+                    }
+                }
+
+                return _http;
+            }
+        }
+
         /// <summary>
         /// Gets the server-side routing manager that handles network message routing and delivery.
         /// Provides access to server-specific routing functionality for sending messages to connected clients
@@ -57,6 +96,20 @@ namespace Omni.Core
         /// message routing, custom packet handling, and optimizing network traffic.
         /// </remarks>
         protected TransporterRouteManager.ServerRouteManager Router => NetworkManager._transporterRouteManager.Server;
+
+        /// <summary>
+        /// Gets the server-side matchmaking manager that handles player grouping, matchmaking, and lobby functionality.
+        /// This property provides access to methods for creating, managing, and monitoring player groups and matches.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the server matchmaking system without directly
+        /// referencing the NetworkManager's matchmaking module. Use this for implementing features such as
+        /// game lobbies, team assignment, custom matchmaking rules, and player grouping logic.
+        /// </remarks>
+        /// <value>
+        /// The <see cref="MatchServer"/> instance for handling server-side matchmaking operations.
+        /// </value>
+        protected MatchServer Matchmaking => NetworkManager.Matchmaking.Server;
 
         /// <summary>
         /// Provides access to the <see cref="NetworkEventServer"/> instance, 
@@ -191,11 +244,11 @@ namespace Omni.Core
         {
             if (MatchmakingModuleEnabled)
             {
-                Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
-                Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
 
-                Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
-                Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
             }
         }
 
@@ -209,11 +262,11 @@ namespace Omni.Core
 
             if (MatchmakingModuleEnabled)
             {
-                Matchmaking.Server.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
-                Matchmaking.Server.OnPlayerLeftGroup -= OnPlayerLeftGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerLeftGroup -= OnPlayerLeftGroup;
 
-                Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
-                Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
+                NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
             }
 
             NetworkService.Unregister(m_ServiceName);
