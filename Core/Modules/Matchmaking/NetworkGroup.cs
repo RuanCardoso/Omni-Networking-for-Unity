@@ -66,6 +66,13 @@ namespace Omni.Core
         public int PeerCount => _peersById.Count;
 
         /// <summary>
+        /// Gets a dictionary of NetworkIdentity components that are associated with this network group.
+        /// This dictionary keeps track of all networked objects that belong to this specific group.
+        /// </summary>
+        [MemoryPackIgnore]
+        public Dictionary<int, NetworkIdentity> Identities { get; } = new();
+
+        /// <summary>
         /// Gets the non-synchronized data for the group.
         /// </summary>
         [MemoryPackIgnore]
@@ -115,7 +122,11 @@ namespace Omni.Core
             {
                 if (isNameBuilder)
                 {
-                    throw new Exception("Peers: Cannot get peers from name builder mode.");
+                    throw new InvalidOperationException(
+                        "Cannot retrieve peers in name builder mode. This NetworkGroup instance was created as a template " +
+                        "using the name-based constructor and doesn't contain actual peer data. Use a fully initialized " +
+                        "NetworkGroup created through Matchmaking.Server.AddGroup() instead."
+                    );
                 }
 
                 return _peersById;
@@ -194,7 +205,11 @@ namespace Omni.Core
             EnsureServerActive();
             if (isNameBuilder)
             {
-                throw new Exception("GetPeer: Cannot get peer from name builder mode.");
+                throw new InvalidOperationException(
+                    "Cannot retrieve peers in name builder mode. This NetworkGroup instance was created as a template " +
+                    "using the name-based constructor and doesn't contain actual peer data. Use a fully initialized " +
+                    "NetworkGroup created through Matchmaking.Server.AddGroup() instead."
+                );
             }
 
             if (_peersById.TryGetValue(peerId, out var peer))
@@ -203,7 +218,12 @@ namespace Omni.Core
             }
 
             NetworkLogger.__Log__(
-                $"Group: Peer with ID {peerId}:{Id} not found. Please verify the peer ID and ensure the peer is properly registered(connected!) in the group.",
+                $"[NetworkGroup {Id}:{Name}] Peer with ID {peerId} not found in group. This could happen if:" +
+                $"\n- The peer has disconnected" +
+                $"\n- The peer never joined this group" +
+                $"\n- The peer ID is incorrect" +
+                $"\n- The group has been cleared or reset" +
+                $"\nPeer count in group: {PeerCount}, Group Name: '{Name}'",
                 NetworkLogger.LogType.Error
             );
 
@@ -221,7 +241,11 @@ namespace Omni.Core
             EnsureServerActive();
             if (isNameBuilder)
             {
-                throw new Exception("GetPeer: Cannot get peer from name builder mode.");
+                throw new InvalidOperationException(
+                    "Cannot retrieve peers in name builder mode. This NetworkGroup instance was created as a template " +
+                    "using the name-based constructor and doesn't contain actual peer data. Use a fully initialized " +
+                    "NetworkGroup created through Matchmaking.Server.AddGroup() instead."
+                );
             }
 
             return _peersById.TryGetValue(peerId, out peer);
@@ -304,8 +328,10 @@ namespace Omni.Core
 
             if (MasterClient == null)
             {
-                throw new Exception(
-                    "MasterClientId is not set. Please set it before using this method."
+                throw new InvalidOperationException(
+                    $"[NetworkGroup {Id}:{Name}] MasterClient is not set for this group. " +
+                    $"Please call SetMasterClient() before attempting to synchronize shared data. " +
+                    $"The MasterClient is required to determine the origin of synchronized data."
                 );
             }
 
@@ -426,6 +452,111 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Adds a NetworkIdentity component to the group's collection of managed identities.
+        /// </summary>
+        /// <param name="identity">The NetworkIdentity component to add to the group.</param>
+        /// <remarks>
+        /// The identity is stored in a dictionary using its IdentityId as the key for fast lookup.
+        /// This method is typically used when a networked object joins or is created within the group.
+        /// </remarks>
+        public void AddIdentity(NetworkIdentity identity)
+        {
+            Identities[identity.Id] = identity;
+        }
+
+        /// <summary>
+        /// Removes a NetworkIdentity component from the group's collection of managed identities.
+        /// </summary>
+        /// <param name="identity">The NetworkIdentity component to remove from the group.</param>
+        /// <returns>
+        /// True if the identity was successfully removed; false if the identity was not found in the group.
+        /// </returns>
+        /// <remarks>
+        /// This method is typically used when a networked object leaves the group or is destroyed.
+        /// </remarks>
+        public bool RemoveIdentity(NetworkIdentity identity)
+        {
+            return Identities.Remove(identity.Id);
+        }
+
+        /// <summary>
+        /// Removes a NetworkIdentity component from the group's collection of managed identities using its ID.
+        /// </summary>
+        /// <param name="identityId">The unique identifier of the NetworkIdentity to remove.</param>
+        /// <remarks>
+        /// - This is an overload that allows removal by ID without needing the NetworkIdentity reference
+        /// - Typically used during cleanup or when the NetworkIdentity component is no longer accessible
+        /// - Returns void, so caller cannot determine if removal was successful
+        /// </remarks>
+        public void RemoveIdentity(int identityId)
+        {
+            Identities.Remove(identityId);
+        }
+
+        /// <summary>
+        /// Removes all networked identities from the group.
+        /// </summary>
+        public void ClearAllIdentities()
+        {
+            Identities.Clear();
+        }
+
+        /// <summary>
+        /// Despawns all networked identities in this group for a specific peer using the provided server options.
+        /// </summary>
+        /// <param name="peer">The peer to despawn the identities for</param>
+        /// <param name="options">Server options containing delivery settings</param>
+        public void DespawnIdentitiesToPeer(NetworkPeer peer, ServerOptions options)
+        {
+            DespawnIdentitiesToPeer(peer, options.DeliveryMode, options.DataCache, options.SequenceChannel);
+        }
+
+        /// <summary>
+        /// Despawns all networked identities in this group for a specific peer with custom network settings.
+        /// </summary>
+        /// <param name="peer">The peer to despawn the identities for</param>
+        /// <param name="deliveryMode">How the despawn messages should be delivered (defaults to ReliableOrdered)</param>
+        /// <param name="dataCache">Optional cache settings for the despawn data</param>
+        /// <param name="sequenceChannel">Network channel to use for sending despawn messages</param>
+        public void DespawnIdentitiesToPeer(NetworkPeer peer, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            DataCache dataCache = default, byte sequenceChannel = 0)
+        {
+            EnsureServerActive();
+            foreach (var identity in Identities.Values)
+            {
+                identity.DespawnToPeer(peer, deliveryMode, dataCache, sequenceChannel);
+            }
+        }
+
+        /// <summary>
+        /// Despawns all networked identities in this group using the provided server options.
+        /// </summary>
+        /// <param name="options">Server options containing target and delivery settings</param>
+        public void DespawnIdentities(ServerOptions options)
+        {
+            DespawnIdentities(options.DeliveryMode, options.DataCache, options.SequenceChannel);
+        }
+
+        /// <summary>
+        /// Despawns all networked identities in this group with custom network settings.
+        /// </summary>
+        /// <param name="target">The target recipients for the despawn (defaults to Auto)</param>
+        /// <param name="deliveryMode">How the despawn messages should be delivered (defaults to ReliableOrdered)</param>
+        /// <param name="groupId">Optional group ID filter for despawning</param>
+        /// <param name="dataCache">Optional cache settings for the despawn data</param>
+        /// <param name="sequenceChannel">Network channel to use for sending despawn messages</param>
+        public void DespawnIdentities(DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, DataCache dataCache = default, byte sequenceChannel = 0)
+        {
+            EnsureServerActive();
+            foreach (var identity in Identities.Values)
+            {
+                identity.Despawn(Target.Auto, deliveryMode, Id, dataCache, sequenceChannel);
+            }
+
+            ClearAllIdentities();
+        }
+
+        /// <summary>
         /// Clears all peers associated with this group.
         /// </summary>
         public void ClearAllPeers()
@@ -497,8 +628,16 @@ namespace Omni.Core
         /// </returns>
         public override bool Equals(object obj)
         {
-            NetworkGroup other = (NetworkGroup)obj;
-            return other != null && Id == other.Id;
+            if (obj is null)
+                return false;
+
+            if (ReferenceEquals(this, obj))
+                return true;
+
+            if (obj is NetworkGroup group)
+                return Id == group.Id;
+
+            return false;
         }
 
         /// <summary>
