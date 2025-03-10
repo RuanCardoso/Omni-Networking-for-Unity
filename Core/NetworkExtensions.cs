@@ -10,7 +10,10 @@ using HttpListenerRequest = Omni.Core.Web.Net.HttpListenerRequest;
 using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
 using Cookie = Omni.Core.Web.Net.Cookie;
 using Omni.Shared;
-using Omni.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+#if OMNI_RELEASE
+using System.Runtime.CompilerServices;
+#endif
 
 namespace Omni.Core
 {
@@ -599,6 +602,195 @@ namespace Omni.Core
 
                 throw;
             }
+        }
+
+        private static void ResolveType<T>(ref object @ref)
+        {
+            if (@ref is T)
+                return;
+
+            if (@ref is JObject jObject)
+            {
+                @ref = jObject.ToObject<T>();
+                return;
+            }
+
+            if (@ref is JArray jArray)
+            {
+                @ref = jArray.ToObject<T>();
+                return;
+            }
+
+            @ref = Convert.ChangeType(@ref, typeof(T));
+        }
+
+        /// <summary>
+        /// Retrieves the value associated with the specified key from the dictionary and casts it to the specified type.
+        /// </summary>
+        /// <typeparam name="T">The type to which the value should be cast.</typeparam>
+        /// <param name="this">The dictionary to retrieve the value from.</param>
+        /// <param name="name">The key of the value to retrieve.</param>
+        /// <returns>The value associated with the specified key, casted to type <typeparamref name="T"/>.</returns>
+        /// <remarks>
+        /// This method retrieves the value associated with the specified key from the dictionary and casts it to the specified type.
+        /// If the key is not found in the dictionary, this method will throw a KeyNotFoundException.
+        /// </remarks>
+        public static T Get<T>(this IDictionary<string, object> @this, string name)
+        {
+            var @ref = @this[name];
+            try
+            {
+                ResolveType<T>(ref @ref);
+                return (T)@ref;
+            }
+            catch (InvalidCastException)
+            {
+                NetworkLogger.__Log__(
+                    $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                    NetworkLogger.LogType.Error
+                );
+            }
+            catch (Exception ex)
+            {
+                NetworkLogger.__Log__(
+                    $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                    NetworkLogger.LogType.Error
+                );
+            }
+
+            return default;
+        }
+
+        /// <summary>
+        /// Retrieves the value associated with the specified key from the dictionary and casts it to the specified reference type without type checking.
+        /// </summary>
+        /// <typeparam name="T">The reference type to which the value should be cast.</typeparam>
+        /// <param name="this">The dictionary to retrieve the value from.</param>
+        /// <param name="name">The key of the value to retrieve.</param>
+        /// <returns>The value associated with the specified key, casted to type <typeparamref name="T"/>.</returns>
+        /// <remarks>
+        /// This method retrieves the value associated with the specified key from the dictionary and casts it to the specified reference type without type checking.
+        /// It is intended for performance-sensitive scenarios where the type is known at compile-time and type safety is ensured by the caller.
+        /// If the key is not found in the dictionary, this method will throw a KeyNotFoundException.
+        /// </remarks>
+        public static T UnsafeGet<T>(this IDictionary<string, object> @this, string name) where T : class
+        {
+            var @ref = @this[name];
+            try
+            {
+                ResolveType<T>(ref @ref);
+#if OMNI_RELEASE
+                return Unsafe.As<T>(@ref);
+#else
+                return (T)@ref;
+#endif
+            }
+            catch (InvalidCastException)
+            {
+                NetworkLogger.__Log__(
+                    $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                    NetworkLogger.LogType.Error
+                );
+            }
+            catch (Exception ex)
+            {
+                NetworkLogger.__Log__(
+                    $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                    NetworkLogger.LogType.Error
+                );
+            }
+
+            return default;
+        }
+
+        /// <summary>
+        /// Tries to retrieve the value associated with the specified key from the dictionary and casts it to the specified type.
+        /// </summary>
+        /// <typeparam name="T">The type to which the value should be cast.</typeparam>
+        /// <param name="this">The dictionary to retrieve the value from.</param>
+        /// <param name="name">The key of the value to retrieve.</param>
+        /// <param name="value">When this method returns, contains the value associated with the specified key if the key is found; otherwise, the default value for type <typeparamref name="T"/>.</param>
+        /// <returns>True if the dictionary contains an element with the specified key; otherwise, false.</returns>
+        /// <remarks>
+        /// This method tries to retrieve the value associated with the specified key from the dictionary and casts it to the specified type.
+        /// If the key is found in the dictionary, the value is assigned to the <paramref name="value"/> parameter and the method returns true; otherwise, it returns false.
+        /// </remarks>
+        public static bool TryGet<T>(this IDictionary<string, object> @this, string name, out T value)
+        {
+            value = default;
+            if (@this.TryGetValue(name, out object @ref))
+            {
+                try
+                {
+                    ResolveType<T>(ref @ref);
+                    value = (T)@ref;
+                    return true;
+                }
+                catch (InvalidCastException)
+                {
+                    NetworkLogger.__Log__(
+                        $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+                catch (Exception ex)
+                {
+                    NetworkLogger.__Log__(
+                        $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Tries to retrieve the value associated with the specified key from the dictionary and casts it to the specified reference type without type checking.
+        /// </summary>
+        /// <typeparam name="T">The reference type to which the value should be cast.</typeparam>
+        /// <param name="this">The dictionary to retrieve the value from.</param>
+        /// <param name="name">The key of the value to retrieve.</param>
+        /// <param name="value">When this method returns, contains the value associated with the specified key if the key is found; otherwise, the default value for type <typeparamref name="T"/>.</param>
+        /// <returns>True if the dictionary contains an element with the specified key; otherwise, false.</returns>
+        /// <remarks>
+        /// This method tries to retrieve the value associated with the specified key from the dictionary and casts it to the specified reference type without type checking.
+        /// It is intended for performance-sensitive scenarios where the type is known at compile-time and type safety is ensured by the caller.
+        /// If the key is found in the dictionary, the value is assigned to the <paramref name="value"/> parameter and the method returns true; otherwise, it returns false.
+        /// </remarks>
+        public static bool TryUnsafeGet<T>(this IDictionary<string, object> @this, string name, out T value)
+            where T : class
+        {
+            value = default;
+            if (@this.TryGetValue(name, out object @ref))
+            {
+                try
+                {
+                    ResolveType<T>(ref @ref);
+#if OMNI_RELEASE
+                    value = Unsafe.As<T>(@ref);
+#else
+                    value = (T)@ref;
+#endif
+                    return true;
+                }
+                catch (InvalidCastException)
+                {
+                    NetworkLogger.__Log__(
+                        $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+                catch (Exception ex)
+                {
+                    NetworkLogger.__Log__(
+                        $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+            }
+
+            return false;
         }
     }
 }
