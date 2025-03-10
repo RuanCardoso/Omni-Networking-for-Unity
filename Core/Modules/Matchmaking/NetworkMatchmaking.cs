@@ -179,7 +179,7 @@ namespace Omni.Core.Modules.Matchmaking
             /// </remarks>
             public void JoinGroup(NetworkGroup group, NetworkPeer peer)
             {
-                NetworkManager.ServerSide.JoinGroup(group.Identifier, DataBuffer.Empty, peer, false);
+                NetworkManager.ServerSide.JoinGroup(group.Identifier, DataBuffer.Empty, peer, includeBufferInResponse: false);
             }
 
             /// <summary>
@@ -195,7 +195,7 @@ namespace Omni.Core.Modules.Matchmaking
             public void JoinGroup(NetworkGroup group, DataBuffer buffer, NetworkPeer peer)
             {
                 buffer ??= DataBuffer.Empty;
-                NetworkManager.ServerSide.JoinGroup(group.Identifier, buffer, peer, true);
+                NetworkManager.ServerSide.JoinGroup(group.Identifier, buffer, peer, includeBufferInResponse: true);
             }
 
             /// <summary>
