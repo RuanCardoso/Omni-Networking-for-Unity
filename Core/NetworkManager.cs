@@ -1843,7 +1843,7 @@ namespace Omni.Core
                                         return;
                                     }
 
-                                    ServerSide.JoinGroup(groupName, message, peer, false);
+                                    ServerSide.JoinGroup(groupName, message, peer, includeBufferInResponse: true);
                                 }
                                 else
                                 {
@@ -2195,6 +2195,39 @@ namespace Omni.Core
             if (m_HideDebugInfo)
                 return;
 
+            float widthScale = Screen.width / 1920f;
+            float heightScale = Screen.height / 1080f;
+            float scale = Mathf.Min(widthScale, heightScale);
+
+            float scaledWidth = 350f * scale;
+            float scaledHeight = 205f * scale;
+            float scaledPadding = 10f * scale;
+            int scaledFontSize = Mathf.RoundToInt(24 * scale);
+
+            GUIStyle windowStyle = new(GUI.skin.box)
+            {
+                fontSize = scaledFontSize,
+                alignment = TextAnchor.UpperLeft,
+                padding = new RectOffset(Mathf.RoundToInt(12 * scale), 0, Mathf.RoundToInt(12 * scale), 0)
+            };
+
+            GUIStyle headerStyle = new(GUI.skin.box)
+            {
+                fontSize = Mathf.RoundToInt(scaledFontSize * 1.2f),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(0.9f, 0.9f, 1f) }
+            };
+
+            GUIStyle contentStyle = new(GUI.skin.label)
+            {
+                fontSize = scaledFontSize,
+                alignment = TextAnchor.UpperLeft,
+                richText = true,
+                wordWrap = true,
+                normal = { textColor = new Color(0.9f, 0.9f, 0.9f) }
+            };
+
             bool isClone = false;
 #if UNITY_EDITOR
             if (ClonesManager.IsClone())
@@ -2203,31 +2236,68 @@ namespace Omni.Core
             }
 #endif
 #if UNITY_EDITOR && OMNI_DEBUG
-            GUI.Label(
-                new Rect(10, Screen.height - 60, 350, 30),
-                !isClone
-                    ? "Debug Mode (Very Slow on Editor)\r\nUse in development mode only. For heavy testing or performance testing, use Release Mode."
-                    : "Debug Mode (Very Slow on Editor)\r\nUse in development mode only. For heavy testing or performance testing, use Release Mode[ParrelSync(Clone) Mode]",
-                new GUIStyle()
-                {
-                    fontSize = 20,
-                    normal = new GUIStyleState() { textColor = Color.red }
-                }
-            );
+            float warningWidth = 710f * scale;
+            float warningHeight = 110f * scale;
+            Rect warningRect = new(scaledPadding, Screen.height - scaledPadding - warningHeight, warningWidth, warningHeight);
+
+            GUI.BeginGroup(warningRect);
+            GUI.Box(new Rect(0, 0, warningRect.width, warningRect.height), "", windowStyle);
+
+            GUIStyle warningTextStyle = new(GUI.skin.box)
+            {
+                fontSize = Mathf.RoundToInt(scaledFontSize * 0.8f),
+                alignment = TextAnchor.MiddleCenter,
+                richText = true,
+                wordWrap = true,
+                normal = { textColor = Color.red }
+            };
+
+            string warningText = !isClone
+                ? "<b>⚠ DEBUG MODE</b>\nVery Slow in Editor\nUse in development only. For performance testing, use Release Mode."
+                : "<b>⚠ DEBUG MODE</b>\nVery Slow in Editor\nUse in development only. For performance testing, use Release Mode [ParrelSync Clone]";
+
+            GUI.Label(new Rect(10, 10, warningRect.width - 20, warningRect.height - 20), warningText, warningTextStyle);
+            GUI.EndGroup();
 #endif
 
 #if OMNI_DEBUG
-            GUI.Label(
-                new Rect(10, 10, 100, 30),
-                m_SntpModule
-                    ? $"Fps: {Framerate:F0} | Cpu Time: {CpuTimeMs:F0} ms\r\nPing(Latency): {(IsClientActive ? LocalPeer.Ping : 0):F0} ms - ({Sntp.Client.Ping:F0} ms)\r\nTime: {(IsClientActive ? LocalPeer.Time : 0):F0} Sec\r\nSynced Time: {(!UseTickTiming ? Math.Round(Sntp.Client.Time, 3) : Math.Round(Sntp.Client.Time, 0))}"
-                    : $"Fps: {Framerate:F0} | Cpu Time: {CpuTimeMs:F0} ms\r\nPing(Latency): {(IsClientActive ? LocalPeer.Ping : 0):F0} ms\r\nTime: {(IsClientActive ? LocalPeer.Time : 0):F0} Sec",
-                new GUIStyle()
+            Rect windowRect = new(scaledPadding, scaledPadding, scaledWidth, scaledHeight);
+
+            GUI.BeginGroup(windowRect);
+            GUI.Box(new Rect(0, 0, windowRect.width, windowRect.height), "", windowStyle);
+            GUI.Box(new Rect(0, 0, windowRect.width, scaledFontSize * 1.5f), "NETWORK STATS", headerStyle);
+
+            string valueColor = "<color=#8ae1ff>";
+            string timeColor = "<color=#8aff8a>";
+            string pingColor = "<color=#ffcf8a>";
+
+            string statsContent = $"{valueColor}FPS:</color> {(int)Framerate} | {valueColor}CPU:</color> {(int)CpuTimeMs} ms\n";
+
+            if (IsClientActive)
+            {
+                statsContent += $"{pingColor}Rtt:</color> {LocalPeer.Ping:F0} ms";
+
+                if (m_SntpModule)
                 {
-                    fontSize = 20,
-                    normal = new GUIStyleState() { textColor = Color.white }
+                    statsContent += $" ({Sntp.Client.Ping:F0} ms)\n";
+                    statsContent += $"{timeColor}Time:</color> {LocalPeer.Time:F0} sec\n";
+                    statsContent += $"{timeColor}Synced Time:</color> {(!UseTickTiming ? Math.Round(Sntp.Client.Time, 3) : Math.Round(Sntp.Client.Time, 0))}";
                 }
-            );
+                else
+                {
+                    statsContent += $"\n{timeColor}Time:</color> {LocalPeer.Time:F0} sec";
+                }
+            }
+            else if (m_SntpModule)
+            {
+                statsContent += $"{timeColor}Synced Time:</color> {(!UseTickTiming ? Math.Round(Sntp.Client.Time, 3) : Math.Round(Sntp.Client.Time, 0))}";
+            }
+
+            float labelYOffset = scaledFontSize * 2f;
+            GUI.Label(new Rect(10, labelYOffset, windowRect.width - 20, windowRect.height - scaledFontSize * 1.5f - labelYOffset),
+                      statsContent, contentStyle);
+
+            GUI.EndGroup();
 #endif
         }
     }
