@@ -246,14 +246,14 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            clientRpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
-            serverRpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
+            clientRpcHandler.RegisterRpcMethodHandlers<ClientAttribute>(this);
+            serverRpcHandler.RegisterRpcMethodHandlers<ServerAttribute>(this);
 
             ClientSide.AddRpcMessage(m_Id, this);
             ServerSide.AddRpcMessage(m_Id, this);
 
-            Client = new NetworkEventClient(this, m_BindingFlags);
-            Server = new NetworkEventServer(this, m_BindingFlags);
+            Client = new NetworkEventClient(this);
+            Server = new NetworkEventServer(this);
         }
 
         protected void RegisterSystemEvents()

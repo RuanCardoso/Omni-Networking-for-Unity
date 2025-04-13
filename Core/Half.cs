@@ -6,6 +6,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using Newtonsoft.Json;
+using Omni.Shared;
 
 namespace Omni.Core
 {

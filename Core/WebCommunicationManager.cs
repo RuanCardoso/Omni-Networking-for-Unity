@@ -514,8 +514,8 @@ namespace Omni.Core.Web
             byte sequenceChannel,
             bool isServer, out byte msgType)
         {
-            using DataBuffer message = NetworkManager.Pool.Rent();
-            message.WriteRawBytes(data);
+            using DataBuffer message = NetworkManager.Pool.Rent(enableTracking: false);
+            message.Insert(data);
             message.SeekToBegin();
 
             if (isServer)

@@ -339,7 +339,7 @@ namespace Omni.Core
             {
                 value = key != NetworkConstants.SHARED_ALL_KEYS ? value : SharedData;
                 ImmutableKeyValuePair keyValuePair = new(key, value);
-                using var message = Pool.Rent();
+                using var message = Pool.Rent(enableTracking: false);
                 message.Write(Id);
                 message.WriteAsJson(keyValuePair);
                 ServerSide.SendMessage(MessageType.SyncGroupSharedData, MasterClient, message, target, deliveryMode,

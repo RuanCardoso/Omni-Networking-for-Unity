@@ -64,7 +64,7 @@ namespace Omni.Core
             public void NetworkVariableSync<T>(T property, byte propertyId,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
-                using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
+                using DataBuffer message = m_NetworkBehaviour.CreateNetworkVariableMessage(property, propertyId);
                 Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
             }
 
@@ -88,11 +88,11 @@ namespace Omni.Core
                 [CallerMemberName] string ___ = "")
             {
                 IPropertyInfo property =
-                    m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(___, m_NetworkBehaviour.m_BindingFlags);
+                    m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(___, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
                 if (property is IPropertyInfo<T> propertyGeneric)
                 {
-                    using DataBuffer message = m_NetworkBehaviour.CreateHeader(propertyGeneric.Invoke(), property.Id);
+                    using DataBuffer message = m_NetworkBehaviour.CreateNetworkVariableMessage(propertyGeneric.Invoke(), property.Id);
                     Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
                 }
             }
@@ -131,7 +131,7 @@ namespace Omni.Core
             /// <param name="message">The IMessage implementation representing the data to serialize and send.</param>
             /// <param name="options">The configuration settings defining buffer options for the RPC call. Defaults to a standard configuration if not provided.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc(byte msgId, IMessage message, ClientOptions options = default)
+            public void SendMessage(byte msgId, in IMessage message, ClientOptions options = default)
             {
                 using var _ = message.Serialize();
                 options.Buffer = _;
@@ -287,7 +287,7 @@ namespace Omni.Core
             /// <param name="peer">The target client to receive the 'NetworkVariable' message.</param>
             public void NetworkVariableSyncToPeer<T>(T property, byte propertyId, NetworkPeer peer)
             {
-                using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
+                using DataBuffer message = m_NetworkBehaviour.CreateNetworkVariableMessage(property, propertyId);
                 RpcToPeer(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, Target.SelfOnly, DeliveryMode.ReliableOrdered,
                     DataCache.None, 0);
             }
@@ -308,7 +308,7 @@ namespace Omni.Core
                 DataCache dataCache = default, byte sequenceChannel = 0)
             {
                 dataCache ??= DataCache.None;
-                using DataBuffer message = m_NetworkBehaviour.CreateHeader(property, propertyId);
+                using DataBuffer message = m_NetworkBehaviour.CreateNetworkVariableMessage(property, propertyId);
                 Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, target, deliveryMode, groupId, dataCache,
                     sequenceChannel);
             }
@@ -339,13 +339,13 @@ namespace Omni.Core
                 dataCache ??= DataCache.None;
                 IPropertyInfo propertyInfo = m_NetworkBehaviour.GetPropertyInfoWithCallerName<T>(
                     ___,
-                    m_NetworkBehaviour.m_BindingFlags
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
                 );
 
                 if (propertyInfo is IPropertyInfo<T> propertyInfoGeneric)
                 {
                     using DataBuffer message =
-                        m_NetworkBehaviour.CreateHeader(propertyInfoGeneric.Invoke(), propertyInfo.Id);
+                        m_NetworkBehaviour.CreateNetworkVariableMessage(propertyInfoGeneric.Invoke(), propertyInfo.Id);
 
                     Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, target, deliveryMode, groupId, dataCache,
                         sequenceChannel);
@@ -454,7 +454,7 @@ namespace Omni.Core
             /// <param name="message">The message to serialize and send as part of the RPC.</param>
             /// <param name="options">The server options containing configuration for the RPC.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Rpc(byte msgId, IMessage message, ServerOptions options = default)
+            public void SendMessage(byte msgId, in IMessage message, ServerOptions options = default)
             {
                 using var _ = message.Serialize();
                 options.Buffer = _;
@@ -596,8 +596,6 @@ namespace Omni.Core
         [SerializeField]
         [Group("Service Settings")]
         private byte m_Id = 0;
-
-        internal BindingFlags m_BindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
         /// <summary>
         /// Gets the unique identifier for this instance.
@@ -874,15 +872,17 @@ namespace Omni.Core
         protected internal void Register()
         {
             CheckIfOverridden();
-            FindAllNetworkVariables();
+            ___RegisterNetworkVariables___();
+            // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
+            ___NotifyCollectionChange___();
             if (Identity.IsServer)
             {
-                serverRpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
+                serverRpcHandler.RegisterRpcMethodHandlers<ServerAttribute>(this);
                 Server = new NetworkBehaviourServer(this);
             }
             else
             {
-                clientRpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
+                clientRpcHandler.RegisterRpcMethodHandlers<ClientAttribute>(this);
                 Client = new NetworkBehaviourClient(this);
             }
 
@@ -1051,9 +1051,9 @@ namespace Omni.Core
         /// It must be disposed of properly or used within a <c>using</c> statement to ensure it is returned to the pool.
         /// </remarks>
         /// <returns>A rented <see cref="DataBuffer"/> instance from the pool.</returns>
-        protected DataBuffer Rent()
+        protected DataBuffer Rent(bool enableTracking = true)
         {
-            return NetworkManager.Pool.Rent();
+            return NetworkManager.Pool.Rent(enableTracking);
         }
 
         /// <summary>
@@ -1137,32 +1137,41 @@ namespace Omni.Core
                     if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
                     {
                         byte id = buffer.BufferAsSpan[0];
-                        if (networkVariables.TryGetValue(id, out NetworkVariableField field))
+                        if (m_NetworkVariables.TryGetValue(id, out NetworkVariableField field))
                         {
                             requiresOwnership = field.RequiresOwnership;
                             isClientAuthority = field.IsClientAuthority;
-                        }
 
-                        if (!NetworkManager.AllowNetworkVariablesFromClients && !isClientAuthority)
-                        {
+                            if (!NetworkManager.AllowNetworkVariablesFromClients && !isClientAuthority)
+                            {
 #if OMNI_DEBUG
-                            NetworkLogger.__Log__(
-                                $"[Security] Network Variable modification rejected: Client lacks permission to modify '{field.Name}' (ID: {id}). " +
-                                $"This variable is not marked with [ClientAuthority] attribute. " +
-                                $"Client ID: {peer.Id}, Object: {GetType().Name}",
-                                NetworkLogger.LogType.Error
-                            );
+                                NetworkLogger.__Log__(
+                                    $"[Security] Network Variable modification rejected: Client lacks permission to modify '{field.Name}' (ID: {id}). " +
+                                    $"This variable is not marked with 'ClientAuthority' option. " +
+                                    $"Client ID: {peer.Id}, Object: {GetType().Name}",
+                                    NetworkLogger.LogType.Error
+                                );
 #else
-                            NetworkLogger.__Log__(
-                                $"[Security] Client {peer.Id} disconnected: Unauthorized network variable modification attempt. " +
-                                $"Attempted to modify '{field.Name}' (ID: {id}) without proper permissions. " +
-                                $"To allow client modifications, either enable 'AllowNetworkVariablesFromClients' in NetworkManager " +
-                                $"or mark the variable with [ClientAuthority] attribute.",
+                                NetworkLogger.__Log__(
+                                    $"[Security] Client {peer.Id} disconnected: Unauthorized network variable modification attempt. " +
+                                    $"Attempted to modify '{field.Name}' (ID: {id}) without proper permissions. " +
+                                    $"To allow client modifications, either enable 'AllowNetworkVariablesFromClients' in NetworkManager " +
+                                    $"or mark the variable with 'ClientAuthority' option.",
+                                    NetworkLogger.LogType.Error
+                                );
+
+                                peer.Disconnect();
+#endif
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            NetworkLogger.__Log__($"The 'NetworkVariable' with ID '{id}' does not exist. " +
+                                "Ensure the ID is valid and registered in the network variables collection.",
                                 NetworkLogger.LogType.Error
                             );
 
-                            peer.Disconnect();
-#endif
                             return;
                         }
                     }
@@ -1209,6 +1218,9 @@ namespace Omni.Core
                 );
 
                 NetworkLogger.PrintHyperlink(ex);
+#if OMNI_DEBUG
+                throw;
+#endif
             }
         }
 

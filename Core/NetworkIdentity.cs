@@ -498,7 +498,7 @@ namespace Omni.Core
                     $"Operation failed: Only the server is authorized to spawn the game object '{name}'. Ensure the operation is being performed on the server.");
             }
 
-            using var message = NetworkManager.Pool.Rent();
+            using var message = NetworkManager.Pool.Rent(enableTracking: false);
             message.WriteString(_prefabName);
             message.WriteIdentity(this);
             NetworkManager.ServerSide.SendMessage(MessageType.Spawn, Owner, message, target, deliveryMode, groupId,
@@ -544,7 +544,7 @@ namespace Omni.Core
                     $"Operation failed: The game object '{name}' can only be despawned by the server. Ensure the operation is being executed on the server.");
             }
 
-            using var message = NetworkManager.Pool.Rent();
+            using var message = NetworkManager.Pool.Rent(enableTracking: false);
             message.Write(m_Id);
             NetworkManager.ServerSide.SendMessage(MessageType.Despawn, peer, message, Target.SelfOnly, deliveryMode, 0,
                 dataCache, sequenceChannel);
@@ -570,7 +570,7 @@ namespace Omni.Core
                     $"Operation failed: The game object '{name}' can only be despawned by the server. Ensure the operation is being executed on the server.");
             }
 
-            using var message = NetworkManager.Pool.Rent();
+            using var message = NetworkManager.Pool.Rent(enableTracking: false);
             message.Write(m_Id);
             NetworkManager.ServerSide.SendMessage(MessageType.Despawn, Owner, message, target, deliveryMode, groupId,
                 dataCache, sequenceChannel);
@@ -689,7 +689,7 @@ namespace Omni.Core
             {
                 Owner = peer;
                 // Send the new owner to the client's
-                using var message = NetworkManager.Pool.Rent();
+                using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.Write(m_Id);
                 message.Write(peer.Id);
                 NetworkManager.ServerSide.SendMessage(MessageType.SetOwner, Owner, message, target, deliveryMode,
@@ -716,9 +716,9 @@ namespace Omni.Core
             }
 
             data ??= DataBuffer.Empty;
-            using var message = NetworkManager.Pool.Rent();
+            using var message = NetworkManager.Pool.Rent(enableTracking: false);
             message.Write(m_Id);
-            message.WriteRawBytes(data.BufferAsSpan);
+            message.Insert(data.BufferAsSpan);
             NetworkManager.ClientSide.SendMessage(MessageType.RequestEntityAction, message, deliveryMode,
                 sequenceChannel);
         }

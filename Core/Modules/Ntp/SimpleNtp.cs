@@ -1,5 +1,5 @@
-using Omni.Shared;
 using System;
+using Omni.Shared;
 using static Omni.Core.NetworkManager;
 
 #pragma warning disable
@@ -16,14 +16,33 @@ namespace Omni.Core.Modules.Ntp
     public class SimpleNtp
     {
         /// <summary>
-        /// Gets the NTP client clock.
+        /// Gets the NTP client clock which provides synchronized time functionality.
+        /// This component handles time offset calculations, round-trip time measurements, 
+        /// and provides access to synchronization metrics like ping and time offset.
+        /// Use this on the client side to access synchronized time values.
         /// </summary>
         public NtpClient Client { get; private set; }
 
         /// <summary>
-        /// Gets the NTP server clock.
+        /// Gets the NTP server clock which manages the authoritative time source.
+        /// This component responds to time synchronization requests from clients,
+        /// maintaining the reference time that all clients synchronize with.
+        /// Use this on the server side to access or reference the authoritative time.
         /// </summary>
         public NtpServer Server { get; private set; }
+
+        /// <summary>
+        /// Gets the current time value based on the timing system configuration.
+        /// Returns ticks from TickSystem when UseTickTiming is true, otherwise returns Unity's unscaled time.
+        /// </summary>
+        public static double Time => IsTickTimingEnabled ? TickSystem.ElapsedTicks : UnityEngine.Time.unscaledTimeAsDouble;
+
+        /// <summary>
+        /// Gets the time delta value based on the timing system configuration.
+        /// Returns the tick delta from TickSystem when UseTickTiming is true, otherwise returns Unity's frame delta time.
+        /// This provides a consistent way to measure time differences regardless of the underlying timing mechanism.
+        /// </summary>
+        public static double Delta => IsTickTimingEnabled ? TickSystem.DeltaTick : UnityEngine.Time.deltaTime;
 
         internal void Initialize(NetworkClock networkClock)
         {
@@ -41,14 +60,13 @@ namespace Omni.Core.Modules.Ntp
 
         public class NtpClient
         {
-            private const double PING_TIME_PRECISION = 0.01d;
-            private const double PING_TICK_PRECISION = 0.01d * 1000d;
+            private const double PING_TIME_PRECISION = 0.035d;
+            private const double PING_TICK_PRECISION = 0.035d * 1000d;
 
             /// <summary>
             /// Returns the synchronized time or ticks, which is the unity time plus the smoothed offset average.
             /// </summary>
-            public double Time =>
-                Math.Round(ClockTime + OffsetAvg.Average, UseTickTiming ? 0 : 2);
+            public double Time => IsTickTimingEnabled ? (int)(SimpleNtp.Time + OffsetAvg.Average) : NetworkHelper.Truncate((SimpleNtp.Time + OffsetAvg.Average), 3);
 
             /// <summary>
             /// Returns the round-trip time (RTT) smoothed average.
@@ -63,10 +81,7 @@ namespace Omni.Core.Modules.Ntp
             /// <summary>
             /// Retrieves the ping time in milliseconds.
             /// </summary>
-            public double Ping =>
-                UseTickTiming
-                    ? Math.Round(NetworkHelper.MinMax(HalfRtt * TickSystem.MsPerTick, PING_TICK_PRECISION), 0)
-                    : Math.Round(NetworkHelper.MinMax(HalfRtt, PING_TIME_PRECISION) * 1000d, 0);
+            public double Ping => (int)(NetworkHelper.MinMax(Rtt, IsTickTimingEnabled ? PING_TICK_PRECISION : PING_TIME_PRECISION) * (IsTickTimingEnabled ? TickSystem.MsPerTick : 1000d));
 
             /// <summary>
             /// Simple Moving Average (SMA) for RTT measurements to smooth out short-term fluctuations.
@@ -80,12 +95,12 @@ namespace Omni.Core.Modules.Ntp
             /// This smoothed approach not only improves stability in synchronization by mitigating temporal fluctuations but also provides a solid foundation for detecting and correcting temporal deviations.
             /// Thus, it helps maintain time accuracy in environments that heavily rely on time synchronization, such as NTP systems.
             /// </summary>
-            private IMovingAverage OffsetAvg { get; } // default EMA
+            private IMovingAverage OffsetAvg { get; }
 
             internal NtpClient()
             {
                 RttAvg = new SimpleMovingAverage(NetworkClock.DEFAULT_RTT_WINDOW);
-                OffsetAvg = UseTickTiming
+                OffsetAvg = IsTickTimingEnabled
                     ? new SimpleMovingAverage(NetworkClock.DEFAULT_TIME_WINDOW)
                     : new ExponentialMovingAverage(NetworkClock.DEFAULT_TIME_WINDOW);
             }
@@ -93,7 +108,7 @@ namespace Omni.Core.Modules.Ntp
             internal NtpClient(NetworkClock clock)
             {
                 RttAvg = new SimpleMovingAverage(clock.RttWindow);
-                OffsetAvg = UseTickTiming
+                OffsetAvg = IsTickTimingEnabled
                     ? new SimpleMovingAverage(clock.TimeWindow)
                     : new ExponentialMovingAverage(clock.TimeWindow);
             }
@@ -106,21 +121,16 @@ namespace Omni.Core.Modules.Ntp
             // The Client receives Message 2 and reads its clock at that moment, which provides the timestamp b.
             internal void Query()
             {
-                using var message = Pool.Rent();
-                message.Write(ClockTime);
-                message.Write(DeltaTime);
-
-                // Query the server.
+                using var message = Pool.Rent(enableTracking: false);
+                message.Write(SimpleNtp.Time);
                 NetworkManager.ClientSide.SendMessage(MessageType.NtpQuery, message, DeliveryMode.Unreliable, 0);
             }
 
             // https://ntp.br/conteudo/ntp/#:~:text=NTP%20significa%20Network%20Time%20Protocol,de%20refer%C3%AAncias%20de%20tempo%20confi%C3%A1veis.
             // https://info.support.huawei.com/info-finder/encyclopedia/en/NTP.html
-            internal void Evaluate(double a, double x, double y, float t)
+            internal void Evaluate(double a, double x, double y)
             {
-                double b = ClockTime;
-                // y += t(deltaTime) - used to offset timing from one frame to the next frame and maintain accuracy.
-                y += t;
+                double b = SimpleNtp.Time;
                 // Rtt(Round-Trip-Time) (Delay) = (b-a)-(y-x)
                 double rtt = (b - a) - (y - x);
                 RttAvg.Add(rtt);
@@ -134,7 +144,7 @@ namespace Omni.Core.Modules.Ntp
         public class NtpServer
         {
             private int yInstantAccuracy;
-            public double Time => IsServerActive ? ClockTime : 0d;
+            public double Time => IsServerActive ? SimpleNtp.Time : 0d;
 
             internal NtpServer()
             {
@@ -147,36 +157,22 @@ namespace Omni.Core.Modules.Ntp
             }
 
             // https://techhub.hpe.com/eginfolib/networking/docs/switches/5820x-5800/5998-7395r_nmm_cg/content/441755722.htm
-            internal void SendNtpResponse(double time, NetworkPeer peer, float t)
+            internal void SendNtpResponse(double time, NetworkPeer peer)
             {
-                double a = time + t; // client time + delta time
-                double x = ClockTime; // server time
+                double a = time; // client time
+                double x = SimpleNtp.Time; // server time
 
-                using var message = Pool.Rent();
+                using var message = Pool.Rent(enableTracking: false);
                 message.Write(a);
                 message.Write(x);
-
-                // A method is used to obtain a small delay to obtain the instant Y.
-                SendWithYInstant(peer, message);
+                TransmitNtpMessage(peer, message);
             }
 
-            private void SendWithYInstant(NetworkPeer peer, DataBuffer message)
+            private void TransmitNtpMessage(NetworkPeer peer, DataBuffer message)
             {
-                double y = int.MaxValue; // server time
-                float t = 0; // delta time
-
-                // <- small delay with for loop to obtain the instant Y to best precision!
-                for (int i = 0; i < yInstantAccuracy; i++)
-                {
-                    y = ClockTime;
-                    t = DeltaTime;
-                }
-
+                double y = SimpleNtp.Time;
                 message.Write(y);
-                message.Write(t);
-                // Send NTP response
-                NetworkManager.ServerSide.SendMessage(MessageType.NtpQuery, peer, message, target: Target.SelfOnly,
-                    deliveryMode: DeliveryMode.Unreliable, sequenceChannel: 0);
+                NetworkManager.ServerSide.SendMessage(MessageType.NtpQuery, peer, message, target: Target.SelfOnly, deliveryMode: DeliveryMode.Unreliable, sequenceChannel: 0);
             }
         }
     }

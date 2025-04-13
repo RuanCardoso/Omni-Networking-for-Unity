@@ -160,7 +160,7 @@ namespace Omni.Core
             }
         }
 
-        internal void FindAllRpcMethods<T>(object target, BindingFlags flags) where T : EventAttribute
+        internal void RegisterRpcMethodHandlers<T>(object target) where T : EventAttribute
         {
             // Reflection is very slow, but it's only called once.
             // Declared only, not inherited to optimize the search.
@@ -168,7 +168,7 @@ namespace Omni.Core
             // works with il2cpp.
 
             Type type = target.GetType();
-            MethodInfo[] methodInfos = type.GetMethods((System.Reflection.BindingFlags)flags);
+            MethodInfo[] methodInfos = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             bool __net_var__ = false;
             for (int i = 0; i < methodInfos.Length; i++)
             {

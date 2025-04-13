@@ -43,6 +43,13 @@ namespace Omni.Core
             {
                 isClone = true;
             }
+
+#if OMNI_VIRTUAL_PLAYER_ENABLED
+            if (MPPM.IsVirtualPlayer)
+            {
+                isClone = true;
+            }
+#endif
 #endif
             var width = GUILayout.Width(m_Width);
             var height = GUILayout.Height(m_Height);

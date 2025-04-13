@@ -126,7 +126,7 @@ namespace Omni.Core
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 buffer ??= DataBuffer.Empty;
-                using DataBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent(enableTracking: false);
                 message.Write(identityId);
                 message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
@@ -139,14 +139,14 @@ namespace Omni.Core
                 Rpc(msgId, identityId, instanceId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
             }
 
-            public static void Rpc(byte msgId, int identityId, byte instanceId, DataBuffer buffer = null,
+            public static void Rpc(byte rpcId, int identityId, byte instanceId, DataBuffer buffer = null,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 buffer ??= DataBuffer.Empty;
-                using DataBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent(enableTracking: false);
                 message.Internal_Write(identityId);
                 message.Write(instanceId);
-                message.Write(msgId);
+                message.Write(rpcId);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.LocalRpc, message, deliveryMode, sequenceChannel);
             }
@@ -164,7 +164,7 @@ namespace Omni.Core
                     throw new Exception("Group name cannot be longer than 256 characters.");
                 }
 
-                using DataBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent(enableTracking: false);
                 message.WriteString(groupName);
                 message.Write(buffer.BufferAsSpan);
                 SendMessage(MessageType.JoinGroup, message, DeliveryMode.ReliableOrdered, 0);
@@ -182,7 +182,7 @@ namespace Omni.Core
                     throw new Exception("Group name cannot be longer than 256 characters.");
                 }
 
-                using DataBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent(enableTracking: false);
                 message.WriteString(groupName);
                 message.WriteString(reason);
                 SendMessage(MessageType.LeaveGroup, message, DeliveryMode.ReliableOrdered, 0);
@@ -199,8 +199,8 @@ namespace Omni.Core
             internal static void SendSpawnNotification(NetworkIdentity identity)
             {
                 // Notifies the server that the spawn has completed.
-                using var message = Pool.Rent();
-                message.Write(identity.IdentityId);
+                using var message = Pool.Rent(enableTracking: false);
+                message.Write(identity.Id);
                 SendMessage(MessageType.Spawn, message, DeliveryMode.ReliableOrdered, 0);
                 OnClientIdentitySpawned?.Invoke(identity);
             }
@@ -264,7 +264,7 @@ namespace Omni.Core
 
             internal static void GenerateRsaKeys()
             {
-                RsaCryptography.GetRsaKeys(out var rsaPrivateKey, out var rsaPublicKey);
+                RsaEncryptor.GetKeys(out var rsaPrivateKey, out var rsaPublicKey);
                 RsaPrivateKey = rsaPrivateKey;
                 RsaPublicKey = rsaPublicKey;
             }
@@ -344,7 +344,7 @@ namespace Omni.Core
                 dataCache ??= DataCache.None;
                 buffer ??= DataBuffer.Empty;
 
-                using DataBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent(enableTracking: false);
                 message.Write(identityId);
                 message.Write(msgId);
                 message.Write(buffer.BufferAsSpan);
@@ -370,7 +370,7 @@ namespace Omni.Core
                 buffer ??= DataBuffer.Empty;
                 dataCache ??= DataCache.None;
 
-                using DataBuffer message = Pool.Rent();
+                using DataBuffer message = Pool.Rent(enableTracking: false);
                 message.Internal_Write(identityId); // min: 1 byte, max = 4 bytes
                 message.Write(instanceId); // 1 byte
                 message.Write(msgId); // 1 byte
@@ -407,15 +407,14 @@ namespace Omni.Core
                 return GroupsById.TryGetValue(groupId, out group);
             }
 
-            internal static void JoinGroup(string groupName, DataBuffer buffer, NetworkPeer peer,
-                bool writeBufferToClient)
+            internal static void JoinGroup(string groupName, DataBuffer buffer, NetworkPeer peer, bool includeBufferInResponse)
             {
-                void SendResponseToClient()
+                void SendJoinGroupResponse()
                 {
-                    using DataBuffer message = Pool.Rent();
+                    using DataBuffer message = Pool.Rent(enableTracking: false);
                     message.WriteString(groupName);
 
-                    if (writeBufferToClient)
+                    if (includeBufferInResponse)
                     {
                         message.Write(buffer.BufferAsSpan);
                     }
@@ -491,7 +490,7 @@ namespace Omni.Core
                     }
 
                     _allowZeroGroupForInternalMessages = true;
-                    SendResponseToClient();
+                    SendJoinGroupResponse();
                     OnPlayerJoinedGroup?.Invoke(buffer, group, peer);
                 }
             }
@@ -521,7 +520,7 @@ namespace Omni.Core
             {
                 void SendResponseToClient()
                 {
-                    using DataBuffer message = Pool.Rent();
+                    using DataBuffer message = Pool.Rent(enableTracking: false);
                     message.WriteString(groupName);
                     message.WriteString(reason);
 
@@ -550,6 +549,7 @@ namespace Omni.Core
 
                         // Dereferencing to allow for GC(Garbage Collector).
                         // All resources should be released at this point.
+                        group.DespawnIdentitiesToPeer(peer);
                         group.Internal_RemoveAllCachesFrom(peer);
                         if (group.DestroyWhenEmpty)
                         {
@@ -587,6 +587,7 @@ namespace Omni.Core
             {
                 if (group._peersById.Count == 0)
                 {
+                    group.DespawnIdentities();
                     if (!GroupsById.Remove(group.Id))
                     {
                         NetworkLogger.__Log__(

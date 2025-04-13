@@ -431,7 +431,7 @@ namespace Omni.Core
         /// <returns>True if the current thread is the main thread, false otherwise.</returns>
         public static bool IsRunningOnMainThread()
         {
-            return NetworkManager.MainThreadId == Thread.CurrentThread.ManagedThreadId;
+            return NetworkManager.UnityMainThreadId == Thread.CurrentThread.ManagedThreadId;
         }
 
         [Conditional("OMNI_DEBUG")]
@@ -440,12 +440,12 @@ namespace Omni.Core
             if (!IsRunningOnMainThread())
             {
                 NetworkLogger.__Log__(
-                    $"[ThreadViolation] Operation attempted from thread ID {Thread.CurrentThread.ManagedThreadId} but must run on main thread (ID: {NetworkManager.MainThreadId}). " +
+                    $"[ThreadViolation] Operation attempted from thread ID {Thread.CurrentThread.ManagedThreadId} but must run on main thread (ID: {NetworkManager.UnityMainThreadId}). " +
                     $"Unity and Omni Networking APIs are not thread-safe. Use NetworkHelper.RunOnMainThreadAsync() or similar methods to dispatch operations to the main thread.",
                     NetworkLogger.LogType.Error);
 
                 throw new NotSupportedException(
-                    $"[ThreadViolation] Operation attempted from thread ID {Thread.CurrentThread.ManagedThreadId} but must run on main thread (ID: {NetworkManager.MainThreadId}). " +
+                    $"[ThreadViolation] Operation attempted from thread ID {Thread.CurrentThread.ManagedThreadId} but must run on main thread (ID: {NetworkManager.UnityMainThreadId}). " +
                     $"Unity and Omni Networking APIs are not thread-safe. Use NetworkHelper.RunOnMainThreadAsync() or similar methods to dispatch operations to the main thread.");
             }
         }
@@ -607,6 +607,12 @@ namespace Omni.Core
             }
 
             return parameters;
+        }
+
+        internal static double Truncate(double value, int decimalPlaces)
+        {
+            double factor = Math.Pow(10, decimalPlaces);
+            return Math.Truncate(value * factor) / factor;
         }
 
         internal static bool IsValidJson(string strInput)

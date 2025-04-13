@@ -64,64 +64,33 @@ namespace Omni.Core
 
     public class NetworkVariablesBehaviour : MonoBehaviour
     {
-        private readonly Dictionary<string, IPropertyInfo> runtimeProperties = new();
-        internal readonly Dictionary<byte, NetworkVariableField> networkVariables = new();
+        private readonly Dictionary<string, IPropertyInfo> m_RuntimeProperties = new();
+        internal readonly Dictionary<byte, NetworkVariableField> m_NetworkVariables = new();
 
-        internal void FindAllNetworkVariables()
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [Obsolete("Don't override this method! The source generator will override it.")]
+        protected void ___RegisterNetworkVariable___(string propertyName, byte propertyId, bool requiresOwnership,
+            bool isClientAuthority, bool checkEquality)
         {
-            // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
-            ___NotifyCollectionChange___();
-
-            Type type = GetType();
-            FieldInfo[] fieldInfos = type.GetFields(System.Reflection.BindingFlags.Instance |
-                                                    System.Reflection.BindingFlags.Public |
-                                                    System.Reflection.BindingFlags.NonPublic);
-
-            foreach (var field in fieldInfos)
+            if (!m_NetworkVariables.TryAdd(propertyId, new NetworkVariableField(propertyId, requiresOwnership,
+                isClientAuthority, checkEquality, propertyName)))
             {
-                NetworkVariableAttribute fieldAttr = field.GetCustomAttribute<NetworkVariableAttribute>();
-                if (fieldAttr == null)
-                    continue;
-
-                string fieldName = field.Name;
-                if (fieldName.StartsWith("m_"))
-                {
-                    fieldName = fieldName[2..];
-                }
-                else
-                {
-                    if (!char.IsUpper(fieldName[0]))
-                    {
-                        fieldName = char.ToUpper(fieldName[0]) + fieldName[1..];
-                    }
-                }
-
-                PropertyInfo property = type.GetProperty(fieldName,
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public |
-                    System.Reflection.BindingFlags.NonPublic);
-
-                if (property == null)
-                    continue;
-
-                NetworkVariableAttribute propertyAttr =
-                    property.GetCustomAttribute<NetworkVariableAttribute>();
-
-                if (propertyAttr == null)
-                    continue;
-
-                if (!networkVariables.TryAdd(propertyAttr.Id,
-                        new NetworkVariableField(propertyAttr.Id, fieldAttr.RequiresOwnership,
-                            fieldAttr.IsClientAuthority, fieldAttr.CheckEquality, fieldName)))
-                {
-                    throw new NotSupportedException(
-                        $"[NetworkVariable] -> Duplicate network variable ID found: {propertyAttr.Id}. Ensure all network variable IDs within a class are unique. Field: {field.Name}");
-                }
+                NetworkLogger.__Log__(
+                     $"Error: Network variable '{propertyName}' (ID: {propertyId}) is already registered. " +
+                     "Ensure that the ID is unique and not reused for multiple variables.",
+                     NetworkLogger.LogType.Error
+                );
             }
         }
 
-        internal DataBuffer CreateHeader<T>(T @object, byte id)
+        internal DataBuffer CreateNetworkVariableMessage<T>(T @object, byte id)
         {
-            DataBuffer message = NetworkManager.Pool.Rent(); // disposed by the caller
+            if (@object is DataBuffer buffer)
+            {
+                return CreateNetworkVariableMessage(buffer, id);
+            }
+
+            DataBuffer message = NetworkManager.Pool.Rent(enableTracking: false); // disposed by the caller(not user)
             message.Write(id);
 
             // If the object implements ISerializable, serialize it.
@@ -136,9 +105,17 @@ namespace Omni.Core
             return message;
         }
 
+        private DataBuffer CreateNetworkVariableMessage(DataBuffer buffer, byte id) // Used for Action, Func, delegates.
+        {
+            DataBuffer message = NetworkManager.Pool.Rent(enableTracking: false); // disposed by the caller(not user)
+            message.Write(id);
+            message.Insert(buffer.BufferAsSpan);
+            return message;
+        }
+
         internal IPropertyInfo GetPropertyInfoWithCallerName<T>(string callerName, BindingFlags flags)
         {
-            if (!runtimeProperties.TryGetValue(callerName, out IPropertyInfo memberInfo))
+            if (!m_RuntimeProperties.TryGetValue(callerName, out IPropertyInfo memberInfo))
             {
                 // Reflection is slow, but cached for performance optimization!
                 // Delegates are used to avoid reflection overhead, it is much faster, like a direct call.
@@ -169,7 +146,7 @@ namespace Omni.Core
                 memberInfo = new PropertyInfo<T>(name, id);
                 // hack: performance optimization!
                 ((IPropertyInfo<T>)memberInfo).Invoke = getMethod.CreateDelegate(typeof(Func<T>), this) as Func<T>;
-                runtimeProperties.Add(callerName, memberInfo);
+                m_RuntimeProperties.Add(callerName, memberInfo);
                 return memberInfo;
             }
 
@@ -194,6 +171,16 @@ namespace Omni.Core
             {
                 OnServerPropertyChanged(propertyName, propertyId, peer);
             }
+        }
+
+        // This method is intended to be overridden by the caller using source generators and reflection techniques. Magic wow!
+        // https://github.com/RuanCardoso/OmniNetSourceGenerator
+        // never override this method!
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [Obsolete("Don't override this method! The source generator will override it.")]
+        protected virtual void ___RegisterNetworkVariables___()
+        {
+            // Overridden by the source generator!
         }
 
         // This method is intended to be overridden by the caller using source generators and reflection techniques. Magic wow!
@@ -258,7 +245,7 @@ namespace Omni.Core
                 return true;
             }
 
-            if (networkVariables.TryGetValue(id, out NetworkVariableField field))
+            if (m_NetworkVariables.TryGetValue(id, out NetworkVariableField field))
             {
                 if (!field.CheckEquality)
                 {

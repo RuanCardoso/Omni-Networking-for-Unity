@@ -212,7 +212,7 @@ namespace Omni.Core
 
             buffer.SeekToEnd();
             byte[] data = buffer.ToArray();
-            byte[] encryptedData = AesCryptography.Encrypt(data, 0, data.Length, peer._aesKey, out byte[] Iv);
+            byte[] encryptedData = AesEncryptor.Encrypt(data, 0, data.Length, peer._aesKey, out byte[] Iv);
 
             // Encrypt
             var encryptedBuffer = NetworkManager.Pool.Rent();
@@ -261,7 +261,7 @@ namespace Omni.Core
 
             byte[] iv = buffer.ReadAsBinary<byte[]>();
             byte[] encryptedData = buffer.ReadAsBinary<byte[]>();
-            byte[] decryptedData = AesCryptography.Decrypt(encryptedData, 0, encryptedData.Length, peer._aesKey, iv);
+            byte[] decryptedData = AesEncryptor.Decrypt(encryptedData, 0, encryptedData.Length, peer._aesKey, iv);
 
             // Decrypt
             var decryptedBuffer = NetworkManager.Pool.Rent();
@@ -361,7 +361,8 @@ namespace Omni.Core
         {
             T message = new()
             {
-                SharedPeer = peer, IsServer = isServer
+                SharedPeer = peer,
+                IsServer = isServer
             };
 
             message.Deserialize(reader);
@@ -633,15 +634,16 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Writes raw byte data directly to the buffer without additional processing or encoding.
+        /// Inserts raw byte data into the specified <see cref="DataBuffer"/> at the current position.
         /// </summary>
-        /// <param name="buffer">The <see cref="DataBuffer"/> to write the raw bytes to.</param>
-        /// <param name="data">The <see cref="ReadOnlySpan{T}"/> containing the raw byte data to write.</param>
+        /// <param name="buffer">The <see cref="DataBuffer"/> where the data will be written.</param>
+        /// <param name="data">A <see cref="ReadOnlySpan{T}"/> containing the raw bytes to insert into the buffer.</param>
         /// <remarks>
-        /// This method writes the data exactly as provided, without any transformations or serialization.
+        /// This method uses <see cref="BuffersExtensions.Write"/> internally to copy the span data into the buffer.
+        /// The buffer's position is advanced by the length of the data inserted.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void WriteRawBytes(this DataBuffer buffer, ReadOnlySpan<byte> data)
+        public static void Insert(this DataBuffer buffer, ReadOnlySpan<byte> data)
         {
             BuffersExtensions.Write(buffer, data);
         }

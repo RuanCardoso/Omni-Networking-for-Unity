@@ -14,6 +14,17 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.nuget.newtonsoft-json",
+            "expression": "",
+            "define": "OMNI_NEWTONSOFT_JSON"
+        },
+        {
+            "name": "com.unity.multiplayer.playmode",
+            "expression": "",
+            "define": "OMNI_VIRTUAL_PLAYER_ENABLED"
+        }
+    ],
     "noEngineReferences": false
 }

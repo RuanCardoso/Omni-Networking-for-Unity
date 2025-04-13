@@ -8,6 +8,8 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.Callbacks;
 using UnityEngine;
+using System;
+using UnityEditor.Compilation;
 
 #pragma warning disable
 
@@ -17,6 +19,40 @@ namespace Omni.Editor
     {
         IL2CPP,
         Mono
+    }
+
+    internal class BuildKeysInterceptor : IPreprocessBuildWithReport
+    {
+        public int callbackOrder => 0;
+
+        public void OnPreprocessBuild(BuildReport report)
+        {
+            string path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "__omni_development_keys__"
+            );
+
+            bool isOk = EditorUtility.DisplayDialog(
+                "Generate Encryption Keys",
+                "Would you like to generate new encryption keys for this project?\n\n" +
+                "Important: Encryption keys must match between client and server builds.\n" +
+                "• Generating new keys will require rebuilding both client and server with the same keys\n" +
+                "• Existing connections will not work with new keys\n" +
+                "• Make sure to distribute the same keys to all parts of your application",
+                "No, Keep Current Keys",
+                "Yes, Generate New Keys"
+            );
+
+            if (!isOk)
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+
+                CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
+            }
+        }
     }
 
     internal class SetupEditor
@@ -59,7 +95,7 @@ namespace Omni.Editor
         }
 
 #if OMNI_RELEASE
-		[MenuItem("Omni Networking/Change to Debug")]
+		[MenuItem("Omni Networking/Change to Debug", false, 30)]
 #endif
         private static void ChangeToDebug()
         {
@@ -70,7 +106,7 @@ namespace Omni.Editor
         }
 
 #if OMNI_DEBUG
-        [MenuItem("Omni Networking/Change to Release")]
+        [MenuItem("Omni Networking/Change to Release", false, 30)]
 #endif
         private static void ChangeToRelease()
         {

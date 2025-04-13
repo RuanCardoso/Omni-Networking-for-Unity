@@ -15,7 +15,7 @@ namespace Omni.Core
     /// across the network using a Memory Pack serializer. By default, ownership verification
     /// and equality checks are enabled.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Event, AllowMultiple = false, Inherited = true)]
     public class NetworkVariableAttribute : PropertyAttribute
     {
         internal byte Id { get; }

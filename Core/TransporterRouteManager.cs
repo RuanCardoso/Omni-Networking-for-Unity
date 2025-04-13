@@ -135,7 +135,7 @@ namespace Omni.Core
                 int timeout = 5000, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
                 // Await written the data before sending!
-                using var message = Pool.Rent();
+                using var message = Pool.Rent(enableTracking: false);
                 message.SuppressTracking();
                 await callback(message);
 
@@ -167,7 +167,7 @@ namespace Omni.Core
             public UniTask<DataBuffer> PostAsync(string routeName, Action<DataBuffer> callback, int timeout = 5000,
                 DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
             {
-                using var message = Pool.Rent();
+                using var message = Pool.Rent(enableTracking: false);
                 callback(message);
 
                 if (UseSecureRoutes)
@@ -225,7 +225,7 @@ namespace Omni.Core
 
             private DataBuffer DefaultHeader(string routeName, int lastId)
             {
-                var message = Pool.Rent(); // disposed by the caller
+                var message = Pool.Rent(enableTracking: false); // disposed by the caller(not user)
                 message.WriteString(routeName);
                 message.Internal_Write(lastId);
                 return message;
@@ -401,7 +401,7 @@ namespace Omni.Core
                 {
                     try
                     {
-                        using var response = Pool.Rent();
+                        using var response = Pool.Rent(enableTracking: false);
                         response.SuppressTracking();
                         await asyncCallback(response, peer);
                         Send(MessageType.GetResponseAsync, response);
@@ -416,7 +416,7 @@ namespace Omni.Core
                 {
                     try
                     {
-                        using var response = Pool.Rent();
+                        using var response = Pool.Rent(enableTracking: false);
                         callback(response, peer);
                         Send(MessageType.GetResponseAsync, response);
                     }
@@ -439,7 +439,7 @@ namespace Omni.Core
                 if (Server.m_p_Tasks.TryGetValue(routeName,
                         out Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> asyncCallback))
                 {
-                    using var request = Pool.Rent();
+                    using var request = Pool.Rent(enableTracking: false);
                     request.SuppressTracking();
                     request.Write(buffer.Internal_GetSpan(buffer.Length));
                     request.SeekToBegin();
@@ -451,7 +451,7 @@ namespace Omni.Core
 
                     try
                     {
-                        using var response = Pool.Rent();
+                        using var response = Pool.Rent(enableTracking: false);
                         response.SuppressTracking();
 
                         await asyncCallback(request, response, peer);
@@ -466,7 +466,7 @@ namespace Omni.Core
                 else if (Server.m_a_Tasks.TryGetValue(routeName,
                              out Action<DataBuffer, DataBuffer, NetworkPeer> callback))
                 {
-                    using var request = Pool.Rent();
+                    using var request = Pool.Rent(enableTracking: false);
                     request.Write(buffer.Internal_GetSpan(buffer.Length));
                     request.SeekToBegin();
 
@@ -477,7 +477,7 @@ namespace Omni.Core
 
                     try
                     {
-                        using var response = Pool.Rent();
+                        using var response = Pool.Rent(enableTracking: false);
                         callback(request, response, peer);
                         Send(MessageType.PostResponseAsync, response);
                     }
@@ -504,7 +504,7 @@ namespace Omni.Core
                     response.EncryptInPlace(SharedPeer);
                 }
 
-                using var header = Pool.Rent();
+                using var header = Pool.Rent(enableTracking: false);
                 header.WriteString(routeName);
                 header.Internal_Write(routeId);
                 header.Write(response.BufferAsSpan);
@@ -551,7 +551,7 @@ namespace Omni.Core
 
                 if (Client.m_Tasks.Remove(routeId, out UniTaskCompletionSource<DataBuffer> source))
                 {
-                    var message = Pool.Rent(); // Disposed by the caller!
+                    var message = Pool.Rent(enableTracking: false); // Disposed by the caller!
                     message.Write(buffer.Internal_GetSpan(buffer.Length));
                     message.SeekToBegin();
 
@@ -565,7 +565,7 @@ namespace Omni.Core
                 }
                 else
                 {
-                    using var eventMessage = Pool.Rent();
+                    using var eventMessage = Pool.Rent(enableTracking: false);
                     eventMessage.Write(buffer.Internal_GetSpan(buffer.Length));
                     eventMessage.SeekToBegin();
 

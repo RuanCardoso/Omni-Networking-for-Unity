@@ -53,9 +53,8 @@ public sealed class BandwidthMonitor
             // Reset the total measurements for the next interval.
             _accumulatedBytes = _accumulatedPps = 0;
 
-            // Invoke the callback with the rounded averages to estimate bandwidth usage.
-            OnAverageChanged?.Invoke(Math.Round(_bytesMeasurementMovingAverage.Average, 0),
-                (int)Math.Round(_ppsMeasurementMovingAverage.Average, 0));
+            // Invoke the callback with the truncated averages to estimate bandwidth usage.
+            OnAverageChanged?.Invoke((int)_bytesMeasurementMovingAverage.Average, (int)_ppsMeasurementMovingAverage.Average);
         }
     }
 

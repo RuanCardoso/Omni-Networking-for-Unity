@@ -209,7 +209,7 @@ namespace Omni.Core.Modules.Connection
                         {
                             uint time = BitConverter.ToUInt32(data[1..5]); // 1: Skip MessageType
                             double halfRtt = (kcpClient.time - time) / 2d / 1000d;
-                            m_PingAvg.Add(NetworkHelper.MinMax(halfRtt, PING_TIME_PRECISION));
+                            m_PingAvg.Add(halfRtt);
                         }
                     },
                     () => transporter.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, "[KcpTransporter] Client disconnected normally"),
@@ -235,7 +235,7 @@ namespace Omni.Core.Modules.Connection
             {
                 if (kcpClient.connected && NetworkManager.IsClientActive)
                 {
-                    using var pingRequest = NetworkManager.Pool.Rent();
+                    using var pingRequest = NetworkManager.Pool.Rent(enableTracking: false);
                     pingRequest.Write(MessageType.KCP_PING_REQUEST_RESPONSE);
                     pingRequest.Write(kcpClient.time);
                     pingRequest.SuppressTracking();

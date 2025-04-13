@@ -12,12 +12,11 @@ namespace Omni.Core
     [StackTrace]
     public class NetworkEventBase : NetworkVariablesBehaviour
     {
-        [GroupNext("Service Settings")] [SerializeField]
+        [GroupNext("Service Settings")]
+        [SerializeField]
         internal string m_ServiceName;
 
         [SerializeField] internal int m_Id;
-
-        internal BindingFlags m_BindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         internal bool m_UnregisterOnLoad = true;
 
         /// <summary>
@@ -45,9 +44,9 @@ namespace Omni.Core
         /// Rents a data buffer from the network manager's pool. The caller must ensure the buffer is disposed or used within a using statement.
         /// </summary>
         /// <returns>A rented data buffer.</returns>
-        protected DataBuffer Rent()
+        protected DataBuffer Rent(bool enableTracking = true)
         {
-            return NetworkManager.Pool.Rent();
+            return NetworkManager.Pool.Rent(enableTracking);
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]

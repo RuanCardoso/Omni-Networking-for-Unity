@@ -225,10 +225,12 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            FindAllNetworkVariables();
-            rpcHandler.FindAllRpcMethods<ServerAttribute>(this, m_BindingFlags);
+            ___RegisterNetworkVariables___();
+            // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
+            ___NotifyCollectionChange___();
+            rpcHandler.RegisterRpcMethodHandlers<ServerAttribute>(this);
             ServerSide.AddRpcMessage(m_Id, this);
-            Server = new NetworkEventServer(this, m_BindingFlags);
+            Server = new NetworkEventServer(this);
         }
 
         protected void RegisterSystemEvents()
@@ -392,31 +394,40 @@ namespace Omni.Core
                 if (rpcId == NetworkConstants.NETWORK_VARIABLE_RPC_ID)
                 {
                     byte id = buffer.BufferAsSpan[0];
-                    if (networkVariables.TryGetValue(id, out NetworkVariableField field))
+                    if (m_NetworkVariables.TryGetValue(id, out NetworkVariableField field))
                     {
                         isClientAuthority = field.IsClientAuthority;
-                    }
 
-                    if (!AllowNetworkVariablesFromClients && !isClientAuthority)
-                    {
+                        if (!AllowNetworkVariablesFromClients && !isClientAuthority)
+                        {
 #if OMNI_DEBUG
-                        NetworkLogger.__Log__(
-                            $"[Security] Network Variable modification rejected: Client lacks permission to modify '{field.Name}' (ID: {id}). " +
-                            $"This variable is not marked with [ClientAuthority] attribute. " +
-                            $"Client ID: {peer.Id}, Object: {GetType().Name}",
-                            NetworkLogger.LogType.Error
-                        );
+                            NetworkLogger.__Log__(
+                                $"[Security] Network Variable modification rejected: Client lacks permission to modify '{field.Name}' (ID: {id}). " +
+                                $"This variable is not marked with 'ClientAuthority' option. " +
+                                $"Client ID: {peer.Id}, Object: {GetType().Name}",
+                                NetworkLogger.LogType.Error
+                            );
 #else
-                        NetworkLogger.__Log__(
-                            $"[Security] Client {peer.Id} disconnected: Unauthorized network variable modification attempt. " +
-                            $"Attempted to modify '{field.Name}' (ID: {id}) without proper permissions. " +
-                            $"To allow client modifications, either enable 'AllowNetworkVariablesFromClients' in NetworkManager " +
-                            $"or mark the variable with [ClientAuthority] attribute.",
+                            NetworkLogger.__Log__(
+                                $"[Security] Client {peer.Id} disconnected: Unauthorized network variable modification attempt. " +
+                                $"Attempted to modify '{field.Name}' (ID: {id}) without proper permissions. " +
+                                $"To allow client modifications, either enable 'AllowNetworkVariablesFromClients' in NetworkManager " +
+                                $"or mark the variable with 'ClientAuthority' option.",
+                                NetworkLogger.LogType.Error
+                            );
+
+                            peer.Disconnect();
+#endif
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        NetworkLogger.__Log__($"The 'NetworkVariable' with ID '{id}' does not exist. " +
+                            "Ensure the ID is valid and registered in the network variables collection.",
                             NetworkLogger.LogType.Error
                         );
 
-                        peer.Disconnect();
-#endif
                         return;
                     }
                 }

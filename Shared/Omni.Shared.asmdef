@@ -5,7 +5,8 @@
         "Unity.TextMeshPro",
         "Unity.ResourceManager",
         "Unity.Addressables",
-        "ParrelSync"
+        "ParrelSync",
+        "Unity.Multiplayer.Playmode"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -64,6 +65,11 @@
             "name": "Unity",
             "expression": "2021.2",
             "define": "UNITASK_DOTWEEN_SUPPORT"
+        },
+        {
+            "name": "com.unity.multiplayer.playmode",
+            "expression": "",
+            "define": "OMNI_VIRTUAL_PLAYER_ENABLED"
         }
     ],
     "noEngineReferences": false

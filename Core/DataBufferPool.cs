@@ -39,14 +39,14 @@ namespace Omni.Core
         }
 
         /// <inheritdoc />
-        public DataBuffer Rent()
+        public DataBuffer Rent(bool enableTracking = true)
         {
             if (_pool.Count > 0)
             {
                 var buffer = _pool.Dequeue();
                 buffer._disposed = false;
 #if UNITY_EDITOR // Obs: Disable tracking in the build for best performance tests
-                CreateTrace(buffer);
+                CreateTrace(buffer, enableTracking);
 #endif
                 return buffer;
             }
@@ -63,8 +63,11 @@ namespace Omni.Core
         // Let's track the object and check if it's back in the pool.
         // Very slow operation, but useful for debugging. Debug mode only.
         [Conditional("OMNI_DEBUG")]
-        private void CreateTrace(DataBuffer buffer)
+        private void CreateTrace(DataBuffer buffer, bool enableTracking = true)
         {
+            if (!enableTracking)
+                return;
+
             CancellationTokenSource cts = new();
             string hyperlink = NetworkLogger.GetStackFramesToHyperlink();
 

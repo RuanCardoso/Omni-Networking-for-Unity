@@ -237,8 +237,8 @@ namespace Omni.Core
         public static string GuidVersion => Manager.GUID;
         public static int Port => Manager.m_Port;
 
-        public static float Framerate { get; private set; }
-        public static float CpuTimeMs { get; private set; }
+        public static int Framerate { get; private set; }
+        public static int CpuTimeMs { get; private set; }
 
         public virtual void Reset()
         {
@@ -347,6 +347,13 @@ namespace Omni.Core
             {
                 isClone = true;
             }
+
+#if OMNI_VIRTUAL_PLAYER_ENABLED
+            if (MPPM.IsVirtualPlayer)
+            {
+                isClone = true;
+            }
+#endif
 #endif
             if (!isClone)
             {

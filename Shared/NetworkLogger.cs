@@ -140,6 +140,13 @@ namespace Omni.Shared
                 {
                     isClone = true;
                 }
+
+#if OMNI_VIRTUAL_PLAYER_ENABLED
+                if (MPPM.IsVirtualPlayer)
+                {
+                    isClone = true;
+                }
+#endif
 #endif
                 if (!isClone)
                 {

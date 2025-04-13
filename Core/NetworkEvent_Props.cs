@@ -1,4 +1,5 @@
 using Omni.Core.Interfaces;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using static Omni.Core.NetworkManager;
 
@@ -14,13 +15,11 @@ namespace Omni.Core
     {
         private readonly IRpcMessage m_NetworkMessage;
         private readonly NetworkVariablesBehaviour m_NetworkVariablesBehaviour;
-        private readonly BindingFlags m_BindingFlags;
 
-        internal NetworkEventClient(IRpcMessage networkMessage, BindingFlags flags)
+        internal NetworkEventClient(IRpcMessage networkMessage)
         {
             m_NetworkMessage = networkMessage;
             m_NetworkVariablesBehaviour = m_NetworkMessage as NetworkVariablesBehaviour;
-            m_BindingFlags = flags;
         }
 
         /// <summary>
@@ -46,7 +45,7 @@ namespace Omni.Core
             DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
             byte sequenceChannel = 0)
         {
-            using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(property, propertyId);
+            using DataBuffer message = m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(property, propertyId);
             Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
         }
 
@@ -69,11 +68,11 @@ namespace Omni.Core
             byte sequenceChannel = 0,
             [CallerMemberName] string ___ = "")
         {
-            IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(___, m_BindingFlags);
+            IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(___, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (property is IPropertyInfo<T> propertyGeneric)
             {
                 using DataBuffer message =
-                    m_NetworkVariablesBehaviour.CreateHeader(propertyGeneric.Invoke(), property.Id);
+                    m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(propertyGeneric.Invoke(), property.Id);
                 Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
             }
         }
@@ -267,11 +266,10 @@ namespace Omni.Core
         private readonly NetworkVariablesBehaviour m_NetworkVariablesBehaviour;
         private readonly BindingFlags m_BindingFlags;
 
-        internal NetworkEventServer(IRpcMessage networkMessage, BindingFlags flags)
+        internal NetworkEventServer(IRpcMessage networkMessage)
         {
             m_NetworkMessage = networkMessage;
             m_NetworkVariablesBehaviour = m_NetworkMessage as NetworkVariablesBehaviour;
-            m_BindingFlags = flags;
         }
 
         /// <summary>
@@ -296,7 +294,7 @@ namespace Omni.Core
         /// <param name="peer">The target client to receive the 'NetworkVariable' message.</param>
         public void NetworkVariableSyncToPeer<T>(T property, byte propertyId, NetworkPeer peer)
         {
-            using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(property, propertyId);
+            using DataBuffer message = m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(property, propertyId);
             Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, Target.SelfOnly, DeliveryMode.ReliableOrdered,
                 0, default, 0);
         }
@@ -320,7 +318,7 @@ namespace Omni.Core
             dataCache ??= DataCache.None;
             peer ??= ServerSide.ServerPeer;
 
-            using DataBuffer message = m_NetworkVariablesBehaviour.CreateHeader(property, propertyId);
+            using DataBuffer message = m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(property, propertyId);
             Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
                 sequenceChannel);
         }
@@ -355,7 +353,7 @@ namespace Omni.Core
             {
                 peer ??= ServerSide.ServerPeer;
                 using DataBuffer message =
-                    m_NetworkVariablesBehaviour.CreateHeader(propertyGeneric.Invoke(), property.Id);
+                    m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(propertyGeneric.Invoke(), property.Id);
 
                 Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
                     sequenceChannel);

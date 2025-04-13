@@ -52,15 +52,6 @@ namespace Omni.Core
     }
 
     [Flags]
-    public enum BindingFlags
-    {
-        DeclaredOnly = 2,
-        Instance = 4,
-        Public = 16,
-        NonPublic = 32,
-    }
-
-    [Flags]
     public enum CacheMode
     {
         // Unique

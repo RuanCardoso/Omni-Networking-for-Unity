@@ -181,10 +181,12 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            FindAllNetworkVariables();
-            rpcHandler.FindAllRpcMethods<ClientAttribute>(this, m_BindingFlags);
+            ___RegisterNetworkVariables___();
+            // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
+            ___NotifyCollectionChange___();
+            rpcHandler.RegisterRpcMethodHandlers<ClientAttribute>(this);
             ClientSide.AddRpcMessage(m_Id, this);
-            Client = new NetworkEventClient(this, m_BindingFlags);
+            Client = new NetworkEventClient(this);
         }
 
         protected void RegisterSystemEvents()

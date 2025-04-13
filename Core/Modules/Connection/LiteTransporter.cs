@@ -12,6 +12,8 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using Omni.Inspector;
 using UnityEngine;
+using LiteNetLib.Layers;
+using Omni.Core.Cryptography;
 
 namespace Omni.Core.Modules.Connection
 {
@@ -22,6 +24,52 @@ namespace Omni.Core.Modules.Connection
     [DeclareBoxGroup("Lag Simulator [Debug only!]")]
     internal class LiteTransporter : TransporterBehaviour, ITransporter
     {
+        public class LiteSecurityLayer : PacketLayerBase
+        {
+            private const int ChecksumSize = 32; // 32 bytes for SHA256 hash
+            private readonly byte[] hmacKey = new byte[ChecksumSize]
+            {
+                    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                    0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+                    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+                    0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
+            };
+
+            public LiteSecurityLayer() : base(ChecksumSize) { }
+
+            public override void ProcessInboundPacket(ref IPEndPoint endPoint, ref byte[] data, ref int length)
+            {
+                // Get the checksum from the end of the packet
+                int offset = length - ChecksumSize;
+                ReadOnlySpan<byte> checksum = data.AsSpan(offset, ChecksumSize);
+
+                // Calculate the checksum for the data without the checksum itself
+                if (!HmacGenerator.Validate(data, 0, offset, hmacKey, checksum))
+                {
+                    NetworkLogger.__Log__(
+                        $"[LiteTransporter] Invalid checksum detected - Packet discarded (Checksum: {BitConverter.ToString(checksum.ToArray())})",
+                        NetworkLogger.LogType.Error
+                    );
+
+                    length = 0; // Invalid checksum, discard the packet;
+                    return;
+                }
+
+                length -= ChecksumSize;
+            }
+
+            public override void ProcessOutBoundPacket(ref IPEndPoint endPoint, ref byte[] data, ref int offset, ref int length)
+            {
+                // Get the end of the packet
+                Span<byte> dataSpan = data.AsSpan(offset + length, ChecksumSize);
+                // Calculate the checksum for the data
+                ReadOnlySpan<byte> checksum = HmacGenerator.Compute(data, offset, length, hmacKey);
+                // Copy the checksum to the end of the packet
+                checksum.CopyTo(dataSpan);
+                length += ChecksumSize;
+            }
+        }
+
         private EventBasedNetListener _listener;
         private NetManager _manager;
 
@@ -56,6 +104,7 @@ namespace Omni.Core.Modules.Connection
 
         [SerializeField]
         [Tooltip("Max events that will be processed per frame.")]
+        [LabelWidth(140)]
         [Min(0)]
         private int m_MaxEventsPerFrame = 0;
 
@@ -64,26 +113,31 @@ namespace Omni.Core.Modules.Connection
         [SerializeField]
         [Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
         [LabelText("IPv6 Enabled")]
+        [LabelWidth(140)]
         private bool m_IPv6Enabled = false;
 
         [SerializeField]
         [Tooltip("Specifies whether port forwarding is enabled with PMP or UPnP protocols.")]
+        [LabelWidth(140)]
         private bool m_UsePortForwarding = false;
 
         [SerializeField]
         [Tooltip(
             "Specifies whether to use native sockets for networking operations. Note: Enabling this option may enhance performance but could be platform-dependent."
         )]
+        [LabelWidth(140)]
         private bool m_useNativeSockets = false;
 
         [SerializeField]
         [Tooltip(
             "Specifies whether to use a safe MTU (Maximum Transmission Unit) size for networking operations. Using a safe MTU can reduce the risk of packet loss and ensure smoother data transmission."
         )]
+        [LabelWidth(140)]
         private bool m_useSafeMtu = false;
 
         [GroupNext("Lag Simulator [Debug only!]")]
         [SerializeField]
+        [LabelWidth(140)]
         private bool m_SimulateLag = false;
 
         [SerializeField]
@@ -158,7 +212,7 @@ namespace Omni.Core.Modules.Connection
             }
 
             _listener = new EventBasedNetListener();
-            _manager = new NetManager(_listener)
+            _manager = new NetManager(_listener, new LiteSecurityLayer())
             {
                 AutoRecycle = false,
                 EnableStatistics = false,
@@ -192,8 +246,8 @@ namespace Omni.Core.Modules.Connection
                     {
                         localPeer ??= peer;
                         transporter.Internal_OnClientConnected(peer,
-                            new NativePeer(() => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
-                                () => peer.Ping));
+                            new NativePeer(() => (int)(peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
+                                () => peer.RoundTripTime));
                     }
                 };
 
