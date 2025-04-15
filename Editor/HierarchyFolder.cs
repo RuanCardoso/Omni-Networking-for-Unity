@@ -34,12 +34,12 @@ internal class HierarchyCategory : IHierarchyCategory
 
 internal class HierarchyFolder
 {
-    private const string k_FolderPrefix = "--- ";
-    private const string K_FolderSuffix = " ---";
+    internal const string k_FolderPrefix = "--- ";
+    internal const string k_FolderSuffix = " ---";
+    internal const float k_IconWidth = 16f;
 
     private static bool m_IsOrganizing = false;
     private static readonly Dictionary<string, bool> m_FolderExpandedStates = new();
-    private static readonly Dictionary<string, List<GameObject>> m_FolderChildren = new();
 
     private static readonly HierarchyCategory k_ServerCategory = new()
     {
@@ -105,45 +105,23 @@ internal class HierarchyFolder
             m_IsOrganizing = false;
         }
     }
-
     private static void OnHierarchyWindowItemOnGUI(int instanceId, Rect selectionRect)
     {
         GameObject instance = EditorUtility.InstanceIDToObject(instanceId) as GameObject;
         if (instance == null || !instance.TryGetComponent<HierarchyFolderComponent>(out var folderComponent))
             return;
 
-        Rect foldoutRect = new(selectionRect.x + EditorGUI.indentLevel * 16f, selectionRect.y, 16, 16);
         string folderKey = folderComponent.Name;
-
         if (!m_FolderExpandedStates.ContainsKey(folderKey))
             m_FolderExpandedStates[folderKey] = false;
 
-        bool isExpanded = EditorGUI.Foldout(foldoutRect, m_FolderExpandedStates[folderKey], "");
-        if (isExpanded != m_FolderExpandedStates[folderKey])
-        {
-            m_FolderExpandedStates[folderKey] = isExpanded;
-            UpdateChildrenVisibility(folderKey, isExpanded);
-        }
-    }
+        float x = selectionRect.x + EditorGUI.indentLevel * k_IconWidth;
+        Rect foldoutRect = new(x + k_IconWidth, selectionRect.y, k_IconWidth, k_IconWidth);
+        GUIContent icon = EditorGUIUtility.IconContent(m_FolderExpandedStates[folderKey] ? "Toolbar Minus" : "Toolbar Plus");
 
-    private static void UpdateChildrenVisibility(string category, bool isExpanded)
-    {
-        if (!m_FolderChildren.ContainsKey(category))
-            return;
-
-        foreach (var child in m_FolderChildren[category])
+        if (GUI.Button(foldoutRect, icon, GUIStyle.none))
         {
-            if (child != null)
-            {
-                if (isExpanded)
-                {
-                    child.hideFlags &= ~HideFlags.HideInHierarchy;
-                }
-                else
-                {
-                    child.hideFlags |= HideFlags.HideInHierarchy;
-                }
-            }
+            m_FolderExpandedStates[folderKey] = !m_FolderExpandedStates[folderKey];
         }
     }
 
@@ -156,14 +134,14 @@ internal class HierarchyFolder
 
         foreach (GameObject sceneObject in rootObjects)
         {
-            if (sceneObject.name.StartsWith(k_FolderPrefix) && sceneObject.name.EndsWith(K_FolderSuffix))
+            if (sceneObject.name.StartsWith(k_FolderPrefix) && sceneObject.name.EndsWith(k_FolderSuffix))
                 continue;
 
-            IHierarchyCategory category = DetermineCategory(sceneObject);
+            IHierarchyCategory category = GetCategory(sceneObject);
             if (!folders.ContainsKey(category.Name))
             {
                 GameObject existingFolder = rootObjects.FirstOrDefault(o =>
-                    o.name == k_FolderPrefix + category.Name + K_FolderSuffix &&
+                    o.name == k_FolderPrefix + category.Name + k_FolderSuffix &&
                     o.GetComponent<HierarchyFolderComponent>() != null);
 
                 if (existingFolder != null)
@@ -172,7 +150,7 @@ internal class HierarchyFolder
                 }
                 else
                 {
-                    folders[category.Name] = new(k_FolderPrefix + category.Name + K_FolderSuffix)
+                    folders[category.Name] = new(k_FolderPrefix + category.Name + k_FolderSuffix)
                     {
                         hideFlags = HideFlags.HideInInspector | HideFlags.DontSave | HideFlags.NotEditable
                     };
@@ -188,6 +166,17 @@ internal class HierarchyFolder
             categorizedObjects[category.Name].Add(sceneObject);
         }
 
+        foreach (GameObject sceneObject in rootObjects)
+        {
+            if (sceneObject.name.StartsWith(k_FolderPrefix) && sceneObject.name.EndsWith(k_FolderSuffix))
+            {
+                string categoryName = sceneObject.name[4..^4];
+                if (!categorizedObjects.ContainsKey(categoryName))
+                    sceneObject.hideFlags |= HideFlags.HideInHierarchy;
+                else sceneObject.hideFlags &= ~HideFlags.HideInHierarchy;
+            }
+        }
+
         var sortedCategories = folders.Keys.OrderBy(k =>
         {
             if (k.Contains("Server")) return CategoryOrder.Server;
@@ -200,24 +189,17 @@ internal class HierarchyFolder
         foreach (string category in sortedCategories)
         {
             folders[category].transform.SetSiblingIndex(currentIndex++);
-            m_FolderChildren[category] = new List<GameObject>(categorizedObjects[category]);
-
             foreach (GameObject sceneObject in categorizedObjects[category])
             {
                 sceneObject.transform.SetSiblingIndex(currentIndex++);
                 if (!m_FolderExpandedStates.ContainsKey(category) || !m_FolderExpandedStates[category])
-                {
                     sceneObject.hideFlags |= HideFlags.HideInHierarchy;
-                }
-                else
-                {
-                    sceneObject.hideFlags &= ~HideFlags.HideInHierarchy;
-                }
+                else sceneObject.hideFlags &= ~HideFlags.HideInHierarchy;
             }
         }
     }
 
-    private static IHierarchyCategory DetermineCategory(GameObject sceneObject)
+    private static IHierarchyCategory GetCategory(GameObject sceneObject)
     {
         if (!sceneObject.activeSelf)
             return k_DisabledCategory;
@@ -260,12 +242,12 @@ internal class HierarchyFolderEditor : Editor
             var folderIcon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
             EditorGUI.DrawRect(selectionRect, folderComponent.Color);
 
-            float indent = EditorGUI.indentLevel * 16f;
-            Rect iconRect = new Rect(selectionRect.x + indent, selectionRect.y, 16, 16);
+            float indent = EditorGUI.indentLevel * HierarchyFolder.k_IconWidth;
+            Rect iconRect = new(selectionRect.x + indent, selectionRect.y, HierarchyFolder.k_IconWidth, HierarchyFolder.k_IconWidth);
             GUI.DrawTexture(iconRect, folderIcon);
 
             string displayName = obj.name;
-            if (displayName.StartsWith("--- ") && displayName.EndsWith(" ---"))
+            if (displayName.StartsWith(HierarchyFolder.k_FolderPrefix) && displayName.EndsWith(HierarchyFolder.k_FolderSuffix))
                 displayName = displayName[4..^4];
 
             Vector2 textSize = EditorStyles.boldLabel.CalcSize(new(displayName));
