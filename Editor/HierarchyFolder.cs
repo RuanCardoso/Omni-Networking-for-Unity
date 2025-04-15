@@ -1,9 +1,9 @@
 #if UNITY_EDITOR
-using UnityEditor;
-using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using Omni.Core;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 internal enum CategoryOrder
@@ -36,7 +36,9 @@ internal class HierarchyFolder
 {
     internal const string k_FolderPrefix = "--- ";
     internal const string k_FolderSuffix = " ---";
+
     internal const float k_IconWidth = 16f;
+    internal const float k_PixelWidth = 32f;
 
     private static bool m_IsOrganizing = false;
     private static readonly Dictionary<string, bool> m_FolderExpandedStates = new();
@@ -105,6 +107,7 @@ internal class HierarchyFolder
             m_IsOrganizing = false;
         }
     }
+
     private static void OnHierarchyWindowItemOnGUI(int instanceId, Rect selectionRect)
     {
         GameObject instance = EditorUtility.InstanceIDToObject(instanceId) as GameObject;
@@ -115,27 +118,28 @@ internal class HierarchyFolder
         if (!m_FolderExpandedStates.ContainsKey(folderKey))
             m_FolderExpandedStates[folderKey] = false;
 
-        float x = selectionRect.x + EditorGUI.indentLevel * k_IconWidth;
-        Rect foldoutRect = new(x + k_IconWidth, selectionRect.y, k_IconWidth, k_IconWidth);
+        Rect foldoutRect = new(k_PixelWidth, selectionRect.y, k_IconWidth, k_IconWidth);
         GUIContent icon = EditorGUIUtility.IconContent(m_FolderExpandedStates[folderKey] ? "Toolbar Minus" : "Toolbar Plus");
-
         if (GUI.Button(foldoutRect, icon, GUIStyle.none))
-        {
             m_FolderExpandedStates[folderKey] = !m_FolderExpandedStates[folderKey];
-        }
     }
 
     private static void OrganizeHierarchy()
     {
         GameObject[] rootObjects = SceneManager.GetActiveScene().GetRootGameObjects();
-
         Dictionary<string, GameObject> folders = new();
         Dictionary<string, List<GameObject>> categorizedObjects = new();
 
         foreach (GameObject sceneObject in rootObjects)
         {
             if (sceneObject.name.StartsWith(k_FolderPrefix) && sceneObject.name.EndsWith(k_FolderSuffix))
+            {
+                var sceneVisibilityManager = SceneVisibilityManager.instance;
+                sceneVisibilityManager.DisablePicking(sceneObject, false);
+                sceneVisibilityManager.Hide(sceneObject, false);
+
                 continue;
+            }
 
             IHierarchyCategory category = GetCategory(sceneObject);
             if (!folders.ContainsKey(category.Name))
@@ -145,19 +149,24 @@ internal class HierarchyFolder
                     o.GetComponent<HierarchyFolderComponent>() != null);
 
                 if (existingFolder != null)
-                {
                     folders[category.Name] = existingFolder;
-                }
                 else
                 {
-                    folders[category.Name] = new(k_FolderPrefix + category.Name + k_FolderSuffix)
+                    GameObject folderObj = new(k_FolderPrefix + category.Name + k_FolderSuffix)
                     {
-                        hideFlags = HideFlags.HideInInspector | HideFlags.DontSave | HideFlags.NotEditable
+                        hideFlags = HideFlags.HideInInspector | HideFlags.DontSave | HideFlags.NotEditable |
+                                  HideFlags.DontUnloadUnusedAsset
                     };
 
-                    var folderComponent = folders[category.Name].AddComponent<HierarchyFolderComponent>();
+                    var sceneVisibilityManager = SceneVisibilityManager.instance;
+                    sceneVisibilityManager.DisablePicking(folderObj, false);
+                    sceneVisibilityManager.Hide(folderObj, false);
+
+                    var folderComponent = folderObj.AddComponent<HierarchyFolderComponent>();
                     folderComponent.Name = category.Name;
                     folderComponent.Color = category.Color;
+
+                    folders[category.Name] = folderObj;
                 }
 
                 categorizedObjects[category.Name] = new List<GameObject>();
@@ -234,29 +243,30 @@ internal class HierarchyFolderEditor : Editor
     private static void OnHierarchyWindowItemOnGUI(int instanceId, Rect selectionRect)
     {
         GameObject obj = EditorUtility.InstanceIDToObject(instanceId) as GameObject;
-        if (obj == null)
-            return;
-
-        if (obj.TryGetComponent<HierarchyFolderComponent>(out var folderComponent))
+        if (obj != null)
         {
-            var folderIcon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
-            EditorGUI.DrawRect(selectionRect, folderComponent.Color);
+            if (obj.TryGetComponent<HierarchyFolderComponent>(out var folderComponent))
+            {
+                Rect fullWidthRect = new(HierarchyFolder.k_PixelWidth, selectionRect.y, EditorGUIUtility.currentViewWidth - HierarchyFolder.k_PixelWidth, selectionRect.height);
+                EditorGUI.DrawRect(fullWidthRect, folderComponent.Color);
 
-            float indent = EditorGUI.indentLevel * HierarchyFolder.k_IconWidth;
-            Rect iconRect = new(selectionRect.x + indent, selectionRect.y, HierarchyFolder.k_IconWidth, HierarchyFolder.k_IconWidth);
-            GUI.DrawTexture(iconRect, folderIcon);
+                var folderIcon = EditorGUIUtility.IconContent("Folder Icon").image as Texture2D;
+                Rect folderIconRect = new(HierarchyFolder.k_PixelWidth + HierarchyFolder.k_IconWidth, selectionRect.y, HierarchyFolder.k_IconWidth, HierarchyFolder.k_IconWidth);
+                GUI.DrawTexture(folderIconRect, folderIcon);
 
-            string displayName = obj.name;
-            if (displayName.StartsWith(HierarchyFolder.k_FolderPrefix) && displayName.EndsWith(HierarchyFolder.k_FolderSuffix))
-                displayName = displayName[4..^4];
+                string displayName = obj.name;
+                if (displayName.StartsWith(HierarchyFolder.k_FolderPrefix) && displayName.EndsWith(HierarchyFolder.k_FolderSuffix))
+                    displayName = displayName[4..^4];
 
-            Vector2 textSize = EditorStyles.boldLabel.CalcSize(new(displayName));
-            float centerX = selectionRect.x + (selectionRect.width - textSize.x) / 2f;
+                GUIStyle labelStyle = new(EditorStyles.boldLabel);
+                labelStyle.normal.textColor = Color.white;
 
-            Rect labelRect = new(centerX, selectionRect.y, textSize.x, selectionRect.height);
-            GUIStyle labelStyle = new(EditorStyles.boldLabel);
-            labelStyle.normal.textColor = Color.white;
-            EditorGUI.LabelField(labelRect, displayName, labelStyle);
+                Vector2 textSize = EditorStyles.boldLabel.CalcSize(new(displayName));
+                float centerX = selectionRect.x + (selectionRect.width - textSize.x) / 2f;
+
+                Rect labelRect = new(centerX, selectionRect.y, textSize.x, selectionRect.height);
+                EditorGUI.LabelField(labelRect, displayName, labelStyle);
+            }
         }
     }
 }
