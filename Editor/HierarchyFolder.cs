@@ -11,7 +11,8 @@ internal enum CategoryOrder
     Server = 0,
     Client = 1,
     Others = 2,
-    Disabled = Server + Client + Others // 3
+    Offline = 3,
+    Disabled = Server + Client + Others + Offline // 6
 }
 
 internal interface IHierarchyCategory
@@ -46,37 +47,43 @@ internal class HierarchyFolder
     private static readonly HierarchyCategory k_ServerCategory = new()
     {
         Name = "Server",
-        Color = new Color(0.0f, 0.5f, 0.0f)
+        Color = new Color(0.0f, 0.4f, 0.0f) // Verde militar escuro
     };
 
     private static readonly HierarchyCategory k_ClientCategory = new()
     {
         Name = "Client",
-        Color = new Color(0.0f, 0.0f, 0.5f)
+        Color = new Color(0.0f, 0.2f, 0.5f) // Azul escuro profundo
     };
 
     private static readonly HierarchyCategory k_CamerasCategory = new()
     {
         Name = "Cameras",
-        Color = new Color(0.5f, 0.35f, 0.0f)
+        Color = new Color(0.4f, 0.25f, 0.0f) // Marrom escuro/cobre
     };
 
     private static readonly HierarchyCategory k_LightsCategory = new()
     {
         Name = "Lights",
-        Color = new Color(0.5f, 0.5f, 0.0f)
+        Color = new Color(0.4f, 0.4f, 0.0f) // Amarelo queimado
     };
 
     private static readonly HierarchyCategory k_MiscellaneousCategory = new()
     {
         Name = "Miscellaneous",
-        Color = Color.black
+        Color = new Color(0f, 0f, 0f) // Preto
     };
 
     private static readonly HierarchyCategory k_DisabledCategory = new()
     {
         Name = "Disabled",
-        Color = new Color(0.5f, 0.5f, 0.5f)
+        Color = new Color(0.15f, 0.15f, 0.15f) // Quase preto
+    };
+
+    private static readonly HierarchyCategory k_OfflineCategory = new()
+    {
+        Name = "Offline",
+        Color = new Color(0.3f, 0.0f, 0.0f) // Vinho escuro
     };
 
     [InitializeOnLoadMethod]
@@ -191,6 +198,7 @@ internal class HierarchyFolder
             if (k.Contains("Server")) return CategoryOrder.Server;
             else if (k.Contains("Client")) return CategoryOrder.Client;
             else if (k.Contains("Disabled")) return CategoryOrder.Disabled;
+            else if (k.Contains("Offline")) return CategoryOrder.Offline;
             else return CategoryOrder.Others;
         }).ThenBy(k => k).ToList();
 
@@ -214,7 +222,7 @@ internal class HierarchyFolder
             return k_DisabledCategory;
 
         if (sceneObject.TryGetComponent<NetworkIdentity>(out var networkIdentity))
-            return networkIdentity.IsServer ? k_ServerCategory : k_ClientCategory;
+            return networkIdentity.IsRegistered ? networkIdentity.IsServer ? k_ServerCategory : k_ClientCategory : k_OfflineCategory;
         else if (sceneObject.name.Contains("Server"))
             return k_ServerCategory;
         else if (sceneObject.name.Contains("Client"))
