@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 
 namespace Omni.Core
 {
-    [DeclareBoxGroup("Infor")]
+    [DeclareBoxGroup("Debug")]
     public sealed class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
     {
         internal string _prefabName;
@@ -27,20 +27,24 @@ namespace Omni.Core
         [SerializeField]
         [ReadOnly]
         [LabelWidth(150)]
-        [Group("Infor")]
+        [Group("Debug")]
         private bool m_IsServer;
 
         [SerializeField]
         [ReadOnly]
         [LabelWidth(150)]
-        [Group("Infor")]
+        [Group("Debug")]
         private bool m_IsLocalPlayer;
 
         [SerializeField]
         [ReadOnly]
         [LabelWidth(150)]
-        [Group("Infor")]
+        [Group("Debug")]
         private bool isOwnedByTheServer;
+
+        [SerializeField]
+        [LabelWidth(150)]
+        private bool m_DontDestroyOnLoad;
 
         /// <summary>
         /// Gets the unique identifier for this network identity.
@@ -104,23 +108,12 @@ namespace Omni.Core
             internal set { isOwnedByTheServer = value; }
         }
 
-        void Start()
+        void Awake()
         {
-            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
-        }
-
-        private void OnBeforeSceneLoad(Scene scene, SceneOperationMode mode)
-        {
-            if (!NetworkHelper.IsDontDestroyOnLoad(gameObject))
+            if (m_DontDestroyOnLoad)
             {
-                NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
-                Destroy();
+                DontDestroyOnLoad(gameObject);
             }
-        }
-
-        private void OnDestroy()
-        {
-            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
         }
 
         /// <summary>
@@ -575,69 +568,7 @@ namespace Omni.Core
             NetworkManager.ServerSide.SendMessage(MessageType.Despawn, Owner, message, target, deliveryMode, groupId,
                 dataCache, sequenceChannel);
 
-            NetworkHelper.Destroy(m_Id, IsServer);
-        }
-
-        /// <summary>
-        /// Destroys a network identity on the client only. This action is local to the client 
-        /// and does not synchronize across the network or affect other clients.
-        /// </summary>
-        public void DestroyOnClient()
-        {
-            if (!IsRegistered)
-            {
-                throw new Exception(
-                    $"The game object '{name}' is not registered. Please register it first."
-                );
-            }
-
-            if (IsServer)
-            {
-                throw new Exception(
-                    $"Only client can destroy the game object '{name}'. But the object will be destroyed only for you(local).");
-            }
-
-            NetworkHelper.Destroy(Id, false);
-        }
-
-        /// <summary>
-        /// Destroys a network identity on the server only. This action is local to the server 
-        /// and does not synchronize across the network or affect other clients.
-        /// </summary>
-        public void DestroyOnServer()
-        {
-            if (!IsRegistered)
-            {
-                throw new Exception(
-                    $"The game object '{name}' is not registered. Please register it first."
-                );
-            }
-
-            if (!IsServer)
-            {
-                throw new InvalidOperationException(
-                    $"Operation failed: Only the server is authorized to destroy the game object '{name}'. Ensure the operation is being performed on the server.");
-            }
-
-            NetworkHelper.Destroy(Id, true);
-        }
-
-        /// <summary>
-        /// Destroys the network identity, determining the appropriate behavior based on the current context.
-        /// If called on the server, it destroys the object locally on the server.
-        /// If called on a client, it destroys the object locally on that client.
-        /// This method does not synchronize the destruction across the network.
-        /// </summary>
-        public void Destroy()
-        {
-            if (IsServer)
-            {
-                DestroyOnServer();
-            }
-            else
-            {
-                DestroyOnClient();
-            }
+            Destroy(gameObject);
         }
 
         /// <summary>

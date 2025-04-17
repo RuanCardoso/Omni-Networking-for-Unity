@@ -45,7 +45,7 @@ namespace Omni.Core
                 identityId = NetworkHelper.GenerateDynamicUniqueId();
             }
 
-            return NetworkHelper.Instantiate(prefab, ServerSide.Peers[peerId], identityId, true, false);
+            return NetworkHelper.SpawnAndRegister(prefab, ServerSide.Peers[peerId], identityId, true, false);
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Omni.Core
         public static NetworkIdentity SpawnOnClient(NetworkIdentity prefab, int peerId, int identityId)
         {
             bool isLocalPlayer = LocalPeer.Id == peerId;
-            NetworkIdentity @obj = NetworkHelper.Instantiate(prefab,
+            NetworkIdentity @obj = NetworkHelper.SpawnAndRegister(prefab,
                 peerId != 0 ? isLocalPlayer ? LocalPeer : ClientSide.GetOrCreatePeer(peerId) : ServerSide.ServerPeer,
                 identityId, false, isLocalPlayer);
 

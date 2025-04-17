@@ -21,12 +21,47 @@ namespace Omni.Editor
         Mono
     }
 
-    internal class BuildKeysInterceptor : IPreprocessBuildWithReport
+    internal class BuildInterceptor : IPreprocessBuildWithReport
     {
         public int callbackOrder => 0;
 
-        public void OnPreprocessBuild(BuildReport report)
+        private static void SetupBeforeBuild()
         {
+            var target = EditorHelper.GetCurrentNamedBuildTarget();
+#if OMNI_RELEASE
+#if UNITY_SERVER
+            if (PlayerSettings.GetScriptingBackend(target) != ScriptingImplementation.Mono2x)
+            {
+                bool changeToBuildMono = EditorUtility.DisplayDialog(
+                    "Server Build Recommendation",
+                    "It is recommended to use the Mono scripting backend for server builds.\n\n" +
+                    "Would you like to switch to Mono?",
+                    "Yes, switch to Mono",
+                    "No, keep current configuration"
+                );
+
+                if (changeToBuildMono)
+                {
+                    PlayerSettings.SetScriptingBackend(target, ScriptingImplementation.Mono2x);
+                }
+            }
+#else
+            if (PlayerSettings.GetScriptingBackend(target) != ScriptingImplementation.IL2CPP)
+            {
+                bool changeToBuildIL2CPP = EditorUtility.DisplayDialog(
+                    "Client Build Recommendation",
+                    "It is recommended to use the IL2CPP scripting backend for client builds.\n\n" +
+                    "Would you like to switch to IL2CPP?",
+                    "Yes, switch to IL2CPP",
+                    "No, keep current configuration"
+                );
+
+                if (changeToBuildIL2CPP)
+                {
+                    PlayerSettings.SetScriptingBackend(target, ScriptingImplementation.IL2CPP);
+                }
+            }
+#endif
             string path = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "__omni_development_keys__"
@@ -52,6 +87,12 @@ namespace Omni.Editor
 
                 CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
             }
+#endif
+        }
+
+        public void OnPreprocessBuild(BuildReport report)
+        {
+            SetupBeforeBuild();
         }
     }
 
@@ -61,7 +102,7 @@ namespace Omni.Editor
             IPreprocessBuildWithReport
     {
         private const string OMNI_VERSION = NetworkLogger.Version;
-        public int callbackOrder => 0;
+        public int callbackOrder => -1;
 
         public void OnPreprocessBuild(BuildReport report)
         {
@@ -85,7 +126,6 @@ namespace Omni.Editor
         private void OnPreprocessAsset()
         {
             SetMacros();
-            SetScriptingBackend();
         }
 
         public void OnActiveBuildTargetChanged(BuildTarget previousTarget, BuildTarget newTarget)
@@ -95,13 +135,23 @@ namespace Omni.Editor
         }
 
 #if OMNI_RELEASE
-		[MenuItem("Omni Networking/Change to Debug", false, 30)]
+        [MenuItem("Omni Networking/Change to Debug", false, 30)]
 #endif
         private static void ChangeToDebug()
         {
-            if (EditorHelper.SetDefines(false))
+            bool confirmChange = EditorUtility.DisplayDialog(
+                "Omni Networking Configuration",
+                "Are you sure you want to change to debug mode?",
+                "Yes",
+                "No"
+            );
+
+            if (confirmChange)
             {
-                ShowDialog();
+                if (EditorHelper.SetDefines(false))
+                {
+                    ShowDialog();
+                }
             }
         }
 
@@ -110,18 +160,28 @@ namespace Omni.Editor
 #endif
         private static void ChangeToRelease()
         {
-            if (EditorHelper.SetDefines(true))
+            bool confirmChange = EditorUtility.DisplayDialog(
+                "Omni Networking Configuration",
+                "Are you sure you want to change to release mode?",
+                "Yes",
+                "No"
+            );
+
+            if (confirmChange)
             {
-                ShowDialog();
+                if (EditorHelper.SetDefines(true))
+                {
+                    ShowDialog();
+                }
             }
         }
 
         private static void ShowDialog()
         {
             EditorUtility.DisplayDialog(
-                "Omni Networking",
-                "Macros have been imported, please wait for recompilation.",
-                "Ok"
+                "Omni Networking Configuration",
+                "Macros have been successfully imported. The project is now recompiling, please wait for the process to complete.",
+                "OK"
             );
         }
 

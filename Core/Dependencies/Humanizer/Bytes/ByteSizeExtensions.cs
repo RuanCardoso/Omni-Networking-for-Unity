@@ -1,4 +1,6 @@
-﻿using System;
+﻿#pragma warning disable
+
+using System;
 using Humanizer.Bytes;
 
 // ReSharper disable once CheckNamespace

@@ -70,11 +70,6 @@ namespace Omni.Core
         [Group("Infor")]
         private string PublicIPv6 = "::1";
 
-        [SerializeField]
-        [ReadOnly]
-        [Group("Infor")]
-        private string GUID;
-
         private bool m_ConnectionModule = true;
         private bool m_ConsoleModule = true;
         private bool m_MatchModule = true;
@@ -234,7 +229,6 @@ namespace Omni.Core
         internal static bool UseSecureRoutes => Manager.m_UseSecureRoutes;
         internal static bool AllowNetworkVariablesFromClients => Manager.m_AllowNetworkVariablesFromClients;
 
-        public static string GuidVersion => Manager.GUID;
         public static int Port => Manager.m_Port;
 
         public static int Framerate { get; private set; }
@@ -271,11 +265,6 @@ namespace Omni.Core
                 {
                     m_ClientTransporter = m_ServerTransporter = null;
                     throw new Exception("Transporter cannot be set. Is automatically initialized.");
-                }
-
-                if (string.IsNullOrEmpty(GUID))
-                {
-                    GenerateGUID();
                 }
 
                 GetExternalIp();
@@ -367,13 +356,6 @@ namespace Omni.Core
                     // ignore shared violation
                 }
             }
-        }
-
-        [ContextMenu("Generate GUID")]
-        private void GenerateGUID()
-        {
-            GUID = Guid.NewGuid().ToString();
-            NetworkHelper.EditorSaveObject(gameObject);
         }
 
         [ContextMenu("Force Get Public IP")]

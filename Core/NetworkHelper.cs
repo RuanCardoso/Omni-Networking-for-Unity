@@ -1,4 +1,3 @@
-using DG.Tweening;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Omni.Shared;
@@ -107,7 +106,7 @@ namespace Omni.Core
         internal static string GenerateRandomToken()
         {
             StringBuilder tokenBuilder = new StringBuilder();
-            int length = random.Next(16, 128);
+            int length = random.Next(16, 129); // 129 is exclusive
             while (tokenBuilder.Length < length)
                 tokenBuilder.Append(randomString[random.Next(0, randomString.Length)]);
 
@@ -115,64 +114,7 @@ namespace Omni.Core
             return Convert.ToBase64String(base64bytes);
         }
 
-        internal static void Destroy(int identityId, bool isServer, bool isRoot = true)
-        {
-            var identities = isServer
-                ? NetworkManager.ServerSide.Identities
-                : NetworkManager.ClientSide.Identities;
-
-            if (identities.Remove(identityId, out NetworkIdentity identity))
-            {
-                if (!isServer && NetworkIdentity.LocalPlayer != null)
-                {
-                    if (NetworkIdentity.LocalPlayer.Id == identityId)
-                    {
-                        NetworkIdentity.LocalPlayer = null;
-                    }
-                }
-
-                // When destroying a root object, all its child NetworkIdentity components 
-                // and nested children will be recursively destroyed as well (handled below)
-
-                if (isRoot)
-                {
-                    var behaviours = identity.GetComponentsInChildren<NetworkBehaviour>(true);
-                    foreach (NetworkBehaviour behaviour in behaviours)
-                    {
-                        behaviour.Unregister();
-                    }
-                }
-
-                // When destroying a root object, all its child NetworkIdentity components 
-                // and nested children will be recursively destroyed as well (handled below)
-
-                if (isRoot)
-                {
-                    var recursiveIdentities = identity.GetComponentsInChildren<NetworkIdentity>(true);
-                    for (int i = recursiveIdentities.Length - 1; i >= 0; i--)
-                    {
-                        int childIdentityId = recursiveIdentities[i].Id;
-                        if (childIdentityId == identityId) // skip the parent(self), only process children
-                            continue;
-
-                        Destroy(childIdentityId, isServer, isRoot: false);
-                    }
-                }
-
-                UnityEngine.Object.Destroy(identity.gameObject);
-            }
-            else
-            {
-                NetworkLogger.__Log__(
-                     $"[Destroy] Failed to destroy Network Identity '{identityId}': Not found in {(isServer ? "Server" : "Client")} identities dictionary. " +
-                     $"This could be caused by: (1) The object was already destroyed, (2) The object exists on the {(isServer ? "client" : "server")} side only, " +
-                     $"or (3) The identityId is invalid. Check network synchronization in previous operations.",
-                     NetworkLogger.LogType.Error
-                );
-            }
-        }
-
-        internal static NetworkIdentity Instantiate(NetworkIdentity prefab, NetworkPeer peer, int identityId,
+        internal static NetworkIdentity SpawnAndRegister(NetworkIdentity prefab, NetworkPeer peer, int identityId,
             bool isServer, bool isLocalPlayer)
         {
             // Disable the prefab to avoid Awake and Start being called multiple times before the registration.
@@ -190,29 +132,18 @@ namespace Omni.Core
                 ? NetworkManager.ServerSide.Identities
                 : NetworkManager.ClientSide.Identities;
 
-            if (!identities.TryAdd(identity.Id, identity))
+            if (identities.TryGetValue(identityId, out var oldRef))
             {
-                Destroy(identity.Id, isServer, isRoot: true);
-                if (identities.TryAdd(identity.Id, identity))
+                if (oldRef != null)
                 {
-                    NetworkLogger.__Log__(
-                         $"[Instantiate] Identity conflict detected for ID '{identity.Id}': An object with this ID already exists in the {(isServer ? "server" : "client")} identities collection. " +
-                         $"The previous object has been destroyed and replaced with the new instance. This may indicate an issue with ID assignment or network synchronization. " +
-                         $"If this happens frequently, consider implementing additional validation in your object creation logic.",
-                         NetworkLogger.LogType.Warning);
-                }
-                else
-                {
-                    NetworkLogger.__Log__(
-                         $"[Instantiate] Failed to add identity '{identity.Id}' to {(isServer ? "server" : "client")} identities collection: An object with this ID already exists. " +
-                         $"This may indicate an issue with ID assignment or network synchronization. If this happens frequently, consider implementing additional validation in your object creation logic.",
-                         NetworkLogger.LogType.Error);
+                    NetworkBehaviour[] behaviours = oldRef.GetComponentsInChildren<NetworkBehaviour>(true);
+                    foreach (var behaviour in behaviours)
+                        behaviour.Unregister();
                 }
             }
 
-            NetworkBehaviour[] networkBehaviours =
-                identity.GetComponentsInChildren<NetworkBehaviour>(true);
-
+            identities[identityId] = identity;
+            NetworkBehaviour[] networkBehaviours = identity.GetComponentsInChildren<NetworkBehaviour>(true);
             for (int i = 0; i < networkBehaviours.Length; i++)
             {
                 NetworkBehaviour networkBehaviour = networkBehaviours[i];

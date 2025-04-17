@@ -779,6 +779,37 @@ namespace Omni.Core
             internal set => m_ServiceName = value;
         }
 
+        /// <summary>
+        /// Gets a value indicating whether this network behaviour has been registered with the network system.
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if this instance is registered with the network system; otherwise, <c>false</c>.
+        /// </value>
+        /// <remarks>
+        /// This property is set internally when the object is registered with the network system.
+        /// It can be used to check if the network behaviour is ready for network operations.
+        /// </remarks>
+        public bool IsRegistered { get; private set; }
+
+        /// <summary>
+        /// Gets the server's network peer instance that represents the server itself in the network.
+        /// </summary>
+        /// <value>
+        /// The <see cref="NetworkPeer"/> instance that represents the server in the network.
+        /// </value>
+        /// <remarks>
+        /// This property provides convenient access to the server's peer object, which contains
+        /// information about the server's network identity and connection. Use this property
+        /// when you need to reference the server as a network entity in server-side operations.
+        /// </remarks>
+        protected NetworkPeer ServerPeer
+        {
+            get
+            {
+                return NetworkManager.ServerSide.ServerPeer;
+            }
+        }
+
         [EditorBrowsable(EditorBrowsableState.Never)]
         [Obsolete("Don't override this method! The source generator will override it.")]
         protected internal virtual void ___InjectServices___()
@@ -871,10 +902,12 @@ namespace Omni.Core
         /// </summary>
         protected internal void Register()
         {
+            if (IsRegistered)
+                return;
+
             CheckIfOverridden();
             ___RegisterNetworkVariables___();
-            // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
-            ___NotifyCollectionChange___();
+            ___NotifyCollectionChange___(); // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
             if (Identity.IsServer)
             {
                 serverRpcHandler.RegisterRpcMethodHandlers<ServerAttribute>(this);
@@ -890,9 +923,7 @@ namespace Omni.Core
             AddRpcHandler();
 
             if (NetworkManager.TickSystemModuleEnabled)
-            {
                 NetworkManager.TickSystem.Register(this);
-            }
 
             Identity.OnRequestAction += OnRequestedAction;
             Identity.OnSpawn += OnServerClientSpawned;
@@ -901,6 +932,51 @@ namespace Omni.Core
             NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnSceneLoaded += OnSceneLoaded;
             NetworkManager.OnSceneUnloaded += OnSceneUnloaded;
+
+            IsRegistered = true;
+        }
+
+        /// <summary>
+        /// Unregisters the current network behaviour from associated events and systems.
+        /// This method ensures that the event behaviours and services linked to the network identity
+        /// are properly removed, preventing further invocation of network actions.
+        /// </summary>
+        protected internal void Unregister(bool destroy = true)
+        {
+            if (!IsRegistered)
+                return;
+
+            var identities = IsServer
+                  ? NetworkManager.ServerSide.Identities
+                  : NetworkManager.ClientSide.Identities;
+
+            if (identities.Remove(IdentityId, out var oldRef))
+            {
+                if (oldRef != null && destroy)
+                    Destroy(oldRef.gameObject);
+
+                var rpcHandlers = Identity.IsServer
+                    ? NetworkManager.ServerSide.LocalRpcHandlers
+                    : NetworkManager.ClientSide.LocalRpcHandlers;
+
+                var key = (IdentityId, m_Id);
+                rpcHandlers.Remove(key);
+
+                if (NetworkManager.TickSystemModuleEnabled)
+                    NetworkManager.TickSystem.Unregister(this);
+
+                Identity.OnRequestAction -= OnRequestedAction;
+                Identity.OnSpawn -= OnServerClientSpawned;
+                Identity.OnSpawn -= Internal_OnServerClientSpawned;
+
+                NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+                NetworkManager.OnSceneLoaded -= OnSceneLoaded;
+                NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
+
+                Identity.Unregister(m_ServiceName);
+                OnNetworkDestroy();
+                IsRegistered = false;
+            }
         }
 
         [Conditional("OMNI_DEBUG")]
@@ -920,45 +996,22 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Unregisters the current network behaviour from associated events and systems.
-        /// This method ensures that the event behaviours and services linked to the network identity
-        /// are properly removed, preventing further invocation of network actions.
+        /// Called when the network behaviour is being destroyed.
         /// </summary>
-        protected internal void Unregister()
+        /// <remarks>
+        /// This method is automatically called by Unity when the GameObject is destroyed.
+        /// The default implementation unregisters this behaviour from the network system.
+        /// Override this method to implement custom cleanup logic, but always call the base implementation
+        /// to ensure proper network cleanup.
+        /// </remarks>
+        protected virtual void OnDestroy()
         {
-            var rpcHandlers = Identity.IsServer
-                ? NetworkManager.ServerSide.LocalRpcHandlers
-                : NetworkManager.ClientSide.LocalRpcHandlers;
-
-            var key = (IdentityId, m_Id);
-            if (!rpcHandlers.Remove(key))
+            try
             {
-                NetworkLogger.__Log__(
-                    $"[Unregister Error] The NetworkBehaviour with ID '{m_Id}' and peer ID '{IdentityId}' could not be found. This indicates it was not registered or may have already been unregistered. Please verify that the NetworkBehaviour is properly registered before attempting to unregister it.",
-                    NetworkLogger.LogType.Error);
+                if (Application.isPlaying)
+                    Unregister();
             }
-
-            if (NetworkManager.TickSystemModuleEnabled)
-            {
-                NetworkManager.TickSystem.Unregister(this);
-            }
-
-            Identity.OnRequestAction -= OnRequestedAction;
-            Identity.OnSpawn -= OnServerClientSpawned;
-            Identity.OnSpawn -= Internal_OnServerClientSpawned;
-
-            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
-            NetworkManager.OnSceneLoaded -= OnSceneLoaded;
-            NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
-
-            if (!Identity.Unregister(m_ServiceName))
-            {
-                NetworkLogger.__Log__(
-                    $"[Unregister Error] Failed to unregister the ServiceLocator. The specified service name '{m_ServiceName}' could not be found. Ensure the ServiceLocator is correctly registered and active before attempting to unregister it.",
-                    NetworkLogger.LogType.Error);
-            }
-
-            OnNetworkDestroy();
+            catch { }
         }
 
         /// <summary>
@@ -1024,10 +1077,7 @@ namespace Omni.Core
         private void InitializeServiceLocator()
         {
             if (!Identity.TryRegister(this, m_ServiceName))
-            {
-                // Update the old reference to the new one.
                 Identity.UpdateService(this, m_ServiceName);
-            }
         }
 
         private void AddRpcHandler()
@@ -1038,9 +1088,7 @@ namespace Omni.Core
 
             var key = (IdentityId, m_Id);
             if (!rpcHandlers.TryAdd(key, this))
-            {
                 rpcHandlers[key] = this;
-            }
         }
 
         /// <summary>
@@ -1054,18 +1102,6 @@ namespace Omni.Core
         protected DataBuffer Rent(bool enableTracking = true)
         {
             return NetworkManager.Pool.Rent(enableTracking);
-        }
-
-        /// <summary>
-        /// Removes and destroys this network component, unregistering it from the network system.
-        /// This action cleans up the network identity and ensures that the component is no longer 
-        /// part of the network system.
-        /// This method does not synchronize the component across the network.
-        /// </summary>
-        public void Destroy()
-        {
-            Unregister();
-            UnityEngine.Object.Destroy(this);
         }
 
         private void TryCallClientRpc(byte msgId, DataBuffer buffer, int seqChannel)

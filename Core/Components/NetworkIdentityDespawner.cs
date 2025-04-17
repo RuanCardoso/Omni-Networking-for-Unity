@@ -53,9 +53,10 @@ namespace Omni.Core.Components
             // NetworkManager.Matchmaking.Server.OnPlayerLeftGroup -= OnPlayerLeftGroup;
         }
 
-        void OnDestroy()
+        protected override void OnDestroy()
         {
             OnNetworkDestroy();
+            base.OnDestroy();
         }
     }
 }

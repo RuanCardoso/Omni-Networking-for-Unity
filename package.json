@@ -7,7 +7,7 @@
   "author": "Ruan Cardoso (https://github.com/RuanCardoso)",
   "homepage": "https://github.com/RuanCardoso/Omni-Networking-for-Unity",
   "dependencies": {
-    "com.unity.localization": "1.0.0",
+    "com.unity.localization": "1.5.4",
     "com.unity.nuget.newtonsoft-json": "3.2.1"
   }
 }

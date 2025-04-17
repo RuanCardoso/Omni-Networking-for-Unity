@@ -91,6 +91,25 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Gets the client's network peer instance that represents the client itself in the network.
+        /// </summary>
+        /// <value>
+        /// The <see cref="NetworkPeer"/> instance that represents the local client in the network.
+        /// </value>
+        /// <remarks>
+        /// This property provides convenient access to the client's peer object, which contains
+        /// information about the client's network identity and connection. Use this property
+        /// when you need to reference the client as a network entity in client-side operations.
+        /// </remarks>
+        protected NetworkPeer Peer
+        {
+            get
+            {
+                return NetworkManager.LocalPeer;
+            }
+        }
+
+        /// <summary>
         /// The `Awake` method is virtual, allowing it to be overridden in derived classes
         /// for additional startup logic. If overridden, it is essential to call the base class's
         /// `Awake` method to ensure proper initialization. Not doing so may result in incomplete
