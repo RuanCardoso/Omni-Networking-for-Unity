@@ -338,7 +338,7 @@ namespace Omni.Core
 
         protected virtual void OnApplicationQuit()
         {
-            Dispose()
+            Dispose();
         }
     }
 }
