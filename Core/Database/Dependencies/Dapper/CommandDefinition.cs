@@ -6,7 +6,7 @@ using System.Threading;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Represents the key aspects of a sql operation

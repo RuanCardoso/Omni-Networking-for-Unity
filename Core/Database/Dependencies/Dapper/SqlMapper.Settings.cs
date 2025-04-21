@@ -2,7 +2,7 @@
 using System.Data;
 using System.Threading;
 
-namespace Dapper
+namespace Omni.Core
 {
     public static partial class SqlMapper
     {

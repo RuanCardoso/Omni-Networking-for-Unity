@@ -1,6 +1,6 @@
 ﻿using System.Data;
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Describes a reader that controls the lifetime of both a command and a reader,

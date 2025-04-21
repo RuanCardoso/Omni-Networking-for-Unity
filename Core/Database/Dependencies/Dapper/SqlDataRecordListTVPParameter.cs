@@ -8,7 +8,7 @@ using System.Reflection.Emit;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Used to pass a IEnumerable&lt;SqlDataRecord&gt; as a SqlDataRecordListTVPParameter

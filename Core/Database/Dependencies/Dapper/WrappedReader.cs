@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     internal sealed class DisposedReader : DbDataReader
     {

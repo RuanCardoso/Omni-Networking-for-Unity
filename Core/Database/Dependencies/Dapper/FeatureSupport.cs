@@ -3,7 +3,7 @@ using System.Data;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Handles variances in features per DBMS

@@ -1,4 +1,4 @@
-﻿namespace Dapper
+﻿namespace Omni.Core
 {
     #pragma warning disable
     

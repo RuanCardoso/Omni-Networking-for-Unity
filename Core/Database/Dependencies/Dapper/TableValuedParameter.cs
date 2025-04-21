@@ -2,7 +2,7 @@
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Used to pass a DataTable as a TableValuedParameter

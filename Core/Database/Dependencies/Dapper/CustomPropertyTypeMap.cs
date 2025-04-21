@@ -3,7 +3,7 @@ using System.Reflection;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Implements custom property mapping by user provided criteria (usually presence of some custom attribute with column to member mapping)

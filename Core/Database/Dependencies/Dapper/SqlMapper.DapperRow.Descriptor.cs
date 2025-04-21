@@ -4,7 +4,7 @@ using System.ComponentModel;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     public static partial class SqlMapper
     {

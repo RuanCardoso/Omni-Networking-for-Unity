@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Data.Common;
 
-namespace Dapper
+namespace Omni.Core
 {
     public static partial class SqlMapper
     {

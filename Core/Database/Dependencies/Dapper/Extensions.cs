@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     internal static class Extensions
     {

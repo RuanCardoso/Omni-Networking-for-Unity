@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Additional state flags that control command behaviour

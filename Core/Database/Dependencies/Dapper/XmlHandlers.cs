@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     internal abstract class XmlTypeHandler<T> : SqlMapper.StringTypeHandler<T>
     {

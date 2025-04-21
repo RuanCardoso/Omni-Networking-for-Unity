@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace Dapper
+namespace Omni.Core
 {
     internal static partial class CompiledRegex
     {

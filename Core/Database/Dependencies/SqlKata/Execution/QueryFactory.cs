@@ -5,7 +5,7 @@ using System.Dynamic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapper;
+using Omni.Core;
 using Humanizer;
 using Omni.Compilers;
 
@@ -285,7 +285,7 @@ namespace Omni.Execution
         public async Task<SqlMapper.GridReader> GetMultipleAsync<T>(
             Query[] queries,
             IDbTransaction transaction = null,
-            int? timeout = null, 
+            int? timeout = null,
             CancellationToken cancellationToken = default)
         {
             var compiled = this.Compiler.Compile(queries);
@@ -324,7 +324,7 @@ namespace Omni.Execution
         public async Task<IEnumerable<IEnumerable<T>>> GetAsync<T>(
             Query[] queries,
             IDbTransaction transaction = null,
-            int? timeout = null, 
+            int? timeout = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -388,7 +388,7 @@ namespace Omni.Execution
             string aggregateOperation,
             string[] columns = null,
             IDbTransaction transaction = null,
-            int? timeout = null, 
+            int? timeout = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -553,7 +553,7 @@ namespace Omni.Execution
             int chunkSize,
             Func<IEnumerable<T>, int, bool> func,
             IDbTransaction transaction = null,
-            int? timeout = null, 
+            int? timeout = null,
             CancellationToken cancellationToken = default
         )
         {
@@ -592,7 +592,7 @@ namespace Omni.Execution
             int chunkSize,
             Action<IEnumerable<T>, int> action,
             IDbTransaction transaction = null,
-            int? timeout = null, 
+            int? timeout = null,
             CancellationToken cancellationToken = default
         )
         {

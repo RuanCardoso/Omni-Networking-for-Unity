@@ -3,7 +3,7 @@ using System.Reflection;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     internal static class TypeExtensions
     {

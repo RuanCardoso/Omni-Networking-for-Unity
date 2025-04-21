@@ -24,7 +24,7 @@ using System.Xml.Linq;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Dapper, a light weight object mapper for ADO.NET

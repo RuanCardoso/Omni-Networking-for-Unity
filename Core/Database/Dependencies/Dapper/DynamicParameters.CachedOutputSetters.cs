@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 
-namespace Dapper
+namespace Omni.Core
 {
     public partial class DynamicParameters
     {

@@ -5,7 +5,7 @@ using System.Reflection;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// Represents default type mapping strategy used by Dapper

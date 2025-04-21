@@ -6,7 +6,7 @@ using System.Text;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     public static partial class SqlMapper
     {

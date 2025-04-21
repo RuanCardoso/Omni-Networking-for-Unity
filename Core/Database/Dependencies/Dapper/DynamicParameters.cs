@@ -8,7 +8,7 @@ using System.Reflection.Emit;
 
 #pragma warning disable
 
-namespace Dapper
+namespace Omni.Core
 {
     /// <summary>
     /// A bag of parameters that can be passed to the Dapper Query and Execute methods

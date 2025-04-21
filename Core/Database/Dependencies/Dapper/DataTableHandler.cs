@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Data;
-namespace Dapper
+namespace Omni.Core
 {
     internal sealed class DataTableHandler : SqlMapper.ITypeHandler
     {
