@@ -108,11 +108,11 @@ namespace Omni.Core
         /// <param name="credentials">The credentials used to connect to the database.</param>
         /// <param name="timeout">The timeout value for database operations (optional, default is 30 seconds).</param>
         /// <param name="useLegacyPagination">Specifies whether to use legacy pagination (optional, default is false).</param>
-        /// <param name="concurrentConnections">The number of concurrent connections to the database (optional, default is 10).</param>
+        /// <param name="concurrentConnections">The number of concurrent connections to the database (optional, default is 3).</param>
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void ConfigureDatabase(ConnectionCredentials credentials, int concurrentConnections = 10, int timeout = 30, bool useLegacyPagination = false)
+        protected void ConfigureDatabase(ConnectionCredentials credentials, int concurrentConnections = 3, int timeout = 30, bool useLegacyPagination = false)
         {
             m_Semaphore ??= new SemaphoreSlim(concurrentConnections);
             TokenSource ??= new CancellationTokenSource();
@@ -132,11 +132,11 @@ namespace Omni.Core
         /// <param name="connectionString">The connection string used to access the database.</param>
         /// <param name="timeout">The timeout value for database operations (optional, default is 30 seconds).</param>
         /// <param name="useLegacyPagination">Specifies whether to use legacy pagination (optional, default is false).</param>
-        /// <param name="concurrentConnections">The number of concurrent connections to the database (optional, default is 10).</param>
+        /// <param name="concurrentConnections">The number of concurrent connections to the database (optional, default is 3).</param>
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void ConfigureDatabase(DatabaseType type, string connectionString, int concurrentConnections = 10, int timeout = 30, bool useLegacyPagination = false)
+        protected void ConfigureDatabase(DatabaseType type, string connectionString, int concurrentConnections = 3, int timeout = 30, bool useLegacyPagination = false)
         {
             m_Semaphore ??= new SemaphoreSlim(concurrentConnections);
             TokenSource ??= new CancellationTokenSource();
