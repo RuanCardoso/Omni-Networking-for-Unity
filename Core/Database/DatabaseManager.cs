@@ -316,20 +316,20 @@ namespace Omni.Core
 
         protected virtual void OnDisable()
         {
-            if (m_Semaphore != null)
-                m_Semaphore.Dispose();
-
             if (TokenSource != null)
                 TokenSource.Dispose();
+
+            if (m_Semaphore != null)
+                m_Semaphore.Dispose();
         }
 
         protected virtual void OnApplicationQuit()
         {
-            if (m_Semaphore != null)
-                m_Semaphore.Dispose();
-
             if (TokenSource != null)
                 TokenSource.Dispose();
+
+            if (m_Semaphore != null)
+                m_Semaphore.Dispose();
         }
     }
 }
