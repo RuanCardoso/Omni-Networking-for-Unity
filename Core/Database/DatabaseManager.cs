@@ -26,18 +26,73 @@ using System.Diagnostics;
 namespace Omni.Core
 {
     /// <summary>
+    /// Represents common local database stack environments used for development.
+    /// These stacks typically include web server, database, and PHP components.
+    /// </summary>
+    public enum DatabaseStack
+    {
+        /// <summary>
+        /// Default database stack option for general use cases.
+        /// </summary>
+        Common,
+        /// <summary>
+        /// Cross-platform Apache, MariaDB/MySQL, PHP and Perl stack.
+        /// </summary>
+        Xampp,
+
+        /// <summary>
+        /// Windows-based Apache, MySQL, and PHP stack.
+        /// </summary>
+        Wamp,
+
+        /// <summary>
+        /// Modern and lightweight development environment for Windows.
+        /// </summary>
+        Laragon,
+
+        /// <summary>
+        /// macOS-based Apache, MySQL, and PHP stack.
+        /// </summary>
+        Mamp
+    }
+
+    /// <summary>
     /// Database Manager is a base class responsible for managing database connections and operations in a Unity environment.
     /// Inherit from this class to implement custom database management functionalities tailored to specific project requirements.
     /// </summary>
     public class DatabaseManager : ServiceBehaviour
     {
-        private DbCredentials Credentials { get; set; }
+        private ConnectionCredentials Credentials { get; set; }
         private int Timeout { get; set; }
         private bool UseLegacyPagination { get; set; }
 
         protected DatabaseManager()
         {
         } // do not remove.
+
+        /// <summary>
+        /// Configures the database connection using a predefined database stack and database name.
+        /// This method simplifies database configuration for common local development environments.
+        /// </summary>
+        /// <param name="stack">The local database stack environment (Xampp, Wamp, Laragon, or Mamp).</param>
+        /// <param name="database">The name of the database to connect to.</param>
+        protected void ConfigureDatabase(string database, DatabaseStack stack = DatabaseStack.Common)
+        {
+            switch (stack)
+            {
+                case DatabaseStack.Common:
+                case DatabaseStack.Xampp:
+                case DatabaseStack.Wamp:
+                case DatabaseStack.Laragon:
+                    ConfigureDatabase(DatabaseType.MySql, $"Server=localhost;Port=3306;Database={database};Uid=root;Pwd=;");
+                    break;
+                case DatabaseStack.Mamp:
+                    ConfigureDatabase(DatabaseType.MySql, $"Server=localhost;Port=8889;Database={database};Uid=root;Pwd=root;");
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported database stack: {stack}. Please use one of the defined DatabaseStack values.");
+            }
+        }
 
         /// <summary>
         /// Sets the database credentials and timeout values.
@@ -51,10 +106,11 @@ namespace Omni.Core
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void SetDatabase(DbCredentials credentials, int timeout = 30, bool useLegacyPagination = false)
+        protected void ConfigureDatabase(ConnectionCredentials credentials, int timeout = 30, bool useLegacyPagination = false)
         {
             Credentials = credentials;
             Timeout = timeout;
+            UseLegacyPagination = useLegacyPagination;
         }
 
         /// <summary>
@@ -63,19 +119,19 @@ namespace Omni.Core
         /// <remarks>
         /// The credentials are automatically stripped from non-server builds(<b>only release mode</b>).
         /// </remarks>
-        /// <param name="dbType">The type of the database.</param>
+        /// <param name="type">The type of the database.</param>
         /// <param name="connectionString">The connection string used to access the database.</param>
         /// <param name="timeout">The timeout value for database operations (optional, default is 30 seconds).</param>
         /// <param name="useLegacyPagination">Specifies whether to use legacy pagination (optional, default is false).</param>
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void SetDatabase(DatabaseType dbType, string connectionString, int timeout = 30,
-            bool useLegacyPagination = false)
+        protected void ConfigureDatabase(DatabaseType type, string connectionString, int timeout = 30, bool useLegacyPagination = false)
         {
-            Credentials = new DbCredentials(dbType, default, default, default, default);
+            Credentials = new ConnectionCredentials(type, default, default, default, default, default);
             Credentials.ConnectionString = connectionString;
             Timeout = timeout;
+            UseLegacyPagination = useLegacyPagination;
         }
 
         /// <summary>
@@ -88,13 +144,12 @@ namespace Omni.Core
             if (Credentials == null)
             {
                 throw new InvalidOperationException(
-                    "Database credentials not configured. You must call SetDatabase() before attempting any database operations."
+                    "Database credentials not configured. You must call ConfigureDatabase() before attempting any database operations."
                 );
             }
 
-            var db = DatabaseConnection.New();
-            return db.InitializeAsync(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination,
-                token);
+            var db = DatabaseConnection.Create();
+            return db.InitializeAsync(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination, token);
         }
 
         /// <summary>
@@ -107,11 +162,11 @@ namespace Omni.Core
             if (Credentials == null)
             {
                 throw new InvalidOperationException(
-                    "Database credentials not configured. You must call SetDatabase() before attempting any database operations."
+                    "Database credentials not configured. You must call ConfigureDatabase() before attempting any database operations."
                 );
             }
 
-            var db = DatabaseConnection.New();
+            var db = DatabaseConnection.Create();
             db.Initialize(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination);
             return db;
         }

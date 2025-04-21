@@ -104,7 +104,7 @@ namespace Omni.Core
         private DatabaseConnection()
         {
             tableName = "No Table Provided!";
-        }
+        } // do not remove.
 
         /// <summary>
         /// Represents a database query builder used to create SQL queries for database operations.
@@ -217,7 +217,7 @@ namespace Omni.Core
         /// <summary>
         /// Initializes the Database Management System with the specified parameters, allowing connection to various types of databases.
         /// </summary>
-        /// <param name="dbType">The specific type of the database (e.g., MySQL, SQL Server, PostgreSQL).</param>
+        /// <param name="type">The specific type of the database (e.g., MySQL, SQL Server, PostgreSQL).</param>
         /// <param name="connectionString">The connection string used to access the specified database.</param>
         /// <param name="timeout">The timeout value (in seconds) for database operations like Insert, Update, etc. Default is 30 seconds.</param>
         /// <param name="useLegacyPagination">Specifies whether to use legacy pagination for query results. Default is false.</param>
@@ -226,10 +226,10 @@ namespace Omni.Core
         /// SQLite: Initialize(DatabaseType.SQLite, "Data Source=omni_server_db.sqlite3")
         /// MariaDb/MySQL: Initialize(DatabaseType.MariaDb, "Server=localhost;Database=omni_server_db;Uid=root;Pwd=******;")
         /// </remarks>
-        public void Initialize(DatabaseType dbType, string connectionString, int timeout = 30,
+        public void Initialize(DatabaseType type, string connectionString, int timeout = 30,
             bool useLegacyPagination = false)
         {
-            switch (dbType)
+            switch (type)
             {
                 case DatabaseType.Firebird:
                     Initialize(new FbConnection(connectionString), new FirebirdCompiler(), timeout);
@@ -274,7 +274,7 @@ namespace Omni.Core
         /// <summary>
         /// Initializes the Database Management System asynchronously with the specified parameters, allowing connection to various types of databases.
         /// </summary>
-        /// <param name="dbType">The specific type of the database (e.g., MySQL, SQL Server, PostgreSQL).</param>
+        /// <param name="type">The specific type of the database (e.g., MySQL, SQL Server, PostgreSQL).</param>
         /// <param name="connectionString">The connection string used to access the specified database.</param>
         /// <param name="timeout">The timeout value (in seconds) for database operations like Insert, Update, etc. Default is 30 seconds.</param>
         /// <param name="useLegacyPagination">Specifies whether to use legacy pagination for query results. Default is false.</param>
@@ -284,10 +284,10 @@ namespace Omni.Core
         /// SQLite: await InitializeAsync("table_name", DatabaseType.SQLite, "Data Source=omni_server_db.sqlite3")
         /// MariaDb/MySQL: await InitializeAsync("table_name", DatabaseType.MariaDb, "Server=localhost;Database=omni_server_db;Uid=root;Pwd=*****;")
         /// </remarks>
-        public Task<DatabaseConnection> InitializeAsync(DatabaseType dbType, string connectionString, int timeout = 30,
+        public Task<DatabaseConnection> InitializeAsync(DatabaseType type, string connectionString, int timeout = 30,
             bool useLegacyPagination = false, CancellationToken token = default)
         {
-            switch (dbType)
+            switch (type)
             {
                 case DatabaseType.Firebird:
                     return InitializeAsync(
@@ -534,7 +534,7 @@ namespace Omni.Core
         /// This method initializes a new instance of the Database class, which can be used to interact with the database.
         /// The connection established by this instance should not be terminated prematurely.
         /// </remarks>
-        public static DatabaseConnection New()
+        public static DatabaseConnection Create()
         {
             return new DatabaseConnection();
         }
