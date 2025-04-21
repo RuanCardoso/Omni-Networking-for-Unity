@@ -12,7 +12,9 @@
     License: Open Source (MIT)
     ===========================================================*/
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Omni.Shared
 {
@@ -21,6 +23,18 @@ namespace Omni.Shared
         private readonly Queue<double> m_queue = new();
         private int windowSize;
         private double sum;
+
+        public double StandardDeviation
+        {
+            get
+            {
+                if (m_queue.Count <= 1)
+                    return 0.0;
+
+                double mean = Average;
+                return Math.Sqrt(m_queue.Sum(x => Math.Pow(x - mean, 2)) / m_queue.Count);
+            }
+        }
 
         public double Average
         {

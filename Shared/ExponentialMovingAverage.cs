@@ -12,6 +12,8 @@
     License: Open Source (MIT)
     ===========================================================*/
 
+using System;
+
 namespace Omni.Shared
 {
     // N-day EMA implementation from Mirror with a few changes (struct etc.)
@@ -19,11 +21,16 @@ namespace Omni.Shared
     // https://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
     public class ExponentialMovingAverage : IMovingAverage
     {
+        private bool initialized;
         private float alpha;
+
         private double avg;
-        private bool isInitialized;
+        private double variance;
+        private double standardDeviation;
 
         public double Average => avg;
+        public double Variance => variance;
+        public double StandardDeviation => standardDeviation;
 
         public ExponentialMovingAverage() { }
 
@@ -36,7 +43,9 @@ namespace Omni.Shared
         {
             // standard N-day EMA alpha calculation
             alpha = 2.0f / (periods + 1f);
-            isInitialized = false;
+            variance = 0;
+            standardDeviation = 0;
+            initialized = false;
             avg = 0;
         }
 
@@ -44,15 +53,17 @@ namespace Omni.Shared
         // https://en.wikipedia.org/wiki/Moving_average#Exponentially_weighted_moving_variance_and_standard_deviation
         public void Add(double value)
         {
-            if (isInitialized)
+            if (initialized)
             {
                 double delta = value - avg;
+                variance = (1 - alpha) * (variance + alpha * delta * delta);
+                standardDeviation = Math.Sqrt(variance);
                 avg += alpha * delta;
             }
             else
             {
                 avg = value;
-                isInitialized = true;
+                initialized = true;
             }
         }
     }
