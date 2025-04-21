@@ -314,22 +314,31 @@ namespace Omni.Core
             return m_Semaphore.Release();
         }
 
+        protected void Dispose()
+        {
+            try
+            {
+                if (TokenSource != null)
+                    TokenSource.Dispose();
+            }
+            catch { }
+
+            try
+            {
+                if (m_Semaphore != null)
+                    m_Semaphore.Dispose();
+            }
+            catch { }
+        }
+
         protected virtual void OnDisable()
         {
-            if (TokenSource != null)
-                TokenSource.Dispose();
-
-            if (m_Semaphore != null)
-                m_Semaphore.Dispose();
+            Dispose();
         }
 
         protected virtual void OnApplicationQuit()
         {
-            if (TokenSource != null)
-                TokenSource.Dispose();
-
-            if (m_Semaphore != null)
-                m_Semaphore.Dispose();
+            Dispose()
         }
     }
 }
