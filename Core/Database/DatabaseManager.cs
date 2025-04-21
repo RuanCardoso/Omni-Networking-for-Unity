@@ -17,6 +17,7 @@ using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
 using Omni.Shared;
+using UnityEngine.Video;
 #if OMNI_RELEASE
 using System.Diagnostics;
 #endif
@@ -62,9 +63,13 @@ namespace Omni.Core
     /// </summary>
     public class DatabaseManager : ServiceBehaviour
     {
-        private ConnectionCredentials Credentials { get; set; }
-        private int Timeout { get; set; }
-        private bool UseLegacyPagination { get; set; }
+        private SemaphoreSlim m_Semaphore;
+        private ConnectionCredentials m_Credentials;
+
+        private int m_Timeout;
+        private bool m_UseLegacyPagination;
+
+        protected CancellationTokenSource TokenSource { get; private set; }
 
         protected DatabaseManager()
         {
@@ -103,14 +108,18 @@ namespace Omni.Core
         /// <param name="credentials">The credentials used to connect to the database.</param>
         /// <param name="timeout">The timeout value for database operations (optional, default is 30 seconds).</param>
         /// <param name="useLegacyPagination">Specifies whether to use legacy pagination (optional, default is false).</param>
+        /// <param name="concurrentConnections">The number of concurrent connections to the database (optional, default is 10).</param>
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void ConfigureDatabase(ConnectionCredentials credentials, int timeout = 30, bool useLegacyPagination = false)
+        protected void ConfigureDatabase(ConnectionCredentials credentials, int concurrentConnections = 10, int timeout = 30, bool useLegacyPagination = false)
         {
-            Credentials = credentials;
-            Timeout = timeout;
-            UseLegacyPagination = useLegacyPagination;
+            m_Semaphore ??= new SemaphoreSlim(concurrentConnections);
+            TokenSource ??= new CancellationTokenSource();
+
+            m_Credentials = credentials;
+            m_Timeout = timeout;
+            m_UseLegacyPagination = useLegacyPagination;
         }
 
         /// <summary>
@@ -123,15 +132,20 @@ namespace Omni.Core
         /// <param name="connectionString">The connection string used to access the database.</param>
         /// <param name="timeout">The timeout value for database operations (optional, default is 30 seconds).</param>
         /// <param name="useLegacyPagination">Specifies whether to use legacy pagination (optional, default is false).</param>
+        /// <param name="concurrentConnections">The number of concurrent connections to the database (optional, default is 10).</param>
 #if OMNI_RELEASE
         [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
 #endif
-        protected void ConfigureDatabase(DatabaseType type, string connectionString, int timeout = 30, bool useLegacyPagination = false)
+        protected void ConfigureDatabase(DatabaseType type, string connectionString, int concurrentConnections = 10, int timeout = 30, bool useLegacyPagination = false)
         {
-            Credentials = new ConnectionCredentials(type, default, default, default, default, default);
-            Credentials.ConnectionString = connectionString;
-            Timeout = timeout;
-            UseLegacyPagination = useLegacyPagination;
+            m_Semaphore ??= new SemaphoreSlim(concurrentConnections);
+            TokenSource ??= new CancellationTokenSource();
+
+            m_Credentials = new ConnectionCredentials(type, default, default, default, default, default);
+            m_Credentials.ConnectionString = connectionString;
+
+            m_Timeout = timeout;
+            m_UseLegacyPagination = useLegacyPagination;
         }
 
         /// <summary>
@@ -141,7 +155,7 @@ namespace Omni.Core
         /// <returns>A task representing the asynchronous operation. The task result contains the initialized database instance.</returns>
         protected Task<DatabaseConnection> GetConnectionAsync(CancellationToken token = default)
         {
-            if (Credentials == null)
+            if (m_Credentials == null)
             {
                 throw new InvalidOperationException(
                     "Database credentials not configured. You must call ConfigureDatabase() before attempting any database operations."
@@ -149,7 +163,7 @@ namespace Omni.Core
             }
 
             var db = DatabaseConnection.Create();
-            return db.InitializeAsync(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination, token);
+            return db.InitializeAsync(m_Credentials.Type, m_Credentials.ConnectionString, m_Timeout, m_UseLegacyPagination, token);
         }
 
         /// <summary>
@@ -159,7 +173,7 @@ namespace Omni.Core
         /// <returns>A task representing the asynchronous operation. The task result contains the initialized database instance.</returns>
         protected DatabaseConnection GetConnection()
         {
-            if (Credentials == null)
+            if (m_Credentials == null)
             {
                 throw new InvalidOperationException(
                     "Database credentials not configured. You must call ConfigureDatabase() before attempting any database operations."
@@ -167,7 +181,7 @@ namespace Omni.Core
             }
 
             var db = DatabaseConnection.Create();
-            db.Initialize(Credentials.Type, Credentials.ConnectionString, Timeout, UseLegacyPagination);
+            db.Initialize(m_Credentials.Type, m_Credentials.ConnectionString, m_Timeout, m_UseLegacyPagination);
             return db;
         }
 
@@ -175,11 +189,11 @@ namespace Omni.Core
         /// Checks the connection to the database.
         /// </summary>
         /// <returns>True if the connection is successful, otherwise false.</returns>
-        protected async Task<bool> CheckConnectionAsync()
+        protected async Task<bool> CheckConnectionAsync(CancellationToken token = default)
         {
             try
             {
-                using var _ = await GetConnectionAsync();
+                using var _ = await GetConnectionAsync(token);
                 return _.State == ConnectionState.Open;
             }
             catch (Exception ex)
@@ -213,6 +227,109 @@ namespace Omni.Core
 
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Blocks the current thread until permission is granted to proceed with a database operation,
+        /// according to the configured concurrency limit.
+        /// </summary>
+        /// <param name="token">
+        /// An optional <see cref="CancellationToken"/> that can be used to cancel the wait operation.
+        /// If canceled before access is granted, an <see cref="OperationCanceledException"/> is thrown.
+        /// </param>
+        /// <remarks>
+        /// This method uses an internal <see cref="SemaphoreSlim"/> to enforce a maximum number of concurrent
+        /// database operations. When the limit is reached, additional callers will block until another operation
+        /// completes and releases its slot.
+        ///
+        /// Use this method only in synchronous execution contexts. For asynchronous workflows, prefer
+        /// <see cref="WaitIfBusyAsync"/>.
+        ///
+        /// Proper use of this method helps to:
+        /// - Prevent excessive simultaneous connections to the database
+        /// - Avoid exhausting the connection pool
+        /// - Maintain stability under high load scenarios
+        ///
+        /// Each call to this method **must** be followed by a corresponding call to <see cref="MarkDone"/> to
+        /// release the slot for other operations. Failure to release may result in blocked threads or connection starvation.
+        /// </remarks>
+        protected void WaitIfBusy(CancellationToken token = default)
+        {
+            m_Semaphore.Wait(token);
+        }
+
+        /// <summary>
+        /// Asynchronously waits for permission to proceed with a database operation,
+        /// according to the configured concurrency limit.
+        /// </summary>
+        /// <param name="token">
+        /// An optional <see cref="CancellationToken"/> that can be used to cancel the wait operation.
+        /// If canceled before access is granted, the returned <see cref="Task"/> will be canceled.
+        /// </param>
+        /// <returns>
+        /// A <see cref="Task"/> that completes when the calling operation is allowed to proceed.
+        /// </returns>
+        /// <remarks>
+        /// This method should be used in asynchronous code to throttle access to database resources.
+        ///
+        /// It ensures that only a defined number of operations can access the database concurrently,
+        /// helping to avoid overloading the connection pool and reducing the risk of "too many connections"
+        /// or "max pool size reached" errors.
+        ///
+        /// Each call to this method **must** be followed by a corresponding call to <see cref="MarkDone"/>
+        /// to release the slot and allow other queued operations to proceed.
+        /// </remarks>
+        protected Task WaitIfBusyAsync(CancellationToken token = default)
+        {
+            try
+            {
+                return m_Semaphore.WaitAsync(token);
+            }
+            catch
+            {
+                return Task.FromResult(false);
+            }
+        }
+
+        /// <summary>
+        /// Signals that the current database operation has completed and releases the semaphore,
+        /// allowing another queued operation to proceed.
+        /// </summary>
+        /// <returns>
+        /// The number of remaining entries that can be released to the semaphore without blocking.
+        /// </returns>
+        /// <remarks>
+        /// This method should be called **once** after each successful call to <see cref="WaitIfBusy"/>
+        /// or <see cref="WaitIfBusyAsync"/>. It releases the concurrency slot, enabling the next operation
+        /// in the queue to proceed.
+        ///
+        /// Failing to call this method may lead to resource starvation, deadlocks, or database connection
+        /// pool exhaustion.
+        ///
+        /// It is recommended to call this method in a <c>finally</c> block to ensure proper release
+        /// even in the event of exceptions.
+        /// </remarks>
+        protected int MarkDone()
+        {
+            return m_Semaphore.Release();
+        }
+
+        protected virtual void OnDisable()
+        {
+            if (m_Semaphore != null)
+                m_Semaphore.Dispose();
+
+            if (TokenSource != null)
+                TokenSource.Dispose();
+        }
+
+        protected virtual void OnApplicationQuit()
+        {
+            if (m_Semaphore != null)
+                m_Semaphore.Dispose();
+
+            if (TokenSource != null)
+                TokenSource.Dispose();
         }
     }
 }
