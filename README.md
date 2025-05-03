@@ -1,6 +1,6 @@
 OmniNet - Networking at the Subatomic Level in Unity.
 
-<img src="icon.png" alt="omniman" width="400" height="400">
+<img src="icon.png" alt="omniman" width="200" height="200">
 
 ---
 
