@@ -3,7 +3,7 @@
 <table>
   <tr>
     <td width="200">
-      <img src="icon.png" alt="OmniNet Logo" width="200" height="200" />
+      <img src="icon.png" alt="OmniNet Logo" width="200" />
     </td>
     <td>
       <h3>OmniNet - A Unity Framework for Multiplayer Game Development</h3>
