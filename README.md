@@ -1,19 +1,23 @@
-OmniNet - Networking at the Subatomic Level in Unity.
+# OmniNet - Networking at the Subatomic Level in Unity
 
-<img src="omniman.png" alt="omniman" width="400" height="400">
-
----
-
-# OmniNet - A Unity Framework for Multiplayer Game Development
-
-OmniNet is a Unity framework created with a strong focus on achieving high-performance in the development of multiplayer games.
-
-**Requirements**: OmniNet requires Unity version 2021.3 or later. This dependency arises from Unity's integration of .NET Standard 2.1, which enhances Network Socket capabilities and introduces valuable features such as Span, Memory, ArrayPool, and more. I decided to leverage these new features to create a high-performance networking framework.
-
-# Documentation
-
-https://ruancardoso.github.io/Omni-Networking-Doc/
-
----
-
-Developed by Ruan Cardoso and Antonio Junior
+<table>
+  <tr>
+    <td width="200">
+      <img src="icon.png" alt="OmniNet Logo" width="200" />
+    </td>
+    <td>
+      <h3>OmniNet – High-Performance Multiplayer Framework for Unity</h3>
+      <p>
+        <strong>OmniNet</strong> is a Unity networking framework designed for performance-critical multiplayer game development. Built to handle real-time communication efficiently, it leverages low-level memory optimizations and modern .NET features to ensure minimal overhead and maximum scalability.
+      </p>
+      <p>
+        <strong>Requirements:</strong> Unity 2021.3 or newer. This version introduced support for .NET Standard 2.1, enabling advanced features such as <code>Span</code>, <code>Memory</code>, and <code>ArrayPool</code>, which are extensively used in OmniNet for optimal performance.
+      </p>
+      <p>
+        <strong>Documentation:</strong>  
+        <a href="https://ruancardoso.github.io/Omni-Networking-Doc/">https://ruancardoso.github.io/Omni-Networking-Doc/</a>
+      </p>
+      <p><em>Developed by Ruan Cardoso and Antonio Junior</em></p>
+    </td>
+  </tr>
+</table>
