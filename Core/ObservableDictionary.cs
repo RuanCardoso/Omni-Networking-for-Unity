@@ -5,7 +5,9 @@ using MemoryPack;
 using Omni.Inspector;
 using UnityEngine;
 using System.Linq;
-using Debug = UnityEngine.Debug;
+using Omni.Shared;
+
+#pragma warning disable
 
 namespace Omni.Collections
 {
@@ -39,16 +41,24 @@ namespace Omni.Collections
         public ObservableDictionary()
         {
 #if OMNI_DEBUG
-            if (!typeof(TValue).IsSerializable)
+            var tKey = typeof(TKey);
+            var tValue = typeof(TValue);
+            if (tKey.Namespace?.StartsWith("UnityEngine") == true || tValue.Namespace?.StartsWith("UnityEngine") == true)
             {
-                throw new InvalidOperationException(
-                    $"The value type '{typeof(TValue).FullName}' must be serializable.");
+                if (tKey.IsValueType || tValue.IsValueType)
+                    return;
             }
 
-            if (!typeof(TKey).IsSerializable)
+            if (!tValue.IsSerializable)
             {
                 throw new InvalidOperationException(
-                    $"The key type '{typeof(TKey).FullName}' must be serializable.");
+                    $"The value type '{tValue.FullName}' must be serializable.");
+            }
+
+            if (!tKey.IsSerializable)
+            {
+                throw new InvalidOperationException(
+                    $"The key type '{tKey.FullName}' must be serializable.");
             }
 #endif
             _internalReference = this;
@@ -67,7 +77,6 @@ namespace Omni.Collections
 
             OnItemUpdated = (key, value) =>
             {
-                // Add the key if it doesn't already exist
                 if (!_keys.Contains(key))
                 {
                     if (_internalReference.ContainsKey(key))
@@ -197,23 +206,14 @@ namespace Omni.Collections
 
         public void OnAfterDeserialize()
         {
-            // Clear the dictionary to ensure no leftover data
             _internalReference.Clear();
-
-            // Ensure the key and value lists have the same length
             if (_keys.Count != _values.Count)
-            {
-                Debug.LogError("Deserialization error: keys and values list lengths do not match.");
                 return;
-            }
 
-            // Populate the dictionary with the deserialized data
             for (int i = 0; i < _keys.Count; i++)
             {
                 if (!_internalReference.TryAdd(_keys[i], _values[i]))
-                {
-                    Debug.LogError($"Duplicate key detected during deserialization: {_keys[i]}");
-                }
+                    NetworkLogger.Print($"Deserialization error: Duplicate key '{_keys[i]}' found in ObservableDictionary<{typeof(TKey).Name}, {typeof(TValue).Name}>.", NetworkLogger.LogType.Warning);
             }
         }
     }
