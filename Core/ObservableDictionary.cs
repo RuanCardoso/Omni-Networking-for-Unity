@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using MemoryPack;
-using Omni.Inspector;
-using UnityEngine;
 using System.Linq;
+using MemoryPack;
+using Newtonsoft.Json;
+using Omni.Inspector;
 using Omni.Shared;
+using UnityEngine;
 
 #pragma warning disable
 
@@ -24,11 +25,13 @@ namespace Omni.Collections
         [ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
         [SerializeField, Group("Key/Value"), DisableInPlayMode]
         [MemoryPackIgnore]
+        [JsonIgnore]
         private List<TKey> _keys = new List<TKey>();
 
         [ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
         [SerializeField, Group("Key/Value"), OnValueChanged(nameof(OnCollectionChanged))]
         [MemoryPackIgnore]
+        [JsonIgnore]
         private List<TValue> _values = new List<TValue>();
 
         private readonly Dictionary<TKey, TValue> _internalReference = new Dictionary<TKey, TValue>();
@@ -43,22 +46,26 @@ namespace Omni.Collections
 #if OMNI_DEBUG
             var tKey = typeof(TKey);
             var tValue = typeof(TValue);
+            bool ignoreCheck = false;
             if (tKey.Namespace?.StartsWith("UnityEngine") == true || tValue.Namespace?.StartsWith("UnityEngine") == true)
             {
                 if (tKey.IsValueType || tValue.IsValueType)
-                    return;
+                    ignoreCheck = true;
             }
 
-            if (!tValue.IsSerializable)
+            if (!ignoreCheck)
             {
-                throw new InvalidOperationException(
-                    $"The value type '{tValue.FullName}' must be serializable.");
-            }
+                if (!tValue.IsSerializable)
+                {
+                    throw new InvalidOperationException(
+                        $"Type '{tValue.FullName}' must implement the Serializable attribute and have public fields to be used as a value in ObservableDictionary.");
+                }
 
-            if (!tKey.IsSerializable)
-            {
-                throw new InvalidOperationException(
-                    $"The key type '{tKey.FullName}' must be serializable.");
+                if (!tKey.IsSerializable)
+                {
+                    throw new InvalidOperationException(
+                        $"Type '{tValue.FullName}' must implement the Serializable attribute and have public fields to be used as a value in ObservableDictionary.");
+                }
             }
 #endif
             _internalReference = this;
