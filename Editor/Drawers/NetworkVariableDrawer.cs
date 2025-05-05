@@ -14,42 +14,57 @@
 
 #if UNITY_EDITOR
 using Omni.Core;
-using UnityEditor;
+using Omni.Editor;
+using Omni.Inspector;
 using UnityEngine;
+
+[assembly: RegisterTriAttributeDrawer(typeof(NetworkVariableDrawer), TriDrawerOrder.Decorator)]
 
 namespace Omni.Editor
 {
-    [CustomPropertyDrawer(typeof(NetworkVariableAttribute), true)]
-    public class NetworkVariableDrawer : PropertyDrawer
+    public class HideNetworkVariableDrawerElement : TriElement
     {
-        private Texture2D quadTexture;
-
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        public override float GetHeight(float width)
         {
-            if (attribute is NetworkVariableAttribute attr)
-            {
-                if (attr.HideInInspector)
-                {
-                    return 0f;
-                }
-            }
-
-            return EditorGUI.GetPropertyHeight(property, label, true);
+            return 0f; // hide
         }
 
-        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        public override void OnGUI(Rect position)
         {
-            if (attribute is NetworkVariableAttribute attr)
+            // hide
+        }
+    }
+
+    public class NetworkVariableDrawer : TriAttributeDrawer<NetworkVariableAttribute>
+    {
+        private Texture2D quadTexture;
+        public override void OnGUI(Rect position, TriProperty property, TriElement next)
+        {
+            var propertyContent = property.DisplayNameContent;
+            string _propertyContent_text = propertyContent.text;
+
+            if (IsField(property) && !Attribute.HideInInspector)
             {
-                if (attr.HideInInspector)
-                {
-                    return;
-                }
+                propertyContent.text = $" {_propertyContent_text}";
+                propertyContent.image = GetTexture(Color.red);
             }
 
-            label.text = $" {property.displayName}";
-            label.image = GetTexture(Color.red);
-            EditorGUI.PropertyField(position, property, label, true);
+            base.OnGUI(position, property, next);
+            propertyContent.text = _propertyContent_text;
+            propertyContent.image = null;
+        }
+
+        public override TriElement CreateElement(TriProperty property, TriElement next)
+        {
+            if (IsField(property) && Attribute.HideInInspector)
+                return new HideNetworkVariableDrawerElement();
+
+            return base.CreateElement(property, next);
+        }
+
+        private bool IsField(TriProperty property)
+        {
+            return property.TryGetAttribute<SerializeField>(out var _);
         }
 
         private Texture2D GetTexture(Color color)
