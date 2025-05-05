@@ -19,21 +19,23 @@ namespace Omni.Collections
     /// <typeparam name="TValue">The type of the values in the dictionary.</typeparam>
     [MemoryPackable(GenerateType.Collection)]
     [Serializable, DeclareHorizontalGroup("Key/Value")]
+    [Nested]
     public partial class ObservableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
         where TKey : notnull
     {
         [ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
-        [SerializeField, Group("Key/Value"), DisableInPlayMode]
+        [Group("Key/Value"), DisableInPlayMode, SerializeField]
         [MemoryPackIgnore]
         [JsonIgnore]
         private List<TKey> _keys = new List<TKey>();
 
         [ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
-        [SerializeField, Group("Key/Value"), OnValueChanged(nameof(OnCollectionChanged))]
+        [Group("Key/Value"), OnValueChanged(nameof(OnCollectionChanged)), SerializeField]
         [MemoryPackIgnore]
         [JsonIgnore]
         private List<TValue> _values = new List<TValue>();
 
+        [JsonProperty("KvP")]
         private readonly Dictionary<TKey, TValue> _internalReference = new Dictionary<TKey, TValue>();
 
         public event Action<TKey, TValue> OnItemAdded;
@@ -164,8 +166,19 @@ namespace Omni.Collections
         [DisableInPlayMode]
         private void AddKeyValuePair()
         {
-            _keys.Add(default);
-            _values.Add(default);
+            try
+            {
+                int index = _keys.Count;
+                TKey key = (TKey)Convert.ChangeType(index, typeof(TKey));
+
+                _keys.Add(key);
+                _values.Add(default);
+            }
+            catch
+            {
+                _keys.Add(default);
+                _values.Add(default);
+            }
         }
 
         [Button("Remove Last Key")]
