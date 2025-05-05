@@ -1,8 +1,10 @@
 {
-    "name": "TriInspector.Editor.Samples",
+    "name": "Omni.Inspector.Editor.Extras",
+    "rootNamespace": "",
     "references": [
-        "TriInspector",
-        "TriInspector.Editor"
+        "Unity.InternalAPIEditorBridge.013",
+        "Omni.Inspector",
+        "Omni.Inspector.Editor"
     ],
     "includePlatforms": [
         "Editor"

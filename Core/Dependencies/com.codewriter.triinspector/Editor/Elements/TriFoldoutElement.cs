@@ -25,7 +25,10 @@ namespace Omni.Inspector.Elements
             }
             else
             {
-                dirty |= ClearChildren();
+                if (_property.TryGetAttribute<NestedAttribute>(out _) == false)
+                {
+                    dirty |= ClearChildren();
+                }
             }
 
             dirty |= base.Update();

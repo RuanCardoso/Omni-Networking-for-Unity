@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("TriInspector.Editor.Extras")]
-[assembly: InternalsVisibleTo("TriInspector.Editor.Samples")]
-[assembly: InternalsVisibleTo("TriInspector.Editor.Integrations.Odin")]
+[assembly: InternalsVisibleTo("Omni.Inspector.Editor.Extras")]
+[assembly: InternalsVisibleTo("Omni.Inspector.Editor.Samples")]
+[assembly: InternalsVisibleTo("Omni.Inspector.Editor.Integrations.Odin")]

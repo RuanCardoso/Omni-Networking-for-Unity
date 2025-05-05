@@ -1,9 +1,9 @@
 {
-    "name": "TriInspector.Editor.Integrations.Odin",
+    "name": "Omni.Inspector.Editor.Integrations.Odin",
     "rootNamespace": "",
     "references": [
-        "TriInspector",
-        "TriInspector.Editor"
+        "Omni.Inspector",
+        "Omni.Inspector.Editor"
     ],
     "includePlatforms": [
         "Editor"
