@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+#if UNITY_EDITOR_DISABLED
 using System.Collections.Generic;
 using System.Linq;
 using Omni.Core;
