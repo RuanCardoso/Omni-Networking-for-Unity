@@ -520,6 +520,8 @@ namespace Omni.Core
 
         public static void EditorSaveObject(GameObject target)
         {
+            if (target == null)
+                return;
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(target);
 #endif
