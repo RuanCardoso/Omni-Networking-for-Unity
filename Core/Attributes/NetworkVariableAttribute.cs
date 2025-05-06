@@ -6,6 +6,36 @@ using UnityEngine;
 namespace Omni.Core
 {
     /// <summary>
+    /// Specifies which parts of a network-synchronized variable should be hidden in the Unity Inspector.
+    /// Supports bitwise combinations for flexible control.
+    /// </summary>
+    /// <remarks>
+    /// Use this enum in the <see cref="NetworkVariableAttribute"/> to control visibility of backing fields,
+    /// properties, or both in the Unity Inspector. This is useful for debugging or when you want to hide
+    /// implementation details from the Unity Editor interface.
+    /// </remarks>
+    [Flags]
+    public enum HideMode
+    {
+        /// <summary>
+        /// No parts are hidden; both the backing field and property are visible in the Inspector.
+        /// </summary>
+        None = 0,
+        /// <summary>
+        /// Hides the backing field from the Unity Inspector.
+        /// </summary>
+        BackingField = 1,
+        /// <summary>
+        /// Hides the property from the Unity Inspector.
+        /// </summary>
+        Property = 2,
+        /// <summary>
+        /// Hides both the backing field and the property from the Unity Inspector.
+        /// </summary>
+        Both = 4
+    }
+
+    /// <summary>
     /// An attribute used to mark a property or field for automatic network synchronization.
     /// This attribute supports features such as ownership control, equality checks, and 
     /// optional manual identifier assignment.
@@ -49,9 +79,9 @@ namespace Omni.Core
         /// Gets or sets a value indicating whether the field should be hidden in the Unity Inspector.
         /// </summary>
         /// <value>
-        /// Default is <c>true</c>, meaning the field will not be visible in the Unity Inspector.
+        /// Default is <c>HideMode.BackingField</c>, meaning the field will not be visible in the Unity Inspector.
         /// </value>
-        public bool HideInInspector { get; set; } = true;
+        public HideMode HideMode { get; set; } = HideMode.BackingField;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NetworkVariableAttribute"/> class 

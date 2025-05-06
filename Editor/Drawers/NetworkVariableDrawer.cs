@@ -18,12 +18,14 @@ using Omni.Editor;
 using Omni.Inspector;
 using UnityEngine;
 
-[assembly: RegisterTriAttributeDrawer(typeof(NetworkVariableDrawer), TriDrawerOrder.Decorator)]
+[assembly: RegisterTriAttributeDrawer(typeof(NetworkVariableDrawer), TriDrawerOrder.Drawer)]
 
 namespace Omni.Editor
 {
     public class HideNetworkVariableDrawerElement : TriElement
     {
+        public HideNetworkVariableDrawerElement() { }
+
         public override float GetHeight(float width)
         {
             return 0f; // hide
@@ -43,7 +45,7 @@ namespace Omni.Editor
             var propertyContent = property.DisplayNameContent;
             string _propertyContent_text = propertyContent.text;
 
-            if (IsField(property) && !Attribute.HideInInspector)
+            if (IsField(property) && !Attribute.HideMode.HasFlag(HideMode.BackingField))
             {
                 propertyContent.text = $" {_propertyContent_text}";
                 propertyContent.image = GetTexture(Color.red);
@@ -56,7 +58,20 @@ namespace Omni.Editor
 
         public override TriElement CreateElement(TriProperty property, TriElement next)
         {
-            if (IsField(property) && Attribute.HideInInspector)
+            var isField = IsField(property);
+            var isProperty = !isField;
+
+            HideMode mode = Attribute.HideMode;
+            if (mode == HideMode.None)
+                return base.CreateElement(property, next);
+
+            if (mode == HideMode.Both)
+                return new HideNetworkVariableDrawerElement();
+
+            if (isField && mode.HasFlag(HideMode.BackingField))
+                return new HideNetworkVariableDrawerElement();
+
+            if (isProperty && mode.HasFlag(HideMode.Property))
                 return new HideNetworkVariableDrawerElement();
 
             return base.CreateElement(property, next);
