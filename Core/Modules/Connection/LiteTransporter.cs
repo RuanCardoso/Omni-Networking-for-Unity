@@ -24,6 +24,14 @@ namespace Omni.Core.Modules.Connection
     [DeclareBoxGroup("Lag Simulator [Debug only!]")]
     internal class LiteTransporter : TransporterBehaviour, ITransporter
     {
+        internal enum NetworkSimulationMode
+        {
+            None,
+            ClientOnly,
+            ServerOnly,
+            Both
+        }
+
         public class LiteSecurityLayer : PacketLayerBase
         {
             private const int ChecksumSize = 32; // 32 bytes for SHA256 hash
@@ -137,21 +145,21 @@ namespace Omni.Core.Modules.Connection
 
         [GroupNext("Lag Simulator [Debug only!]")]
         [SerializeField]
-        [LabelWidth(140)]
-        private bool m_SimulateLag = false;
+        [LabelWidth(150)]
+        private NetworkSimulationMode m_NetworkSimulationMode = NetworkSimulationMode.None;
 
         [SerializeField]
-        [EnableIf("m_SimulateLag")]
+        [DisableIf("m_NetworkSimulationMode", NetworkSimulationMode.None)]
         [Min(0)]
         private int m_MinLatency = 60;
 
         [SerializeField]
-        [EnableIf("m_SimulateLag")]
+        [DisableIf("m_NetworkSimulationMode", NetworkSimulationMode.None)]
         [Min(0)]
         private int m_MaxLatency = 60;
 
         [SerializeField]
-        [EnableIf("m_SimulateLag")]
+        [DisableIf("m_NetworkSimulationMode", NetworkSimulationMode.None)]
         [Range(0, 100)]
         private int m_LossPercent = 0;
 
@@ -201,7 +209,7 @@ namespace Omni.Core.Modules.Connection
         public void Initialize(ITransporterReceive transporter, bool isServer)
         {
 #if !OMNI_DEBUG // Lag Simulator [Debug only!] - Disabled in Release(Production)
-            m_SimulateLag = false;
+            m_NetworkSimulationMode = NetworkSimulationMode.None;
 #endif
             this.isServer = isServer;
             this.transporter = transporter;
@@ -210,6 +218,10 @@ namespace Omni.Core.Modules.Connection
             {
                 throw new InvalidOperationException("[LiteTransporter] Cannot initialize: Instance is already running. Call Stop() before reinitializing.");
             }
+
+            bool simulateLag = isServer
+                ? m_NetworkSimulationMode == NetworkSimulationMode.ServerOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both
+                : m_NetworkSimulationMode == NetworkSimulationMode.ClientOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both;
 
             _listener = new EventBasedNetListener();
             _manager = new NetManager(_listener, new LiteSecurityLayer())
@@ -224,8 +236,8 @@ namespace Omni.Core.Modules.Connection
                     m_useNativeSockets, // Experimental feature! mostly for servers. Only for Windows/Linux
                 UseSafeMtu = m_useSafeMtu,
                 ChannelsCount = m_ChannelsCount,
-                SimulateLatency = m_SimulateLag,
-                SimulatePacketLoss = m_SimulateLag,
+                SimulateLatency = simulateLag,
+                SimulatePacketLoss = simulateLag,
                 SimulationMinLatency = m_MinLatency,
                 SimulationMaxLatency = m_MaxLatency,
                 SimulationPacketLossChance = m_LossPercent,
@@ -526,7 +538,7 @@ namespace Omni.Core.Modules.Connection
                 liteTransporter.m_UsePortForwarding = m_UsePortForwarding;
 
                 // Lag properties
-                liteTransporter.m_SimulateLag = m_SimulateLag;
+                liteTransporter.m_NetworkSimulationMode = m_NetworkSimulationMode;
                 liteTransporter.m_MinLatency = m_MinLatency;
                 liteTransporter.m_MaxLatency = m_MaxLatency;
                 liteTransporter.m_LossPercent = m_LossPercent;
@@ -541,9 +553,13 @@ namespace Omni.Core.Modules.Connection
             {
                 if (liteTransporter.isRunning)
                 {
+                    bool simulateLag = liteTransporter.isServer
+                        ? m_NetworkSimulationMode == NetworkSimulationMode.ServerOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both
+                        : m_NetworkSimulationMode == NetworkSimulationMode.ClientOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both;
+
                     liteTransporter._manager.PingInterval = m_pingInterval;
-                    liteTransporter._manager.SimulateLatency = m_SimulateLag;
-                    liteTransporter._manager.SimulatePacketLoss = m_SimulateLag;
+                    liteTransporter._manager.SimulateLatency = simulateLag;
+                    liteTransporter._manager.SimulatePacketLoss = simulateLag;
                     liteTransporter._manager.SimulationMinLatency = m_MinLatency;
                     liteTransporter._manager.SimulationMaxLatency = m_MaxLatency;
                     liteTransporter._manager.SimulationPacketLossChance = m_LossPercent;
