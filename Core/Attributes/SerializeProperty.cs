@@ -6,12 +6,12 @@ namespace Omni.Core
 {
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     [Conditional("UNITY_EDITOR")]
-    public sealed class SerializeProperty : ShowInInspectorAttribute
+    public sealed class SerializePropertyAttribute : ShowInInspectorAttribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public sealed class HidePicker : HideReferencePickerAttribute
+    public sealed class HidePickerAttribute : HideReferencePickerAttribute
     {
     }
 }
