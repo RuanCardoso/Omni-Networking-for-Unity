@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using MemoryPack;
+using Newtonsoft.Json;
 using Omni.Inspector;
 using UnityEngine;
+
+#pragma warning disable
 
 namespace Omni.Collections
 {
@@ -14,7 +17,10 @@ namespace Omni.Collections
     [Serializable]
     public partial class ObservableList<T> : List<T>
     {
-        [ListDrawerSettings(AlwaysExpanded = true)] [SerializeField] [LabelText("Items")]
+        [ListDrawerSettings(AlwaysExpanded = true)]
+        [SerializeField]
+        [LabelText("Items")]
+        [JsonProperty("items"), MemoryPackInclude]
         private List<T> _internalReference = new List<T>();
 
         public event Action<int, T> OnItemAdded;

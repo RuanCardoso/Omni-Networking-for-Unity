@@ -35,7 +35,7 @@ namespace Omni.Collections
         [JsonIgnore]
         private List<TValue> _values = new List<TValue>();
 
-        [JsonProperty("KvP")]
+        [JsonProperty("KvP"), MemoryPackInclude]
         private readonly Dictionary<TKey, TValue> _internalReference = new Dictionary<TKey, TValue>();
 
         public event Action<TKey, TValue> OnItemAdded;
