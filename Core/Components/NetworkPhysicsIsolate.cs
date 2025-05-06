@@ -13,7 +13,7 @@ using static Omni.Core.NetworkManager;
 namespace Omni.Core.Components
 {
     [DeclareBoxGroup("Service Settings")]
-    public class NetworkPhysicsIsolate : MonoBehaviour
+    public class NetworkPhysicsIsolate : OmniBehaviour
     {
         private static NetworkPhysicsIsolate m_Instance;
 

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Omni.Core
 {
-    public class TransporterBehaviour : MonoBehaviour
+    public class TransporterBehaviour : OmniBehaviour
     {
         private ITransporter _ITransporter;
 

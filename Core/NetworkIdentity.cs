@@ -13,7 +13,7 @@ using System.Runtime.CompilerServices;
 namespace Omni.Core
 {
     [DeclareBoxGroup("Debug")]
-    public sealed class NetworkIdentity : MonoBehaviour, IEquatable<NetworkIdentity>
+    public sealed class NetworkIdentity : OmniBehaviour, IEquatable<NetworkIdentity>
     {
         internal string _prefabName;
         internal Action<NetworkPeer> OnSpawn;
@@ -43,7 +43,7 @@ namespace Omni.Core
         private bool isOwnedByTheServer;
 
         [SerializeField]
-        [LabelWidth(150)]
+        [LabelWidth(154)]
         private bool m_DontDestroyOnLoad;
 
         /// <summary>

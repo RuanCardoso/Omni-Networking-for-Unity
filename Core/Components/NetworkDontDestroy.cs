@@ -7,7 +7,7 @@ namespace Omni.Core.Components
 {
     [DefaultExecutionOrder(-15000)]
     [DisallowMultipleComponent]
-    public sealed class NetworkDontDestroy : MonoBehaviour
+    public sealed class NetworkDontDestroy : OmniBehaviour
     {
         [SerializeField, ReadOnly] private string m_Guid;
 

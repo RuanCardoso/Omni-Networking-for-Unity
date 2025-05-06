@@ -20,7 +20,7 @@ namespace Omni.Core.Web
     /// of both WebSocket and HTTP transporters, ensuring efficient and reliable communication.
     /// </summary>
     [DisallowMultipleComponent]
-    public class WebCommunicationManager : MonoBehaviour, ITransporterReceive
+    public class WebCommunicationManager : OmniBehaviour, ITransporterReceive
     {
         public class SocketConfiguration
         {

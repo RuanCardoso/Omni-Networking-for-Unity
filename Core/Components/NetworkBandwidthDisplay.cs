@@ -5,7 +5,7 @@ using UnityEngine;
 [DisallowMultipleComponent]
 [DeclareBoxGroup("GUI Settings")]
 #pragma warning disable
-public sealed class NetworkBandwidthDisplay : MonoBehaviour
+public sealed class NetworkBandwidthDisplay : OmniBehaviour
 {
     #region GUI
     private const float k_Padding = 10f;

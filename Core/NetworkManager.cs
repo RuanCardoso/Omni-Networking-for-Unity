@@ -34,7 +34,7 @@ namespace Omni.Core
     [DefaultExecutionOrder(-1000)]
     [DisallowMultipleComponent]
     [JsonObject(MemberSerialization.OptIn)]
-    public partial class NetworkManager : MonoBehaviour, ITransporterReceive
+    public partial class NetworkManager : OmniBehaviour, ITransporterReceive
     {
         // The production key is a critical security component that must be identical between clients and server
         // for successful network communication. This key serves multiple security purposes:

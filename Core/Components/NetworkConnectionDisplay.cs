@@ -12,7 +12,7 @@ namespace Omni.Core
 {
     [DisallowMultipleComponent]
     [DeclareBoxGroup("GUI Settings")]
-    public sealed class NetworkConnectionDisplay : MonoBehaviour
+    public sealed class NetworkConnectionDisplay : OmniBehaviour
     {
         private string host = "127.0.0.1";
         private string port = "7777";

@@ -12,7 +12,7 @@ namespace Omni.Core
     [DefaultExecutionOrder(-10500)]
     [DeclareFoldoutGroup("Service Settings")]
     [StackTrace]
-    public class ServiceBehaviour : MonoBehaviour, IServiceBehaviour
+    public class ServiceBehaviour : OmniBehaviour, IServiceBehaviour
     {
         [GroupNext("Service Settings")]
         [SerializeField]

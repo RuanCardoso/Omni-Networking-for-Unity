@@ -5,7 +5,7 @@ namespace Omni.Core.Modules.Ntp
 {
     [DeclareBoxGroup("Samples")]
     [DeclareBoxGroup("Others")]
-    public class NetworkClock : MonoBehaviour
+    public class NetworkClock : OmniBehaviour
     {
         internal const int DEFAULT_TIME_WINDOW = 60;
         internal const int DEFAULT_RTT_WINDOW = 25;

@@ -62,7 +62,7 @@ namespace Omni.Core
         }
     }
 
-    public class NetworkVariablesBehaviour : MonoBehaviour
+    public class NetworkVariablesBehaviour : OmniBehaviour
     {
         private readonly Dictionary<string, IPropertyInfo> m_RuntimeProperties = new();
         internal readonly Dictionary<byte, NetworkVariableField> m_NetworkVariables = new();
