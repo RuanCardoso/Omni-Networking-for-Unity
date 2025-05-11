@@ -67,3 +67,70 @@
 
 - No errors in the Console
 - "Omni Networking" appears in Unity’s top menu
+
+## ⚙️ Setup
+
+Omni provides automatic setup to streamline your development process.
+
+### 🔧 Build Defines
+
+After installation, the following preprocessor defines are auto-configured:
+
+- `OMNI_DEBUG`: Enables debug logs and runtime checks (default in Editor)
+- `OMNI_RELEASE`: Disables logging for production builds
+- `OMNI_SERVER`: Removes client-only logic for dedicated server builds
+
+Use conditional compilation to separate client/server logic:
+
+```csharp
+#if OMNI_DEBUG
+    Debug.Log("Debug mode");
+#endif
+
+#if OMNI_SERVER
+    Debug.Log("Server running");
+#endif
+```
+
+You can also use `[Conditional]` attributes for optional debug/server methods.
+
+---
+
+### 🧱 Network Manager
+
+1. Go to Unity menu: `Omni Networking > Setup`
+2. A `Network Manager` GameObject will be created in the scene
+
+> ⚠️ Do not rename or destroy the `Network Manager` during runtime
+
+---
+
+### 🚚 Transporters
+
+Omni supports three transporters:
+
+- **Lite Transporter** (default): full feature support, including sequenced and reliable modes
+- **KCP Transporter**: low-latency, reliable-only UDP (experimental)
+- **WebSocket Transporter**: browser-compatible, limited reliability (experimental)
+
+#### Delivery Modes:
+
+- **Reliable Ordered**: guaranteed delivery and order (use for critical game state, inventory, match results)
+- **Unreliable**: best for frequent, non-critical updates like movement or effects
+- **Sequenced**: only latest packet is processed; older ones are dropped (e.g., player position, timers)
+- **Reliable Sequenced**: ensures only the latest critical state is delivered reliably
+
+> ⚠️ **Sequenced** and **Reliable Sequenced** modes are only available with the **Lite Transporter**, and must use separate channels to avoid data conflicts.
+
+To change the transporter:
+
+1. Remove the current transporter component from the `Network Manager`
+2. Add the desired transporter component (Lite, KCP, or WebSocket)
+
+> ⚠️ Some transporters do not support all delivery modes. An error will appear if an unsupported feature is used.
+
+For more details:
+
+- [LiteNetLib Documentation](https://github.com/RevenantX/LiteNetLib)  
+- [KCP (kcp2k) Documentation](https://github.com/MirrorNetworking/kcp2k)
+
