@@ -21,3 +21,49 @@
     </td>
   </tr>
 </table>
+
+## 🚀 Installation
+
+### ✅ Requirements
+
+- Unity `2021.3` or newer
+- API Compatibility Level: `.NET Standard 2.1+`
+- Git installed (optional)
+
+> ⚠️ For best results, use Unity LTS versions. Refer to the [Releases page](https://github.com/RuanCardoso/Omni-Networking-for-Unity/releases) for tested versions.
+
+| Unity Version   | Supported |
+|-----------------|-----------|
+| 2021.3 LTS      | ✅        |
+| 2022.3 LTS      | ✅        |
+| 2023.2 (Beta)   | ✅        |
+| 6000.0 LTS      | ✅        |
+
+---
+
+### 📦 Install via Package Manager (Recommended)
+
+1. Open `Window > Package Manager`
+2. Click the `+` button → `Add package from git URL`
+3. Paste the following:
+   ```
+   https://github.com/RuanCardoso/Omni-Networking-for-Unity.git
+   ```
+
+---
+
+### 🛠️ Manual Installation
+
+1. Install required packages via Package Manager:
+   ```
+   com.unity.localization@1.5.4  
+   com.unity.nuget.newtonsoft-json@3.2.1
+   ```
+2. Download the latest version from GitHub and copy the contents to your project’s `Assets` folder.
+
+---
+
+### ✅ Verify Installation
+
+- No errors in the Console
+- "Omni Networking" appears in Unity’s top menu
