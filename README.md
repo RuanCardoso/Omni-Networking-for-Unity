@@ -134,3 +134,241 @@ For more details:
 - [LiteNetLib Documentation](https://github.com/RevenantX/LiteNetLib)  
 - [KCP (kcp2k) Documentation](https://github.com/MirrorNetworking/kcp2k)
 
+## 📡 Remote Communication
+
+### 🧠 RPCs (Remote Procedure Calls)
+
+Omni supports client-to-server and server-to-client communication via attribute-based RPCs. Just declare methods with `[Client(id)]` or `[Server(id)]`, and call them using `.Rpc()`.
+
+#### ✅ Basic Usage
+
+```csharp
+public class Player : NetworkBehaviour
+{
+    private const byte RPC_ID = 1;
+
+    [Server(RPC_ID)]
+    void ReceiveMove(DataBuffer message)
+    {
+        Vector3 pos = message.Read<Vector3>();
+        Server.Rpc(RPC_ID, pos); // Broadcast to clients
+    }
+
+    [Client(RPC_ID)]
+    void ApplyMove(DataBuffer message)
+    {
+        transform.position = message.Read<Vector3>();
+    }
+
+    void Update()
+    {
+        if (IsLocalPlayer)
+        {
+            Client.Rpc(RPC_ID, transform.position); // Send to server
+        }
+    }
+}
+```
+
+#### 🧩 RPC Signatures
+
+You can use up to 3 parameters:
+
+- `DataBuffer message` – data
+- `NetworkPeer peer` – sender (server only)
+- `int seqChannel` – channel for sequencing or priority
+
+Omni has overloads for sending raw types or `DataBuffer`:
+
+```csharp
+Client.Rpc(1, 42, true);                          // primitives
+Client.Rpc(1, transform.position, rotation);      // structs
+Server.Rpc(1, dataBuffer, Target.AllPlayers);     // with target
+```
+
+> ℹ️ IDs must be between `1` and `230`, unique per class. Use `const` values to stay organized.
+
+#### 📤 How to Send
+
+On client:
+```csharp
+Client.Rpc(1, someData); // to server
+```
+
+On server:
+```csharp
+Server.Rpc(1, someData, Target.SelfOnly); // to specific client
+```
+
+> ✅ Use `DeliveryMode` and `Target` for reliability and targeting.
+
+---
+
+### 🔁 Network Variables
+
+Omni provides `[NetworkVariable]` for automatic value sync from server to clients.
+
+```csharp
+public partial class Player : NetworkBehaviour
+{
+    [NetworkVariable]
+    [SerializeField] // optional for inspector editing
+    private float m_Health = 100f;
+
+    void Update()
+    {
+        if (IsServer && Input.GetKeyDown(KeyCode.Space))
+        {
+            Health -= 10f; // auto-syncs
+        }
+    }
+}
+```
+
+#### 🧩 Hooks & Sync
+
+- Classes must be `partial`
+- Fields must use the `m_` prefix and start with a capital (e.g., `m_Health`)
+- The property is generated and synced automatically
+- Use `SyncHealth()` if setting the field directly
+
+```csharp
+partial void OnHealthChanged(float prev, float next, bool isWriting)
+{
+    Debug.Log($"Health changed: {prev} → {next}");
+}
+```
+
+> ℹ️ You can customize delivery via `HealthOptions` or use `DefaultNetworkVariableOptions` globally.
+
+---
+
+### 🌐 RouteX (Server Routing System)
+
+RouteX is an Express-style server routing system. It allows structured communication with routes like `/login`, `/match`, etc.
+
+#### 🔧 Define Routes (Server)
+
+```csharp
+protected override void OnAwake()
+{
+    XServer.GetAsync("/login", (res) => {
+        res.WriteString("You're logged in!");
+        res.Send();
+    });
+
+    XServer.PostAsync("/login", (req, res) => {
+        string username = req.ReadString();
+        res.WriteString($"Welcome, {username}!");
+        res.Send();
+    });
+}
+```
+
+#### 📲 Send Requests (Client)
+
+```csharp
+async void Login()
+{
+    using var res = await XClient.PostAsync("/login", req => {
+        req.WriteString("John Doe");
+    });
+
+    string msg = res.ReadString();
+    Debug.Log(msg);
+}
+```
+
+Supports `HttpResponse`, status codes, and payloads:
+
+```csharp
+res.WriteHttpResponse(new HttpResponse() {
+    StatusCode = StatusCode.Success,
+    StatusMessage = "OK!"
+});
+```
+
+---
+
+### 📦 Serialization & DataBuffer
+
+Omni uses `DataBuffer` for all messages — a binary stream system like `BinaryWriter`.
+
+#### ✅ Supported
+
+- Primitive types (`int`, `float`, `bool`, etc.)
+- Unity types (`Vector3`, `Quaternion`, etc.)
+- Complex objects (via JSON or MemoryPack)
+- Compression (`LZ4`, `Brotli`)
+- Encryption (`AES` + RSA key exchange)
+
+#### ✏️ Example: Write & Read
+
+```csharp
+var buffer = new DataBuffer();
+buffer.Write(42);
+buffer.WriteAsJson(player);
+
+int value = buffer.Read<int>();
+Player p = buffer.ReadAsJson<Player>();
+```
+
+> ⚠️ Always read in the same order you write.
+
+---
+
+### 🔐 Encryption
+
+Omni encrypts buffers using AES. You can encrypt using:
+
+- Peer key: `message.EncryptRaw(peer)`
+- Global key: `message.EncryptRaw(NetworkManager.SharedPeer)`
+
+> RSA is used to securely exchange keys. Each peer gets a unique AES key.
+
+```csharp
+message.EncryptRaw(NetworkManager.LocalPeer);
+message.DecryptRaw(NetworkManager.SharedPeer);
+```
+
+---
+
+### 🧰 IMessage Interface
+
+Create custom serializable types using `IMessage`:
+
+```csharp
+public class PlayerStruct : IMessage
+{
+    string Name;
+    Vector3 Position;
+
+    public void Serialize(DataBuffer writer)
+    {
+        writer.WriteString(Name);
+        writer.Write(Position);
+    }
+
+    public void Deserialize(DataBuffer reader)
+    {
+        Name = reader.ReadString();
+        Position = reader.Read<Vector3>();
+    }
+}
+```
+
+Use it in `NetworkVariable` or `Rpc()`:
+
+```csharp
+[NetworkVariable]
+private PlayerStruct m_PlayerData;
+```
+
+Or send directly:
+
+```csharp
+Server.Rpc(1, m_PlayerData, new() {
+    DeliveryMode = DeliveryMode.ReliableOrdered
+});
+```
+
