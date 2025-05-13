@@ -83,22 +83,22 @@ namespace Omni.Shared
             Log(message, true, logType);
         }
 #else
-		/// <summary>
-		/// Logs a message to both the console and the log file (release builds only).
-		/// </summary>
-		/// <remarks>
-		/// In the Unity Editor, the message is logged to the console. In other builds, the message is logged to a file.
-		/// </remarks>
-		/// <param name="message">The message to log.</param>
-		/// <param name="logType">The log message type (default: <see cref="LogType.Log"/>).</param>
-		public static void __Log__(string message, LogType logType = LogType.Log)
-		{
+        /// <summary>
+        /// Logs a message to both the console and the log file (release builds only).
+        /// </summary>
+        /// <remarks>
+        /// In the Unity Editor, the message is logged to the console. In other builds, the message is logged to a file.
+        /// </remarks>
+        /// <param name="message">The message to log.</param>
+        /// <param name="logType">The log message type (default: <see cref="LogType.Log"/>).</param>
+        public static void __Log__(string message, LogType logType = LogType.Log)
+        {
 #if UNITY_EDITOR
-			Log(message, true, logType);
+            Log(message, true, logType);
 #else
             LogToFile(message, logType);
 #endif
-		}
+        }
 #endif
 #pragma warning restore IDE1006
         /// <summary>
@@ -150,7 +150,12 @@ namespace Omni.Shared
 #endif
                 if (!isClone)
                 {
-                    fileStream ??= new(LogPath, append: true); // Keep the stream open for better performance.
+                    // Keep the stream open for better performance.
+                    fileStream ??= new(LogPath, append: true)
+                    {
+                        AutoFlush = true
+                    };
+
                     string dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     int threadId = Thread.CurrentThread.ManagedThreadId;
                     fileStream.WriteLine($"{dateTime}: {message} -> Thread Id: ({threadId}) - {logType}");
@@ -214,13 +219,13 @@ namespace Omni.Shared
             if (logType == LogType.Error)
                 PrintHyperlink(null, LogType.Error);
 #else
-			Debug.LogFormat(
-				(UnityEngine.LogType)logType,
-				UnityEngine.LogOption.NoStacktrace,
-				null,
-				"{0}",
-				message
-			);
+            Debug.LogFormat(
+                (UnityEngine.LogType)logType,
+                UnityEngine.LogOption.NoStacktrace,
+                null,
+                "{0}",
+                message
+            );
 #endif
 #endif
         }
