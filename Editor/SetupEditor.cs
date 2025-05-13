@@ -10,6 +10,7 @@ using UnityEditor.Callbacks;
 using UnityEngine;
 using System;
 using UnityEditor.Compilation;
+using Omni.Core;
 
 #pragma warning disable
 
@@ -62,11 +63,7 @@ namespace Omni.Editor
                 }
             }
 #endif
-            string path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "__omni_development_keys__"
-            );
-
+            string path = NetworkManager.__Internal__Key_Path__;
             bool isOk = EditorUtility.DisplayDialog(
                 "Generate Encryption Keys",
                 "Would you like to generate new encryption keys for this project?\n\n" +
@@ -86,6 +83,13 @@ namespace Omni.Editor
                 }
 
                 CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
+            }
+            else
+            {
+                if (!File.Exists(path))
+                {
+                    CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
+                }
             }
 #endif
         }
@@ -135,13 +139,13 @@ namespace Omni.Editor
         }
 
 #if OMNI_RELEASE
-        [MenuItem("Omni Networking/Change to Debug", false, 30)]
+        [MenuItem("Omni Networking/Settings/Set Build Mode: Debug", priority = 0)]
 #endif
         private static void ChangeToDebug()
         {
             bool confirmChange = EditorUtility.DisplayDialog(
                 "Omni Networking Configuration",
-                "Are you sure you want to change to debug mode?",
+                "Are you sure you want to switch to debug mode?",
                 "Yes",
                 "No"
             );
@@ -156,13 +160,13 @@ namespace Omni.Editor
         }
 
 #if OMNI_DEBUG
-        [MenuItem("Omni Networking/Change to Release", false, 30)]
+        [MenuItem("Omni Networking/Settings/Set Build Mode: Release", priority = 0)]
 #endif
         private static void ChangeToRelease()
         {
             bool confirmChange = EditorUtility.DisplayDialog(
                 "Omni Networking Configuration",
-                "Are you sure you want to change to release mode?",
+                "Are you sure you want to switch to release mode?",
                 "Yes",
                 "No"
             );
