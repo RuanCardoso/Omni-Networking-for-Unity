@@ -84,6 +84,30 @@ namespace Omni.Core
         public HideMode HideMode { get; set; } = HideMode.BackingField;
 
         /// <summary>
+        /// Gets or sets the delivery mode for network variable synchronization.
+        /// </summary>
+        /// <value>
+        /// Default is <c>DeliveryMode.ReliableOrdered</c>, ensuring reliable and ordered delivery of updates.
+        /// </value>
+        public DeliveryMode DeliveryMode { get; set; } = DeliveryMode.ReliableOrdered;
+
+        /// <summary>
+        /// Gets or sets the target recipients for network variable updates.
+        /// </summary>
+        /// <value>
+        /// Default is <c>Target.Auto</c>, which automatically determines the appropriate recipients based on the context.
+        /// </value>
+        public Target Target { get; set; } = Target.Auto;
+
+        /// <summary>
+        /// Gets or sets the sequence channel used for ordered message delivery.
+        /// </summary>
+        /// <value>
+        /// Default is <c>0</c>. Different channels allow for independent ordering.
+        /// </value>
+        public byte SequenceChannel { get; set; } = 0;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="NetworkVariableAttribute"/> class 
         /// with an automatically generated identifier.
         /// </summary>
