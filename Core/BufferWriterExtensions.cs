@@ -702,29 +702,15 @@ namespace Omni.Core
         /// Writes network identity data to the specified <see cref="DataBuffer"/>, typically used for instantiating network objects.
         /// </summary>
         /// <param name="buffer">The <see cref="DataBuffer"/> to write the identity data to.</param>
-        /// <param name="identity">The <see cref="NetworkIdentity"/> object containing the identity data to write.</param>
-        /// <remarks>
-        /// This method serializes the identity ID and the owner's peer ID into the buffer.
-        /// </remarks>
-        public static void WriteIdentity(this DataBuffer buffer, NetworkIdentity identity)
-        {
-            Write(buffer, identity.Id);
-            Write(buffer, identity.Owner.Id);
-        }
-
-        /// <summary>
-        /// Writes network identity data to the specified <see cref="DataBuffer"/>, typically used for instantiating network objects.
-        /// </summary>
-        /// <param name="buffer">The <see cref="DataBuffer"/> to write the identity data to.</param>
-        /// <param name="identityId">The unique identifier of the network identity.</param>
         /// <param name="peerId">The unique identifier of the network peer owning the identity.</param>
+        /// <param name="identityId">The unique identifier of the network identity.</param>
         /// <remarks>
         /// This method serializes the provided identity and peer IDs directly into the buffer.
         /// </remarks>
-        public static void WriteIdentity(this DataBuffer buffer, int identityId, int peerId)
+        public static void WriteIdentity(this DataBuffer buffer, int peerId, int identityId)
         {
-            Write(buffer, identityId);
             Write(buffer, peerId);
+            Write(buffer, identityId);
         }
 
         /// <summary>
@@ -1246,8 +1232,8 @@ namespace Omni.Core
         /// </remarks>
         public static void ReadIdentity(this DataBuffer buffer, out int peerId, out int identityId)
         {
-            identityId = Read<int>(buffer);
             peerId = Read<int>(buffer);
+            identityId = Read<int>(buffer);
         }
 
         /// <summary>
