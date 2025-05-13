@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 
+#pragma warning disable
+
 namespace Omni.Core
 {
     // Hacky: DIRTY CODE!
@@ -13,7 +15,7 @@ namespace Omni.Core
     // Avoid refactoring as these techniques are crucial for optimizing execution speed.
     // Works with il2cpp.
 
-    internal struct Null
+    public struct __Null__
     {
     }
 
@@ -23,17 +25,23 @@ namespace Omni.Core
         internal string MethodName { get; }
         internal int ArgsCount { get; }
         internal bool RequiresOwnership { get; }
+        internal Target Target { get; }
+        internal DeliveryMode DeliveryMode { get; }
+        internal byte SequenceChannel { get; }
 
-        internal RpcMethod(int methodId, string methodName, int argsCount, bool requiresOwnership)
+        internal RpcMethod(int methodId, string methodName, int argsCount, bool requiresOwnership, Target target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
             MethodId = methodId;
             MethodName = methodName;
             ArgsCount = argsCount;
             RequiresOwnership = requiresOwnership;
+            Target = target;
+            DeliveryMode = deliveryMode;
+            SequenceChannel = sequenceChannel;
         }
     }
 
-    internal sealed class RpcHandler<T1, T2, T3, T4, T5>
+    public sealed class __RpcHandler<T1, T2, T3, T4, T5>
     {
         private readonly int expectedArgsCount = -1;
 
@@ -46,7 +54,7 @@ namespace Omni.Core
         private readonly Dictionary<int, Action<T1, T2, T3, T4, T5>> T1_T2_T3_T4_T5_action = new();
         private readonly Dictionary<int, RpcMethod> t_methods = new(); // int: method id, int: args count
 
-        internal RpcHandler(int expectedArgsCount = -1)
+        internal __RpcHandler(int expectedArgsCount = -1)
         {
             this.expectedArgsCount = expectedArgsCount;
         }
@@ -160,6 +168,12 @@ namespace Omni.Core
             }
         }
 
+        private bool IsManualRpc(ParameterInfo[] parameters)
+        {
+            var parameter = parameters.FirstOrDefault();
+            return parameter != null && parameter.ParameterType == typeof(DataBuffer);
+        }
+
         internal void RegisterRpcMethodHandlers<T>(object target) where T : EventAttribute
         {
             // Reflection is very slow, but it's only called once.
@@ -178,7 +192,11 @@ namespace Omni.Core
                 {
                     if (attr != null)
                     {
-                        int argsCount = method.GetParameters().Length;
+                        var parameters = method.GetParameters();
+                        if (!IsManualRpc(parameters))
+                            continue;
+
+                        int argsCount = parameters.Length;
                         if (expectedArgsCount > -1 && argsCount != expectedArgsCount)
                         {
                             ThrowParameterCountMismatch(attr, method,
@@ -197,10 +215,14 @@ namespace Omni.Core
 
                         // Security flag:
                         bool requiresOwnership = true;
+                        Target rpcTarget = Target.Auto;
                         if (attr is ServerAttribute serverAttribute)
+                        {
                             requiresOwnership = serverAttribute.RequiresOwnership;
+                            rpcTarget = serverAttribute.Target;
+                        }
 
-                        if (t_methods.TryAdd(attr.Id, new RpcMethod(attr.Id, method.Name, argsCount, requiresOwnership)))
+                        if (t_methods.TryAdd(attr.Id, new RpcMethod(attr.Id, method.Name, argsCount, requiresOwnership, rpcTarget, attr.DeliveryMode, attr.SequenceChannel)))
                         {
                             switch (argsCount)
                             {
@@ -447,13 +469,40 @@ namespace Omni.Core
             if (!Exists(methodId, out _))
             {
                 string rpcName = GetRpcName(methodId);
-                NetworkLogger.__Log__(
-                    $"[RPC Invoke Error] No registered RPC method found with ID '{methodId}' (expected name: '{rpcName}'). " +
-                    $"Verify that a method with this ID is properly registered and available for invocation. " +
-                    $"This could happen if the method was not decorated with the appropriate RPC attribute or if the method was registered on a different object.",
-                    NetworkLogger.LogType.Error
-                );
+                if (methodId != NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+                {
+                    NetworkLogger.__Log__(
+                        $"[RPC Invoke Error] No registered RPC method found with ID '{methodId}' (expected name: '{rpcName}'). " +
+                        $"Verify that a method with this ID is properly registered and available for invocation. " +
+                        $"This could happen if the method was not decorated with the appropriate RPC attribute or if the method was registered on a different object.",
+                        NetworkLogger.LogType.Error
+                    );
+                }
+                else
+                {
+                    NetworkLogger.__Log__(
+                        $"[Network Variable Error] No registered network variable found. " +
+                        $"Verify that network variables are properly registered and available for synchronization. " +
+                        $"This could happen if variables were not decorated with the [NetworkVariable] attribute or if they were registered on a different object.",
+                        NetworkLogger.LogType.Error
+                    );
+                }
             }
+        }
+
+        internal void GetRpcConfiguration(int methodId, out DeliveryMode deliveryMode, out Target target, out byte sequenceChannel)
+        {
+            deliveryMode = DeliveryMode.ReliableOrdered;
+            target = Target.Auto;
+            sequenceChannel = 0;
+
+            if (t_methods.TryGetValue(methodId, out RpcMethod method))
+            {
+                deliveryMode = method.DeliveryMode;
+                target = method.Target;
+                sequenceChannel = method.SequenceChannel;
+            }
+            else NetworkLogger.__Log__($"RPC metadata for ID '{methodId}' was not found. This may indicate a mismatch between client and server definitions, but it won't necessarily cause a failure. To resolve this warning, ensure the RPC is defined on both sides—even with an empty method body if needed—for metadata generation.", NetworkLogger.LogType.Warning);
         }
 
         internal string GetRpcName(int methodId)
