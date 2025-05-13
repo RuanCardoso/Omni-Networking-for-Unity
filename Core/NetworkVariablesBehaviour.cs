@@ -4,10 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Reflection;
 using Newtonsoft.Json.Linq;
-using Omni.Inspector;
-using UnityEngine;
 
 #pragma warning disable
 
@@ -19,30 +16,6 @@ namespace Omni.Core
     // Avoid refactoring as these techniques are crucial for optimizing execution speed.
     // Works with il2cpp.
 
-    internal interface IPropertyInfo
-    {
-        string Name { get; }
-        byte Id { get; }
-    }
-
-    internal interface IPropertyInfo<T>
-    {
-        Func<T> Invoke { get; set; }
-    }
-
-    internal class PropertyInfo<T> : IPropertyInfo, IPropertyInfo<T>
-    {
-        internal PropertyInfo(string name, byte id)
-        {
-            Name = name;
-            Id = id;
-        }
-
-        public Func<T> Invoke { get; set; }
-        public string Name { get; }
-        public byte Id { get; }
-    }
-
     internal class NetworkVariableField
     {
         internal string Name { get; }
@@ -50,30 +23,34 @@ namespace Omni.Core
         internal bool RequiresOwnership { get; }
         internal bool IsClientAuthority { get; }
         internal bool CheckEquality { get; }
+        internal DeliveryMode DeliveryMode { get; }
+        internal Target Target { get; }
+        internal byte SequenceChannel { get; }
 
-        internal NetworkVariableField(int propertyId, bool requiresOwnership, bool isClientAuthority,
-            bool checkEquality, string name)
+        internal NetworkVariableField(int propertyId, bool requiresOwnership, bool isClientAuthority, bool checkEquality, string name, DeliveryMode deliveryMode, Target target, byte sequenceChannel)
         {
             PropertyId = propertyId;
             RequiresOwnership = requiresOwnership;
             IsClientAuthority = isClientAuthority;
             CheckEquality = checkEquality;
             Name = name;
+            DeliveryMode = deliveryMode;
+            Target = target;
+            SequenceChannel = sequenceChannel;
         }
     }
 
     public class NetworkVariablesBehaviour : OmniBehaviour
     {
-        private readonly Dictionary<string, IPropertyInfo> m_RuntimeProperties = new();
         internal readonly Dictionary<byte, NetworkVariableField> m_NetworkVariables = new();
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         [Obsolete("Don't override this method! The source generator will override it.")]
         protected void ___RegisterNetworkVariable___(string propertyName, byte propertyId, bool requiresOwnership,
-            bool isClientAuthority, bool checkEquality)
+            bool isClientAuthority, bool checkEquality, DeliveryMode deliveryMode, Target target, byte sequenceChannel)
         {
             if (!m_NetworkVariables.TryAdd(propertyId, new NetworkVariableField(propertyId, requiresOwnership,
-                isClientAuthority, checkEquality, propertyName)))
+                isClientAuthority, checkEquality, propertyName, deliveryMode, target, sequenceChannel)))
             {
                 NetworkLogger.__Log__(
                      $"Error: Network variable '{propertyName}' (ID: {propertyId}) is already registered. " +
@@ -111,46 +88,6 @@ namespace Omni.Core
             message.Write(id);
             message.Insert(buffer.BufferAsSpan);
             return message;
-        }
-
-        internal IPropertyInfo GetPropertyInfoWithCallerName<T>(string callerName, BindingFlags flags)
-        {
-            if (!m_RuntimeProperties.TryGetValue(callerName, out IPropertyInfo memberInfo))
-            {
-                // Reflection is slow, but cached for performance optimization!
-                // Delegates are used to avoid reflection overhead, it is much faster, like a direct call.
-
-                PropertyInfo propertyInfo = GetType().GetProperty(callerName, (System.Reflection.BindingFlags)flags) ??
-                                            throw new NullReferenceException(
-                                                $"NetworkVariable: Property not found: {callerName}. Use the other overload of this function.");
-
-                string name = propertyInfo.Name;
-                NetworkVariableAttribute attribute = propertyInfo.GetCustomAttribute<NetworkVariableAttribute>() ??
-                                                     throw new NullReferenceException(
-                                                         $"NetworkVariable: NetworkVariableAttribute not found on property: {name}. Ensure it has 'NetworkVariable' attribute.");
-
-                MethodInfo getMethod = propertyInfo.GetMethod;
-                if (getMethod == null)
-                {
-                    throw new NullReferenceException(
-                        $"NetworkVariable: GetMethod not found on property: {name}. Ensure it has 'NetworkVariable' attribute."
-                    );
-                }
-
-                byte id = attribute.Id;
-                if (id <= 0)
-                {
-                    throw new ArgumentException($"NetworkVariable: Id must be greater than 0.");
-                }
-
-                memberInfo = new PropertyInfo<T>(name, id);
-                // hack: performance optimization!
-                ((IPropertyInfo<T>)memberInfo).Invoke = getMethod.CreateDelegate(typeof(Func<T>), this) as Func<T>;
-                m_RuntimeProperties.Add(callerName, memberInfo);
-                return memberInfo;
-            }
-
-            return memberInfo;
         }
 
         // This method is intended to be overridden by the caller using source generators and reflection techniques. Magic wow!
