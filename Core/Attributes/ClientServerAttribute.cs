@@ -1,11 +1,29 @@
 using System;
+using System.ComponentModel;
 
 namespace Omni.Core
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
     public class EventAttribute : Attribute
     {
         internal byte Id { get; }
+
+        /// <summary>
+        /// Gets or sets the delivery mode for this RPC.
+        /// </summary>
+        /// <value>
+        /// Default is <c>ReliableOrdered</c>, ensuring the RPC is delivered reliably and in order.
+        /// </value>
+        public DeliveryMode DeliveryMode { get; set; } = DeliveryMode.ReliableOrdered;
+
+        /// <summary>
+        /// Gets or sets the sequence channel used for this RPC.
+        /// </summary>
+        /// <value>
+        /// Default is <c>0</c>. Different channels can be used to separate ordering concerns.
+        /// </value>
+        public byte SequenceChannel { get; set; } = 0;
 
         public EventAttribute(byte id)
         {
@@ -32,8 +50,7 @@ namespace Omni.Core
         /// Initializes a new instance of the <see cref="ClientAttribute"/> class with the specified rpc ID.
         /// </summary>
         /// <param name="id">The unique identifier for the client-side RPC event.</param>
-        public ClientAttribute(byte id)
-            : base(id)
+        public ClientAttribute(byte id) : base(id)
         {
         }
     }
@@ -57,11 +74,18 @@ namespace Omni.Core
         public bool RequiresOwnership { get; set; } = true;
 
         /// <summary>
+        /// Gets or sets the target for this server RPC.
+        /// </summary>
+        /// <value>
+        /// Default is <c>Target.Auto</c>, which automatically determines the appropriate target based on context.
+        /// </value>
+        public Target Target { get; set; } = Target.Auto;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="ServerAttribute"/> class with the specified rpc ID.
         /// </summary>
         /// <param name="id">The unique identifier for the server-side RPC event.</param>
-        public ServerAttribute(byte id)
-            : base(id)
+        public ServerAttribute(byte id) : base(id)
         {
         }
     }
