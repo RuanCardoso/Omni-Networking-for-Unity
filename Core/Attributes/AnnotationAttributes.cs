@@ -9,6 +9,9 @@ namespace Omni.Core.Attributes
     internal class ClientOnlyAttribute : Attribute
     {
     }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+    internal class GenerateSecureKeysAttribute : Attribute { }
 }
 
 namespace Omni.Core
