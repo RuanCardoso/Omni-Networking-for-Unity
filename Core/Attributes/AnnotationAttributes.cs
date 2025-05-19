@@ -61,7 +61,20 @@ namespace Omni.Core
     /// 
     /// Without this attribute, only direct assignments to the property itself would be detected.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = true)]
     public sealed class NestedNetworkVariableAttribute : Attribute
+    { }
+
+    /// <summary>
+    /// Marks a method to be stripped from client builds.
+    /// </summary>
+    /// <remarks>
+    /// When applied to a method, this attribute signals the IL post-processor to remove the method
+    /// from the compiled assembly in client builds. This is useful for server-only methods that
+    /// should not be included in client builds, helping to reduce the client build size and
+    /// prevent execution of server-specific code on clients.
+    /// </remarks>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public sealed class StripAttribute : Attribute
     { }
 }
