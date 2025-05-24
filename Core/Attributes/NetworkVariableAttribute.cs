@@ -60,6 +60,29 @@ namespace Omni.Core
         public bool IsClientAuthority { get; set; } = false;
 
         /// <summary>
+        /// Gets or sets a value indicating whether the server should automatically broadcast 
+        /// updates received from a client to all other connected clients.
+        /// </summary>
+        /// <value>
+        /// <para>
+        /// <c>true</c> if the server will automatically forward updates received from a client to 
+        /// all other clients (i.e., client → server → clients); 
+        /// <c>false</c> if updates from clients are only processed by the server and 
+        /// not automatically relayed to other clients (i.e., client → server only).
+        /// </para>
+        /// <para>
+        /// The default value is <c>true</c>.
+        /// </para>
+        /// </value>
+        /// <remarks>
+        /// When enabled, this option simplifies state synchronization for most multiplayer games, 
+        /// allowing clients to see updates from other players in real time without requiring manual 
+        /// forwarding logic. If set to <c>false</c>, the developer is responsible for handling 
+        /// how and when updates from a client should be propagated to other clients.
+        /// </remarks>
+        public bool ServerBroadcastsClientUpdates { get; set; } = true;
+
+        /// <summary>
         /// Gets or sets a value indicating whether ownership is required for property synchronization.
         /// </summary>
         /// <value>
