@@ -545,8 +545,7 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses MemoryPack for serialization by default.
         /// </remarks>
-        public static void WriteAsBinary<T>(this DataBuffer buffer, T value,
-            MemoryPackSerializerOptions settings = null)
+        public static void WriteAsBinary<T>(this DataBuffer buffer, T value, MemoryPackSerializerOptions settings = null)
         {
             try
             {
@@ -580,8 +579,7 @@ namespace Omni.Core
         /// <remarks>
         /// This method uses MemoryPack for serialization by default.
         /// </remarks>
-        public static async ValueTask WriteAsBinaryAsync<T>(this DataBuffer buffer, T value,
-            MemoryPackSerializerOptions settings = null)
+        public static async ValueTask WriteAsBinaryAsync<T>(this DataBuffer buffer, T value, MemoryPackSerializerOptions settings = null)
         {
             settings ??= DefaultMemoryPackSettings;
             using MemoryStream stream = new();
@@ -631,21 +629,6 @@ namespace Omni.Core
             }
 
             WriteAsBinary(buffer, response);
-        }
-
-        /// <summary>
-        /// Inserts raw byte data into the specified <see cref="DataBuffer"/> at the current position.
-        /// </summary>
-        /// <param name="buffer">The <see cref="DataBuffer"/> where the data will be written.</param>
-        /// <param name="data">A <see cref="ReadOnlySpan{T}"/> containing the raw bytes to insert into the buffer.</param>
-        /// <remarks>
-        /// This method uses <see cref="BuffersExtensions.Write"/> internally to copy the span data into the buffer.
-        /// The buffer's position is advanced by the length of the data inserted.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Insert(this DataBuffer buffer, ReadOnlySpan<byte> data)
-        {
-            BuffersExtensions.Write(buffer, data);
         }
 
         /// <summary>
@@ -1546,6 +1529,142 @@ namespace Omni.Core
     /// </summary>
     public static partial class BufferWriterExtensions
     {
-        // nothing, i finish this
+        /// <summary>
+        /// Reads a <see cref="Delta2{float}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta2{float}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta2{float}"/> structure.</returns>
+        public static Delta2<float> ReadDelta2(this DataBuffer buffer, ref Delta2<float> lastDelta) => Delta2<float>.Read(ref lastDelta, buffer);
+
+        /// <summary>
+        /// Reads a <see cref="Delta4{float}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta4{float}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta4{float}"/> structure.</returns>
+        public static Delta4<float> ReadDelta4(this DataBuffer buffer, ref Delta4<float> lastDelta) => Delta4<float>.Read(ref lastDelta, buffer);
+
+        /// <summary>
+        /// Reads a <see cref="Delta8{float}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta8{float}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta8{float}"/> structure.</returns>
+        public static Delta8<float> ReadDelta8(this DataBuffer buffer, ref Delta8<float> lastDelta) => Delta8<float>.Read(ref lastDelta, buffer);
+
+        /// <summary>
+        /// Reads a <see cref="Delta8_t{T1, T2}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <typeparam name="T1">The first unmanaged type.</typeparam>
+        /// <typeparam name="T2">The second unmanaged type.</typeparam>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta8_t{T1, T2}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta8_t{T1, T2}"/> structure.</returns>
+        public static Delta8_t<T1, T2> ReadDelta8_t<T1, T2>(this DataBuffer buffer, ref Delta8_t<T1, T2> lastDelta)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            => Delta8_t<T1, T2>.Read(ref lastDelta, buffer);
+
+        /// <summary>
+        /// Reads a <see cref="Delta16_t{T1, T2}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <typeparam name="T1">The first unmanaged type.</typeparam>
+        /// <typeparam name="T2">The second unmanaged type.</typeparam>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta16_t{T1, T2}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta16_t{T1, T2}"/> structure.</returns>
+        public static Delta16_t<T1, T2> ReadDelta16_t<T1, T2>(this DataBuffer buffer, ref Delta16_t<T1, T2> lastDelta)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            => Delta16_t<T1, T2>.Read(ref lastDelta, buffer);
+
+        /// <summary>
+        /// Creates a <see cref="Delta2{float}"/> structure from a <see cref="Vector2"/>.
+        /// </summary>
+        /// <param name="current">The current <see cref="Vector2"/> value.</param>
+        /// <returns>A <see cref="Delta2{float}"/> containing the x and y components of the vector.</returns>
+        public static Delta2<float> GetDelta2(this Vector2 current) => new Delta2<float>(current.x, current.y);
+
+        /// <summary>
+        /// Creates a <see cref="Delta4{float}"/> structure from a <see cref="Vector3"/>.
+        /// </summary>
+        /// <param name="current">The current <see cref="Vector3"/> value.</param>
+        /// <returns>A <see cref="Delta4{float}"/> containing the x, y, z components of the vector and 0 as the fourth value.</returns>
+        public static Delta4<float> GetDelta4(this Vector3 current) => new Delta4<float>(current.x, current.y, current.z, 0);
+
+        /// <summary>
+        /// Creates a <see cref="Delta4{float}"/> structure from a <see cref="Quaternion"/>.
+        /// </summary>
+        /// <param name="current">The current <see cref="Quaternion"/> value.</param>
+        /// <returns>A <see cref="Delta4{float}"/> containing the x, y, z, and w components of the quaternion.</returns>
+        public static Delta4<float> GetDelta4(this Quaternion current) => new Delta4<float>(current.x, current.y, current.z, current.w);
+
+        /// <summary>
+        /// Creates a <see cref="Delta8{float}"/> structure from a <see cref="Transform"/>, using position and rotation.
+        /// </summary>
+        /// <param name="transform">The <see cref="Transform"/> to extract data from.</param>
+        /// <returns>
+        /// A <see cref="Delta8{float}"/> containing the position (x, y, z), rotation (x, y, z, w), and 0 as the last value.
+        /// </returns>
+        public static Delta8<float> GetDelta8(this Transform transform) => new Delta8<float>(
+            transform.position.x, transform.position.y, transform.position.z,
+            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w, 0);
+
+        /// <summary>
+        /// Creates a <see cref="Delta2{float}"/> structure from a <see cref="Vector2"/>.
+        /// </summary>
+        /// <param name="current">The current <see cref="Vector2"/> value.</param>
+        /// <returns>A <see cref="Delta2{float}"/> containing the x and y components of the vector.</returns>
+        public static Delta2<Half> GetHalfDelta2(this Vector2 current) => new Delta2<Half>(current.x, current.y);
+
+        /// <summary>
+        /// Creates a <see cref="Delta4{float}"/> structure from a <see cref="Vector3"/>.
+        /// </summary>
+        /// <param name="current">The current <see cref="Vector3"/> value.</param>
+        /// <returns>A <see cref="Delta4{float}"/> containing the x, y, z components of the vector and 0 as the fourth value.</returns>
+        public static Delta4<Half> GetHalfDelta4(this Vector3 current) => new Delta4<Half>(current.x, current.y, current.z, 0);
+
+        /// <summary>
+        /// Creates a <see cref="Delta4{float}"/> structure from a <see cref="Quaternion"/>.
+        /// </summary>
+        /// <param name="current">The current <see cref="Quaternion"/> value.</param>
+        /// <returns>A <see cref="Delta4{float}"/> containing the x, y, z, and w components of the quaternion.</returns>
+        public static Delta4<Half> GetHalfDelta4(this Quaternion current) => new Delta4<Half>(current.x, current.y, current.z, current.w);
+
+        /// <summary>
+        /// Creates a <see cref="Delta8{float}"/> structure from a <see cref="Transform"/>, using position and rotation.
+        /// </summary>
+        /// <param name="transform">The <see cref="Transform"/> to extract data from.</param>
+        /// <returns>
+        /// A <see cref="Delta8{float}"/> containing the position (x, y, z), rotation (x, y, z, w), and 0 as the last value.
+        /// </returns>
+        public static Delta8<Half> GetHalfDelta8(this Transform transform) => new Delta8<Half>(
+            transform.position.x, transform.position.y, transform.position.z,
+            transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w, 0);
+
+        /// <summary>
+        /// Reads a <see cref="Delta2{float}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta2{float}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta2{float}"/> structure.</returns>
+        public static Delta2<Half> ReadDelta2(this DataBuffer buffer, ref Delta2<Half> lastDelta) => Delta2<Half>.Read(ref lastDelta, buffer);
+
+        /// <summary>
+        /// Reads a <see cref="Delta4{float}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta4{float}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta4{float}"/> structure.</returns>
+        public static Delta4<Half> ReadDelta4(this DataBuffer buffer, ref Delta4<Half> lastDelta) => Delta4<Half>.Read(ref lastDelta, buffer);
+
+        /// <summary>
+        /// Reads a <see cref="Delta8{float}"/> structure from the buffer using the last known delta as a reference.
+        /// </summary>
+        /// <param name="buffer">The <see cref="DataBuffer"/> to read from.</param>
+        /// <param name="lastDelta">A reference to the last known <see cref="Delta8{float}"/> state, which will be updated.</param>
+        /// <returns>The newly read <see cref="Delta8{float}"/> structure.</returns>
+        public static Delta8<Half> ReadDelta8(this DataBuffer buffer, ref Delta8<Half> lastDelta) => Delta8<Half>.Read(ref lastDelta, buffer);
     }
 }
