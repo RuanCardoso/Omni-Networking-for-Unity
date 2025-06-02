@@ -3,7 +3,7 @@ using System.ComponentModel;
 
 namespace Omni.Core
 {
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class EventAttribute : Attribute
     {
@@ -28,7 +28,7 @@ namespace Omni.Core
         public EventAttribute(byte id)
         {
             Id = id;
-            if (Id is > 230 and < NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+            if (Id is > 230 and < NetworkConstants.k_NetworkVariableRpcId)
             {
                 throw new Exception(
                     $"Rpc Id: ({Id}) must be less than 230. IDs above 230 are reserved for internal use, such as RPC or custom messages. Please avoid using ID's above this threshold."
@@ -43,7 +43,7 @@ namespace Omni.Core
     /// <remarks>
     /// Use this attribute to indicate that a method is intended to handle RPCs sent to the client.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
     public class ClientAttribute : EventAttribute
     {
         /// <summary>
@@ -62,7 +62,7 @@ namespace Omni.Core
     /// Use this attribute to indicate that a method is intended to handle RPCs sent to the server.
     /// By default, ownership verification is required for the RPC to be accepted.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
     public class ServerAttribute : EventAttribute
     {
         /// <summary>
