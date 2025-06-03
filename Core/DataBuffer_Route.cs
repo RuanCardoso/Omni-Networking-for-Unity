@@ -6,14 +6,14 @@ namespace Omni.Core
     {
         internal bool SendEnabled { get; set; }
         internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
-        internal RouteTarget Target { get; private set; } = RouteTarget.SelfOnly;
-        internal int GroupId { get; private set; }
+        internal RouteTarget Target { get; private set; } = RouteTarget.Self;
+        internal NetworkGroup Group { get; private set; }
         internal byte SequenceChannel { get; private set; }
 
         /// <summary>
         /// Sends a GET/POST response from the server with specified delivery and target settings.
         /// </summary>
-        /// <param name="target">The target of the response, defaulting to <see cref="RouteTarget.SelfOnly"/>.</param>
+        /// <param name="target">The target of the response, defaulting to <see cref="RouteTarget.Self"/>.</param>
         /// <param name="deliveryMode">The delivery mode for the response, defaulting to <see cref="DeliveryMode.ReliableOrdered"/>.</param>
         /// <param name="groupId">The ID of the target group for the response, defaulting to 0 (no group).</param>
         /// <param name="dataCache">The data cache configuration, defaulting to <see cref="DataCache.None"/>.</param>
@@ -22,12 +22,12 @@ namespace Omni.Core
         /// Use this method for fine-grained control over the delivery of server responses.
         /// Defaults are provided for common scenarios, ensuring ease of use for typical use cases.
         /// </remarks>
-        public void Send(RouteTarget target = RouteTarget.SelfOnly, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, byte sequenceChannel = 0)
+        public void Send(RouteTarget target = RouteTarget.Self, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, NetworkGroup group = null, byte sequenceChannel = 0)
         {
             SendEnabled = true;
             Target = target;
             DeliveryMode = deliveryMode;
-            GroupId = groupId;
+            Group = group;
             SequenceChannel = sequenceChannel;
         }
     }
