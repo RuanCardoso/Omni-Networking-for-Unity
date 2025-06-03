@@ -10,5 +10,6 @@ namespace Omni.Shared
         /// The property default is set to true.
         /// </summary>
         public static bool UseDapper { get; set; } = true;
+        public static bool EnableDeepDebug { get; set; } = true;
     }
 }

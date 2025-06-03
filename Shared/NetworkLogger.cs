@@ -32,7 +32,9 @@ namespace Omni.Shared
 {
     public static class NetworkLogger
     {
-        public const string Version = "3.1.7"; // Omni Networking Version, change this value to the current version of the package.json(Open UPM)
+        // Omni Networking Version, change this value to the current version of the package.json(Open UPM)
+        // _LTS = Long Term Support
+        public const string Version = "3.2.0_LTS";
         public static StreamWriter fileStream = null;
         public static string LogPath = "OmniDefaultLog.log";
 
@@ -193,11 +195,6 @@ namespace Omni.Shared
         /// </remarks>
         public static void Log(object message, bool writeToLogFile = false, LogType logType = LogType.Log)
         {
-            if (writeToLogFile)
-            {
-                LogToFile(message, logType);
-            }
-
 #if OMNI_SERVER && !UNITY_EDITOR
             ConsoleColor logColor = logType switch
             {
@@ -228,6 +225,8 @@ namespace Omni.Shared
             );
 #endif
 #endif
+            if (writeToLogFile)
+                LogToFile(message, logType);
         }
 
         /// <summary>
@@ -346,7 +345,7 @@ namespace Omni.Shared
                         string link =
                             $"<color=#40a0ff><link=\"href='{filePath}' line='{line}'\">{linkText}</link></color>";
 #else
-					string link = $"<a href=\"{filePath}\" line=\"{line}\">{linkText}</a>";
+                        string link = $"<a href=\"{filePath}\" line=\"{line}\">{linkText}</a>";
 #endif
                         _message.AppendLine(
                             $"Full Log -> " +
@@ -385,6 +384,12 @@ namespace Omni.Shared
         /// </remarks>
         public static IEnumerable<StackFrame> GetStackFrames(Exception exception = null)
         {
+            if (!Bridge.EnableDeepDebug)
+            {
+                yield return default;
+                yield break;
+            }
+
             StackTrace stack = exception == null
                 ? new StackTrace(fNeedFileInfo: true)
                 : new StackTrace(exception, fNeedFileInfo: true);
