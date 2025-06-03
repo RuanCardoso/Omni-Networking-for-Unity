@@ -5,6 +5,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
 using Omni.Shared;
 
@@ -1213,6 +1214,15 @@ namespace Omni.Core
 
 namespace Omni.Core
 {
+    [StructLayout(LayoutKind.Explicit)]
+    internal struct UIntFloat
+    {
+        [FieldOffset(0)]
+        public uint UIntValue;
+        [FieldOffset(0)]
+        public float FloatValue;
+    }
+
     /// <summary>
     /// Helper class for Half conversions and some low level operations.
     /// This class is internally used in the Half class.
@@ -1222,8 +1232,9 @@ namespace Omni.Core
     ///     - Code retrieved from http://sourceforge.net/p/csharp-half/code/HEAD/tree/ on 2015-12-04
     ///     - Fast Half Float Conversions, Jeroen van der Zijp, link: http://www.fox-toolkit.org/ftp/fasthalffloatconversion.pdf
     /// </remarks>
-    internal static class HalfHelper
+    public static class HalfHelper
     {
+        private static UIntFloat fToIntConverter = new() { FloatValue = 0 };
         private static readonly uint[] MantissaTable = GenerateMantissaTable();
         private static readonly uint[] ExponentTable = GenerateExponentTable();
         private static readonly ushort[] OffsetTable = GenerateOffsetTable();
@@ -1432,6 +1443,30 @@ namespace Omni.Core
         public static bool IsNegativeInfinity(Half half)
         {
             return half.Value == 0xfc00;
+        }
+
+        public static float Decompress(ushort compressedFloat)
+        {
+            uint result = MantissaTable[OffsetTable[compressedFloat >> 10] + (compressedFloat & 0x3ff)] + ExponentTable[compressedFloat >> 10];
+            return UIntToFloat(result);
+        }
+
+        public static ushort Compress(float uncompressedFloat)
+        {
+            uint value = FloatToUInt(uncompressedFloat);
+            return (ushort)(BaseTable[(value >> 23) & 0x1ff] + ((value & 0x007fffff) >> ShiftTable[value >> 23]));
+        }
+
+        private static uint FloatToUInt(float v)
+        {
+            fToIntConverter.FloatValue = v;
+            return fToIntConverter.UIntValue;
+        }
+
+        private static float UIntToFloat(uint v)
+        {
+            fToIntConverter.UIntValue = v;
+            return fToIntConverter.FloatValue;
         }
     }
 }
