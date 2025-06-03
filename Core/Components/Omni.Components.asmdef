@@ -1,0 +1,18 @@
+{
+    "name": "Omni.Components",
+    "rootNamespace": "",
+    "references": [
+        "Omni.Core",
+        "Omni.Shared",
+        "Omni.Inspector"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
