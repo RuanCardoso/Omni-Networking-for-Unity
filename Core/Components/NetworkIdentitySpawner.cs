@@ -3,42 +3,37 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Omni.Inspector;
+using Omni.Threading.Tasks;
 using UnityEngine;
 
 namespace Omni.Core.Components
 {
+    [Serializable]
+    class CachedIdentity
+    {
+        public string m_PrefabName;
+        public NetworkIdentity m_Identity;
+    }
+
     [DefaultExecutionOrder(-2800)] // It should be the last thing to happen, user scripts should take priority. !!! Important
     [DeclareFoldoutGroup("Spawn Options", Expanded = false)]
-    public sealed class NetworkIdentitySpawner : ServerBehaviour
+    public partial class NetworkIdentitySpawner : DualBehaviour
     {
-        [SerializeField] private NetworkIdentity m_LocalPlayer;
-        [SerializeField] private List<NetworkIdentity> m_IdentitiesToSpawn;
-        private DataCache m_InstantiateCache;
+        private const int k_SpawnRpcId = 1;
+        private const int k_SpawnCacheRpcId = 2;
 
-        [GroupNext("Spawn Options")]
-        [SerializeField, LabelWidth(150)] private bool m_EnableCache = true;
-        [SerializeField, ShowIf(nameof(m_EnableCache)), LabelWidth(150)] private bool m_AutoDestroyCache = true;
-        [SerializeField, LabelWidth(150)] private bool m_SpawnAfterGroupJoin = false;
-        [SerializeField, LabelWidth(150), ShowIf(nameof(m_SpawnAfterGroupJoin))] private bool m_AutoCreateGroup = true;
-        [SerializeField, LabelWidth(150), ShowIf(nameof(m_AutoCreateGroup)), ShowIf(nameof(m_SpawnAfterGroupJoin))] private string m_GroupName = "_mainGroup";
+        [ReadOnly]
+        [SerializeField]
+        private List<CachedIdentity> m_CachedIdentities = new();
 
-
-        protected override void OnAwake()
-        {
-            if (m_SpawnAfterGroupJoin)
-            {
-                m_InstantiateCache = m_AutoDestroyCache ? new(CachePresets.GroupNewWithAutoDestroy) : new(CachePresets.GroupNew);
-            }
-            else
-            {
-                m_InstantiateCache = m_AutoDestroyCache ? new(CachePresets.ServerNewWithAutoDestroy) : new(CachePresets.ServerNew);
-            }
-        }
+        [InfoBox("This component is designed for rapid development, prototyping and testing purposes. It provides a streamlined approach to network identity spawning and management.", TriMessageType.Warning)]
+        [SerializeField, Min(1), LabelWidth(115)] private int m_SpawnCount = 1;
+        [SerializeField, LabelWidth(115), Indent] private NetworkIdentity m_LocalPlayer;
+        [SerializeField] private List<NetworkIdentity> m_ServerIdentities;
 
         public override void Start()
         {
             base.Start();
-
             // Add the objects to the list of objects to spawn.
             if (m_LocalPlayer != null)
             {
@@ -46,7 +41,7 @@ namespace Omni.Core.Components
                 DisableSceneObject(m_LocalPlayer.gameObject);
             }
 
-            foreach (NetworkIdentity identity in m_IdentitiesToSpawn)
+            foreach (NetworkIdentity identity in m_ServerIdentities)
             {
                 if (identity != null)
                 {
@@ -56,110 +51,98 @@ namespace Omni.Core.Components
             }
         }
 
-        protected override void OnServerStart()
+        protected override async void OnServerStart()
         {
-            if (m_SpawnAfterGroupJoin)
+            SpawnNetworkIdentities();
+            while (Application.isPlaying)
             {
-                if (m_AutoCreateGroup)
+                foreach (CachedIdentity cachedIdentity in m_CachedIdentities.ToList())
                 {
-                    var group = NetworkManager.Matchmaking.Server.AddGroup(m_GroupName);
-                    group.DestroyWhenEmpty = true;
+                    if (cachedIdentity.m_Identity == null)
+                        m_CachedIdentities.Remove(cachedIdentity);
                 }
 
-                return;
+                // Clear the invalid cached identities every second.
+                await UniTask.Delay(1000);
             }
-
-            SpawnNetworkIdentities(0);
         }
 
-        private void SpawnNetworkIdentities(int groupId)
+        private void SpawnNetworkIdentities()
         {
-            foreach (NetworkIdentity identity in m_IdentitiesToSpawn)
+            foreach (NetworkIdentity identity in m_ServerIdentities)
             {
                 if (identity != null)
                 {
                     if (m_LocalPlayer != null && identity.name == m_LocalPlayer.name)
                         continue;
 
-                    Spawn(identity.name, NetworkManager.ServerSide.ServerPeer, groupId);
+                    Spawn(identity.name, NetworkManager.ServerSide.ServerPeer);
                 }
             }
         }
 
         protected override void OnServerPeerConnected(NetworkPeer peer, Phase phase)
         {
-            if (phase == Phase.End)
+            if (phase == Phase.Ended)
             {
-                if (m_SpawnAfterGroupJoin)
-                {
-                    if (m_AutoCreateGroup)
-                    {
-                        var _mainGroup = NetworkManager.Matchmaking.Server.GetGroup(m_GroupName);
-                        NetworkManager.Matchmaking.Server.JoinGroup(_mainGroup, peer);
-                    }
-
-                    return;
-                }
-
-                SpawnLocalPlayer(peer, 0);
+                SpawnLocalPlayer(peer);
             }
         }
 
-        protected override void OnPlayerJoinedGroup(DataBuffer buffer, NetworkGroup group, NetworkPeer peer)
+        private void SpawnLocalPlayer(NetworkPeer peer)
         {
-            if (m_SpawnAfterGroupJoin)
+            foreach (CachedIdentity cachedIdentity in m_CachedIdentities)
             {
-                if (group.IsSubGroup)
-                    return;
+                NetworkIdentity identity = cachedIdentity.m_Identity;
+                if (identity == null)
+                    continue;
 
-                SpawnLocalPlayer(peer, group.Id);
-
-                if (!group.Data.ContainsKey("_isCreated"))
-                {
-                    SpawnNetworkIdentities(group.Id);
-                    group.Data["_isCreated"] = true;
-                }
+                Server.Rpc(k_SpawnCacheRpcId, peer, cachedIdentity.m_PrefabName, identity.Owner.Id, identity.Id);
             }
-        }
-
-        private void SpawnLocalPlayer(NetworkPeer peer, int groupId)
-        {
-            if (m_EnableCache)
-                m_InstantiateCache.SendToPeer(peer, m_SpawnAfterGroupJoin ? groupId : 0);
 
             if (m_LocalPlayer != null)
             {
-                Spawn(m_LocalPlayer.name, peer, groupId);
+                for (int i = 0; i < m_SpawnCount; i++)
+                    Spawn(m_LocalPlayer.name, peer);
             }
         }
 
-        private void Spawn(string prefabName, NetworkPeer peer, int groupId)
+        private void Spawn(string prefabName, NetworkPeer peer)
         {
             var prefab = NetworkManager.GetPrefab(prefabName);
-            var identity = prefab.Spawn(peer, dataCache: m_EnableCache ? m_InstantiateCache : DataCache.None, groupId: groupId);
-
-            if (NetworkManager.Matchmaking.Server.TryGetGroup(groupId, out var group))
-            {
-                group.AddIdentity(identity);
-            }
+            var identity = prefab.SpawnOnServer(peer.Id, prefab.EntityType);
+            m_CachedIdentities.Add(new CachedIdentity { m_PrefabName = prefabName, m_Identity = identity });
+            Server.Rpc(k_SpawnRpcId, peer, prefabName, peer.Id, identity.Id);
         }
 
-        private void DisableSceneObject(GameObject obj)
+        [Server(k_SpawnRpcId, Target = Target.Everyone)]
+        [Server(k_SpawnCacheRpcId, Target = Target.Self)]
+        private void SpawnStubRpc() { } // stub rpc -> only used for rpc registration with optional parameters
+
+        [Client(k_SpawnRpcId)]
+        [Client(k_SpawnCacheRpcId)]
+        private void SpawnRpc(string prefabName, int peerId, int identityId)
         {
-            if (!NetworkHelper.IsPrefab(obj))
+            var prefab = NetworkManager.GetPrefab(prefabName);
+            prefab.SpawnOnClient(peerId, identityId);
+        }
+
+        private void DisableSceneObject(GameObject sceneObj)
+        {
+            if (!NetworkHelper.IsPrefab(sceneObj))
             {
                 // Disable the original scene object, enabled after instantiation.
-                obj.SetActive(false);
-                obj.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+                sceneObj.SetActive(false);
+                sceneObj.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
             }
         }
 
 #if UNITY_EDITOR
-        [Button("Find All Identities")]
-        [ContextMenu("Find All Identities")]
+        [Button("Register Scene Objects")]
+        [ContextMenu("Register Scene Objects")]
         private void FindAllIdentities()
         {
-            m_IdentitiesToSpawn = FindObjectsByType<NetworkIdentity>(FindObjectsSortMode.InstanceID).ToList();
+            m_ServerIdentities = FindObjectsByType<NetworkIdentity>(FindObjectsSortMode.InstanceID).ToList();
         }
 #endif
 
