@@ -1,3 +1,4 @@
+using Omni.Core;
 using Omni.Shared;
 using Omni.Threading.Tasks;
 using System;
@@ -54,13 +55,34 @@ public sealed class BandwidthMonitor
             _accumulatedBytes = _accumulatedPps = 0;
 
             // Invoke the callback with the truncated averages to estimate bandwidth usage.
-            OnAverageChanged?.Invoke((int)_bytesMeasurementMovingAverage.Average, (int)_ppsMeasurementMovingAverage.Average);
+            OnAverageChanged?.Invoke((int)Math.Round(_bytesMeasurementMovingAverage.Average), (int)Math.Round(_ppsMeasurementMovingAverage.Average));
         }
     }
 
     internal void Add(double value)
     {
         _accumulatedPps++;
-        _accumulatedBytes += value;
+        _accumulatedBytes += value + GetTransporterHeaderSize();
+    }
+
+    private int GetTransporterHeaderSize()
+    {
+        if (NetworkManager.BandwidthPayloadOnly)
+            return 0;
+
+        switch (NetworkManager.UnderlyingTransporter)
+        {
+            case Transporter.Lite:
+                NetworkLogger.__Log__("Lite Transporter is not supported. Comming soon.", NetworkLogger.LogType.Warning);
+                break;
+            case Transporter.Kcp:
+                NetworkLogger.__Log__("Kcp Transporter is not supported. Comming soon.", NetworkLogger.LogType.Warning);
+                break;
+            case Transporter.Web:
+                NetworkLogger.__Log__("Web Transporter is not supported. Comming soon.", NetworkLogger.LogType.Warning);
+                break;
+        }
+
+        return 0;
     }
 }
