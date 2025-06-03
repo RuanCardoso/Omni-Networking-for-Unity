@@ -118,6 +118,7 @@ namespace Omni.Core
         /// </remarks>
         public DataBuffer(DataBuffer fromBuffer, bool seekToBegin = false) : this(fromBuffer._length + 1)
         {
+            fromBuffer ??= Empty;
             // Copy the buffer.
             this.Write(fromBuffer.BufferAsSpan);
             if (seekToBegin)
@@ -391,6 +392,7 @@ namespace Omni.Core
         /// </remarks>
         public void CopyTo(DataBuffer toBuffer, bool seekToBegin = false)
         {
+            toBuffer ??= Empty;
             // Copy the buffer.
             toBuffer.Write(BufferAsSpan);
             // Reset the position to the beginning.
@@ -398,6 +400,13 @@ namespace Omni.Core
             {
                 toBuffer.SeekToBegin();
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void Internal_CopyFrom(DataBuffer data)
+        {
+            data ??= Empty;
+            data.CopyTo(this);
         }
 
         /// <summary>
