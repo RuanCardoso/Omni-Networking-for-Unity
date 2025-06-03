@@ -46,7 +46,7 @@ namespace Omni.Core
                 var buffer = _pool.Dequeue();
                 buffer._disposed = false;
 #if UNITY_EDITOR // Obs: Disable tracking in the build for best performance tests
-                CreateTrace(buffer, enableTracking);
+                CreateTrace(buffer, enableTracking && NetworkManager.EnableDeepDebug);
 #endif
                 return buffer;
             }
