@@ -1,0 +1,20 @@
+{
+    "name": "Unity.Omni.Codegen",
+    "rootNamespace": "",
+    "references": [
+        ""
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Mono.CecilX.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -5,7 +5,7 @@
         "Omni.Shared",
         "Omni.Deps",
         "ParrelSync",
-        "TriInspector"
+        "Omni.Inspector"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

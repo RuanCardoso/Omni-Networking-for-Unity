@@ -5,7 +5,7 @@
         "Omni.Shared",
         "Omni.Core",
         "Unity.TextMeshPro",
-        "TriInspector"
+        "Omni.Inspector"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
