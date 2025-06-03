@@ -17,15 +17,14 @@ namespace Omni.Inspector.Editors
             _core.Dispose();
         }
 
-
         public override void OnInspectorGUI()
         {
-            _core.OnInspectorGUI();
+            _core.OnInspectorGUI(forceRepaint: InspectorBridge.ForceRepaint);
         }
 
         public override VisualElement CreateInspectorGUI()
         {
-            return _core.CreateVisualElement();
+            return _core.CreateVisualElement(forceRepaint: InspectorBridge.ForceRepaint);
         }
     }
 }

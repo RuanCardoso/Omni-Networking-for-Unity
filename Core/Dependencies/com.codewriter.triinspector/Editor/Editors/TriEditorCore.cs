@@ -32,7 +32,7 @@ namespace Omni.Inspector.Editors
             _inspector = null;
         }
 
-        public void OnInspectorGUI(VisualElement visualRoot = null)
+        public void OnInspectorGUI(VisualElement visualRoot = null, bool forceRepaint = false)
         {
             var serializedObject = _editor.serializedObject;
 
@@ -83,13 +83,13 @@ namespace Omni.Inspector.Editors
                 _inspector.RequestValidation();
             }
 
-            if (_inspector.RepaintRequired)
+            if (_inspector.RepaintRequired || forceRepaint)
             {
                 _editor.Repaint();
             }
         }
 
-        public VisualElement CreateVisualElement()
+        public VisualElement CreateVisualElement(bool forceRepaint = false)
         {
             var container = new VisualElement();
             var root = new VisualElement()
@@ -114,7 +114,7 @@ namespace Omni.Inspector.Editors
                     container.resolvedStyle.width * labelWidthRatio - space);
 
                 GUILayout.BeginVertical(Styles.RootLayout);
-                OnInspectorGUI(root);
+                OnInspectorGUI(root, forceRepaint);
                 GUILayout.EndVertical();
             })
             {
