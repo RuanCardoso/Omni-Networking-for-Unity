@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using System.Linq;
+using Omni.Shared;
 using UnityEditor;
 using UnityEditor.Build;
 
@@ -78,6 +79,20 @@ namespace Omni.Editor
                 {
                     currentDefines.Remove("OMNI_DEBUG");
                 }
+            }
+
+            foreach (string oldVersionDefine in currentDefines.ToList())
+            {
+                if (oldVersionDefine.StartsWith("OMNI_V_"))
+                {
+                    currentDefines.Remove(oldVersionDefine);
+                }
+            }
+
+            string versionDefine = $"OMNI_V_{NetworkLogger.Version}";
+            if (!currentDefines.Contains(versionDefine))
+            {
+                currentDefines.Add(versionDefine);
             }
 
             string[] newDefines = currentDefines.ToArray();

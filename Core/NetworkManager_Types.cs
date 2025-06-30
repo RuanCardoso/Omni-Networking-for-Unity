@@ -1,15 +1,101 @@
 using Newtonsoft.Json;
+using Omni.Collections;
+using Omni.Inspector;
 using System;
 
 namespace Omni.Core
 {
-    internal class NetworkConstants
+    [Serializable]
+    [DeclareFoldoutGroup("Data"), DeclareFoldoutGroup("Shared Data")]
+    internal class InspectorSerializableGroup
     {
-        // TODO: Add it to the source generator. Don't change, used by Source Generator
-        internal const byte NETWORK_VARIABLE_RPC_ID = 255;
-        internal const int INVALID_MASTER_CLIENT_ID = -1;
-        internal const string SHARED_ALL_KEYS = "_All_";
-        internal const string INVALID_RPC_NAME = "Unknown Rpc";
+        [ReadOnly]
+        public int m_Id;
+
+        [OnValueChanged(nameof(OnNameChanged))]
+        public string m_Name;
+
+        [InlineProperty, HideLabel]
+        [Group("Data")]
+        public ObservableDictionary<string, string> m_Data = new();
+
+        [InlineProperty, HideLabel]
+        [Group("Shared Data")]
+        public ObservableDictionary<string, string> m_SharedData = new();
+
+        public InspectorSerializableGroup()
+        {
+            m_Data.OnItemUpdated += OnItemUpdated;
+            m_Data.OnItemRemoved += OnItemRemoved;
+            m_Data.OnItemAdded += OnItemAdded;
+            m_Data.OnUpdate += OnUpdated;
+        }
+
+        private void OnUpdated(bool obj)
+        {
+            UnityEngine.Debug.Log("updated" + m_Id);
+        }
+
+        private void OnItemAdded(string arg1, string arg2)
+        {
+            UnityEngine.Debug.Log("added" + m_Id);
+        }
+
+        private void OnItemRemoved(string arg1, string arg2)
+        {
+            UnityEngine.Debug.Log("removed" + m_Id);
+        }
+
+        private void OnItemUpdated(string arg1, string arg2)
+        {
+            UnityEngine.Debug.Log("updated" + m_Id);
+        }
+
+        public void OnNameChanged()
+        {
+            UnityEngine.Debug.Log("changed" + m_Id);
+        }
+
+        [Button("Next Group")]
+        public void NextGroup()
+        {
+            UpdateGroup(nextGroup: true);
+        }
+
+        [Button("Previous Group")]
+        public void PreviousGroup()
+        {
+            UpdateGroup(nextGroup: false);
+        }
+
+        private void UpdateGroup(bool nextGroup)
+        {
+#if UNITY_EDITOR
+            var groups = NetworkManager.IsHost ? NetworkManager.ServerSide.Groups : NetworkManager.IsServerActive ? NetworkManager.ServerSide.Groups : NetworkManager.ClientSide.Groups;
+            if (groups.TryGetValue(m_Id, out var currentGroup))
+            {
+                if (nextGroup ? currentGroup.TryGetNextGroup(out var group) : currentGroup.TryGetPreviousGroup(out group))
+                {
+                    m_Id = group.Id;
+                    m_Name = group.Name;
+                    m_Data = group.Data.ToObservableDictionary(x => x.Key, x => x.Value.ToString());
+                }
+            }
+#endif
+        }
+    }
+
+    public class NetworkConstants
+    {
+        internal const byte k_NetworkVariableRpcId = 255; // TODO: Add it to the source generator. Don't change, used by Source Generator
+        internal const int k_InvalidMasterClientId = -1;
+
+        internal const string k_ShareAllKeys = "_All_";
+        internal const string k_InvalidRpcName = "Unknown Rpc";
+
+        internal const byte k_SpawnNotificationId = 253;
+        internal const byte k_SetOwnerId = 254;
+        public const byte k_DestroyEntityId = 255;
     }
 
     internal enum ScriptingBackend
@@ -29,45 +115,23 @@ namespace Omni.Core
     }
 
     // not a enum to avoid casting
-    internal class MessageType
+    internal class NetworkPacketType
     {
-        internal const byte KCP_PING_REQUEST_RESPONSE = 238;
-        internal const byte RequestEntityAction = 239;
-        internal const byte SetOwner = 240;
-        internal const byte Despawn = 241;
-        internal const byte Spawn = 242;
-        internal const byte SyncGroupSharedData = 243;
-        internal const byte SyncPeerSharedData = 244;
-        internal const byte PostResponseAsync = 245;
-        internal const byte PostFetchAsync = 246;
-        internal const byte GetResponseAsync = 247;
-        internal const byte GetFetchAsync = 248;
-        internal const byte NtpQuery = 249;
-        internal const byte BeginHandshake = 250;
-        internal const byte EndHandshake = 251;
-        internal const byte LocalRpc = 252;
-        internal const byte GlobalRpc = 253;
-        internal const byte LeaveGroup = 254;
-        internal const byte JoinGroup = 255;
-    }
-
-    [Flags]
-    public enum CacheMode
-    {
-        // Unique
-        None = 0,
-
-        // Combine
-        New = 1,
-        Overwrite = 2,
-
-        // Combine
-        Global = 4,
-        Group = 8,
-        Peer = 16,
-
-        // Unique
-        AutoDestroy = 32,
+        internal const byte k_Authenticate = 1;
+        internal const byte k_BeginHandshake = 2;
+        internal const byte k_EndHandshake = 3;
+        internal const byte k_JoinGroup = 4;
+        internal const byte k_LeaveGroup = 5;
+        internal const byte k_LocalRpc = 6;
+        internal const byte k_StaticRpc = 7;
+        internal const byte k_NtpQuery = 8;
+        internal const byte k_GetFetchAsync = 9;
+        internal const byte k_GetResponseAsync = 10;
+        internal const byte k_PostFetchAsync = 11;
+        internal const byte k_PostResponseAsync = 12;
+        internal const byte k_SyncPeerSharedData = 13;
+        internal const byte k_SyncGroupSharedData = 14;
+        internal const byte k_RequestEntityAction = 15;
     }
 
     public enum Module
@@ -80,102 +144,137 @@ namespace Omni.Core
     }
 
     /// <summary>
-    /// Represents the phase or stage of a network-related event, such as connection, disconnection, or destruction.
+    /// Indicates the stage of a network event, such as connection, disconnection, join, leave or destruction.
+    /// Useful for tracking whether the process has started, is active, or has ended.
     /// </summary>
     public enum Phase
     {
         /// <summary>
-        /// The initial phase of the event, typically signaling the start of a process.
-        /// For example, this phase may occur when a connection or object is being initialized.
+        /// The process has just started.
+        /// For a connection event, this means the negotiation or handshake is in progress and the connection is not yet established.
+        /// For a disconnection event, this means the disconnect process has just begun and initial cleanup may be occurring.
         /// </summary>
-        Begin,
+        Started,
 
         /// <summary>
-        /// The intermediate phase of the event, representing its active or ongoing state.
-        /// During this phase, main operations, processing, or interactions are performed.
+        /// The process is in its active or ready state.
+        /// For a connection event, this indicates the connection is fully established and authenticated, ready for communication.
+        /// For a disconnection event, this indicates that the main cleanup and resource release are in progress.
         /// </summary>
-        Normal,
+        Active,
 
         /// <summary>
-        /// The final phase of the event, indicating its conclusion and cleanup.
-        /// This phase is triggered when a connection is closed, an object is destroyed, or processes are finalized.
+        /// The process has fully completed.
+        /// For a connection event, this is functionally the same as Active (the connection is fully ready and usable).
+        /// For a disconnection event, this means all cleanup is complete and the connection has been fully terminated.
         /// </summary>
-        End
+        Ended
     }
 
     /// <summary>
-    /// Specifies the target recipients for a GET/POST message.
+    /// Defines the possible recipients for a network GET/POST message within the Omni Networking system.
+    /// <para>
+    /// This enumeration allows you to control the delivery scope of HTTP-like network requests, 
+    /// such as targeting only the sender, broadcasting to all connected peers, or restricting 
+    /// delivery to members of the same group. Use these options to optimize network traffic and 
+    /// ensure messages reach only the intended audience.
+    /// </para>
     /// </summary>
     public enum RouteTarget
     {
         /// <summary>
-        /// Sends the message to the current client only. If the peer ID is 0 (server), the message is ignored.
+        /// Sends the message exclusively to the current client (the sender).
+        /// <para>
+        /// This is useful for operations where only the sender needs to receive the response or update.
+        /// </para>
+        /// <para>
+        /// <b>Note:</b> If the sender is the server (peer ID: 0), the message will be ignored and not processed.
+        /// This prevents unnecessary network traffic for server-only operations.
+        /// </para>
         /// </summary>
-        SelfOnly,
+        Self,
 
         /// <summary>
         /// Broadcasts the message to all connected players, including the sender.
+        /// <para>
+        /// Use this option when you want every participant in the session to receive the message, 
+        /// such as for global announcements or synchronized state updates.
+        /// </para>
         /// </summary>
-        AllPlayers,
+        Everyone,
 
         /// <summary>
-        /// Sends the message to all players who belong to the same group(s) as the sender.
-        /// Sub-groups are not included.
+        /// Sends the message to all players who are members of the same group(s) as the sender.
+        /// <para>
+        /// This is ideal for group-based communication, such as team chat or group-specific events.
+        /// Only direct group members will receive the message; sub-groups or nested groups are not included.
+        /// </para>
         /// </summary>
-        GroupOnly,
-
-        /// <summary>
-        /// Sends the message to all players who do not belong to any group.
-        /// </summary>
-        UngroupedPlayers,
+        Group,
     }
 
     /// <summary>
-    /// Specifies the target recipients for a network message.
+    /// Defines the intended recipients for a network message within the Omni Networking system.
+    /// <para>
+    /// This enumeration allows you to control the scope and visibility of networked messages, 
+    /// supporting scenarios such as broadcasting to all peers, targeting only the sender, 
+    /// or restricting communication to specific groups. The <see cref="Auto"/> option provides 
+    /// context-sensitive behavior, making it the recommended default for most use cases.
+    /// </para>
     /// </summary>
     public enum Target : byte
     {
         /// <summary>
-        /// Automatically determines the target recipients for the network message based on the context.
+        /// Automatically selects the most appropriate recipients for the network message based on the current context.
+        /// <para>
+        /// On the server, this typically means broadcasting to all relevant clients. On the client, it may target the server or a specific group,
+        /// depending on the operation being performed. This is the default and recommended option for most use cases.
+        /// </para>
         /// </summary>
         Auto,
 
         /// <summary>
-        /// Broadcasts the message to all connected players, including the sender.
+        /// Sends the message to all connected peers, including the sender itself.
+        /// <para>
+        /// Use this to broadcast updates or events that should be visible to every participant in the session, including the originator.
+        /// </para>
         /// </summary>
-        AllPlayers,
+        Everyone,
 
         /// <summary>
-        /// Sends the message to the sender itself. If the sender's peer ID is 0 (server), the message is ignored.
+        /// Sends the message exclusively to the sender (the local peer).
+        /// <para>
+        /// This option is typically used for providing immediate feedback, confirmations, or updates that are only relevant to the sender and should not be visible to other peers.
+        /// </para>
+        /// <para>
+        /// <b>Note:</b> If the sender is the server (peer id: 0), the message will be ignored and not processed. This ensures that server-only operations do not result in unnecessary or redundant network traffic.
+        /// </para>
         /// </summary>
-        SelfOnly,
+        Self,
 
         /// <summary>
-        /// Sends the message to all connected players except the sender.
+        /// Sends the message to all connected peers except the sender.
+        /// <para>
+        /// Use this to broadcast information to all participants while excluding the originator, such as when relaying a player's action to others.
+        /// </para>
         /// </summary>
-        AllPlayersExceptSelf,
+        Others,
 
         /// <summary>
-        /// Sends the message to all players who are members of the same group(s) as the sender.
-        /// Sub-groups are not included.
+        /// Sends the message to all peers who are members of the same group(s) as the sender.
+        /// <para>
+        /// Sub-groups are not included. This is useful for group-based communication, such as team chat or localized events.
+        /// </para>
         /// </summary>
-        GroupOnly,
+        Group,
 
         /// <summary>
-        /// Sends the message to all players in the same group(s) as the sender, excluding the sender itself.
-        /// Sub-groups are not included.
+        /// Sends the message to all peers in the same group(s) as the sender, excluding the sender itself.
+        /// <para>
+        /// Sub-groups are not included. Use this to notify group members of an action performed by the sender, without echoing it back.
+        /// </para>
         /// </summary>
-        GroupExceptSelf,
-
-        /// <summary>
-        /// Sends the message to all players who are not members of any group.
-        /// </summary>
-        UngroupedPlayers,
-
-        /// <summary>
-        /// Sends the message to all players who are not members of any group, excluding the sender.
-        /// </summary>
-        UngroupedPlayersExceptSelf,
+        GroupOthers,
     }
 
     /// <summary>
@@ -215,138 +314,6 @@ namespace Omni.Core
         ReliableSequenced
     }
 
-    /// <summary>
-    /// Provides predefined caching modes for various scoped cache operations.
-    /// </summary>
-    /// <remarks>
-    /// The class defines multiple cache presets by combining specific <see cref="CacheMode"/> flags to represent common cache usage scenarios.
-    /// These presets are categorized into the following scopes:
-    /// <list type="bullet">
-    /// <item>
-    /// <term>Peer-Scoped Cache Operations</term>
-    /// <description>
-    /// <list type="bullet">
-    /// <item><term><c>PeerNew</c></term><description>Combines <see cref="CacheMode.Peer"/> and <see cref="CacheMode.New"/>. Creates a new cache entry specific to a peer.</description></item>
-    /// <item><term><c>PeerNewWithAutoDestroy</c></term><description>Extends <c>PeerNew</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the cache entry when it is no longer needed.</description></item>
-    /// <item><term><c>PeerOverwrite</c></term><description>Combines <see cref="CacheMode.Peer"/> and <see cref="CacheMode.Overwrite"/>. Overwrites an existing cache entry specific to a peer.</description></item>
-    /// <item><term><c>PeerOverwriteWithAutoDestroy</c></term><description>Extends <c>PeerOverwrite</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the existing entry after overwriting.</description></item>
-    /// </list>
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <term>Group-Scoped Cache Operations</term>
-    /// <description>
-    /// <list type="bullet">
-    /// <item><term><c>GroupNew</c></term><description>Combines <see cref="CacheMode.Group"/> and <see cref="CacheMode.New"/>. Creates a new cache entry for a group.</description></item>
-    /// <item><term><c>GroupNewWithAutoDestroy</c></term><description>Extends <c>GroupNew</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the cache entry when no longer needed.</description></item>
-    /// <item><term><c>GroupOverwrite</c></term><description>Combines <see cref="CacheMode.Group"/> and <see cref="CacheMode.Overwrite"/>. Overwrites an existing group cache entry.</description></item>
-    /// <item><term><c>GroupOverwriteWithAutoDestroy</c></term><description>Extends <c>GroupOverwrite</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the existing entry after overwriting.</description></item>
-    /// </list>
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <term>Global-Scoped Cache Operations</term>
-    /// <description>
-    /// <list type="bullet">
-    /// <item><term><c>ServerNew</c></term><description>Combines <see cref="CacheMode.Global"/> and <see cref="CacheMode.New"/>. Creates a new global cache entry.</description></item>
-    /// <item><term><c>ServerNewWithAutoDestroy</c></term><description>Extends <c>ServerNew</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the cache entry when no longer needed.</description></item>
-    /// <item><term><c>ServerOverwrite</c></term><description>Combines <see cref="CacheMode.Global"/> and <see cref="CacheMode.Overwrite"/>. Overwrites an existing global cache entry.</description></item>
-    /// <item><term><c>ServerOverwriteWithAutoDestroy</c></term><description>Extends <c>ServerOverwrite</c> with <see cref="CacheMode.AutoDestroy"/>. Automatically destroys the existing entry after overwriting.</description></item>
-    /// </list>
-    /// </description>
-    /// </item>
-    /// </list>
-    /// These presets are useful for simplifying cache management in various scoped scenarios.
-    /// </remarks>
-    public class CachePresets
-    {
-        // Peer-scoped cache operations
-        /// Represents a combination of cache modes specific to peer-scoped cache operations
-        /// and a new cache creation. This constant is used to define a caching behavior
-        /// that associates operations with individual peers while ensuring the creation
-        /// of new cache entries.
-        public const CacheMode PeerNew = CacheMode.Peer | CacheMode.New;
-
-        /// Represents a peer-scoped cache mode configuration with the combination of
-        /// `CacheMode.Peer`, `CacheMode.New`, and `CacheMode.AutoDestroy`.
-        /// This configuration ensures that the cache is scoped to the peer, marks
-        /// it as new, and enables automatic destruction upon invalidation or specific
-        /// conditions.
-        public const CacheMode PeerNewWithAutoDestroy = CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy;
-
-        /// <summary>
-        /// Represents a cache operation mode intended for peer-scoped overwrite operations.
-        /// Combines the <see cref="CacheMode.Peer"/> and <see cref="CacheMode.Overwrite"/> flags.
-        /// Used to indicate that existing cached data for a specific peer should be replaced with new data.
-        /// </summary>
-        public const CacheMode PeerOverwrite = CacheMode.Peer | CacheMode.Overwrite;
-
-        /// Represents a combination of cache modes for operations scoped to a peer.
-        /// This preset combines the `Peer`, `Overwrite`, and `AutoDestroy` flags from the `CacheMode` enumeration.
-        /// It is used to specify that cached data should be overwritten, scoped to a peer,
-        /// and automatically destroyed when no longer needed.
-        public const CacheMode PeerOverwriteWithAutoDestroy =
-            CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy;
-
-        // Group-scoped cache operations
-        /// <summary>
-        /// Represents a cache operation mode where a new entry is created within the group scope.
-        /// Combines <see cref="CacheMode.Group"/> and <see cref="CacheMode.New"/> to ensure that the
-        /// cache is scoped to the group and a new entry is created. Does not overwrite existing entries.
-        /// </summary>
-        public const CacheMode GroupNew = CacheMode.Group | CacheMode.New;
-
-        /// Represents a caching mode that operates on a group scope where new cache entries
-        /// are created, and they are automatically destroyed when their scope ends.
-        /// Combines the Group, New, and AutoDestroy flags from the CacheMode enumeration.
-        public const CacheMode GroupNewWithAutoDestroy = CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy;
-
-        /// <summary>
-        /// Represents a cache mode where existing data within the specified group is overwritten.
-        /// Combines the <see cref="CacheMode.Group"/> and <see cref="CacheMode.Overwrite"/> flags.
-        /// Typically used to update or replace existing cached information for group-scoped operations.
-        /// </summary>
-        public const CacheMode GroupOverwrite = CacheMode.Group | CacheMode.Overwrite;
-
-        /// Represents a combined cache mode configuration that applies the following settings:
-        /// 1. Group-scoped cache operations (CacheMode.Group).
-        /// 2. Overwrite behavior for existing entries (CacheMode.Overwrite).
-        /// 3. Automatic destruction of cache entries when no longer needed (CacheMode.AutoDestroy).
-        /// This is useful for managing group-level cached data with automatic cleanup.
-        public const CacheMode GroupOverwriteWithAutoDestroy =
-            CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy;
-
-        // Global-scoped cache operations
-        /// <summary>
-        /// Represents a cache operation mode configured for creating new global-scoped cache entities on the server.
-        /// Combines the <see cref="CacheMode.Global"/> and <see cref="CacheMode.New"/> flags to define a unique
-        /// operational behavior for managing server-level cache.
-        /// </summary>
-        public const CacheMode ServerNew = CacheMode.Global | CacheMode.New;
-
-        /// <summary>
-        /// Represents a global-scoped cache operation mode that combines the creation of a new cache entry
-        /// with automatic cleanup.
-        /// This constant is defined using a combination of the <c>CacheMode.Global</c>, <c>CacheMode.New</c>,
-        /// and <c>CacheMode.AutoDestroy</c> flags, enabling new cache data to be added globally and
-        /// automatically removed when no longer needed.
-        /// </summary>
-        public const CacheMode ServerNewWithAutoDestroy = CacheMode.Global | CacheMode.New | CacheMode.AutoDestroy;
-
-        /// <summary>
-        /// Represents a cache operation mode that applies globally across the network (Global scope),
-        /// and is used to overwrite existing cache entries with new data.
-        /// </summary>
-        public const CacheMode ServerOverwrite = CacheMode.Global | CacheMode.Overwrite;
-
-        /// Represents a cache operation mode that performs an overwrite operation on the global (server) cache
-        /// and marks the cached entries for automatic destruction when they are no longer needed.
-        /// Combines the CacheMode flags `Global`, `Overwrite`, and `AutoDestroy`.
-        /// Used to manage server-scoped cache entries with automatic cleanup after they are updated.
-        public const CacheMode ServerOverwriteWithAutoDestroy =
-            CacheMode.Global | CacheMode.Overwrite | CacheMode.AutoDestroy;
-    }
-
     [JsonObject(MemberSerialization.OptIn)]
     internal class ImmutableKeyValuePair
     {
@@ -366,97 +333,86 @@ namespace Omni.Core
         }
     }
 
-    /// <summary>
-    /// Represents the default synchronization options for network variables.
-    /// </summary>
-    /// <remarks>
-    /// The following default settings are applied:
-    /// <list type="bullet">
-    /// <item><term><c>Target</c></term><description>Set to <see cref="Target.Auto"/>. Automatically determines the target recipients for the network message based on the context. <b>[Not valid on the client side]</b></description></item>
-    /// <item><term><c>DeliveryMode</c></term><description>Set to <see cref="DeliveryMode.ReliableOrdered"/>. Ensures messages are delivered reliably and in sequential order.</description></item>
-    /// <item><term><c>GroupId</c></term><description>Set to <c>0</c>. Indicates no specific group identifier. <b>[Not valid on the client side]</b></description></item>
-    /// <item><term><c>DataCache</c></term><description>Set to <see cref="DataCache.None"/>. Specifies that no caching mechanism is used. <b>[Not valid on the client side]</b></description></item>
-    /// <item><term><c>SequenceChannel</c></term><description>Set to <c>0</c>. Uses the default sequence channel for ordered message delivery.</description></item>
-    /// </list>
-    /// </remarks>
     public class NetworkVariableOptions
     {
-        public Target Target { get; set; }
-        public DeliveryMode DeliveryMode { get; set; }
-        public int GroupId { get; set; }
-        public DataCache DataCache { get; set; }
-        public byte SequenceChannel { get; set; }
-
-        public NetworkVariableOptions()
-        {
-            Target = Target.Auto; // NOT VALID FOR CLIENT SIDE
-            DeliveryMode = DeliveryMode.ReliableOrdered;
-            GroupId = 0; // NOT VALID FOR CLIENT SIDE
-            DataCache = DataCache.None; // NOT VALID FOR CLIENT SIDE
-            SequenceChannel = 0;
-        }
-
-        public static implicit operator NetworkVariableOptions(ClientOptions options)
-        {
-            return new NetworkVariableOptions()
-            {
-                DeliveryMode = options.DeliveryMode,
-                SequenceChannel = options.SequenceChannel,
-            };
-        }
-
-        public static implicit operator NetworkVariableOptions(ServerOptions options)
-        {
-            return new NetworkVariableOptions()
-            {
-                Target = options.Target,
-                DeliveryMode = options.DeliveryMode,
-                GroupId = options.GroupId,
-                DataCache = options.DataCache,
-                SequenceChannel = options.SequenceChannel
-            };
-        }
+        public NetworkGroup Group { get; set; }
     }
 
-    /// <summary>
-    /// Represents the synchronization options for network communication on the client.
-    /// </summary>
-    public ref struct ClientOptions
+    public readonly struct Channel : IComparable, IComparable<Channel>, IComparable<int>, IEquatable<Channel>, IEquatable<int>, IConvertible, IFormattable
     {
-        public DeliveryMode DeliveryMode { get; set; }
-        public byte SequenceChannel { get; set; }
-        public DataBuffer Buffer { get; set; }
+        public static Channel MinValue => int.MinValue;
+        public static Channel MaxValue => int.MaxValue;
+        public static Channel Zero => 0;
+        public static Channel One => 1;
 
-        public ClientOptions(DataBuffer message = null)
+        private readonly int value;
+
+        public Channel(int value)
         {
-            message ??= DataBuffer.Empty;
-            Buffer = message;
-            DeliveryMode = DeliveryMode.ReliableOrdered;
-            SequenceChannel = 0;
+            this.value = value;
         }
-    }
 
-    /// <summary>
-    /// Represents the synchronization options for network communication on the server.
-    /// </summary>
-    public ref struct ServerOptions
-    {
-        public Target Target { get; set; }
-        public DeliveryMode DeliveryMode { get; set; }
-        public int GroupId { get; set; }
-        public DataCache DataCache { get; set; }
-        public byte SequenceChannel { get; set; }
-        public DataBuffer Buffer { get; set; }
+        public static implicit operator int(Channel d) => d.value;
+        public static implicit operator Channel(int d) => new Channel(d);
 
-        public ServerOptions(DataBuffer message = null)
+        public bool Equals(Channel other) => value == other.value;
+        public bool Equals(int other) => value == other;
+        public override bool Equals(object obj) => obj is Channel mi ? value == mi.value : obj is int i && value == i;
+        public override int GetHashCode() => value.GetHashCode();
+
+        public static bool operator ==(Channel left, Channel right) => left.value == right.value;
+        public static bool operator !=(Channel left, Channel right) => left.value != right.value;
+
+        public int CompareTo(Channel other) => value.CompareTo(other.value);
+        public int CompareTo(int other) => value.CompareTo(other);
+        public int CompareTo(object obj)
         {
-            message ??= DataBuffer.Empty;
-            Buffer = message;
-            Target = Target.Auto;
-            DeliveryMode = DeliveryMode.ReliableOrdered;
-            GroupId = 0;
-            DataCache = DataCache.None;
-            SequenceChannel = 0;
+            if (obj is Channel mi) return value.CompareTo(mi.value);
+            if (obj is int i) return value.CompareTo(i);
+            throw new ArgumentException("Object is not a Channel or int");
         }
+
+        public static bool operator <(Channel left, Channel right) => left.value < right.value;
+        public static bool operator >(Channel left, Channel right) => left.value > right.value;
+        public static bool operator <=(Channel left, Channel right) => left.value <= right.value;
+        public static bool operator >=(Channel left, Channel right) => left.value >= right.value;
+
+        public static Channel operator +(Channel a, Channel b) => new Channel(a.value + b.value);
+        public static Channel operator -(Channel a, Channel b) => new Channel(a.value - b.value);
+        public static Channel operator *(Channel a, Channel b) => new Channel(a.value * b.value);
+        public static Channel operator /(Channel a, Channel b) => new Channel(a.value / b.value);
+        public static Channel operator %(Channel a, Channel b) => new Channel(a.value % b.value);
+
+        public static Channel operator -(Channel a) => new Channel(-a.value);
+        public static Channel operator +(Channel a) => a;
+
+        public static Channel operator &(Channel a, Channel b) => new Channel(a.value & b.value);
+        public static Channel operator |(Channel a, Channel b) => new Channel(a.value | b.value);
+        public static Channel operator ^(Channel a, Channel b) => new Channel(a.value ^ b.value);
+        public static Channel operator ~(Channel a) => new Channel(~a.value);
+
+        public static Channel operator <<(Channel a, int b) => new Channel(a.value << b);
+        public static Channel operator >>(Channel a, int b) => new Channel(a.value >> b);
+
+        public override string ToString() => value.ToString();
+        public string ToString(string format, IFormatProvider formatProvider) => value.ToString(format, formatProvider);
+
+        public TypeCode GetTypeCode() => TypeCode.Int32;
+        public bool ToBoolean(IFormatProvider provider) => ((IConvertible)value).ToBoolean(provider);
+        public byte ToByte(IFormatProvider provider) => ((IConvertible)value).ToByte(provider);
+        public char ToChar(IFormatProvider provider) => ((IConvertible)value).ToChar(provider);
+        public DateTime ToDateTime(IFormatProvider provider) => ((IConvertible)value).ToDateTime(provider);
+        public decimal ToDecimal(IFormatProvider provider) => ((IConvertible)value).ToDecimal(provider);
+        public double ToDouble(IFormatProvider provider) => ((IConvertible)value).ToDouble(provider);
+        public short ToInt16(IFormatProvider provider) => ((IConvertible)value).ToInt16(provider);
+        public int ToInt32(IFormatProvider provider) => value;
+        public long ToInt64(IFormatProvider provider) => ((IConvertible)value).ToInt64(provider);
+        public sbyte ToSByte(IFormatProvider provider) => ((IConvertible)value).ToSByte(provider);
+        public float ToSingle(IFormatProvider provider) => ((IConvertible)value).ToSingle(provider);
+        public string ToString(IFormatProvider provider) => value.ToString(provider);
+        public object ToType(Type conversionType, IFormatProvider provider) => ((IConvertible)value).ToType(conversionType, provider);
+        public ushort ToUInt16(IFormatProvider provider) => ((IConvertible)value).ToUInt16(provider);
+        public uint ToUInt32(IFormatProvider provider) => ((IConvertible)value).ToUInt32(provider);
+        public ulong ToUInt64(IFormatProvider provider) => ((IConvertible)value).ToUInt64(provider);
     }
 }

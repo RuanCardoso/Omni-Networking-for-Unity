@@ -187,7 +187,7 @@ namespace kcp2k
             }
         }
 
-        public void Send(ArraySegment<byte> segment, KcpChannel channel)
+        public void Send(ReadOnlySpan<byte> segment, KcpChannel channel)
         {
             if (!connected)
             {

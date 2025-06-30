@@ -36,11 +36,24 @@ namespace Omni.Core
         /// <value>The identifier of the associated <see cref="IRpcMessage"/> as an integer.</value>
         public int IdentityId => m_Id;
 
-        private readonly RpcHandler<DataBuffer, int, Null, Null, Null> clientRpcHandler = new();
-        private readonly RpcHandler<DataBuffer, NetworkPeer, int, Null, Null> serverRpcHandler = new();
+        private readonly __RpcHandler<DataBuffer, int, __Null__, __Null__, __Null__> m_ClientRpcHandler = new();
+        private readonly __RpcHandler<DataBuffer, NetworkPeer, int, __Null__, __Null__> m_ServerRpcHandler = new();
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public __RpcHandler<DataBuffer, NetworkPeer, int, __Null__, __Null__> __ServerRpcHandler => m_ServerRpcHandler;
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public __RpcHandler<DataBuffer, int, __Null__, __Null__, __Null__> __ClientRpcHandler => m_ClientRpcHandler;
 
         private NetworkEventClient local;
         private NetworkEventServer remote;
+
+        /// <summary>
+        /// Indicates whether this instance is running in host mode (both server and client active in the same process).
+        /// Returns <c>true</c> if the application is acting simultaneously as server and client,
+        /// which is typical for local multiplayer testing or single-player with network features.
+        /// </summary>
+        protected bool IsHost => IsServerActive && IsClientActive;
 
         /// <summary>
         /// Gets the server-side routing manager that handles network message routing and delivery.
@@ -284,8 +297,11 @@ namespace Omni.Core
 
         protected void InitializeBehaviour()
         {
-            clientRpcHandler.RegisterRpcMethodHandlers<ClientAttribute>(this);
-            serverRpcHandler.RegisterRpcMethodHandlers<ServerAttribute>(this);
+            ___RegisterNetworkVariables___();
+            // Registers notifications for changes in the collection, enabling automatic updates when the collection is modified.
+            ___NotifyCollectionChange___();
+            m_ClientRpcHandler.RegisterRpcMethodHandlers<ClientAttribute>(this);
+            m_ServerRpcHandler.RegisterRpcMethodHandlers<ServerAttribute>(this);
 
             ClientSide.AddRpcMessage(m_Id, this);
             ServerSide.AddRpcMessage(m_Id, this);
@@ -304,7 +320,7 @@ namespace Omni.Core
             ClientSide.OnMessage += OnClientMessage;
 
             NetworkManager.OnServerInitialized += OnServerInitialized;
-            NetworkManager.OnServerPeerConnected += OnServerPeerConnected;
+            NetworkManager.OnServerPeerConnected += Internal_OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
             ServerSide.OnMessage += OnServerMessage;
         }
@@ -334,7 +350,7 @@ namespace Omni.Core
             ClientSide.OnMessage -= OnClientMessage;
 
             NetworkManager.OnServerInitialized -= OnServerInitialized;
-            NetworkManager.OnServerPeerConnected -= OnServerPeerConnected;
+            NetworkManager.OnServerPeerConnected -= Internal_OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
             ServerSide.OnMessage -= OnServerMessage;
 
@@ -383,32 +399,31 @@ namespace Omni.Core
         protected virtual void OnClientMessage(byte msgId, DataBuffer buffer, int seqChannel)
         {
             buffer.SeekToBegin();
-            TryCallClientRpc(msgId, buffer, seqChannel); // Global Invoke
         }
 
         private void TryCallClientRpc(byte msgId, DataBuffer buffer, int seqChannel)
         {
-            if (clientRpcHandler.Exists(msgId, out int argsCount))
+            if (m_ClientRpcHandler.IsValid(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        clientRpcHandler.Rpc(msgId);
+                        m_ClientRpcHandler.Rpc(msgId);
                         break;
                     case 1:
-                        clientRpcHandler.Rpc(msgId, buffer);
+                        m_ClientRpcHandler.Rpc(msgId, buffer);
                         break;
                     case 2:
-                        clientRpcHandler.Rpc(msgId, buffer, seqChannel);
+                        m_ClientRpcHandler.Rpc(msgId, buffer, seqChannel);
                         break;
                     case 3:
-                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default);
+                        m_ClientRpcHandler.Rpc(msgId, buffer, seqChannel, default);
                         break;
                     case 4:
-                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default);
+                        m_ClientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default);
                         break;
                     case 5:
-                        clientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default, default);
+                        m_ClientRpcHandler.Rpc(msgId, buffer, seqChannel, default, default, default);
                         break;
                 }
             }
@@ -430,6 +445,17 @@ namespace Omni.Core
         {
         }
 
+        private void Internal_OnServerPeerConnected(NetworkPeer peer, Phase phase)
+        {
+            OnServerPeerConnected(peer, phase);
+            if (phase == Phase.Ended)
+            {
+                // Synchronizes all network variables with the client to ensure that the client has 
+                // the most up-to-date data from the server immediately after the spawning process.
+                SyncNetworkState(peer);
+            }
+        }
+
         protected virtual void OnServerPeerConnected(NetworkPeer peer, Phase phase)
         {
         }
@@ -445,36 +471,36 @@ namespace Omni.Core
         protected virtual void OnPlayerFailedJoinGroup(NetworkPeer peer, string reason)
         {
         }
+        #endregion
 
         protected virtual void OnServerMessage(byte msgId, DataBuffer buffer, NetworkPeer peer, int seqChannel)
         {
             buffer.SeekToBegin();
-            TryCallServerRpc(msgId, buffer, peer, seqChannel); // Global Invoke
         }
 
         private void TryCallServerRpc(byte msgId, DataBuffer buffer, NetworkPeer peer, int seqChannel)
         {
-            if (serverRpcHandler.Exists(msgId, out int argsCount))
+            if (m_ServerRpcHandler.IsValid(msgId, out int argsCount))
             {
                 switch (argsCount)
                 {
                     case 0:
-                        serverRpcHandler.Rpc(msgId);
+                        m_ServerRpcHandler.Rpc(msgId);
                         break;
                     case 1:
-                        serverRpcHandler.Rpc(msgId, buffer);
+                        m_ServerRpcHandler.Rpc(msgId, buffer);
                         break;
                     case 2:
-                        serverRpcHandler.Rpc(msgId, buffer, peer);
+                        m_ServerRpcHandler.Rpc(msgId, buffer, peer);
                         break;
                     case 3:
-                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel);
+                        m_ServerRpcHandler.Rpc(msgId, buffer, peer, seqChannel);
                         break;
                     case 4:
-                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default);
+                        m_ServerRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default);
                         break;
                     case 5:
-                        serverRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default, default);
+                        m_ServerRpcHandler.Rpc(msgId, buffer, peer, seqChannel, default, default);
                         break;
                 }
             }
@@ -488,28 +514,71 @@ namespace Omni.Core
         {
         }
 
-        #endregion
+        public void SetupRpcMessage(byte rpcId, NetworkGroup group, bool isServer, byte networkVariableId)
+        {
+            if (rpcId != NetworkConstants.k_NetworkVariableRpcId)
+            {
+                if (isServer)
+                {
+                    m_ServerRpcHandler.GetRpcParameters(rpcId, out var deliveryMode, out var target, out var sequenceChannel);
+                    SetupRpcMessage(rpcId, deliveryMode, target, group, sequenceChannel, isServer);
+                }
+                else
+                {
+                    m_ClientRpcHandler.GetRpcParameters(rpcId, out var deliveryMode, out var __, out var sequenceChannel);
+                    SetupRpcMessage(rpcId, deliveryMode, __, NetworkGroup.None, sequenceChannel, isServer);
+                }
+            }
+            else
+            {
+                if (m_NetworkVariables.TryGetValue(networkVariableId, out NetworkVariableField field))
+                {
+                    if (isServer)
+                    {
+                        SetupRpcMessage(rpcId, field.DeliveryMode, field.Target, group, field.SequenceChannel, isServer);
+                    }
+                    else
+                    {
+                        SetupRpcMessage(rpcId, field.DeliveryMode, default, NetworkGroup.None, field.SequenceChannel, isServer);
+                    }
+                }
+            }
+        }
 
-        public void OnRpcInvoked(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
+        public void SetupRpcMessage(byte rpcId, DeliveryMode deliveryMode, Target target, NetworkGroup group, byte seqChannel, bool isServer)
+        {
+            if (isServer)
+            {
+                NetworkManager.ServerSide.SetDefaultNetworkConfiguration(deliveryMode, target, group, seqChannel);
+            }
+            else
+            {
+                NetworkManager.ClientSide.SetDeliveryMode(deliveryMode);
+                NetworkManager.ClientSide.SetSequenceChannel(seqChannel);
+            }
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public void OnRpcReceived(byte rpcId, DataBuffer buffer, NetworkPeer peer, bool isServer, int seqChannel)
         {
             try
             {
                 if (isServer)
                 {
-                    serverRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                    m_ServerRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
                     TryCallServerRpc(rpcId, buffer, peer, seqChannel);
                 }
                 else
                 {
-                    clientRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
+                    m_ClientRpcHandler.ThrowIfNoRpcMethodFound(rpcId);
                     TryCallClientRpc(rpcId, buffer, seqChannel);
                 }
             }
             catch (Exception ex)
             {
-                string methodName = NetworkConstants.INVALID_RPC_NAME;
-                if (isServer) methodName = serverRpcHandler.GetRpcName(rpcId);
-                else methodName = clientRpcHandler.GetRpcName(rpcId);
+                string methodName = NetworkConstants.k_InvalidRpcName;
+                if (isServer) methodName = m_ServerRpcHandler.GetRpcName(rpcId);
+                else methodName = m_ClientRpcHandler.GetRpcName(rpcId);
 
                 NetworkLogger.__Log__(
                     $"[RPC Error] An exception occurred while processing the RPC -> " +

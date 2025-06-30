@@ -117,16 +117,24 @@ namespace Omni.Core
         internal static NetworkIdentity SpawnAndRegister(NetworkIdentity prefab, NetworkPeer peer, int identityId,
             bool isServer, bool isLocalPlayer)
         {
+            if (prefab.m_ServerPrefabOverride != null && isServer)
+                prefab = prefab.m_ServerPrefabOverride;
+
             // Disable the prefab to avoid Awake and Start being called multiple times before the registration.
             prefab.gameObject.SetActive(false);
             NetworkIdentity identity = UnityEngine.Object.Instantiate(prefab);
+            if (isLocalPlayer && identity.IsPlayerObject())
+                NetworkIdentity.LocalPlayer = identity;
+
+            identity.Register();
             identity.Id = identityId;
             identity.Owner = peer;
             identity.IsServer = isServer;
             identity.IsLocalPlayer = isLocalPlayer;
-            identity.IsServerOwner = identity.Owner.Id == NetworkManager.ServerSide.ServerPeer.Id;
+            identity.IsMine = isLocalPlayer;
+            identity.IsOwnedByServer = identity.Owner.Id == (isServer ? NetworkManager.ServerSide.ServerPeer.Id : NetworkManager.ClientSide.ServerPeer.Id);
             identity._prefabName = prefab.name;
-            identity.name = $"{prefab.name}(On {(isServer ? "Server" : "Client")})";
+            identity.name = $"{prefab.name}(In {(isServer ? "Server" : "Client")})";
 
             var identities = isServer
                 ? NetworkManager.ServerSide.Identities
@@ -181,14 +189,8 @@ namespace Omni.Core
                 // Checks if the current player is the local player
                 // If true, calls the OnStartLocalPlayer method to handle any local player-specific setup
                 // If false, calls the OnStartRemotePlayer method to handle any setup specific to remote players
-                if (isLocalPlayer)
-                {
-                    behaviour.OnStartLocalPlayer();
-                }
-                else
-                {
-                    behaviour.OnStartRemotePlayer();
-                }
+                if (identity.IsLocalPlayer) behaviour.OnStartLocalPlayer();
+                else if (identity.IsPlayerObject()) behaviour.OnStartRemotePlayer();
             }
 
             return identity;
@@ -265,16 +267,6 @@ namespace Omni.Core
             {
                 // If an exception occurs, it means the port is already in use
                 return false;
-            }
-        }
-
-        [Conditional("OMNI_DEBUG")]
-        internal static void ThrowAnErrorIfIsInternalTypes<T>(T type) where T : unmanaged
-        {
-            if (type is Target or DeliveryMode or CacheMode)
-            {
-                throw new InvalidOperationException(
-                    $"[TypeValidation] The type '{typeof(T).Name}' is internal to Omni Networking and cannot be used as a DataBuffer argument. This protection prevents misuse of system types that could cause serialization or networking errors. Please use appropriate public types or refer to the documentation for the correct DataBuffer overloads.");
             }
         }
 
@@ -400,7 +392,7 @@ namespace Omni.Core
         /// <returns>True if the GameObject is a prefab, false otherwise.</returns>
         public static bool IsPrefab(GameObject obj)
         {
-            return obj.scene.name == null || obj.scene.name.ToLower() == "null";
+            return obj.scene.name == null || obj.scene.name.ToLowerInvariant() == "null";
         }
 
         /// <summary>

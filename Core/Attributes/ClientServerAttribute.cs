@@ -3,6 +3,12 @@ using System.ComponentModel;
 
 namespace Omni.Core
 {
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+    public sealed class GenRpcAttribute : Attribute
+    {
+        public GenRpcAttribute(string classname) { }
+    }
+
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class EventAttribute : Attribute

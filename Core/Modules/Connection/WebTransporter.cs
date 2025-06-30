@@ -71,7 +71,7 @@ namespace Omni.Core.Modules.Connection
                     }
                     else
                     {
-                        IManager.Internal_OnServerPeerConnected(UserEndPoint, new NativePeer(() => 0, () => 0));
+                        IManager.Internal_OnServerPeerConnected(UserEndPoint, new NativePeer());
                     }
                 });
             }
@@ -100,8 +100,7 @@ namespace Omni.Core.Modules.Connection
                 {
                     NetworkHelper.RunOnMainThread(() =>
                     {
-                        IManager.Internal_OnDataReceived(e.RawData, DeliveryMode.ReliableOrdered, UserEndPoint, 0,
-                            true, out _);
+                        IManager.Internal_OnDataReceived(e.RawData, DeliveryMode.ReliableOrdered, UserEndPoint, 0, true, out _);
                     });
                 }
                 else if (e.IsText && !e.IsPing)
@@ -146,11 +145,6 @@ namespace Omni.Core.Modules.Connection
 
         [SerializeField]
         [Group("Ssl Settings")]
-        [ReadOnly]
-        private string certificateConfig = "cert_conf.json";
-
-        [SerializeField]
-        [Group("Ssl Settings")]
         private bool enableSsl = false;
 
         internal bool EnableWebSocket { get; set; } = true;
@@ -176,31 +170,6 @@ namespace Omni.Core.Modules.Connection
             {
                 throw new InvalidOperationException("[WebTransporter] Cannot initialize: Instance is already running. Call Stop() before reinitializing.");
             }
-
-            if ((EnableWebSocketSsl || EnableHttpServerSsl) && isServer)
-            {
-#if UNITY_WEBGL && !UNITY_EDITOR
-			return;
-#endif
-                try
-                {
-#if OMNI_DEBUG || UNITY_EDITOR || UNITY_SERVER
-                    if (!NetworkHelper.CanHostServer())
-                        return;
-
-                    if (!File.Exists(certificateConfig))
-                    {
-                        using var fileStream = File.Create(certificateConfig);
-                        using StreamWriter sw = new(fileStream);
-                        sw.WriteLine("{\"cert\": \"cert.pfx\", \"password\": \"password for cert.pfx\"}");
-                    }
-#endif
-                }
-                catch (Exception ex)
-                {
-                    NetworkLogger.__Log__("[WebTransporter] Failed to create the certificate configuration file. Exception: " + ex.Message, NetworkLogger.LogType.Error);
-                }
-            }
         }
 
         public void Listen(int port)
@@ -222,12 +191,12 @@ namespace Omni.Core.Modules.Connection
 
                 if ((EnableWebSocket && EnableWebSocketSsl) || (EnableHttpServer && EnableHttpServerSsl))
                 {
-                    if (File.Exists(certificateConfig))
+                    if (File.Exists(NetworkManager.CertificateFile))
                     {
                         try
                         {
                             var dict = NetworkManager.FromJson<Dictionary<string, string>>(
-                                File.ReadAllText(certificateConfig));
+                                File.ReadAllText(NetworkManager.CertificateFile));
 
                             // Setup SSL(Secure Socket Layer)
                             if (EnableWebSocket && EnableWebSocketSsl)
@@ -252,7 +221,7 @@ namespace Omni.Core.Modules.Connection
                     else
                     {
                         NetworkLogger.__Log__(
-                            $"[WebTransporter] Certificate configuration not found at: {Path.GetFullPath(certificateConfig)}", NetworkLogger.LogType.Error);
+                            $"[WebTransporter] Certificate configuration not found at: {Path.GetFullPath(NetworkManager.CertificateFile)}", NetworkLogger.LogType.Error);
                     }
                 }
 
@@ -370,7 +339,7 @@ namespace Omni.Core.Modules.Connection
             {
                 // Set to 'true' to indicate that the client is running.
                 isRunning = true;
-                IManager.Internal_OnClientConnected(localEndPoint, new NativePeer(() => 0, () => 0));
+                IManager.Internal_OnClientConnected(localEndPoint, new NativePeer());
             };
 
             webClient.OnMessage += (data) =>
@@ -402,9 +371,10 @@ namespace Omni.Core.Modules.Connection
         // Span.ToArray() is very fast
         public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
+#if OMNI_DEBUG
             if (sequenceChannel > 0)
             {
-                NetworkLogger.__Log__(
+                NetworkLogger.Print(
                     $"[WebTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
                     NetworkLogger.LogType.Warning
                 );
@@ -412,12 +382,12 @@ namespace Omni.Core.Modules.Connection
 
             if (deliveryMode != DeliveryMode.ReliableOrdered)
             {
-                NetworkLogger.__Log__(
-                    $"[KcpTransporter] Unsupported delivery mode '{deliveryMode}' - Falling back to ReliableOrdered",
+                NetworkLogger.Print(
+                    $"[WebTransporter] Unsupported delivery mode '{deliveryMode}' - Falling back to ReliableOrdered",
                     NetworkLogger.LogType.Warning
                 );
             }
-
+#endif
             if (isServer)
             {
                 if (_peers.TryGetValue(target, out WebServerListener peer))
@@ -535,7 +505,6 @@ namespace Omni.Core.Modules.Connection
             if (webTransporter != null)
             {
                 webTransporter.EnableWebSocketSsl = EnableWebSocketSsl;
-                webTransporter.certificateConfig = certificateConfig;
             }
         }
     }

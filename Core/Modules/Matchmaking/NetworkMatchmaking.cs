@@ -192,9 +192,8 @@ namespace Omni.Core.Modules.Matchmaking
             /// This method allows a player represented by a <see cref="NetworkPeer"/> object to join a specified <see cref="NetworkGroup"/> on the server,
             /// optionally sending additional data contained in a <see cref="DataBuffer"/> to the group upon joining.
             /// </remarks>
-            public void JoinGroup(NetworkGroup group, DataBuffer buffer, NetworkPeer peer)
+            public void JoinGroup(NetworkGroup group, NetworkPeer peer, DataBuffer buffer)
             {
-                buffer ??= DataBuffer.Empty;
                 NetworkManager.ServerSide.JoinGroup(group.Identifier, buffer, peer, includeBufferInResponse: true);
             }
 

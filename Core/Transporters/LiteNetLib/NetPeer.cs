@@ -17,11 +17,11 @@ namespace LiteNetLib
     [Flags]
     public enum ConnectionState : byte
     {
-        Outgoing         = 1 << 1,
-        Connected         = 1 << 2,
+        Outgoing = 1 << 1,
+        Connected = 1 << 2,
         ShutdownRequested = 1 << 3,
-        Disconnected      = 1 << 4,
-        EndPointChange    = 1 << 5,
+        Disconnected = 1 << 4,
+        EndPointChange = 1 << 5,
         Any = Outgoing | Connected | ShutdownRequested | EndPointChange
     }
 
@@ -155,7 +155,7 @@ namespace LiteNetLib
         /// <summary>
         /// Current one-way ping (RTT/2) in milliseconds
         /// </summary>
-        public int Ping => _avgRtt/2;
+        public int Ping => _avgRtt / 2;
 
         /// <summary>
         /// Round trip time in milliseconds
@@ -240,7 +240,7 @@ namespace LiteNetLib
             _connectionState = ConnectionState.Connected;
             _mergeData = new NetPacket(PacketProperty.Merged, NetConstants.MaxPacketSize);
             _pongPacket = new NetPacket(PacketProperty.Pong, 0);
-            _pingPacket = new NetPacket(PacketProperty.Ping, 0) {Sequence = 1};
+            _pingPacket = new NetPacket(PacketProperty.Ping, 0) { Sequence = 1 };
 
             _unreliableChannel = new Queue<NetPacket>();
             _holdedFragments = new Dictionary<ushort, IncomingFragments>();
@@ -311,7 +311,7 @@ namespace LiteNetLib
         public int GetPacketsCountInReliableQueue(byte channelNumber, bool ordered)
         {
             int idx = channelNumber * NetConstants.ChannelTypeCount +
-                       (byte) (ordered ? DeliveryMethod.ReliableOrdered : DeliveryMethod.ReliableUnordered);
+                       (byte)(ordered ? DeliveryMethod.ReliableOrdered : DeliveryMethod.ReliableUnordered);
             var channel = _channels[idx];
             return channel != null ? ((ReliableChannel)channel).PacketsInQueue : 0;
         }
@@ -355,37 +355,38 @@ namespace LiteNetLib
             }
             else
             {
-                lock(_unreliableChannel)
+                lock (_unreliableChannel)
                     _unreliableChannel.Enqueue(packet._packet);
             }
         }
 
         private BaseChannel CreateChannel(byte idx)
         {
-            try{
-            BaseChannel newChannel = _channels[idx];
-            if (newChannel != null)
-                return newChannel;
-            switch ((DeliveryMethod)(idx % NetConstants.ChannelTypeCount))
+            try
             {
-                case DeliveryMethod.ReliableUnordered:
-                    newChannel = new ReliableChannel(this, false, idx);
-                    break;
-                case DeliveryMethod.Sequenced:
-                    newChannel = new SequencedChannel(this, false, idx);
-                    break;
-                case DeliveryMethod.ReliableOrdered:
-                    newChannel = new ReliableChannel(this, true, idx);
-                    break;
-                case DeliveryMethod.ReliableSequenced:
-                    newChannel = new SequencedChannel(this, true, idx);
-                    break;
-            }
-            BaseChannel prevChannel = Interlocked.CompareExchange(ref _channels[idx], newChannel, null);
-            if (prevChannel != null)
-                return prevChannel;
+                BaseChannel newChannel = _channels[idx];
+                if (newChannel != null)
+                    return newChannel;
+                switch ((DeliveryMethod)(idx % NetConstants.ChannelTypeCount))
+                {
+                    case DeliveryMethod.ReliableUnordered:
+                        newChannel = new ReliableChannel(this, false, idx);
+                        break;
+                    case DeliveryMethod.Sequenced:
+                        newChannel = new SequencedChannel(this, false, idx);
+                        break;
+                    case DeliveryMethod.ReliableOrdered:
+                        newChannel = new ReliableChannel(this, true, idx);
+                        break;
+                    case DeliveryMethod.ReliableSequenced:
+                        newChannel = new SequencedChannel(this, true, idx);
+                        break;
+                }
+                BaseChannel prevChannel = Interlocked.CompareExchange(ref _channels[idx], newChannel, null);
+                if (prevChannel != null)
+                    return prevChannel;
 
-            return newChannel;
+                return newChannel;
             }
             catch
             {
@@ -674,7 +675,7 @@ namespace LiteNetLib
 
                 ushort currentFragmentId = (ushort)Interlocked.Increment(ref _fragmentId);
 
-                for(ushort partIdx = 0; partIdx < totalPackets; partIdx++)
+                for (ushort partIdx = 0; partIdx < totalPackets; partIdx++)
                 {
                     int sendLength = length > packetDataSize ? packetDataSize : length;
 
@@ -702,7 +703,7 @@ namespace LiteNetLib
 
             if (channel == null) //unreliable
             {
-                lock(_unreliableChannel)
+                lock (_unreliableChannel)
                     _unreliableChannel.Enqueue(packet);
             }
             else
@@ -834,7 +835,7 @@ namespace LiteNetLib
 
             if (channel == null) //unreliable
             {
-                lock(_unreliableChannel)
+                lock (_unreliableChannel)
                     _unreliableChannel.Enqueue(packet);
             }
             else
@@ -909,7 +910,7 @@ namespace LiteNetLib
                 Interlocked.Exchange(ref _timeSinceLastPacket, 0);
 
                 //send shutdown packet
-                _shutdownPacket = new NetPacket(PacketProperty.Disconnect, length) {ConnectionNumber = _connectNum};
+                _shutdownPacket = new NetPacket(PacketProperty.Disconnect, length) { ConnectionNumber = _connectNum };
                 FastBitConverter.GetBytes(_shutdownPacket.RawData, 1, _connectTime);
                 if (_shutdownPacket.Size >= _mtu)
                 {
@@ -931,7 +932,7 @@ namespace LiteNetLib
         {
             _rtt += roundTripTime;
             _rttCount++;
-            _avgRtt = _rtt/_rttCount;
+            _avgRtt = _rtt / _rttCount;
             _resendDelay = 25.0 + _avgRtt * 2.1; // 25 ms + double rtt
         }
 
@@ -987,7 +988,7 @@ namespace LiteNetLib
                     var fragment = fragments[i];
                     int writtenSize = fragment.Size - NetConstants.FragmentedHeaderTotalSize;
 
-                    if (pos+writtenSize > resultingPacket.RawData.Length)
+                    if (pos + writtenSize > resultingPacket.RawData.Length)
                     {
                         _holdedFragments.Remove(packetFragId);
                         NetDebug.WriteError($"Fragment error pos: {pos + writtenSize} >= resultPacketSize: {resultingPacket.RawData.Length} , totalSize: {incomingFragments.TotalSize}");
@@ -1048,7 +1049,7 @@ namespace LiteNetLib
                 packet.Property = PacketProperty.MtuOk;
                 NetManager.SendRawAndRecycle(packet, this);
             }
-            else if(receivedMtu > _mtu && !_finishMtu) //MtuOk
+            else if (receivedMtu > _mtu && !_finishMtu) //MtuOk
             {
                 //invalid packet
                 if (receivedMtu != NetConstants.PossibleMtu[_mtuIdx + 1] - NetManager.ExtraPacketSizeForLayer)
@@ -1056,7 +1057,7 @@ namespace LiteNetLib
 
                 lock (_mtuMutex)
                 {
-                    SetMtu(_mtuIdx+1);
+                    SetMtu(_mtuIdx + 1);
                 }
                 //if maxed - finish.
                 if (_mtuIdx == NetConstants.PossibleMtu.Length - 1)
@@ -1117,7 +1118,7 @@ namespace LiteNetLib
                     if (connRequest.ConnectionTime == _connectTime)
                     {
                         var localBytes = connRequest.TargetAddress;
-                        for (int i = _cachedSocketAddr.Size-1; i >= 0; i--)
+                        for (int i = _cachedSocketAddr.Size - 1; i >= 0; i--)
                         {
                             byte rb = _cachedSocketAddr[i];
                             if (rb == localBytes[i])
@@ -1217,7 +1218,7 @@ namespace LiteNetLib
                     {
                         _pingTimer.Stop();
                         int elapsedMs = (int)_pingTimer.ElapsedMilliseconds;
-                        _remoteDelta = BitConverter.ToInt64(packet.RawData, 3) + (elapsedMs * TimeSpan.TicksPerMillisecond ) / 2 - DateTime.UtcNow.Ticks;
+                        _remoteDelta = BitConverter.ToInt64(packet.RawData, 3) + (elapsedMs * TimeSpan.TicksPerMillisecond) / 2 - DateTime.UtcNow.Ticks;
                         UpdateRoundTripTime(elapsedMs);
                         NetManager.ConnectionLatencyUpdated(this, elapsedMs / 2);
                         NetDebug.Write($"[PP]Ping: {packet.Sequence} - {elapsedMs} - {_remoteDelta}");

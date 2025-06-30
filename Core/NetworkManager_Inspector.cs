@@ -14,14 +14,19 @@ using Omni.Shared;
 
 namespace Omni.Core
 {
-    [DeclareFoldoutGroup("Modules")]
-    [DeclareFoldoutGroup("Infor", Expanded = true)]
-    [DeclareFoldoutGroup("Permissions")]
+    [DeclareFoldoutGroup("Infor", Expanded = true, Title = "Network")]
+    [DeclareBoxGroup("Listen"), DeclareBoxGroup("Connection")]
     [DeclareTabGroup("MiscTabs")]
-    [DeclareBoxGroup("Listen")]
-    [DeclareBoxGroup("Connection")]
     public partial class NetworkManager
     {
+        #region Obsolete
+        private bool m_ConnectionModule = true;
+        private bool m_ConsoleModule = true;
+        private bool m_MatchModule = true;
+        private bool m_TickModule = true;
+        private bool m_SntpModule = true;
+        #endregion
+
         private TransporterBehaviour m_ServerTransporter;
         private TransporterBehaviour m_ClientTransporter;
 
@@ -29,10 +34,8 @@ namespace Omni.Core
         private float deltaTime = 0f;
 
         private static int p_UniqueId = 1; // 0 - is reserved for server
-        private static bool _allowZeroGroupForInternalMessages = false;
 
         private static NetworkManager _manager;
-
         private static NetworkManager Manager
         {
             get
@@ -70,14 +73,6 @@ namespace Omni.Core
         [Group("Infor")]
         private string PublicIPv6 = "::1";
 
-        private bool m_ConnectionModule = true;
-        private bool m_ConsoleModule = true;
-        private bool m_MatchModule = true;
-
-        [SerializeField][Group("Modules")] private bool m_TickModule = false;
-
-        [SerializeField][Group("Modules")] private bool m_SntpModule = false;
-
         [SerializeField]
         [Group("Connection")]
         [LabelText("Hosts")]
@@ -93,7 +88,7 @@ namespace Omni.Core
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
-        [LabelWidth(140)]
+        [LabelWidth(140), DisableIf(nameof(m_HasConnectionDisplayHud))]
 #if OMNI_RELEASE
         [HideInInspector]
 #endif
@@ -101,7 +96,7 @@ namespace Omni.Core
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
-        [LabelWidth(140)]
+        [LabelWidth(140), DisableIf(nameof(m_HasConnectionDisplayHud))]
 #if OMNI_RELEASE
         [HideInInspector]
 #endif
@@ -131,12 +126,12 @@ namespace Omni.Core
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
         [Min(0)]
-        private int m_LockClientFps = 60;
+        private int m_LockClientFps = 300;
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
         [Min(0)]
-        private int m_LockServerFps = 240;
+        private int m_LockServerFps = 0; // 0 = Unlocked
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Advanced")]
@@ -186,6 +181,21 @@ namespace Omni.Core
         private ScriptingBackend m_ServerScriptingBackend = ScriptingBackend.Mono;
 
         [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [ReadOnly, LabelWidth(150)]
+        private string certificateFile = "certificate.json";
+
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [LabelWidth(150)]
+        private bool m_TlsHandshake = false;
+
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Advanced")]
+        [LabelWidth(150), ShowIf("m_TlsHandshake")]
+        private bool m_WarnIfCertInvalid = false;
+
+        [SerializeField]
         [Group("MiscTabs"), Tab("Http Server")]
         [LabelWidth(120)]
         private bool m_EnableHttpServer = false;
@@ -202,35 +212,32 @@ namespace Omni.Core
         private int m_HttpServerPort = 80;
 
         [SerializeField]
-        [Group("Permissions")]
-        [LabelWidth(230)]
-        private bool m_AllowNetworkVariablesFromClients = false;
+        private List<NetworkIdentity> m_NetworkPrefabs = new();
 
         [SerializeField]
-        [Group("Permissions")]
-        [LabelWidth(230)]
-        private bool m_AllowAcrossGroupMessage = false;
+        [DisableInEditMode]
+        private List<InspectorSerializableGroup> Groups = new();
 
-        // [SerializeField]
-        // [ReadOnly]
-        // [LabelText("Allow Zero-Group Message")]
-        private bool m_AllowZeroGroupMessage = true;
-
-        [SerializeField] private List<NetworkIdentity> m_NetworkPrefabs = new();
 #if OMNI_RELEASE
         [HideInInspector]
 #endif
         [SerializeField] private bool m_HideDebugInfo = false;
 
-        public static string ConnectAddress => Manager.m_ConnectAddresses[0];
+#if OMNI_RELEASE
+        [HideInInspector]
+#endif
+        [InfoBox("Disabling this option may hinder debugging capabilities and make it more difficult to identify and resolve issues. However, it can significantly improve editor performance.", TriMessageType.Warning)]
+        [SerializeField] private bool m_EnableDeepDebug = true;
 
+        public static string ConnectAddress => Manager.m_ConnectAddresses[0];
+        public static string CertificateFile => Manager.certificateFile;
+
+        internal static bool EnableDeepDebug => Manager.m_EnableDeepDebug;
         internal static bool MatchmakingModuleEnabled => Manager.m_MatchModule;
         internal static bool TickSystemModuleEnabled => Manager.m_TickModule;
         internal static bool UseSecureRoutes => Manager.m_UseSecureRoutes;
-        internal static bool AllowNetworkVariablesFromClients => Manager.m_AllowNetworkVariablesFromClients;
 
         public static int Port => Manager.m_Port;
-
         public static int Framerate { get; private set; }
         public static int CpuTimeMs { get; private set; }
 
@@ -382,7 +389,7 @@ namespace Omni.Core
                 {
                     // Remove the old addresses.
                     if (m_ConnectAddresses.Contains(PublicIPv4) &&
-                        (PublicIPv4.ToLower() != "localhost" && PublicIPv4 != "127.0.0.1"))
+                        (PublicIPv4.ToLowerInvariant() != "localhost" && PublicIPv4 != "127.0.0.1"))
                         m_ConnectAddresses.Remove(PublicIPv4);
 
                     PublicIPv4 = publicIPv4;
@@ -393,7 +400,7 @@ namespace Omni.Core
                 {
                     // Remove the old addresses.
                     if (m_ConnectAddresses.Contains(PublicIPv6) &&
-                        (PublicIPv6.ToLower() != "localhost" && PublicIPv6 != "::1"))
+                        (PublicIPv6.ToLowerInvariant() != "localhost" && PublicIPv6 != "::1"))
                         m_ConnectAddresses.Remove(PublicIPv6);
 
                     PublicIPv6 = publicIPv6;
@@ -401,7 +408,7 @@ namespace Omni.Core
                 }
 
                 // Add the new addresses.
-                if (PublicIPv4.ToLower() != "localhost" || PublicIPv4 != "127.0.0.1")
+                if (PublicIPv4.ToLowerInvariant() != "localhost" || PublicIPv4 != "127.0.0.1")
                 {
                     if (!m_ConnectAddresses.Contains(PublicIPv4))
                     {
@@ -410,7 +417,7 @@ namespace Omni.Core
                     }
                 }
 
-                if (PublicIPv6.ToLower() != "localhost" || PublicIPv6 != "::1")
+                if (PublicIPv6.ToLowerInvariant() != "localhost" || PublicIPv6 != "::1")
                 {
                     if (!m_ConnectAddresses.Contains(PublicIPv6))
                     {
@@ -424,15 +431,20 @@ namespace Omni.Core
             }
         }
 
+        [SerializeField, HideInInspector]
+        private bool m_HasConnectionDisplayHud = false;
         private void DisableAutoStartIfHasHud()
         {
 #if OMNI_DEBUG
-            if (TryGetComponent<NetworkConnectionDisplay>(out _))
+            m_HasConnectionDisplayHud = TryGetComponent<NetworkConnectionDisplay>(out _) || FindFirstObjectByType<NetworkConnectionDisplay>() != null;
+            if (m_HasConnectionDisplayHud)
             {
                 m_StartClient = false;
                 m_StartServer = false;
                 NetworkHelper.EditorSaveObject(gameObject);
             }
+#else
+            m_HasConnectionDisplayHud = false;
 #endif
         }
     }

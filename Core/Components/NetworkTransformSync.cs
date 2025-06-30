@@ -38,9 +38,8 @@ namespace Omni.Core.Components
         public Vector3 m_Position;
         public Quaternion m_Rotation;
         public Vector3 m_Scale;
-        public Vector3 m_Velocity;
-        public Vector3 m_AngularVelocity;
-        public Vector3 reusableRotationVector;
+        public Vector3 m_Velocity, m_AngularVelocity;
+        public Vector3 m_lastRotationVector;
 
         public float m_OwnerTimestamp;
         public float m_ReceivedTimestamp;
@@ -48,9 +47,9 @@ namespace Omni.Core.Components
         public bool isTeleport;
         public bool atPositionalRest, atRotationalRest;
 
-        public bool serverShouldRelayPosition, serverShouldRelayRotation;
-        public bool serverShouldRelayVelocity, serverShouldRelayAngularVelocity;
-        public bool serverShouldRelayScale;
+        public bool _IsRelayPosition, _IsRelayRotation;
+        public bool _IsRelayVelocity, _IsRelayAngularVelocity;
+        public bool _IsRelayScale;
 
         public NetworkTransformState() { }
         public NetworkTransformState CopyFrom(NetworkTransformState state)
@@ -132,11 +131,11 @@ namespace Omni.Core.Components
 
             if (networkTransform.IsServer && !networkTransform.HasControl)
             {
-                isSendPosition = serverShouldRelayPosition;
-                isSendRotation = serverShouldRelayRotation;
-                isSendScale = serverShouldRelayScale;
-                isSendVelocity = serverShouldRelayVelocity;
-                isSendAngularVelocity = serverShouldRelayAngularVelocity;
+                isSendPosition = _IsRelayPosition;
+                isSendRotation = _IsRelayRotation;
+                isSendScale = _IsRelayScale;
+                isSendVelocity = _IsRelayVelocity;
+                isSendAngularVelocity = _IsRelayAngularVelocity;
                 isSendAtPositionalRestTag = atPositionalRest;
                 isSendAtRotationalRestTag = atRotationalRest;
             }
@@ -310,11 +309,11 @@ namespace Omni.Core.Components
 
             if (transform.IsServer && !transform.HasControl)
             {
-                nState.serverShouldRelayPosition = syncPosition;
-                nState.serverShouldRelayRotation = syncRotation;
-                nState.serverShouldRelayScale = syncScale;
-                nState.serverShouldRelayVelocity = syncVelocity;
-                nState.serverShouldRelayAngularVelocity = syncAngularVelocity;
+                nState._IsRelayPosition = syncPosition;
+                nState._IsRelayRotation = syncRotation;
+                nState._IsRelayScale = syncScale;
+                nState._IsRelayVelocity = syncVelocity;
+                nState._IsRelayAngularVelocity = syncAngularVelocity;
             }
 
             if (transform.recStatesCounter < transform.m_SendRate)
@@ -353,41 +352,41 @@ namespace Omni.Core.Components
 
             if (syncRotation)
             {
-                nState.reusableRotationVector = Vector3.zero;
+                nState.m_lastRotationVector = Vector3.zero;
                 if (transform.compressRotation)
                 {
                     if (transform.IsSyncingXRotation)
                     {
-                        nState.reusableRotationVector.x = HalfHelper.Decompress(reader.Read<ushort>());
-                        nState.reusableRotationVector.x *= Mathf.Rad2Deg;
+                        nState.m_lastRotationVector.x = HalfHelper.Decompress(reader.Read<ushort>());
+                        nState.m_lastRotationVector.x *= Mathf.Rad2Deg;
                     }
 
                     if (transform.IsSyncingYRotation)
                     {
-                        nState.reusableRotationVector.y = HalfHelper.Decompress(reader.Read<ushort>());
-                        nState.reusableRotationVector.y *= Mathf.Rad2Deg;
+                        nState.m_lastRotationVector.y = HalfHelper.Decompress(reader.Read<ushort>());
+                        nState.m_lastRotationVector.y *= Mathf.Rad2Deg;
                     }
 
                     if (transform.IsSyncingZRotation)
                     {
-                        nState.reusableRotationVector.z = HalfHelper.Decompress(reader.Read<ushort>());
-                        nState.reusableRotationVector.z *= Mathf.Rad2Deg;
+                        nState.m_lastRotationVector.z = HalfHelper.Decompress(reader.Read<ushort>());
+                        nState.m_lastRotationVector.z *= Mathf.Rad2Deg;
                     }
 
-                    nState.m_Rotation = Quaternion.Euler(nState.reusableRotationVector);
+                    nState.m_Rotation = Quaternion.Euler(nState.m_lastRotationVector);
                 }
                 else
                 {
                     if (transform.IsSyncingXRotation)
-                        nState.reusableRotationVector.x = reader.Read<float>();
+                        nState.m_lastRotationVector.x = reader.Read<float>();
 
                     if (transform.IsSyncingYRotation)
-                        nState.reusableRotationVector.y = reader.Read<float>();
+                        nState.m_lastRotationVector.y = reader.Read<float>();
 
                     if (transform.IsSyncingZRotation)
-                        nState.reusableRotationVector.z = reader.Read<float>();
+                        nState.m_lastRotationVector.z = reader.Read<float>();
 
-                    nState.m_Rotation = Quaternion.Euler(nState.reusableRotationVector);
+                    nState.m_Rotation = Quaternion.Euler(nState.m_lastRotationVector);
                 }
             }
             else
@@ -460,26 +459,26 @@ namespace Omni.Core.Components
             {
                 if (transform.compressAngularVelocity)
                 {
-                    nState.reusableRotationVector = Vector3.zero;
+                    nState.m_lastRotationVector = Vector3.zero;
                     if (transform.IsSyncingXAngularVelocity)
                     {
-                        nState.reusableRotationVector.x = HalfHelper.Decompress(reader.Read<ushort>());
-                        nState.reusableRotationVector.x *= Mathf.Rad2Deg;
+                        nState.m_lastRotationVector.x = HalfHelper.Decompress(reader.Read<ushort>());
+                        nState.m_lastRotationVector.x *= Mathf.Rad2Deg;
                     }
 
                     if (transform.IsSyncingYAngularVelocity)
                     {
-                        nState.reusableRotationVector.y = HalfHelper.Decompress(reader.Read<ushort>());
-                        nState.reusableRotationVector.y *= Mathf.Rad2Deg;
+                        nState.m_lastRotationVector.y = HalfHelper.Decompress(reader.Read<ushort>());
+                        nState.m_lastRotationVector.y *= Mathf.Rad2Deg;
                     }
 
                     if (transform.IsSyncingZAngularVelocity)
                     {
-                        nState.reusableRotationVector.z = HalfHelper.Decompress(reader.Read<ushort>());
-                        nState.reusableRotationVector.z *= Mathf.Rad2Deg;
+                        nState.m_lastRotationVector.z = HalfHelper.Decompress(reader.Read<ushort>());
+                        nState.m_lastRotationVector.z *= Mathf.Rad2Deg;
                     }
 
-                    nState.m_AngularVelocity = nState.reusableRotationVector;
+                    nState.m_AngularVelocity = nState.m_lastRotationVector;
                 }
                 else
                 {
@@ -1106,21 +1105,21 @@ namespace Omni.Core.Components
         public bool hasRigidbody = false;
         [NonSerialized]
         public Rigidbody2D rb2D;
-        
+
         [NonSerialized]
         public bool hasRigidbody2D = false;
 
-        
+
         bool dontEasePosition = false;
-       
+
         bool dontEaseRotation = false;
-       
+
         bool dontEaseScale = false;
 
-        
+
         float firstReceivedMessageZeroTime;
 
-        
+
         [NonSerialized]
         public float lastTimeStateWasSent;
 

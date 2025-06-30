@@ -85,7 +85,7 @@ namespace Omni.Core
                 using DataBuffer message = DefaultHeader(routeName, lastId);
                 m_RouteId++;
 
-                return Send(MessageType.GetFetchAsync, message, timeout, deliveryMode, lastId, sequenceChannel);
+                return Send(NetworkPacketType.k_GetFetchAsync, message, timeout, deliveryMode, lastId, sequenceChannel);
             }
 
             /// <summary>
@@ -146,12 +146,12 @@ namespace Omni.Core
 
                 int lastId = m_RouteId;
                 using DataBuffer header = DefaultHeader(routeName, lastId);
-                header.Write(message.BufferAsSpan);
+                header.Internal_CopyFrom(message);
 
                 // Next request id
                 m_RouteId++;
 
-                return await Send(MessageType.PostFetchAsync, header, timeout, deliveryMode, lastId, sequenceChannel);
+                return await Send(NetworkPacketType.k_PostFetchAsync, header, timeout, deliveryMode, lastId, sequenceChannel);
             }
 
             /// <summary>
@@ -177,18 +177,20 @@ namespace Omni.Core
 
                 int lastId = m_RouteId;
                 using var header = DefaultHeader(routeName, lastId);
-                header.Write(message.BufferAsSpan);
+                header.Internal_CopyFrom(message);
 
                 // Next request id
                 m_RouteId++;
 
-                return Send(MessageType.PostFetchAsync, header, timeout, deliveryMode, lastId, sequenceChannel);
+                return Send(NetworkPacketType.k_PostFetchAsync, header, timeout, deliveryMode, lastId, sequenceChannel);
             }
 
             private UniTask<DataBuffer> Send(byte msgId, DataBuffer message, int timeout, DeliveryMode deliveryMode,
                 int lastId, byte sequenceChannel)
             {
-                ClientSide.SendMessage(msgId, message, deliveryMode, sequenceChannel);
+                ClientSide.SetDeliveryMode(deliveryMode);
+                ClientSide.SetSequenceChannel(sequenceChannel);
+                ClientSide.SendMessage(msgId, message);
                 UniTaskCompletionSource<DataBuffer> source = CreateTask(timeout);
                 m_Tasks.Add(lastId, source);
                 return source.Task;
@@ -395,7 +397,7 @@ namespace Omni.Core
             buffer.SeekToBegin();
             string routeName = buffer.ReadString();
             int routeId = buffer.Internal_Read();
-            if (msgId == MessageType.GetFetchAsync)
+            if (msgId == NetworkPacketType.k_GetFetchAsync)
             {
                 if (Server.m_g_Tasks.TryGetValue(routeName, out Func<DataBuffer, NetworkPeer, UniTask> asyncCallback))
                 {
@@ -404,7 +406,7 @@ namespace Omni.Core
                         using var response = Pool.Rent(enableTracking: false);
                         response.SuppressTracking();
                         await asyncCallback(response, peer);
-                        Send(MessageType.GetResponseAsync, response);
+                        Send(NetworkPacketType.k_GetResponseAsync, response);
                     }
                     catch (Exception ex)
                     {
@@ -418,7 +420,7 @@ namespace Omni.Core
                     {
                         using var response = Pool.Rent(enableTracking: false);
                         callback(response, peer);
-                        Send(MessageType.GetResponseAsync, response);
+                        Send(NetworkPacketType.k_GetResponseAsync, response);
                     }
                     catch (Exception ex)
                     {
@@ -434,7 +436,7 @@ namespace Omni.Core
                     );
                 }
             }
-            else if (msgId == MessageType.PostFetchAsync)
+            else if (msgId == NetworkPacketType.k_PostFetchAsync)
             {
                 if (Server.m_p_Tasks.TryGetValue(routeName,
                         out Func<DataBuffer, DataBuffer, NetworkPeer, UniTask> asyncCallback))
@@ -455,7 +457,7 @@ namespace Omni.Core
                         response.SuppressTracking();
 
                         await asyncCallback(request, response, peer);
-                        Send(MessageType.PostResponseAsync, response);
+                        Send(NetworkPacketType.k_PostResponseAsync, response);
                     }
                     catch (Exception ex)
                     {
@@ -479,7 +481,7 @@ namespace Omni.Core
                     {
                         using var response = Pool.Rent(enableTracking: false);
                         callback(request, response, peer);
-                        Send(MessageType.PostResponseAsync, response);
+                        Send(NetworkPacketType.k_PostResponseAsync, response);
                     }
                     catch (Exception ex)
                     {
@@ -507,7 +509,7 @@ namespace Omni.Core
                 using var header = Pool.Rent(enableTracking: false);
                 header.WriteString(routeName);
                 header.Internal_Write(routeId);
-                header.Write(response.BufferAsSpan);
+                header.Internal_CopyFrom(response);
 
                 if (!response.SendEnabled)
                 {
@@ -519,24 +521,22 @@ namespace Omni.Core
                     return;
                 }
 
-                // Self:
-                ServerSide.SendMessage(msgId, peer, header, Target.SelfOnly, response.DeliveryMode, 0,
-                    response.DataCache, response.SequenceChannel);
-
+                // self:
+                ServerSide.SetDefaultNetworkConfiguration(response.DeliveryMode, Target.Self, null, response.SequenceChannel);
+                ServerSide.SendMessage(msgId, peer, header);
                 Target target = response.Target switch
                 {
-                    RouteTarget.SelfOnly => Target.SelfOnly,
-                    RouteTarget.AllPlayers => Target.AllPlayersExceptSelf,
-                    RouteTarget.GroupOnly => Target.GroupExceptSelf,
-                    RouteTarget.UngroupedPlayers => Target.UngroupedPlayersExceptSelf,
-                    _ => Target.SelfOnly,
+                    RouteTarget.Self => Target.Self,
+                    RouteTarget.Everyone => Target.Others,
+                    RouteTarget.Group => Target.GroupOthers,
+                    _ => Target.Self,
                 };
 
                 // Send the response, except for Self
-                if (target != Target.SelfOnly)
+                if (target != Target.Self)
                 {
-                    ServerSide.SendMessage(msgId, peer, header, target, response.DeliveryMode, response.GroupId,
-                        response.DataCache, response.SequenceChannel);
+                    ServerSide.SetDefaultNetworkConfiguration(response.DeliveryMode, target, response.Group, response.SequenceChannel);
+                    ServerSide.SendMessage(msgId, peer, header);
                 }
             }
         }
@@ -544,7 +544,7 @@ namespace Omni.Core
         internal void OnClientMessage(byte msgId, DataBuffer buffer, int sequenceChannel)
         {
             buffer.SeekToBegin();
-            if (msgId == MessageType.GetResponseAsync || msgId == MessageType.PostResponseAsync)
+            if (msgId == NetworkPacketType.k_GetResponseAsync || msgId == NetworkPacketType.k_PostResponseAsync)
             {
                 string routeName = buffer.ReadString();
                 int routeId = buffer.Internal_Read();
@@ -574,7 +574,7 @@ namespace Omni.Core
                         eventMessage.DecryptInPlace(SharedPeer);
                     }
 
-                    if (msgId == MessageType.GetResponseAsync)
+                    if (msgId == NetworkPacketType.k_GetResponseAsync)
                     {
                         if (Client.m_Events.TryGetValue((routeName, 0), out Action<DataBuffer> callback))
                         {
@@ -589,7 +589,7 @@ namespace Omni.Core
                             }
                         }
                     }
-                    else if (msgId == MessageType.PostResponseAsync)
+                    else if (msgId == NetworkPacketType.k_PostResponseAsync)
                     {
                         if (Client.m_Events.TryGetValue((routeName, 1), out Action<DataBuffer> callback))
                         {

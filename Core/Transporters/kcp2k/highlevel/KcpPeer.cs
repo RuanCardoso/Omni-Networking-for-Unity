@@ -76,9 +76,9 @@ namespace kcp2k
         internal const int QueueDisconnectThreshold = 10000;
 
         // getters for queue and buffer counts, used for debug info
-        public int SendQueueCount     => kcp.snd_queue.Count;
-        public int ReceiveQueueCount  => kcp.rcv_queue.Count;
-        public int SendBufferCount    => kcp.snd_buf.Count;
+        public int SendQueueCount => kcp.snd_queue.Count;
+        public int ReceiveQueueCount => kcp.rcv_queue.Count;
+        public int SendBufferCount => kcp.snd_buf.Count;
         public int ReceiveBufferCount => kcp.rcv_buf.Count;
 
         // we need to subtract the channel and cookie bytes from every
@@ -137,7 +137,7 @@ namespace kcp2k
         //   => 43.75KB * 1000 / INTERVAL(10) = 4375KB/s
         //
         // returns bytes/second!
-        public uint MaxSendRate    => kcp.snd_wnd * kcp.mtu * 1000 / kcp.interval;
+        public uint MaxSendRate => kcp.snd_wnd * kcp.mtu * 1000 / kcp.interval;
         public uint MaxReceiveRate => kcp.rcv_wnd * kcp.mtu * 1000 / kcp.interval;
 
         // calculate max message sizes based on mtu and wnd only once
@@ -169,7 +169,7 @@ namespace kcp2k
             // create message buffers AFTER window size is set
             // see comments on buffer definition for the "+1" part
             kcpMessageBuffer = new byte[1 + reliableMax];
-            kcpSendBuffer    = new byte[1 + reliableMax];
+            kcpSendBuffer = new byte[1 + reliableMax];
         }
 
         // Reset all state once.
@@ -262,7 +262,7 @@ namespace kcp2k
             // see QueueSizeDisconnect comments.
             // => include all of kcp's buffers and the unreliable queue!
             int total = kcp.rcv_queue.Count + kcp.snd_queue.Count +
-                        kcp.rcv_buf.Count   + kcp.snd_buf.Count;
+                        kcp.rcv_buf.Count + kcp.snd_buf.Count;
             if (total >= QueueDisconnectThreshold)
             {
                 // pass error to user callback. no need to log it manually.
@@ -347,30 +347,30 @@ namespace kcp2k
                 switch (header)
                 {
                     case KcpHeaderReliable.Hello:
-                    {
-                        // we were waiting for a Hello message.
-                        // it proves that the other end speaks our protocol.
+                        {
+                            // we were waiting for a Hello message.
+                            // it proves that the other end speaks our protocol.
 
-                        // log with previously parsed cookie
-                        Log.Info($"[KCP] {GetType()}: received hello with cookie={cookie}");
-                        state = KcpState.Authenticated;
-                        OnAuthenticated();
-                        break;
-                    }
+                            // log with previously parsed cookie
+                            Log.Info($"[KCP] {GetType()}: received hello with cookie={cookie}");
+                            state = KcpState.Authenticated;
+                            OnAuthenticated();
+                            break;
+                        }
                     case KcpHeaderReliable.Ping:
-                    {
-                        // ping keeps kcp from timing out. do nothing.
-                        break;
-                    }
+                        {
+                            // ping keeps kcp from timing out. do nothing.
+                            break;
+                        }
                     case KcpHeaderReliable.Data:
-                    {
-                        // everything else is not allowed during handshake!
-                        // pass error to user callback. no need to log it manually.
-                        // GetType() shows Server/ClientConn instead of just Connection.
-                        OnError(ErrorCode.InvalidReceive, $"[KCP] {GetType()}: received invalid header {header} while Connected. Disconnecting the connection.");
-                        Disconnect();
-                        break;
-                    }
+                        {
+                            // everything else is not allowed during handshake!
+                            // pass error to user callback. no need to log it manually.
+                            // GetType() shows Server/ClientConn instead of just Connection.
+                            OnError(ErrorCode.InvalidReceive, $"[KCP] {GetType()}: received invalid header {header} while Connected. Disconnecting the connection.");
+                            Disconnect();
+                            break;
+                        }
                 }
             }
         }
@@ -390,36 +390,36 @@ namespace kcp2k
                 switch (header)
                 {
                     case KcpHeaderReliable.Hello:
-                    {
-                        // should never receive another hello after auth
-                        // GetType() shows Server/ClientConn instead of just Connection.
-                        Log.Warning($"{GetType()}: received invalid header {header} while Authenticated. Disconnecting the connection.");
-                        Disconnect();
-                        break;
-                    }
-                    case KcpHeaderReliable.Data:
-                    {
-                        // call OnData IF the message contained actual data
-                        if (message.Count > 0)
                         {
-                            //Log.Warning($"Kcp recv msg: {BitConverter.ToString(message.Array, message.Offset, message.Count)}");
-                            OnData(message, KcpChannel.Reliable);
-                        }
-                        // empty data = attacker, or something went wrong
-                        else
-                        {
-                            // pass error to user callback. no need to log it manually.
+                            // should never receive another hello after auth
                             // GetType() shows Server/ClientConn instead of just Connection.
-                            OnError(ErrorCode.InvalidReceive, $"{GetType()}: received empty Data message while Authenticated. Disconnecting the connection.");
+                            Log.Warning($"{GetType()}: received invalid header {header} while Authenticated. Disconnecting the connection.");
                             Disconnect();
+                            break;
                         }
-                        break;
-                    }
+                    case KcpHeaderReliable.Data:
+                        {
+                            // call OnData IF the message contained actual data
+                            if (message.Count > 0)
+                            {
+                                //Log.Warning($"Kcp recv msg: {BitConverter.ToString(message.Array, message.Offset, message.Count)}");
+                                OnData(message, KcpChannel.Reliable);
+                            }
+                            // empty data = attacker, or something went wrong
+                            else
+                            {
+                                // pass error to user callback. no need to log it manually.
+                                // GetType() shows Server/ClientConn instead of just Connection.
+                                OnError(ErrorCode.InvalidReceive, $"{GetType()}: received empty Data message while Authenticated. Disconnecting the connection.");
+                                Disconnect();
+                            }
+                            break;
+                        }
                     case KcpHeaderReliable.Ping:
-                    {
-                        // ping keeps kcp from timing out. do nothing.
-                        break;
-                    }
+                        {
+                            // ping keeps kcp from timing out. do nothing.
+                            break;
+                        }
                 }
             }
         }
@@ -431,20 +431,20 @@ namespace kcp2k
                 switch (state)
                 {
                     case KcpState.Connected:
-                    {
-                        TickIncoming_Connected(time);
-                        break;
-                    }
+                        {
+                            TickIncoming_Connected(time);
+                            break;
+                        }
                     case KcpState.Authenticated:
-                    {
-                        TickIncoming_Authenticated(time);
-                        break;
-                    }
+                        {
+                            TickIncoming_Authenticated(time);
+                            break;
+                        }
                     case KcpState.Disconnected:
-                    {
-                        // do nothing while disconnected
-                        break;
-                    }
+                        {
+                            // do nothing while disconnected
+                            break;
+                        }
                 }
             }
             // TODO KcpConnection is IO agnostic. move this to outside later.
@@ -482,16 +482,16 @@ namespace kcp2k
                 {
                     case KcpState.Connected:
                     case KcpState.Authenticated:
-                    {
-                        // update flushes out messages
-                        kcp.Update(time);
-                        break;
-                    }
+                        {
+                            // update flushes out messages
+                            kcp.Update(time);
+                            break;
+                        }
                     case KcpState.Disconnected:
-                    {
-                        // do nothing while disconnected
-                        break;
-                    }
+                        {
+                            // do nothing while disconnected
+                            break;
+                        }
                 }
             }
             // TODO KcpConnection is IO agnostic. move this to outside later.
@@ -553,63 +553,63 @@ namespace kcp2k
             switch (header)
             {
                 case KcpHeaderUnreliable.Data:
-                {
-                    // ideally we would queue all unreliable messages and
-                    // then process them in ReceiveNext() together with the
-                    // reliable messages, but:
-                    // -> queues/allocations/pools are slow and complex.
-                    // -> DOTSNET 10k is actually slower if we use pooled
-                    //    unreliable messages for transform messages.
-                    //
-                    //      DOTSNET 10k benchmark:
-                    //        reliable-only:         170 FPS
-                    //        unreliable queued: 130-150 FPS
-                    //        unreliable direct:     183 FPS(!)
-                    //
-                    //      DOTSNET 50k benchmark:
-                    //        reliable-only:         FAILS (queues keep growing)
-                    //        unreliable direct:     18-22 FPS(!)
-                    //
-                    // -> all unreliable messages are DATA messages anyway.
-                    // -> let's skip the magic and call OnData directly if
-                    //    the current state allows it.
-                    if (state == KcpState.Authenticated)
                     {
-                        OnData(message, KcpChannel.Unreliable);
-
-                        // set last receive time to avoid timeout.
-                        // -> we do this in ANY case even if not enabled.
-                        //    a message is a message.
-                        // -> we set last receive time for both reliable and
-                        //    unreliable messages. both count.
-                        //    otherwise a connection might time out even
-                        //    though unreliable were received, but no
-                        //    reliable was received.
-                        lastReceiveTime = time;
-                    }
-                    else
-                    {
-                        // it's common to receive unreliable messages before being
-                        // authenticated, for example:
-                        // - random internet noise
-                        // - game server may send an unreliable message after authenticating,
-                        //   and the unreliable message arrives on the client before the
-                        //   'auth_ok' message. this can be avoided by sending a final
-                        //   'ready' message after being authenticated, but this would
-                        //   add another 'round trip time' of latency to the handshake.
+                        // ideally we would queue all unreliable messages and
+                        // then process them in ReceiveNext() together with the
+                        // reliable messages, but:
+                        // -> queues/allocations/pools are slow and complex.
+                        // -> DOTSNET 10k is actually slower if we use pooled
+                        //    unreliable messages for transform messages.
                         //
-                        // it's best to simply ignore invalid unreliable messages here.
-                        // Log.Info($"{GetType()}: received unreliable message while not authenticated.");
+                        //      DOTSNET 10k benchmark:
+                        //        reliable-only:         170 FPS
+                        //        unreliable queued: 130-150 FPS
+                        //        unreliable direct:     183 FPS(!)
+                        //
+                        //      DOTSNET 50k benchmark:
+                        //        reliable-only:         FAILS (queues keep growing)
+                        //        unreliable direct:     18-22 FPS(!)
+                        //
+                        // -> all unreliable messages are DATA messages anyway.
+                        // -> let's skip the magic and call OnData directly if
+                        //    the current state allows it.
+                        if (state == KcpState.Authenticated)
+                        {
+                            OnData(message, KcpChannel.Unreliable);
+
+                            // set last receive time to avoid timeout.
+                            // -> we do this in ANY case even if not enabled.
+                            //    a message is a message.
+                            // -> we set last receive time for both reliable and
+                            //    unreliable messages. both count.
+                            //    otherwise a connection might time out even
+                            //    though unreliable were received, but no
+                            //    reliable was received.
+                            lastReceiveTime = time;
+                        }
+                        else
+                        {
+                            // it's common to receive unreliable messages before being
+                            // authenticated, for example:
+                            // - random internet noise
+                            // - game server may send an unreliable message after authenticating,
+                            //   and the unreliable message arrives on the client before the
+                            //   'auth_ok' message. this can be avoided by sending a final
+                            //   'ready' message after being authenticated, but this would
+                            //   add another 'round trip time' of latency to the handshake.
+                            //
+                            // it's best to simply ignore invalid unreliable messages here.
+                            // Log.Info($"{GetType()}: received unreliable message while not authenticated.");
+                        }
+                        break;
                     }
-                    break;
-                }
                 case KcpHeaderUnreliable.Disconnect:
-                {
-                    // GetType() shows Server/ClientConn instead of just Connection.
-                    Log.Info($"[KCP] {GetType()}: received disconnect message");
-                    Disconnect();
-                    break;
-                }
+                    {
+                        // GetType() shows Server/ClientConn instead of just Connection.
+                        Log.Info($"[KCP] {GetType()}: received disconnect message");
+                        Disconnect();
+                        break;
+                    }
             }
         }
 
@@ -626,21 +626,21 @@ namespace kcp2k
 
             // write data
             // from 5, with N bytes
-            Buffer.BlockCopy(data, 0, rawSendBuffer, 1+4, length);
+            Buffer.BlockCopy(data, 0, rawSendBuffer, 1 + 4, length);
 
             // IO send
-            ArraySegment<byte> segment = new ArraySegment<byte>(rawSendBuffer, 0, length + 1+4);
+            ArraySegment<byte> segment = new ArraySegment<byte>(rawSendBuffer, 0, length + 1 + 4);
             RawSend(segment);
         }
 
-        void SendReliable(KcpHeaderReliable header, ArraySegment<byte> content)
+        void SendReliable(KcpHeaderReliable header, ReadOnlySpan<byte> content)
         {
             // 1 byte header + content needs to fit into send buffer
-            if (1 + content.Count > kcpSendBuffer.Length) // TODO
+            if (1 + content.Length > kcpSendBuffer.Length)
             {
                 // otherwise content is larger than MaxMessageSize. let user know!
                 // GetType() shows Server/ClientConn instead of just Connection.
-                OnError(ErrorCode.InvalidSend, $"{GetType()}: Failed to send reliable message of size {content.Count} because it's larger than ReliableMaxMessageSize={reliableMax}");
+                OnError(ErrorCode.InvalidSend, $"{GetType()}: Failed to send reliable message of size {content.Length} because it's larger than ReliableMaxMessageSize={reliableMax}");
                 return;
             }
 
@@ -648,26 +648,26 @@ namespace kcp2k
             kcpSendBuffer[0] = (byte)header;
 
             // write data (if any)
-            if (content.Count > 0)
-                Buffer.BlockCopy(content.Array, content.Offset, kcpSendBuffer, 1, content.Count);
+            if (!content.IsEmpty)
+                content.CopyTo(kcpSendBuffer.AsSpan(1, content.Length));
 
             // send to kcp for processing
-            int sent = kcp.Send(kcpSendBuffer, 0, 1 + content.Count);
+            int sent = kcp.Send(kcpSendBuffer, 0, 1 + content.Length);
             if (sent < 0)
             {
                 // GetType() shows Server/ClientConn instead of just Connection.
-                OnError(ErrorCode.InvalidSend, $"{GetType()}: Send failed with error={sent} for content with length={content.Count}");
+                OnError(ErrorCode.InvalidSend, $"{GetType()}: Send failed with error={sent} for content with length={content.Length}");
             }
         }
 
-        void SendUnreliable(KcpHeaderUnreliable header, ArraySegment<byte> content)
+        void SendUnreliable(KcpHeaderUnreliable header, ReadOnlySpan<byte> content)
         {
             // message size needs to be <= unreliable max size
-            if (content.Count > unreliableMax)
+            if (content.Length > unreliableMax)
             {
                 // otherwise content is larger than MaxMessageSize. let user know!
                 // GetType() shows Server/ClientConn instead of just Connection.
-                Log.Error($"[KCP] {GetType()}: Failed to send unreliable message of size {content.Count} because it's larger than UnreliableMaxMessageSize={unreliableMax}");
+                Log.Error($"[KCP] {GetType()}: Failed to send unreliable message of size {content.Length} because it's larger than UnreliableMaxMessageSize={unreliableMax}");
                 return;
             }
 
@@ -684,11 +684,11 @@ namespace kcp2k
 
             // write data (if any)
             // from 6, with N bytes
-            if (content.Count > 0)
-                Buffer.BlockCopy(content.Array, content.Offset, rawSendBuffer, 1 + 4 + 1, content.Count);
+            if (!content.IsEmpty)
+                content.CopyTo(rawSendBuffer.AsSpan(1 + 4 + 1, content.Length));
 
             // IO send
-            ArraySegment<byte> segment = new ArraySegment<byte>(rawSendBuffer, 0, content.Count + 1 + 4 + 1);
+            ArraySegment<byte> segment = new ArraySegment<byte>(rawSendBuffer, 0, content.Length + 1 + 4 + 1);
             RawSend(segment);
         }
 
@@ -708,13 +708,13 @@ namespace kcp2k
             SendReliable(KcpHeaderReliable.Hello, default);
         }
 
-        public void SendData(ArraySegment<byte> data, KcpChannel channel)
+        public void SendData(ReadOnlySpan<byte> data, KcpChannel channel)
         {
             // sending empty segments is not allowed.
             // nobody should ever try to send empty data.
             // it means that something went wrong, e.g. in Mirror/DOTSNET.
             // let's make it obvious so it's easy to debug.
-            if (data.Count == 0)
+            if (data.IsEmpty)
             {
                 // pass error to user callback. no need to log it manually.
                 // GetType() shows Server/ClientConn instead of just Connection.

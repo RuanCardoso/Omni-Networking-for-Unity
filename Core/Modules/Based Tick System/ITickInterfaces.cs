@@ -3,7 +3,7 @@ namespace Omni.Core
     /// <summary>
     /// Represents information about a tick process, providing details necessary for managing and processing game or application ticks.
     /// </summary>
-    public interface ITickInfo
+    public interface ITickData
     {
         /// <summary>
         /// Gets the current tick rate.
@@ -29,7 +29,7 @@ namespace Omni.Core
         /// on each successful tick operation during the networked system's update loop. It resets after
         /// reaching the defined tick rate.
         /// </summary>
-        public long CurrentTick { get; }
+        public int CurrentTick { get; }
 
         /// <summary>
         /// Represents the fixed time step duration for each tick in seconds.
@@ -49,21 +49,13 @@ namespace Omni.Core
         public double MsPerTick { get; }
 
         /// <summary>
-        /// Represents the unprocessed accumulated time in seconds since the last fixed update in the tick cycle.
-        /// DeltaTime is increased by the elapsed frame time and reduced by the fixed time step as ticks occur,
-        /// ensuring that the simulation progresses consistently with the specified tick rate.
-        /// Useful for systems that rely on synchronized updates independent of frame rate.
-        /// </summary>
-        public double DeltaTime { get; }
-
-        /// <summary>
         /// Represents the interval in seconds between the last tick and the current one.
         /// </summary>
         /// <remarks>
         /// This is a read-only property that captures the time difference since the last
         /// tick event within the network tick system.
         /// </remarks>
-        public double DeltaTick { get; }
+        public double DeltaTime { get; }
     }
 
     /// <summary>
@@ -71,7 +63,7 @@ namespace Omni.Core
     /// within the application, ensuring that components implementing this interface can effectively handle updates
     /// provided by a tick source.
     /// </summary>
-    public interface ITickSystem
+    public interface IBasedTickSystem
     {
         /// <summary>
         /// Called on each update tick.
@@ -82,6 +74,6 @@ namespace Omni.Core
         /// This method is called at regular intervals defined by the system's tick rate, making it suitable
         /// for time-sensitive logic such as physics updates or state synchronization.
         /// </remarks>
-        void OnTick(ITickInfo data);
+        void OnTick(ITickData data);
     }
 }

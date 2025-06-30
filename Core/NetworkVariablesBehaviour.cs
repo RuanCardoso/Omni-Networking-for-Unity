@@ -74,7 +74,7 @@ namespace Omni.Core
             if (@object is IMessage data)
             {
                 using var serializedData = data.Serialize();
-                serializedData.CopyTo(message);
+                message.Internal_CopyFrom(serializedData);
                 return message;
             }
 
@@ -86,7 +86,7 @@ namespace Omni.Core
         {
             DataBuffer message = NetworkManager.Pool.Rent(enableTracking: false); // disposed by the caller(not user)
             message.Write(id);
-            message.Insert(buffer.BufferAsSpan);
+            message.Internal_CopyFrom(buffer);
             return message;
         }
 

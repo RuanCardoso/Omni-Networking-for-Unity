@@ -5,7 +5,6 @@ using Omni.Collections;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using static Omni.Core.NetworkManager;
@@ -20,15 +19,12 @@ namespace Omni.Core
     /// between clients and the server.
     /// </summary> 
     [JsonObject(MemberSerialization.OptIn)]
-    [MemoryPackable]
+    [MemoryPackable(GenerateType.NoGenerate)]
     public partial class NetworkPeer : IEquatable<NetworkPeer>
     {
         [MemoryPackIgnore] internal byte[] _aesKey;
         [MemoryPackIgnore] internal NativePeer _nativePeer;
         [MemoryPackIgnore] internal Dictionary<int, NetworkGroup> _groups = new();
-
-        [MemoryPackIgnore] internal List<NetworkCache> AppendCaches { get; } = new();
-        [MemoryPackIgnore] internal Dictionary<int, NetworkCache> OverwriteCaches { get; } = new();
 
         [MemoryPackIgnore] private readonly string __endpoint__;
         [MemoryPackIgnore] private bool _autoSyncSharedData;
@@ -42,7 +38,7 @@ namespace Omni.Core
         /// <summary>
         /// Gets the unique identifier for this peer, assigned by the server.
         /// </summary>
-        [MemoryPackIgnore]
+        [MemoryPackInclude, JsonProperty("Id")]
         public int Id { get; }
 
         /// <summary>
@@ -113,14 +109,14 @@ namespace Omni.Core
         /// <summary>
         /// Gets the current network time for this peer.
         /// </summary>
-        [MemoryPackIgnore]
-        public double Time => _nativePeer.Time;
+        // [MemoryPackIgnore]
+        // public double Time => _nativePeer.Time;
 
         /// <summary>
         /// Gets the current network ping (latency) for this peer in milliseconds.
         /// </summary>
-        [MemoryPackIgnore]
-        public double Ping => _nativePeer.Ping;
+        //[MemoryPackIgnore]
+        //public double Ping => _nativePeer.Ping;
 
         [MemoryPackConstructor]
         [JsonConstructor]
@@ -179,51 +175,28 @@ namespace Omni.Core
             DisconnectPeer(this);
         }
 
-        public void SyncSharedData(ServerOptions options)
+        public void SyncSharedData()
         {
-            SyncSharedData(options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
-                options.SequenceChannel);
+            SyncSharedData(NetworkConstants.k_ShareAllKeys);
         }
 
-        public void SyncSharedData(Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
+        public void SyncSharedData(string key)
         {
-            dataCache ??= DataCache.None;
-            SyncSharedData(NetworkConstants.SHARED_ALL_KEYS, target, deliveryMode, groupId, dataCache,
-                sequenceChannel);
+            Internal_SyncSharedData(key);
         }
 
-        public void SyncSharedData(string key, ServerOptions options)
+        private void Internal_SyncSharedData(string key)
         {
-            SyncSharedData(key, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
-                options.SequenceChannel);
-        }
-
-        public void SyncSharedData(string key, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
-        {
-            dataCache ??= DataCache.None;
-            Internal_SyncSharedData(key, target, deliveryMode, groupId, dataCache, sequenceChannel);
-        }
-
-        private void Internal_SyncSharedData(string key, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
-        {
-            dataCache ??= DataCache.None;
             EnsureServerActive();
 
-            if (SharedData.TryGetValue(key, out object value) || key == NetworkConstants.SHARED_ALL_KEYS)
+            if (SharedData.TryGetValue(key, out object value) || key == NetworkConstants.k_ShareAllKeys)
             {
-                value = key != NetworkConstants.SHARED_ALL_KEYS ? value : SharedData;
+                value = key != NetworkConstants.k_ShareAllKeys ? value : SharedData;
                 ImmutableKeyValuePair keyValuePair = new(key, value);
                 using var message = Pool.Rent(enableTracking: false);
                 message.Write(Id);
                 message.WriteAsJson(keyValuePair);
-                ServerSide.SendMessage(MessageType.SyncPeerSharedData, this, message, target, deliveryMode, groupId,
-                    dataCache, sequenceChannel);
+                ServerSide.SendMessage(NetworkPacketType.k_SyncPeerSharedData, this, message);
             }
             else
             {
@@ -234,59 +207,6 @@ namespace Omni.Core
             }
         }
 
-        /// <summary>
-        /// Removes a cache from the peer based on the provided data cache.
-        /// </summary>
-        /// <param name="dataCache">The data cache to remove.</param>
-        public void RemoveCache(DataCache dataCache)
-        {
-            EnsureServerActive();
-            switch (dataCache.Mode)
-            {
-                case CacheMode.Peer | CacheMode.New:
-                case CacheMode.Peer | CacheMode.New | CacheMode.AutoDestroy:
-                    AppendCaches.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
-                    break;
-                case CacheMode.Peer | CacheMode.Overwrite:
-                case CacheMode.Peer | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                    OverwriteCaches.Remove(dataCache.Id);
-                    break;
-                default:
-                    NetworkLogger.__Log__(
-                        "Delete Cache Error: Unsupported cache mode set.",
-                        NetworkLogger.LogType.Error
-                    );
-                    break;
-            }
-        }
-
-        internal void Internal_RemoveAllCaches()
-        {
-            EnsureServerActive();
-            AppendCaches.RemoveAll(x => x.AutoDestroyCache);
-            var caches = OverwriteCaches.Values.Where(x => x.AutoDestroyCache).ToList();
-
-            foreach (var cache in caches)
-            {
-                if (!OverwriteCaches.Remove(cache.Id))
-                {
-                    NetworkLogger.__Log__(
-                        $"Destroy All Cache Error: Failed to remove cache {cache.Id} from peer {Id}.",
-                        NetworkLogger.LogType.Error
-                    );
-                }
-            }
-        }
-
-        /// <summary>
-        /// Resets the cache collections for the current network peer, clearing both the append and overwrite caches.
-        /// </summary>
-        public void ResetCacheCollections()
-        {
-            EnsureServerActive();
-            AppendCaches.Clear();
-            OverwriteCaches.Clear();
-        }
 
         [Conditional("OMNI_DEBUG")]
         private void EnsureServerActive([CallerMemberName] string caller = "")
@@ -328,7 +248,13 @@ namespace Omni.Core
         /// </remarks>
         public override bool Equals(object obj)
         {
-            NetworkPeer other = (NetworkPeer)obj;
+            if (obj is null)
+                return false;
+
+            if (ReferenceEquals(this, obj))
+                return true;
+
+            NetworkPeer other = obj as NetworkPeer;
             return other != null && Id == other.Id;
         }
 

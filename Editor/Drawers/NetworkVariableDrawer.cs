@@ -79,7 +79,7 @@ namespace Omni.Editor
 
         private bool IsField(TriProperty property)
         {
-            return property.TryGetAttribute<SerializeField>(out var _);
+            return property.TryGetAttribute<SerializeField>(out var _) || property.RawName.StartsWith("m_");
         }
 
         private Texture2D GetTexture(Color color)

@@ -1,5 +1,6 @@
 using Omni.Shared;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 #if OMNI_SERVER && !UNITY_EDITOR
 using System.Threading;
@@ -31,7 +32,6 @@ namespace Omni.Core.Modules.UConsole
                 };
 
             thread.Start();
-
             NetworkManager.OnServerInitialized += () =>
             {
                 // Bandwidth register
@@ -46,35 +46,57 @@ namespace Omni.Core.Modules.UConsole
             while (true)
             {
                 string input = Console.ReadLine().Trim();
-                OnInput?.Invoke(input);
-
-                // Internal commands
-                if (input.ToLower() == "stats")
+                string lowerInput = input.ToLowerInvariant();
+                NetworkHelper.RunOnMainThread(() =>
                 {
-                    PrintServerStats();
-                }
-                else if (input.ToLower() == "stats -l")
+                    OnInput?.Invoke(lowerInput);
+                    ProcessInternalCommands(lowerInput);
+                });
+
+                // async internal commands
+                if (lowerInput == "stats -l")
                 {
                     while (true)
                     {
                         if (EscapeIsPressed())
-                        {
                             break;
-                        }
 
-                        PrintServerStats();
-                        await Task.Delay(500);
+                        await NetworkHelper.RunOnMainThreadAsync(() =>
+                        {
+                            PrintServerStats();
+                        });
+
+                        await Task.Delay(300);
                     }
                 }
-                else if (input.ToLower() == "clear")
-                {
+            }
+        }
+
+        /// <summary>
+        /// Processes internal console commands.
+        /// </summary>
+        /// <param name="input">The command input string to process.</param>
+        /// <remarks>
+        /// Supported commands:
+        /// - "stats": Displays server statistics including date, FPS, CPU usage, and bandwidth.
+        /// - "clear": Clears the console screen and resets cursor position.
+        /// - "printlog": Prints the player log using NetworkLogger.
+        /// </remarks>
+        public void ProcessInternalCommands(string input)
+        {
+            NetworkHelper.EnsureRunningOnMainThread();
+            switch (input)
+            {
+                case "stats":
+                    PrintServerStats();
+                    break;
+                case "clear":
                     Console.Clear();
                     Console.SetCursorPosition(0, 0);
-                }
-                else if (input.ToLower() == "printlog")
-                {
+                    break;
+                case "printlog":
                     NetworkLogger.PrintPlayerLog();
-                }
+                    break;
             }
         }
 
@@ -100,6 +122,7 @@ namespace Omni.Core.Modules.UConsole
 
         private void PrintServerStats()
         {
+            NetworkHelper.EnsureRunningOnMainThread();
             // Date
             Console.WriteLine($"\r\nDate: {DateTime.Now}");
 
@@ -111,6 +134,11 @@ namespace Omni.Core.Modules.UConsole
             // Bandwidth Rec and Sent
             Console.WriteLine($"Received: {_receivedBytes.ToSizeSuffix()}");
             Console.WriteLine($"Sent: {_sentBytes.ToSizeSuffix()}");
+
+            // Players
+            Console.WriteLine($"Players connected: {NetworkManager.ServerSide.Peers.Count}");
+            Console.WriteLine($"Memory Usage: {((double)GC.GetTotalMemory(false)).ToSizeSuffix()}");
+            Console.WriteLine($"Active Rooms: {NetworkManager.ServerSide.Groups.Where(g => !g.Value.IsSubGroup).Count()}");
         }
     }
 }

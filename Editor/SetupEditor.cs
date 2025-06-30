@@ -11,6 +11,7 @@ using UnityEngine;
 using System;
 using UnityEditor.Compilation;
 using Omni.Core;
+using System.Collections.Generic;
 
 #pragma warning disable
 
@@ -105,7 +106,6 @@ namespace Omni.Editor
             IActiveBuildTargetChanged,
             IPreprocessBuildWithReport
     {
-        private const string OMNI_VERSION = NetworkLogger.Version;
         public int callbackOrder => -1;
 
         public void OnPreprocessBuild(BuildReport report)
@@ -194,7 +194,7 @@ namespace Omni.Editor
         {
             string fileName = Path.Combine(
                 Application.dataPath,
-                $".omni_macros_{EditorHelper.GetCurrentNamedBuildTarget(buildTarget).TargetName.ToLower()}_{OMNI_VERSION}.ini"
+                $".omni_macros_{EditorHelper.GetCurrentNamedBuildTarget(buildTarget).TargetName.ToLowerInvariant()}_{NetworkLogger.Version}.ini"
             );
 
             if (!File.Exists(fileName))

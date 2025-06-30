@@ -7,7 +7,7 @@ public partial class ServerSampleTest : ServerBehaviour
 {
     protected override void OnServerPeerConnected(NetworkPeer peer, Phase phase)
     {
-        if (phase == Phase.End)
+        if (phase == Phase.Ended)
         {
             using DataBuffer message = Rent();
             message.WriteString("Hello from server");
@@ -15,7 +15,7 @@ public partial class ServerSampleTest : ServerBehaviour
             // Isso significa que a mensagem pode ser decrifrada por qualquer cliente que tenha a chave global.
             // message.EncryptInPlace(NetworkManager.SharedPeer);
             // Envia a mensagem pro cliente
-            Server.Rpc(1, peer, message);
+            // Server.Rpc(1, peer, message);
         }
     }
 

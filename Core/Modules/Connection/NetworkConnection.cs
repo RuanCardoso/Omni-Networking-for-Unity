@@ -22,10 +22,9 @@ namespace Omni.Core.Modules.Connection
                 NetworkHelper.EnsureRunningOnMainThread();
                 Transporter = ITransporter;
                 Transporter.Initialize(IReceive, IsServer);
-#if OMNI_DEBUG || (UNITY_SERVER && !UNITY_EDITOR)
+
                 SentBandwidth.Start();
                 ReceivedBandwidth.Start();
-#endif
             }
 
             internal void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte channel)
@@ -38,9 +37,7 @@ namespace Omni.Core.Modules.Connection
                     );
                 }
 
-#if OMNI_DEBUG || (UNITY_SERVER && !UNITY_EDITOR)
                 SentBandwidth.Add(data.Length);
-#endif
                 Transporter.Send(data, target, deliveryMode, channel);
             }
 

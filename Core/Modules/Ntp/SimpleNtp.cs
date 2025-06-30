@@ -1,5 +1,6 @@
 using System;
 using Omni.Shared;
+using UnityEngine;
 using static Omni.Core.NetworkManager;
 
 #pragma warning disable
@@ -15,6 +16,11 @@ namespace Omni.Core.Modules.Ntp
     /// </summary>
     public class SimpleNtp
     {
+        internal const int k_DefaultPingWindow = 8;
+        internal const int k_DefaultTimeWindow = 60;
+        internal const int k_DefaultRttWindow = 20;
+        internal const float k_DefaultQueryInterval = 1f;
+
         /// <summary>
         /// Gets the NTP client clock which provides synchronized time functionality.
         /// This component handles time offset calculations, round-trip time measurements, 
@@ -35,38 +41,22 @@ namespace Omni.Core.Modules.Ntp
         /// Gets the current time value based on the timing system configuration.
         /// Returns ticks from TickSystem when UseTickTiming is true, otherwise returns Unity's unscaled time.
         /// </summary>
-        public static double Time => IsTickTimingEnabled ? TickSystem.ElapsedTicks : UnityEngine.Time.unscaledTimeAsDouble;
+        public static double ElapsedTicks => TickSystem.ElapsedTicks;
 
-        /// <summary>
-        /// Gets the time delta value based on the timing system configuration.
-        /// Returns the tick delta from TickSystem when UseTickTiming is true, otherwise returns Unity's frame delta time.
-        /// This provides a consistent way to measure time differences regardless of the underlying timing mechanism.
-        /// </summary>
-        public static double Delta => IsTickTimingEnabled ? TickSystem.DeltaTick : UnityEngine.Time.deltaTime;
-
-        internal void Initialize(NetworkClock networkClock)
+        internal void Initialize()
         {
-            if (networkClock == null)
-            {
-                Client = new NtpClient();
-                Server = new NtpServer();
-            }
-            else
-            {
-                Client = new NtpClient(networkClock);
-                Server = new NtpServer(networkClock);
-            }
+            Client = new NtpClient();
+            Server = new NtpServer();
         }
 
         public class NtpClient
         {
-            private const double PING_TIME_PRECISION = 0.035d;
-            private const double PING_TICK_PRECISION = 0.035d * 1000d;
-
             /// <summary>
-            /// Returns the synchronized time or ticks, which is the unity time plus the smoothed offset average.
+            /// Gets the synchronized time value by combining the base elapsed ticks with the calculated time offset.
+            /// This value represents the client's best estimate of the server's time, accounting for network latency
+            /// and clock drift through the smoothed offset average.
             /// </summary>
-            public double Time => IsTickTimingEnabled ? (int)(SimpleNtp.Time + OffsetAvg.Average) : NetworkHelper.Truncate((SimpleNtp.Time + OffsetAvg.Average), 3);
+            public long SyncedTime => (long)Math.Round((SimpleNtp.ElapsedTicks + OffsetAvg.Average));
 
             /// <summary>
             /// Returns the round-trip time (RTT) smoothed average.
@@ -79,63 +69,65 @@ namespace Omni.Core.Modules.Ntp
             public double HalfRtt => Rtt / 2d;
 
             /// <summary>
-            /// Retrieves the ping time in milliseconds.
+            /// Retrieves the ping time in milliseconds in real time.
             /// </summary>
-            public double Ping => (int)(NetworkHelper.MinMax(Rtt, IsTickTimingEnabled ? PING_TICK_PRECISION : PING_TIME_PRECISION) * (IsTickTimingEnabled ? TickSystem.MsPerTick : 1000d));
+            public int Ping => (int)Math.Round(PingAvg.Average * 1000.0);
 
             /// <summary>
-            /// Simple Moving Average (SMA) for RTT measurements to smooth out short-term fluctuations.
+            /// Retrieves the ping time in milliseconds based in tick time.
             /// </summary>
-            private SimpleMovingAverage RttAvg { get; }
+            public int Ping2 => (int)Math.Round(Rtt * TickSystem.MsPerTick);
 
-            /// <summary>
-            /// The Exponential Moving Average (EMA) algorithm can play a valuable role in time synchronization systems like the Network Time Protocol (NTP).
-            /// By applying EMA to the time data provided by NTP servers, abrupt variations in times can be smoothed out and temporal drift trends can be effectively detected.
-            /// EMA's sensitivity to the most recent data allows for a quick response to changes in synchronization times, contributing to a faster and more accurate adaptation of the network devices' clocks.
-            /// This smoothed approach not only improves stability in synchronization by mitigating temporal fluctuations but also provides a solid foundation for detecting and correcting temporal deviations.
-            /// Thus, it helps maintain time accuracy in environments that heavily rely on time synchronization, such as NTP systems.
-            /// </summary>
-            private IMovingAverage OffsetAvg { get; }
+            private ExponentialMovingAverage PingAvg { get; }
+            private ExponentialMovingAverage RttAvg { get; }
+            private ExponentialMovingAverage OffsetAvg { get; }
 
             internal NtpClient()
             {
-                RttAvg = new SimpleMovingAverage(NetworkClock.DEFAULT_RTT_WINDOW);
-                OffsetAvg = IsTickTimingEnabled
-                    ? new SimpleMovingAverage(NetworkClock.DEFAULT_TIME_WINDOW)
-                    : new ExponentialMovingAverage(NetworkClock.DEFAULT_TIME_WINDOW);
+                PingAvg = new ExponentialMovingAverage(k_DefaultPingWindow);
+                RttAvg = new ExponentialMovingAverage(k_DefaultRttWindow);
+                OffsetAvg = new ExponentialMovingAverage(k_DefaultTimeWindow);
             }
 
-            internal NtpClient(NetworkClock clock)
-            {
-                RttAvg = new SimpleMovingAverage(clock.RttWindow);
-                OffsetAvg = IsTickTimingEnabled
-                    ? new SimpleMovingAverage(clock.TimeWindow)
-                    : new ExponentialMovingAverage(clock.TimeWindow);
-            }
-
-            // The Client reads its clock, which provides the time a.
-            // The Client sends Message 1 with the timestamp a to the server.
-            // The Server receives Message 1 and reads its clock at that moment, which provides the timestamp x. The Server stores a and x in variables.
-            // After some time, the Server reads its clock again, which provides the timestamp y.
-            // The Server sends Message 2 with a, x, and y to the client.
-            // The Client receives Message 2 and reads its clock at that moment, which provides the timestamp b.
+            // The Client reads its clock, which provides the time a(T1).
+            // The Client sends Message 1 with the timestamp a(T1) to the server.
+            // The Server receives Message 1 and reads its clock at that moment, which provides the timestamp x(T2). The Server stores a(T1) and x(T2) in variables.
+            // After some time, the Server reads its clock again, which provides the timestamp y(T3).
+            // The Server sends Message 2 with a(T1), x(T2), and y(T3) to the client.
+            // The Client receives Message 2 and reads its clock at that moment, which provides the timestamp b(T4).
             internal void Query()
             {
                 using var message = Pool.Rent(enableTracking: false);
-                message.Write(SimpleNtp.Time);
-                NetworkManager.ClientSide.SendMessage(MessageType.NtpQuery, message, DeliveryMode.Unreliable, 0);
+                // Write the current client timestamp a(T1) to the message
+                // This timestamp will be used as the reference point for calculating network latency and clock offset
+                // Note: The actual time value includes any accumulated frame delays between send and receive
+                message.Write(SimpleNtp.ElapsedTicks);
+                message.Write(Time.realtimeSinceStartup);
+                ClientSide.SetDeliveryMode(DeliveryMode.Unreliable);
+                ClientSide.SendMessage(NetworkPacketType.k_NtpQuery, message);
             }
 
             // https://ntp.br/conteudo/ntp/#:~:text=NTP%20significa%20Network%20Time%20Protocol,de%20refer%C3%AAncias%20de%20tempo%20confi%C3%A1veis.
             // https://info.support.huawei.com/info-finder/encyclopedia/en/NTP.html
-            internal void Evaluate(double a, double x, double y)
+            internal void Evaluate(double a, double x, double y, float realtimeSinceStartup)
             {
-                double b = SimpleNtp.Time;
-                // Rtt(Round-Trip-Time) (Delay) = (b-a)-(y-x)
+                float now = Time.realtimeSinceStartup;
+                float pingMs = now - realtimeSinceStartup;
+                PingAvg.Add(pingMs);
+                // T1 (a) = Client's timestamp when sending request
+                // T2 (x) = Server's timestamp when receiving request  
+                // T3 (y) = Server's timestamp when sending response
+                // T4 (b) = Client's timestamp when receiving response
+                double b = SimpleNtp.ElapsedTicks;
+                // Calculate Round-Trip-Time (RTT) or network delay
+                // RTT = (Client receive time - Client send time) - (Server send time - Server receive time)
+                // This measures the total time for a message to travel from client to server and back,
+                // minus the processing time on the server side
                 double rtt = (b - a) - (y - x);
                 RttAvg.Add(rtt);
-                // Given that the round trip time is equal to the return time, the displacement between the server and the local clock can be calculated as follows:
-                // Offset = ((T2-T1) + (T3-T4))/2
+                // The time offset between server and client clocks is calculated using the NTP algorithm:
+                // Assuming symmetric network delay, the time offset is:
+                // Offset = ((T2-T1) + (T3-T4))/2 = ((x-a) + (y-b))/2
                 double timeOffset = ((x - a) + (y - b)) / 2d;
                 OffsetAvg.Add(timeOffset);
             }
@@ -143,36 +135,27 @@ namespace Omni.Core.Modules.Ntp
 
         public class NtpServer
         {
-            private int yInstantAccuracy;
-            public double Time => IsServerActive ? SimpleNtp.Time : 0d;
-
-            internal NtpServer()
-            {
-                yInstantAccuracy = NetworkClock.DEFAULT_ACCURACY;
-            }
-
-            internal NtpServer(NetworkClock clock)
-            {
-                yInstantAccuracy = clock.Accuracy;
-            }
+            public double LocalTime => IsServerActive ? SimpleNtp.ElapsedTicks : 0d;
 
             // https://techhub.hpe.com/eginfolib/networking/docs/switches/5820x-5800/5998-7395r_nmm_cg/content/441755722.htm
-            internal void SendNtpResponse(double time, NetworkPeer peer)
+            internal void SendResponse(double time, NetworkPeer peer, float realtimeSinceStartup)
             {
                 double a = time; // client time
-                double x = SimpleNtp.Time; // server time
+                double x = SimpleNtp.ElapsedTicks; // server time
 
                 using var message = Pool.Rent(enableTracking: false);
                 message.Write(a);
                 message.Write(x);
-                TransmitNtpMessage(peer, message);
+                SendMessage(peer, message, realtimeSinceStartup);
             }
 
-            private void TransmitNtpMessage(NetworkPeer peer, DataBuffer message)
+            private void SendMessage(NetworkPeer peer, DataBuffer message, float realtimeSinceStartup)
             {
-                double y = SimpleNtp.Time;
+                double y = SimpleNtp.ElapsedTicks;
                 message.Write(y);
-                NetworkManager.ServerSide.SendMessage(MessageType.NtpQuery, peer, message, target: Target.SelfOnly, deliveryMode: DeliveryMode.Unreliable, sequenceChannel: 0);
+                message.Write(realtimeSinceStartup);
+                ServerSide.SetDefaultNetworkConfiguration(DeliveryMode.Unreliable, Target.Self, null, 0);
+                ServerSide.SendMessage(NetworkPacketType.k_NtpQuery, peer, message);
             }
         }
     }

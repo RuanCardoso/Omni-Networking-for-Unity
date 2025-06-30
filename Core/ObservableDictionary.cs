@@ -18,7 +18,7 @@ namespace Omni.Collections
     /// <typeparam name="TKey">The type of the keys in the dictionary.</typeparam>
     /// <typeparam name="TValue">The type of the values in the dictionary.</typeparam>
     [MemoryPackable(GenerateType.Collection)]
-    [Serializable, DeclareHorizontalGroup("Key/Value")]
+    [Serializable, DeclareHorizontalGroup("Key/Value"), DeclareHorizontalGroup("HorizontalGroup")]
     [Nested]
     public partial class ObservableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
         where TKey : notnull
@@ -43,8 +43,12 @@ namespace Omni.Collections
         public event Action<TKey, TValue> OnItemUpdated;
         public Action<bool> OnUpdate;
 
-        public ObservableDictionary()
+        private bool _detectInspectorChanges = false;
+        public ObservableDictionary() : this(false) { }
+
+        public ObservableDictionary(bool detectInspectorChanges)
         {
+            _detectInspectorChanges = detectInspectorChanges;
 #if OMNI_DEBUG
             var tKey = typeof(TKey);
             var tValue = typeof(TValue);
@@ -162,6 +166,7 @@ namespace Omni.Collections
             OnUpdate?.Invoke(true);
         }
 
+        [Group("HorizontalGroup")]
         [Button("Add Key")]
         [DisableInPlayMode]
         private void AddKeyValuePair()
@@ -181,7 +186,8 @@ namespace Omni.Collections
             }
         }
 
-        [Button("Remove Last Key")]
+        [Group("HorizontalGroup")]
+        [Button("Remove Key")]
         [DisableInPlayMode]
         private void RemoveKeyValuePair()
         {
@@ -195,8 +201,12 @@ namespace Omni.Collections
         [Conditional("UNITY_EDITOR")]
         private void OnCollectionChanged()
         {
-            if (!Application.isPlaying)
-                return;
+            try
+            {
+                if (!Application.isPlaying)
+                    return;
+            }
+            catch { }
 
             if (!_values.SequenceEqual(_internalReference.Values))
             {
@@ -211,6 +221,7 @@ namespace Omni.Collections
 
                         _internalReference[key] = value;
                         OnItemUpdated?.Invoke(key, value);
+                        UnityEngine.Debug.Log($"Updated: {key} = {value}");
                     }
                 }
 
@@ -226,6 +237,11 @@ namespace Omni.Collections
 
         public void OnAfterDeserialize()
         {
+            if (_detectInspectorChanges)
+            {
+                OnCollectionChanged();
+            }
+
             _internalReference.Clear();
             if (_keys.Count != _values.Count)
                 return;

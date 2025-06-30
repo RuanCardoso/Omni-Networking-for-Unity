@@ -35,24 +35,22 @@ namespace Omni.Core.Modules.Connection
         public class LiteSecurityLayer : PacketLayerBase
         {
             private const int ChecksumSize = 32; // 32 bytes for SHA256 hash
-            private readonly byte[] hmacKey = new byte[ChecksumSize]
-            {
-                    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-                    0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-                    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-                    0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
-            };
-
             public LiteSecurityLayer() : base(ChecksumSize) { }
 
             public override void ProcessInboundPacket(ref IPEndPoint endPoint, ref byte[] data, ref int length)
             {
-                // Get the checksum from the end of the packet
-                int offset = length - ChecksumSize;
-                ReadOnlySpan<byte> checksum = data.AsSpan(offset, ChecksumSize);
+                if (length < NetConstants.HeaderSize + ChecksumSize)
+                {
+                    NetworkLogger.__Log__("[LiteTransporter] Packet too short for checksum", NetworkLogger.LogType.Error);
+                    length = 0;
+                    return;
+                }
 
+                int offset = length - ChecksumSize;
+                // Get the checksum from the end of the packet
+                ReadOnlySpan<byte> checksum = data.AsSpan(offset, ChecksumSize);
                 // Calculate the checksum for the data without the checksum itself
-                if (!HmacGenerator.Validate(data, 0, offset, hmacKey, checksum))
+                if (!HmacGenerator.Validate(data, 0, offset, NetworkManager.ProductionKey, checksum))
                 {
                     NetworkLogger.__Log__(
                         $"[LiteTransporter] Invalid checksum detected - Packet discarded (Checksum: {BitConverter.ToString(checksum.ToArray())})",
@@ -71,7 +69,7 @@ namespace Omni.Core.Modules.Connection
                 // Get the end of the packet
                 Span<byte> dataSpan = data.AsSpan(offset + length, ChecksumSize);
                 // Calculate the checksum for the data
-                ReadOnlySpan<byte> checksum = HmacGenerator.Compute(data, offset, length, hmacKey);
+                ReadOnlySpan<byte> checksum = HmacGenerator.Compute(data, offset, length, NetworkManager.ProductionKey);
                 // Copy the checksum to the end of the packet
                 checksum.CopyTo(dataSpan);
                 length += ChecksumSize;
@@ -84,39 +82,42 @@ namespace Omni.Core.Modules.Connection
         private bool isServer;
         private bool isRunning;
 
+        [SerializeField]
         [GroupNext("Settings")]
         [Tooltip(
             "Specifies the version of the game. The server rejects older or different versions."
         )]
-        [SerializeField]
+        [LabelWidth(140)]
         private string m_VersionName = "1.0.0.0";
 
         [SerializeField]
         [Tooltip(
             "Specifies the time limit (in milliseconds) without receiving any message before the server disconnects the client."
         )]
-        [Range(1000, 10000)]
+        [Range(1000, 10000), LabelWidth(140)]
         private int m_disconnectTimeout = 3000;
 
         [SerializeField]
         [Tooltip(
             "Specifies the interval (in milliseconds) at which ping messages are sent to the server."
         )]
-        [Range(1000, 5000)]
+        [Range(1000, 5000), LabelWidth(140)]
         private int m_pingInterval = 1000;
 
         [SerializeField]
         [Tooltip("Specifies the maximum number of connections allowed at the same time.")]
-        [Min(1)]
+        [Min(1), LabelWidth(140)]
         private int m_MaxConnections = 256;
 
         [SerializeField]
         [Tooltip("Max events that will be processed per frame.")]
         [LabelWidth(140)]
         [Min(0)]
-        private int m_MaxEventsPerFrame = 0;
+        private int m_MaxEventsPerFrame = 0; // 0 - No limit
 
-        [SerializeField][Range(1, 64)] private byte m_ChannelsCount = 3;
+        [SerializeField]
+        [Range(1, 64), LabelWidth(140)]
+        private byte m_ChannelsCount = 3;
 
         [SerializeField]
         [Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
@@ -143,24 +144,37 @@ namespace Omni.Core.Modules.Connection
         [LabelWidth(140)]
         private bool m_useSafeMtu = false;
 
-        [GroupNext("Lag Simulator [Debug only!]")]
         [SerializeField]
-        [LabelWidth(150)]
-        private NetworkSimulationMode m_NetworkSimulationMode = NetworkSimulationMode.None;
+        [LabelWidth(140)]
+        private bool m_ManualMode = false;
 
         [SerializeField]
-        [DisableIf("m_NetworkSimulationMode", NetworkSimulationMode.None)]
-        [Min(0)]
+        [LabelWidth(140), HideIf("m_ManualMode")]
+        [Range(1, 100)]
+        private int m_UpdateTime = 1;
+
+        [SerializeField]
+        [LabelWidth(140)]
+        private bool m_UseSecurityLayer = false;
+
+        [GroupNext("Lag Simulator [Debug only!]")]
+        [SerializeField]
+        [LabelWidth(130)]
+        private NetworkSimulationMode m_SimulationMode = NetworkSimulationMode.None;
+
+        [SerializeField]
+        [DisableIf("m_SimulationMode", NetworkSimulationMode.None)]
+        [Min(0), LabelWidth(130)]
         private int m_MinLatency = 60;
 
         [SerializeField]
-        [DisableIf("m_NetworkSimulationMode", NetworkSimulationMode.None)]
-        [Min(0)]
+        [DisableIf("m_SimulationMode", NetworkSimulationMode.None)]
+        [Min(0), LabelWidth(130)]
         private int m_MaxLatency = 60;
 
         [SerializeField]
-        [DisableIf("m_NetworkSimulationMode", NetworkSimulationMode.None)]
-        [Range(0, 100)]
+        [DisableIf("m_SimulationMode", NetworkSimulationMode.None)]
+        [Range(0, 100), LabelWidth(130)]
         private int m_LossPercent = 0;
 
         private ITransporterReceive transporter;
@@ -209,7 +223,7 @@ namespace Omni.Core.Modules.Connection
         public void Initialize(ITransporterReceive transporter, bool isServer)
         {
 #if !OMNI_DEBUG // Lag Simulator [Debug only!] - Disabled in Release(Production)
-            m_NetworkSimulationMode = NetworkSimulationMode.None;
+            m_SimulationMode = NetworkSimulationMode.None;
 #endif
             this.isServer = isServer;
             this.transporter = transporter;
@@ -220,11 +234,11 @@ namespace Omni.Core.Modules.Connection
             }
 
             bool simulateLag = isServer
-                ? m_NetworkSimulationMode == NetworkSimulationMode.ServerOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both
-                : m_NetworkSimulationMode == NetworkSimulationMode.ClientOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both;
+                ? m_SimulationMode == NetworkSimulationMode.ServerOnly || m_SimulationMode == NetworkSimulationMode.Both
+                : m_SimulationMode == NetworkSimulationMode.ClientOnly || m_SimulationMode == NetworkSimulationMode.Both;
 
             _listener = new EventBasedNetListener();
-            _manager = new NetManager(_listener, new LiteSecurityLayer())
+            _manager = m_UseSecurityLayer ? new(_listener, new LiteSecurityLayer()) : new(_listener)
             {
                 AutoRecycle = false,
                 EnableStatistics = false,
@@ -241,7 +255,8 @@ namespace Omni.Core.Modules.Connection
                 SimulationMinLatency = m_MinLatency,
                 SimulationMaxLatency = m_MaxLatency,
                 SimulationPacketLossChance = m_LossPercent,
-                UnconnectedMessagesEnabled = true, // P2P
+                UnconnectedMessagesEnabled = false, // P2P
+                UpdateTime = m_UpdateTime,
             };
 
             if (isServer)
@@ -257,9 +272,7 @@ namespace Omni.Core.Modules.Connection
                     if (peer.ConnectionState == ConnectionState.Connected)
                     {
                         localPeer ??= peer;
-                        transporter.Internal_OnClientConnected(peer,
-                            new NativePeer(() => (int)(peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
-                                () => peer.RoundTripTime));
+                        transporter.Internal_OnClientConnected(peer, new NativePeer());
                     }
                 };
 
@@ -321,9 +334,7 @@ namespace Omni.Core.Modules.Connection
             }
             else
             {
-                transporter.Internal_OnServerPeerConnected(peer,
-                    new NativePeer(() => (peer.RemoteUtcTime - new DateTime(peer.ConnectTime)).TotalSeconds,
-                        () => peer.Ping));
+                transporter.Internal_OnServerPeerConnected(peer, new NativePeer());
             }
         }
 
@@ -359,7 +370,22 @@ namespace Omni.Core.Modules.Connection
         {
             if (isRunning)
             {
-                _manager.PollEvents(m_MaxEventsPerFrame);
+                _manager.PollEvents(m_MaxEventsPerFrame); // Rec
+            }
+        }
+
+        float elapsed = 0f;
+        private void LateUpdate()
+        {
+            if (isRunning && m_ManualMode)
+            {
+                elapsed += Time.deltaTime * 1000f;
+                int ms = Mathf.FloorToInt(elapsed);
+                if (ms > 0)
+                {
+                    _manager.ManualUpdate(ms);
+                    elapsed -= ms;
+                }
             }
         }
 
@@ -408,7 +434,7 @@ namespace Omni.Core.Modules.Connection
                 TryPortForwarding(port);
             }
 
-            if (_manager.Start(port))
+            if (_manager.Start(IPAddress.Any, IPAddress.IPv6Any, port, m_ManualMode))
             {
                 if (isServer && isRunning)
                 {
@@ -536,16 +562,19 @@ namespace Omni.Core.Modules.Connection
                 liteTransporter.m_useSafeMtu = m_useSafeMtu;
                 liteTransporter.m_ChannelsCount = m_ChannelsCount;
                 liteTransporter.m_UsePortForwarding = m_UsePortForwarding;
+                liteTransporter.m_UseSecurityLayer = m_UseSecurityLayer;
+                liteTransporter.m_UpdateTime = m_UpdateTime;
+                liteTransporter.m_ManualMode = m_ManualMode;
 
                 // Lag properties
-                liteTransporter.m_NetworkSimulationMode = m_NetworkSimulationMode;
+                liteTransporter.m_SimulationMode = m_SimulationMode;
                 liteTransporter.m_MinLatency = m_MinLatency;
                 liteTransporter.m_MaxLatency = m_MaxLatency;
                 liteTransporter.m_LossPercent = m_LossPercent;
             }
         }
 
-#if OMNI_DEBUG
+#if OMNI_DEBUG // Inspector Changes
         private void OnValidate()
         {
             LiteTransporter[] liteTransporters = GetComponentsInChildren<LiteTransporter>();
@@ -554,8 +583,8 @@ namespace Omni.Core.Modules.Connection
                 if (liteTransporter.isRunning)
                 {
                     bool simulateLag = liteTransporter.isServer
-                        ? m_NetworkSimulationMode == NetworkSimulationMode.ServerOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both
-                        : m_NetworkSimulationMode == NetworkSimulationMode.ClientOnly || m_NetworkSimulationMode == NetworkSimulationMode.Both;
+                        ? m_SimulationMode == NetworkSimulationMode.ServerOnly || m_SimulationMode == NetworkSimulationMode.Both
+                        : m_SimulationMode == NetworkSimulationMode.ClientOnly || m_SimulationMode == NetworkSimulationMode.Both;
 
                     liteTransporter._manager.PingInterval = m_pingInterval;
                     liteTransporter._manager.SimulateLatency = simulateLag;

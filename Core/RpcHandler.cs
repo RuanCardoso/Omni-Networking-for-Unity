@@ -21,13 +21,13 @@ namespace Omni.Core
 
     internal class RpcMethod
     {
-        internal int MethodId { get; }
-        internal string MethodName { get; }
-        internal int ArgsCount { get; }
-        internal bool RequiresOwnership { get; }
-        internal Target Target { get; }
-        internal DeliveryMode DeliveryMode { get; }
-        internal byte SequenceChannel { get; }
+        internal int MethodId { get; set; }
+        internal string MethodName { get; set; }
+        internal int ArgsCount { get; set; }
+        internal bool RequiresOwnership { get; set; }
+        internal Target Target { get; set; }
+        internal DeliveryMode DeliveryMode { get; set; }
+        internal byte SequenceChannel { get; set; }
 
         internal RpcMethod(int methodId, string methodName, int argsCount, bool requiresOwnership, Target target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
@@ -38,6 +38,11 @@ namespace Omni.Core
             Target = target;
             DeliveryMode = deliveryMode;
             SequenceChannel = sequenceChannel;
+        }
+
+        internal static RpcMethod Stub(int methodId, bool requiresOwnership, Target target, DeliveryMode deliveryMode, byte sequenceChannel)
+        {
+            return new RpcMethod(methodId, "stub", -1, requiresOwnership, target, deliveryMode, sequenceChannel);
         }
     }
 
@@ -59,13 +64,13 @@ namespace Omni.Core
             this.expectedArgsCount = expectedArgsCount;
         }
 
-        internal bool Exists(int methodId, out int argsCount)
+        internal bool IsValid(int methodId, out int argsCount)
         {
             bool success = t_methods.TryGetValue(methodId, out RpcMethod method);
             if (success)
             {
                 argsCount = method.ArgsCount;
-                return true;
+                return argsCount > -1;
             }
 
             argsCount = -1;
@@ -188,7 +193,7 @@ namespace Omni.Core
             {
                 MethodInfo method = methodInfos[i];
                 var attributes = method.GetCustomAttributes<T>(inherit: true).ToList();
-                foreach (T attr in attributes)
+                foreach (T attr in attributes) // Rpc Attribute can be declared multiple times.
                 {
                     if (attr != null)
                     {
@@ -203,7 +208,7 @@ namespace Omni.Core
                                 new TargetParameterCountException("Invalid number of arguments."));
                         }
 
-                        if (attr.Id == NetworkConstants.NETWORK_VARIABLE_RPC_ID) // 255 -> Reserved to Network Variables!
+                        if (attr.Id == NetworkConstants.k_NetworkVariableRpcId) // 255 -> Reserved to Network Variables!
                         {
                             // Derived class will be responsible for calling base method.
                             // Avoid duplicated events.
@@ -466,10 +471,10 @@ namespace Omni.Core
         [Conditional("OMNI_DEBUG")]
         internal void ThrowIfNoRpcMethodFound(int methodId)
         {
-            if (!Exists(methodId, out _))
+            if (!IsValid(methodId, out _))
             {
                 string rpcName = GetRpcName(methodId);
-                if (methodId != NetworkConstants.NETWORK_VARIABLE_RPC_ID)
+                if (methodId != NetworkConstants.k_NetworkVariableRpcId)
                 {
                     NetworkLogger.__Log__(
                         $"[RPC Invoke Error] No registered RPC method found with ID '{methodId}' (expected name: '{rpcName}'). " +
@@ -490,19 +495,42 @@ namespace Omni.Core
             }
         }
 
-        internal void GetRpcConfiguration(int methodId, out DeliveryMode deliveryMode, out Target target, out byte sequenceChannel)
+        internal void SetRpcParameters(int methodId, DeliveryMode deliveryMode, Target target, byte seqChannel)
+        {
+            if (!t_methods.TryGetValue(methodId, out RpcMethod method))
+            {
+                RpcMethod rpcMethod = RpcMethod.Stub(methodId, true, target, deliveryMode, seqChannel);
+                t_methods.Add(methodId, rpcMethod);
+                method = rpcMethod;
+            }
+
+            if (method == null)
+                return;
+
+            method.DeliveryMode = deliveryMode;
+            method.Target = target;
+            method.SequenceChannel = seqChannel;
+        }
+
+        internal void GetRpcParameters(int methodId, out DeliveryMode deliveryMode, out Target target, out byte sequenceChannel)
         {
             deliveryMode = DeliveryMode.ReliableOrdered;
             target = Target.Auto;
             sequenceChannel = 0;
 
-            if (t_methods.TryGetValue(methodId, out RpcMethod method))
+            if (!t_methods.TryGetValue(methodId, out RpcMethod method))
             {
-                deliveryMode = method.DeliveryMode;
-                target = method.Target;
-                sequenceChannel = method.SequenceChannel;
+                RpcMethod rpcMethod = RpcMethod.Stub(methodId, true, target, deliveryMode, sequenceChannel);
+                t_methods.Add(methodId, rpcMethod);
+                method = rpcMethod;
             }
-            else NetworkLogger.__Log__($"RPC metadata for ID '{methodId}' was not found. This may indicate a mismatch between client and server definitions, but it won't necessarily cause a failure. To resolve this warning, ensure the RPC is defined on both sides—even with an empty method body if needed—for metadata generation.", NetworkLogger.LogType.Warning);
+
+            if (method == null)
+                return;
+
+            deliveryMode = method.DeliveryMode;
+            target = method.Target;
+            sequenceChannel = method.SequenceChannel;
         }
 
         internal string GetRpcName(int methodId)
@@ -512,7 +540,7 @@ namespace Omni.Core
                 return method.MethodName;
             }
 
-            return NetworkConstants.INVALID_RPC_NAME;
+            return NetworkConstants.k_InvalidRpcName;
         }
     }
 }

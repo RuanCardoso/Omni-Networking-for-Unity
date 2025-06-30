@@ -28,103 +28,26 @@ namespace Omni.Core
         /// <typeparam name="T">The type of the property to synchronize.</typeparam>
         /// <param name="property">The property value to synchronize.</param>
         /// <param name="propertyId">The ID of the property being synchronized.</param>
-        public void NetworkVariableSync<T>(T property, byte propertyId, NetworkVariableOptions syncOptions)
-        {
-            NetworkVariableSync<T>(property, propertyId, syncOptions.DeliveryMode, syncOptions.SequenceChannel);
-        }
-
-        /// <summary>
-        /// Sends a manual 'NetworkVariable' message to the server with the specified property and property ID.
-        /// </summary>
-        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-        /// <param name="property">The property value to synchronize.</param>
-        /// <param name="propertyId">The ID of the property being synchronized.</param>
         /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-        public void NetworkVariableSync<T>(T property, byte propertyId,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            byte sequenceChannel = 0)
+        public void NetworkVariableSync<T>(T property, byte propertyId, NetworkVariableOptions _)
         {
             using DataBuffer message = m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(property, propertyId);
-            Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
-        }
-
-        /// <summary>
-        /// Automatically sends a 'NetworkVariable' message to the server based on the caller member name.
-        /// </summary>
-        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-        public void NetworkVariableSync<T>(NetworkVariableOptions options, [CallerMemberName] string ___ = "")
-        {
-            NetworkVariableSync<T>(options.DeliveryMode, options.SequenceChannel, ___);
-        }
-
-        /// <summary>
-        /// Automatically sends a 'NetworkVariable' message to the server based on the caller member name.
-        /// </summary>
-        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-        public void NetworkVariableSync<T>(DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            byte sequenceChannel = 0,
-            [CallerMemberName] string ___ = "")
-        {
-            IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(___, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (property is IPropertyInfo<T> propertyGeneric)
-            {
-                using DataBuffer message =
-                    m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(propertyGeneric.Invoke(), property.Id);
-                Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, message, deliveryMode, sequenceChannel);
-            }
-        }
-
-        /// <summary>
-        /// Sends a global Remote Procedure Call (RPC) to the server with the specified message ID and client options.
-        /// </summary>
-        /// <param name="msgId">The identifier for the RPC message.</param>
-        /// <param name="options">The client options containing delivery mode, sequence channel, and optional data buffer.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GlobalRpc(byte msgId, ClientOptions options)
-        {
-            GlobalRpc(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
-        }
-
-        /// <summary>
-        /// Sends a global Remote Procedure Call (RPC) to the server with the specified message ID and optional parameters.
-        /// </summary>
-        /// <param name="msgId">The identifier for the RPC message.</param>
-        /// <param name="buffer">An optional data buffer containing additional information for the RPC.</param>
-        /// <param name="deliveryMode">The mode of message delivery, specifying reliability and order.</param>
-        /// <param name="sequenceChannel">The sequence channel used for the RPC message.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GlobalRpc(byte msgId, DataBuffer buffer = null,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte sequenceChannel = 0)
-        {
-            ClientSide.GlobalRpc(msgId, buffer, deliveryMode, sequenceChannel);
-        }
-
-        /// <summary>
-        /// Sends a Remote Procedure Call (RPC) to the server with a specified message ID and client options.
-        /// </summary>
-        /// <param name="msgId">The identifier for the RPC message being sent.</param>
-        /// <param name="options">The client options specifying delivery mode, sequence channel, and optional data buffer.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc(byte msgId, ClientOptions options)
-        {
-            Rpc(msgId, options.Buffer, options.DeliveryMode, options.SequenceChannel);
+            Rpc(NetworkConstants.k_NetworkVariableRpcId, message);
         }
 
         /// <summary>
         /// Sends a Remote Procedure Call (RPC) to the server with the specified message ID and optional parameters.
         /// </summary>
-        /// <param name="msgId">The unique identifier for the RPC message.</param>
+        /// <param name="rpcId">The unique identifier for the RPC message.</param>
         /// <param name="buffer">Optional data buffer containing additional information for the RPC. Defaults to null.</param>
         /// <param name="deliveryMode">The delivery mode for the RPC message, determining reliability and ordering. Defaults to ReliableOrdered.</param>
         /// <param name="sequenceChannel">The sequence channel used for ordered or sequenced delivery. Defaults to 0.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc(byte msgId, DataBuffer buffer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            byte sequenceChannel = 0)
+        public void Rpc(byte rpcId, DataBuffer message = null)
         {
-            ClientSide.Rpc(msgId, m_NetworkMessage.IdentityId, buffer, deliveryMode, sequenceChannel);
+            m_NetworkMessage.SetupRpcMessage(rpcId, default, false, default);
+            ClientSide.Rpc(rpcId, m_NetworkMessage.IdentityId, message);
         }
 
         /// <summary>
@@ -134,11 +57,10 @@ namespace Omni.Core
         /// <param name="message">The message to be sent, implementing the IMessage interface.</param>
         /// <param name="options">The client options containing delivery mode, sequence channel, and the serialized data buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc(byte msgId, IMessage message, ClientOptions options = default)
+        public void SendMessage(byte msgId, IMessage message)
         {
-            using var _ = message.Serialize();
-            options.Buffer = _;
-            Rpc(msgId, options);
+            using var buffer = message.Serialize();
+            Rpc(msgId, buffer);
         }
 
         /// <summary>
@@ -149,12 +71,11 @@ namespace Omni.Core
         /// <param name="p1">The parameter value to send to the server.</param>
         /// <param name="options">The client options containing delivery mode, sequence channel, and optional data buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1>(byte msgId, T1 p1, ClientOptions options = default) where T1 : unmanaged
+        public void Rpc<T1>(byte msgId, T1 p1)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            using var _ = FastWrite(p1);
-            options.Buffer = _;
-            Rpc(msgId, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            Rpc(msgId, message);
         }
 
         /// <summary>
@@ -167,14 +88,12 @@ namespace Omni.Core
         /// <param name="p2">The second parameter to include in the RPC.</param>
         /// <param name="options">The client options containing delivery mode, sequence channel, and optional data buffer. Default is used if not provided.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2, ClientOptions options = default)
-            where T1 : unmanaged where T2 : unmanaged
+        public void Rpc<T1, T2>(byte msgId, T1 p1, T2 p2)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            using var _ = FastWrite(p1, p2);
-            options.Buffer = _;
-            Rpc(msgId, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            Rpc(msgId, message);
         }
 
         /// <summary>
@@ -189,15 +108,13 @@ namespace Omni.Core
         /// <param name="p3">The third parameter to include in the RPC.</param>
         /// <param name="options">Optional client options that contain delivery mode, sequence channel, and data buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2, T3>(byte msgId, T1 p1, T2 p2, T3 p3, ClientOptions options = default)
-            where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged
+        public void Rpc<T1, T2, T3>(byte msgId, T1 p1, T2 p2, T3 p3)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
-            using var _ = FastWrite(p1, p2, p3);
-            options.Buffer = _;
-            Rpc(msgId, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            Rpc(msgId, message);
         }
 
         /// <summary>
@@ -214,16 +131,14 @@ namespace Omni.Core
         /// <param name="p4">The fourth parameter to send in the RPC message.</param>
         /// <param name="options">The client options including delivery settings and optional data buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2, T3, T4>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, ClientOptions options = default)
-            where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged where T4 : unmanaged
+        public void Rpc<T1, T2, T3, T4>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
-            using var _ = FastWrite(p1, p2, p3, p4);
-            options.Buffer = _;
-            Rpc(msgId, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            Rpc(msgId, message);
         }
 
         /// <summary>
@@ -242,21 +157,92 @@ namespace Omni.Core
         /// <param name="p5">The fifth parameter to be sent.</param>
         /// <param name="options">The client options containing the delivery mode, sequence channel, and optional data buffer.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2, T3, T4, T5>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5,
-            ClientOptions options = default) where T1 : unmanaged
+        public void Rpc<T1, T2, T3, T4, T5>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5)
+        {
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            Rpc(msgId, message);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call (RPC) to the server with six unmanaged parameters.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Rpc<T1, T2, T3, T4, T5, T6>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6)
+            where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
             where T4 : unmanaged
             where T5 : unmanaged
+            where T6 : unmanaged
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
-            using var _ = FastWrite(p1, p2, p3, p4, p5);
-            options.Buffer = _;
-            Rpc(msgId, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            message.WriteAsBinary(p6);
+            Rpc(msgId, message);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call (RPC) to the server with seven unmanaged parameters.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Rpc<T1, T2, T3, T4, T5, T6, T7>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            where T3 : unmanaged
+            where T4 : unmanaged
+            where T5 : unmanaged
+            where T6 : unmanaged
+            where T7 : unmanaged
+        {
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            message.WriteAsBinary(p6);
+            message.WriteAsBinary(p7);
+            Rpc(msgId, message);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call (RPC) to the server with eight unmanaged parameters.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Rpc<T1, T2, T3, T4, T5, T6, T7, T8>(byte msgId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7, T8 p8)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            where T3 : unmanaged
+            where T4 : unmanaged
+            where T5 : unmanaged
+            where T6 : unmanaged
+            where T7 : unmanaged
+            where T8 : unmanaged
+        {
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            message.WriteAsBinary(p6);
+            message.WriteAsBinary(p7);
+            message.WriteAsBinary(p8);
+            Rpc(msgId, message);
+        }
+
+        public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int channel = 0)
+        {
+            m_NetworkMessage.__ClientRpcHandler.SetRpcParameters(rpcId, deliveryMode, Target.Auto, (byte)channel);
         }
     }
 
@@ -273,19 +259,6 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Sends a manual 'NetworkVariable' message to all(default) clients with the specified property and property ID.
-        /// </summary>
-        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-        /// <param name="property">The property value to synchronize.</param>
-        /// <param name="propertyId">The ID of the property being synchronized.</param>
-        public void NetworkVariableSync<T>(T property, byte propertyId, NetworkVariableOptions options,
-            NetworkPeer peer = null)
-        {
-            NetworkVariableSync<T>(property, propertyId, peer, options.Target, options.DeliveryMode, options.GroupId,
-                options.DataCache, options.SequenceChannel);
-        }
-
-        /// <summary>
         /// Sends a manual 'NetworkVariable' message to a specific client with the specified property and property ID.
         /// </summary>
         /// <typeparam name="T">The type of the property to synchronize.</typeparam>
@@ -295,8 +268,9 @@ namespace Omni.Core
         public void NetworkVariableSyncToPeer<T>(T property, byte propertyId, NetworkPeer peer)
         {
             using DataBuffer message = m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(property, propertyId);
-            Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, Target.SelfOnly, DeliveryMode.ReliableOrdered,
-                0, default, 0);
+            m_NetworkMessage.SetupRpcMessage(NetworkConstants.k_NetworkVariableRpcId, NetworkGroup.None, true, propertyId);
+            ServerSide.SetTarget(Target.Self);
+            ServerSide.Rpc(NetworkConstants.k_NetworkVariableRpcId, peer, m_NetworkMessage.IdentityId, message);
         }
 
         /// <summary>
@@ -310,110 +284,18 @@ namespace Omni.Core
         /// <param name="groupId">The group ID for the message. Default is 0.</param>
         /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
         /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-        public void NetworkVariableSync<T>(T property, byte propertyId, NetworkPeer peer = null,
-            Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
+        public void NetworkVariableSync<T>(T property, byte propertyId, NetworkVariableOptions options, NetworkPeer peer = null)
         {
-            dataCache ??= DataCache.None;
             peer ??= ServerSide.ServerPeer;
-
             using DataBuffer message = m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(property, propertyId);
-            Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
-                sequenceChannel);
-        }
-
-        /// <summary>
-        /// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
-        /// </summary>
-        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-        public void NetworkVariableSync<T>(NetworkVariableOptions options, NetworkPeer peer = null,
-            [CallerMemberName] string ___ = "")
-        {
-            NetworkVariableSync<T>(peer, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
-                options.SequenceChannel, ___);
-        }
-
-        /// <summary>
-        /// Automatically sends a 'NetworkVariable' message to all(default) clients based on the caller member name.
-        /// </summary>
-        /// <typeparam name="T">The type of the property to synchronize.</typeparam>
-        /// <param name="target">The target for the message. Default is <see cref="Target.Auto"/>.</param>
-        /// <param name="deliveryMode">The delivery mode for the message. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
-        /// <param name="groupId">The group ID for the message. Default is 0.</param>
-        /// <param name="dataCache">Specifies the cache setting for the message, allowing it to be stored for later retrieval.</param>
-        /// <param name="sequenceChannel">The sequence channel for the message. Default is 0.</param>
-        public void NetworkVariableSync<T>(NetworkPeer peer = null, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0, [CallerMemberName] string ___ = "")
-        {
-            dataCache ??= DataCache.None;
-            IPropertyInfo property = m_NetworkVariablesBehaviour.GetPropertyInfoWithCallerName<T>(___, m_BindingFlags);
-            if (property is IPropertyInfo<T> propertyGeneric)
-            {
-                peer ??= ServerSide.ServerPeer;
-                using DataBuffer message =
-                    m_NetworkVariablesBehaviour.CreateNetworkVariableMessage(propertyGeneric.Invoke(), property.Id);
-
-                Rpc(NetworkConstants.NETWORK_VARIABLE_RPC_ID, peer, message, target, deliveryMode, groupId, dataCache,
-                    sequenceChannel);
-            }
-        }
-
-        /// <summary>
-        /// Sends a global Remote Procedure Call (RPC) to a specific network peer.
-        /// </summary>
-        /// <param name="msgId">The unique identifier of the RPC to invoke.</param>
-        /// <param name="peer">The network peer that will receive the RPC.</param>
-        /// <param name="options">
-        /// The server options containing configuration settings for the RPC, such as buffering, delivery mode, and targeting.
-        /// </param>
-        /// <remarks>
-        /// This method simplifies the invocation of a global RPC using server-side configuration.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GlobalRpc(byte msgId, NetworkPeer peer, ServerOptions options)
-        {
-            GlobalRpc(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId,
-                options.DataCache, options.SequenceChannel);
-        }
-
-        /// <summary>
-        /// Sends a global Remote Procedure Call (RPC) to a specific network peer with detailed configuration.
-        /// </summary>
-        /// <param name="msgId">The message identifier for the RPC.</param>
-        /// <param name="peer">The target network peer to receive the RPC.</param>
-        /// <param name="buffer">Optional data buffer to pass along with the RPC message.</param>
-        /// <param name="target">The target scope for delivering the RPC (e.g., self, group, all).</param>
-        /// <param name="deliveryMode">The delivery mode for the RPC, such as reliable or unreliable.</param>
-        /// <param name="groupId">Identifier for the group if the target is group-specific.</param>
-        /// <param name="dataCache">The data cache configuration for the RPC message.</param>
-        /// <param name="sequenceChannel">The sequence channel for ordered delivery if applicable.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GlobalRpc(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.SelfOnly,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
-        {
-            dataCache ??= DataCache.None;
-            ServerSide.GlobalRpc(msgId, peer, buffer, target, deliveryMode, groupId, dataCache, sequenceChannel);
-        }
-
-        /// <summary>
-        /// Sends a Remote Procedure Call (RPC) to the client's using predefined server options.
-        /// </summary>
-        /// <param name="msgId">The unique identifier of the RPC to send.</param>
-        /// <param name="options">The server options containing configuration for the RPC, such as buffering and targeting.</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc(byte msgId, NetworkPeer peer, ServerOptions options)
-        {
-            Rpc(msgId, peer, options.Buffer, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
-                options.SequenceChannel);
+            m_NetworkMessage.SetupRpcMessage(NetworkConstants.k_NetworkVariableRpcId, options.Group, true, propertyId);
+            ServerSide.Rpc(NetworkConstants.k_NetworkVariableRpcId, peer, m_NetworkMessage.IdentityId, message);
         }
 
         /// <summary>
         /// Sends a Remote Procedure Call (RPC) to the client's with detailed configuration.
         /// </summary>
-        /// <param name="msgId">The unique identifier of the RPC to send.</param>
+        /// <param name="rpcId">The unique identifier of the RPC to send.</param>
         /// <param name="buffer">The buffer containing the RPC data. Default is null.</param>
         /// <param name="target">Specifies the target scope for the RPC. Default is <see cref="Target.Auto"/>.</param>
         /// <param name="deliveryMode">Specifies the delivery mode of the RPC. Default is <see cref="DeliveryMode.ReliableOrdered"/>.</param>
@@ -421,13 +303,13 @@ namespace Omni.Core
         /// <param name="dataCache">Defines whether the RPC should be cached for later retrieval. Default is <see cref="DataCache.None"/>.</param>
         /// <param name="sequenceChannel">The sequence channel to send the RPC over. Default is 0.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc(byte msgId, NetworkPeer peer, DataBuffer buffer = null, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
+        public void Rpc(byte rpcId, NetworkPeer peer, DataBuffer message = null, NetworkGroup group = null)
         {
-            dataCache ??= DataCache.None;
-            ServerSide.Rpc(msgId, peer, m_NetworkMessage.IdentityId, buffer, target, deliveryMode, groupId, dataCache,
-                sequenceChannel);
+            m_NetworkMessage.SetupRpcMessage(rpcId, group, true, default);
+            m_NetworkMessage.__ServerRpcHandler.GetRpcParameters(rpcId, out _, out var target, out _);
+            if (target == Target.Auto && peer.Id != 0)
+                ServerSide.SetTarget(Target.Self);
+            ServerSide.Rpc(rpcId, peer, m_NetworkMessage.IdentityId, message);
         }
 
         /// <summary>
@@ -438,27 +320,25 @@ namespace Omni.Core
         /// <param name="message">The custom message to serialize and send as part of the RPC.</param>
         /// <param name="options">The configuration options for the RPC, such as transmission parameters.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc(byte msgId, NetworkPeer peer, IMessage message, ServerOptions options = default)
+        public void SendMessage(byte rpcId, NetworkPeer peer, IMessage message, NetworkGroup group = null)
         {
-            using var _ = message.Serialize();
-            options.Buffer = _;
-            Rpc(msgId, peer, options);
+            using var buffer = message.Serialize();
+            Rpc(rpcId, peer, buffer, group);
         }
 
         /// <summary>
-        /// Sends a Remote Procedure Call (RPC) with one unmanaged parameter to the client.
+        /// Sends a Remote Procedure Call (RPC) with one unmanaged parameter to the client.w
         /// </summary>
         /// <typeparam name="T1">The type of the first parameter, which must be unmanaged.</typeparam>
         /// <param name="msgId">The unique identifier of the RPC to send.</param>
         /// <param name="p1">The first parameter of the RPC.</param>
         /// <param name="options">The server options containing configuration for the RPC.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1>(byte msgId, NetworkPeer peer, T1 p1, ServerOptions options = default) where T1 : unmanaged
+        public void Rpc<T1>(byte msgId, NetworkPeer peer, T1 p1, NetworkGroup group = null)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            using var _ = FastWrite(p1);
-            options.Buffer = _;
-            Rpc(msgId, peer, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            Rpc(msgId, peer, message, group);
         }
 
         /// <summary>
@@ -471,14 +351,12 @@ namespace Omni.Core
         /// <param name="p2">The second parameter of the RPC.</param>
         /// <param name="options">The server options containing configuration for the RPC.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, ServerOptions options = default)
-            where T1 : unmanaged where T2 : unmanaged
+        public void Rpc<T1, T2>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, NetworkGroup group = null)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            using var _ = FastWrite(p1, p2);
-            options.Buffer = _;
-            Rpc(msgId, peer, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            Rpc(msgId, peer, message, group);
         }
 
         /// <summary>
@@ -493,15 +371,13 @@ namespace Omni.Core
         /// <param name="p3">The third parameter to include in the RPC.</param>
         /// <param name="options">The server options containing configuration for the RPC.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2, T3>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, ServerOptions options = default)
-            where T1 : unmanaged where T2 : unmanaged where T3 : unmanaged
+        public void Rpc<T1, T2, T3>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, NetworkGroup group = null)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
-            using var _ = FastWrite(p1, p2, p3);
-            options.Buffer = _;
-            Rpc(msgId, peer, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            Rpc(msgId, peer, message, group);
         }
 
         /// <summary>
@@ -518,19 +394,14 @@ namespace Omni.Core
         /// <param name="p4">The fourth parameter to include in the RPC.</param>
         /// <param name="options">The server options containing configuration for the RPC.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2, T3, T4>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, T4 p4,
-            ServerOptions options = default) where T1 : unmanaged
-            where T2 : unmanaged
-            where T3 : unmanaged
-            where T4 : unmanaged
+        public void Rpc<T1, T2, T3, T4>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, T4 p4, NetworkGroup group = null)
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
-            using var _ = FastWrite(p1, p2, p3, p4);
-            options.Buffer = _;
-            Rpc(msgId, peer, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            Rpc(msgId, peer, message, group);
         }
 
         /// <summary>
@@ -549,21 +420,104 @@ namespace Omni.Core
         /// <param name="p5">The fifth parameter to include in the RPC.</param>
         /// <param name="options">The server options containing configuration for the RPC.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Rpc<T1, T2, T3, T4, T5>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5,
-            ServerOptions options = default) where T1 : unmanaged
+        public void Rpc<T1, T2, T3, T4, T5>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, NetworkGroup group = null)
+        {
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            Rpc(msgId, peer, message, group);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call (RPC) with six unmanaged parameters to the client.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Rpc<T1, T2, T3, T4, T5, T6>(
+            byte msgId,
+            NetworkPeer peer,
+            T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6,
+            NetworkGroup group = null)
+            where T1 : unmanaged
             where T2 : unmanaged
             where T3 : unmanaged
             where T4 : unmanaged
             where T5 : unmanaged
+            where T6 : unmanaged
         {
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p1);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p2);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p3);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p4);
-            NetworkHelper.ThrowAnErrorIfIsInternalTypes(p5);
-            using var _ = FastWrite(p1, p2, p3, p4, p5);
-            options.Buffer = _;
-            Rpc(msgId, peer, options);
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            message.WriteAsBinary(p6);
+            Rpc(msgId, peer, message, group);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call (RPC) with seven unmanaged parameters to the client.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Rpc<T1, T2, T3, T4, T5, T6, T7>(
+            byte msgId,
+            NetworkPeer peer,
+            T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7,
+            NetworkGroup group = null)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            where T3 : unmanaged
+            where T4 : unmanaged
+            where T5 : unmanaged
+            where T6 : unmanaged
+            where T7 : unmanaged
+        {
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            message.WriteAsBinary(p6);
+            message.WriteAsBinary(p7);
+            Rpc(msgId, peer, message, group);
+        }
+
+        /// <summary>
+        /// Sends a Remote Procedure Call (RPC) with eight unmanaged parameters to the client.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Rpc<T1, T2, T3, T4, T5, T6, T7, T8>(
+            byte msgId,
+            NetworkPeer peer,
+            T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7, T8 p8,
+            NetworkGroup group = null)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            where T3 : unmanaged
+            where T4 : unmanaged
+            where T5 : unmanaged
+            where T6 : unmanaged
+            where T7 : unmanaged
+            where T8 : unmanaged
+        {
+            using var message = Pool.Rent(enableTracking: false);
+            message.WriteAsBinary(p1);
+            message.WriteAsBinary(p2);
+            message.WriteAsBinary(p3);
+            message.WriteAsBinary(p4);
+            message.WriteAsBinary(p5);
+            message.WriteAsBinary(p6);
+            message.WriteAsBinary(p7);
+            message.WriteAsBinary(p8);
+            Rpc(msgId, peer, message, group);
+        }
+
+        public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, Target target = Target.Auto, int channel = 0)
+        {
+            m_NetworkMessage.__ServerRpcHandler.SetRpcParameters(rpcId, deliveryMode, target, (byte)channel);
         }
     }
 }

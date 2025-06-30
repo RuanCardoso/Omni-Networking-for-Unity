@@ -1,8 +1,6 @@
 using kcp2k;
-using Omni.Core.Attributes;
 using Omni.Core.Interfaces;
 using Omni.Shared;
-using Omni.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,7 +9,7 @@ using System.Net.Sockets;
 using Omni.Inspector;
 using UnityEngine;
 
-//// EXPERIMENTAL
+//// EXPERIMENTAL with Span<byte> partial implementation
 
 // kcp implementation: https://github.com/MirrorNetworking/Mirror/blob/master/Assets/Mirror/Transports/KCP/KcpTransport.cs
 // kcp2k forked from: https://github.com/MirrorNetworking/kcp2k - fork was ported to .net standard 2.1 [Span<T>, Memory<T>, ArrayPool<T>, etc..] thanks..
@@ -24,89 +22,77 @@ namespace Omni.Core.Modules.Connection
     [DeclareBoxGroup("Advanced")]
     internal class KcpTransporter : TransporterBehaviour, ITransporter
     {
-        private const double PING_TIME_PRECISION = 0.025d;
         private const int MTU = Kcp.MTU_DEF;
-
-        private readonly SimpleMovingAverage m_PingAvg = new(10);
 
         [GroupNext("Basic")]
         [Tooltip(
             "DualMode listens to IPv6 and IPv4 simultaneously. Disable if the platform only supports IPv4."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         private bool m_DualMode = false;
 
         [Tooltip(
             "NoDelay is recommended to reduce latency. This also scales better without buffers getting full."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         private bool m_NoDelay = true;
 
         [Tooltip(
             "KCP internal update interval. 100ms is KCP default, but a lower interval is recommended to minimize latency and to scale to more networked entities."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         private uint m_Interval = 10;
 
         [Tooltip("KCP timeout in milliseconds. Note that KCP sends a ping automatically.")]
+        [LabelWidth(130)]
         [SerializeField]
         private int m_Timeout = 10000;
 
         [Tooltip(
             "Socket receive buffer size. Large buffer helps support more connections. Increase operating system socket buffer size limits if needed."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         private int m_RecvBufferSize = 1024 * 1027 * 7;
 
         [Tooltip(
             "Socket send buffer size. Large buffer helps support more connections. Increase operating system socket buffer size limits if needed."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         private int m_SendBufferSize = 1024 * 1027 * 7;
 
         [GroupNext("Advanced")]
         [Tooltip(
             "KCP fastresend parameter. Faster resend for the cost of higher bandwidth. 0 in normal mode, 2 in turbo mode."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         private int m_FastResend = 2;
 
         [Tooltip(
             "KCP window size can be modified to support higher loads. This also increases max message size."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         private uint m_ReceiveWindowSize = 4096; //Kcp.WND_RCV; 128 by default. sends a lot, so we need a lot more.
 
         [Tooltip("KCP window size can be modified to support higher loads.")]
+        [LabelWidth(130)]
         [SerializeField]
         private uint m_SendWindowSize = 4096; //Kcp.WND_SND; 32 by default. sends a lot, so we need a lot more.
 
         [Tooltip(
             "KCP will try to retransmit lost messages up to MaxRetransmit (aka dead_link) before disconnecting."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
-        private uint
-            m_MaxRetransmit = Kcp.DEADLINK * 2; // default prematurely disconnects a lot of people (#3022). use 2x.
+        private uint m_MaxRetransmit = Kcp.DEADLINK * 2; // default prematurely disconnects a lot of people (#3022). use 2x.
 
         [Tooltip(
             "KCP congestion window. Restricts window size to reduce congestion. Results in only 2-3 MTU messages per Flush even on loopback. Best to keept his disabled."
-        )]
+        ), LabelWidth(130)]
         [SerializeField]
         [ReadOnly]
-        private bool
-            m_CongestionWindow =
-                false; // KCP 'NoCongestionWindow' is false by default. here we negate it for ease of use.
-
-        [Tooltip(
-            "Enable to automatically set client & server send/recv buffers to OS limit. Avoids issues with too small buffers under heavy load, potentially dropping connections. Increase the OS limit if this is still too small."
-        )]
-        [SerializeField]
-        private bool m_MaximizeSocketBuffers = true;
+        private bool m_CongestionWindow = false; // KCP 'NoCongestionWindow' is false by default. here we negate it for ease of use.
 
         private KcpServer kcpServer;
         private KcpClient kcpClient;
-
-        private uint kcpClientConnectTime = 0;
 
         private bool isServer;
         private bool isRunning;
@@ -143,22 +129,17 @@ namespace Omni.Core.Modules.Connection
                         }
                         else
                         {
-                            transporter.Internal_OnServerPeerConnected(conn.remoteEndPoint,
-                                new NativePeer(() => conn.time,
-                                    () => throw new NotImplementedException(
-                                        "[KcpTransporter] Individual ping measurement not supported - Use SNTP clock for time synchronization")));
+                            transporter.Internal_OnServerPeerConnected(conn.remoteEndPoint, new NativePeer());
                         }
                     },
                     (connId, data, channel) =>
                     {
                         var conn = kcpServer.connections[connId];
-                        transporter.Internal_OnDataReceived(data, GetDeliveryMode(channel), conn.remoteEndPoint, 0,
-                            isServer, out byte msgType);
-
-                        if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
-                        {
-                            Send(data, conn.remoteEndPoint, DeliveryMode.ReliableOrdered, 0);
-                        }
+                        transporter.Internal_OnDataReceived(data, GetDeliveryMode(channel), conn.remoteEndPoint, 0, isServer, out byte msgType);
+                        //if (msgType == NetworkPacketType.KCP_PING_REQUEST_RESPONSE)
+                        //{
+                        //    Send(data, conn.remoteEndPoint, DeliveryMode.ReliableOrdered, 0);
+                        //}
                     },
                     (connId) =>
                     {
@@ -193,24 +174,17 @@ namespace Omni.Core.Modules.Connection
                 kcpClient = new(
                     () =>
                     {
-                        kcpClientConnectTime = kcpClient.time;
-                        transporter.Internal_OnClientConnected(kcpClient.remoteEndPoint,
-                            new NativePeer(() => (kcpClient.time - kcpClientConnectTime) / 1000d,
-                                () => (int)Math.Round(m_PingAvg.Average * 1000d, 0)));
-
-                        SendPingRequest();
+                        transporter.Internal_OnClientConnected(kcpClient.remoteEndPoint, new NativePeer());
                     },
                     (data, channel) =>
                     {
-                        transporter.Internal_OnDataReceived(data, GetDeliveryMode(channel), kcpClient.remoteEndPoint, 0,
-                            isServer, out byte msgType);
-
-                        if (msgType == MessageType.KCP_PING_REQUEST_RESPONSE)
-                        {
-                            uint time = BitConverter.ToUInt32(data[1..5]); // 1: Skip MessageType
-                            double halfRtt = (kcpClient.time - time) / 2d / 1000d;
-                            m_PingAvg.Add(halfRtt);
-                        }
+                        transporter.Internal_OnDataReceived(data, GetDeliveryMode(channel), kcpClient.remoteEndPoint, 0, isServer, out byte msgType);
+                        //if (msgType == NetworkPacketType.KCP_PING_REQUEST_RESPONSE)
+                        //{
+                        //    uint time = BitConverter.ToUInt32(data[1..5]); // 1: Skip MessageType
+                        //    double halfRtt = (kcpClient.time - time) / 2d / 1000d;
+                        //    m_PingAvg.Add(halfRtt);
+                        //}
                     },
                     () => transporter.Internal_OnClientDisconnected(kcpClient.remoteEndPoint, "[KcpTransporter] Client disconnected normally"),
                     (error, reason) =>
@@ -226,24 +200,6 @@ namespace Omni.Core.Modules.Connection
             }
 
             isRunning = true;
-        }
-
-        [ClientOnly]
-        private async void SendPingRequest()
-        {
-            while (Application.isPlaying)
-            {
-                if (kcpClient.connected && NetworkManager.IsClientActive)
-                {
-                    using var pingRequest = NetworkManager.Pool.Rent(enableTracking: false);
-                    pingRequest.Write(MessageType.KCP_PING_REQUEST_RESPONSE);
-                    pingRequest.Write(kcpClient.time);
-                    pingRequest.SuppressTracking();
-                    Send(pingRequest.BufferAsSpan, default, DeliveryMode.ReliableOrdered, 0);
-                }
-
-                await UniTask.Delay(1000);
-            }
         }
 
         private void Awake()
@@ -335,31 +291,28 @@ namespace Omni.Core.Modules.Connection
             throw new NotImplementedException();
         }
 
-        // Span to array is very fast!
         public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
             ThrowAnErrorIfNotInitialized();
-
+#if OMNI_DEBUG
             if (sequenceChannel > 0)
             {
-                NetworkLogger.__Log__(
+                NetworkLogger.Print(
                     $"[KcpTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
                     NetworkLogger.LogType.Warning
                 );
             }
-
+#endif
             if (isServer)
             {
                 if (_peers.TryGetValue(target, out int peer))
                 {
-                    byte[] dataArray = data.ToArray();
-                    kcpServer.Send(peer, dataArray, GetKcpChannel(deliveryMode));
+                    kcpServer.Send(peer, data, GetKcpChannel(deliveryMode));
                 }
             }
             else
             {
-                byte[] dataArray = data.ToArray();
-                kcpClient.Send(dataArray, GetKcpChannel(deliveryMode));
+                kcpClient.Send(data, GetKcpChannel(deliveryMode));
             }
         }
 
@@ -378,14 +331,15 @@ namespace Omni.Core.Modules.Connection
 
         private KcpChannel GetKcpChannel(DeliveryMode deliveryMode)
         {
+#if OMNI_DEBUG
             if (deliveryMode != DeliveryMode.Unreliable && deliveryMode != DeliveryMode.ReliableOrdered)
             {
-                NetworkLogger.__Log__(
+                NetworkLogger.Print(
                     $"[KcpTransporter] Unsupported delivery mode '{deliveryMode}' - Falling back to ReliableOrdered",
                     NetworkLogger.LogType.Warning
                 );
             }
-
+#endif
             return deliveryMode switch
             {
                 DeliveryMode.Unreliable => KcpChannel.Unreliable,
@@ -429,7 +383,6 @@ namespace Omni.Core.Modules.Connection
                 kcpTransporter.m_ReceiveWindowSize = m_ReceiveWindowSize;
                 kcpTransporter.m_SendWindowSize = m_SendWindowSize;
                 kcpTransporter.m_MaxRetransmit = m_MaxRetransmit;
-                kcpTransporter.m_MaximizeSocketBuffers = m_MaximizeSocketBuffers;
             }
         }
     }

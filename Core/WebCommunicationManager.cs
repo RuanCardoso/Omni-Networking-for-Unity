@@ -8,6 +8,7 @@ using Omni.Shared;
 using UnityEngine;
 using HttpListenerRequest = Omni.Core.Web.Net.HttpListenerRequest;
 using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
+using System.Buffers;
 
 #pragma warning disable
 
@@ -515,7 +516,7 @@ namespace Omni.Core.Web
             bool isServer, out byte msgType)
         {
             using DataBuffer message = NetworkManager.Pool.Rent(enableTracking: false);
-            message.Insert(data);
+            message.Write(data);
             message.SeekToBegin();
 
             if (isServer)

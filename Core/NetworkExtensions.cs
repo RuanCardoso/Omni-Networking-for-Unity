@@ -11,6 +11,7 @@ using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
 using Cookie = Omni.Core.Web.Net.Cookie;
 using Omni.Shared;
 using Newtonsoft.Json.Linq;
+using Omni.Collections;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
 #endif
@@ -33,87 +34,6 @@ namespace Omni.Core
         };
 
         private static readonly Dictionary<string, Dictionary<string, object>> _sessions = new();
-
-        /// <summary>
-        /// Spawns a network identity on both server and specified target clients with given delivery and caching options.
-        /// </summary>
-        /// <param name="prefab">The network identity prefab to spawn.</param>
-        /// <param name="peer">The network peer to receive the spawned object.</param>
-        /// <returns>The spawned network identity instance.</returns>
-        public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, ServerOptions options)
-        {
-            var identity = NetworkManager.SpawnOnServer(prefab, peer);
-            identity.SpawnOnClient(options);
-            return identity;
-        }
-
-        /// <summary>
-        /// Spawns a network identity on the server and specified client targets with defined delivery and caching options.
-        /// </summary>
-        /// <param name="prefab">The network identity prefab to instantiate.</param>
-        /// <param name="peer">The network peer that will receive the instantiated object.</param>
-        /// <param name="target">Specifies the target clients for the instantiated object.</param>
-        /// <param name="deliveryMode">Determines the manner in which the instantiated object is delivered over the network.</param>
-        /// <param name="groupId">An identifier used for organizing network messages into groups.</param>
-        /// <param name="dataCache">Optional parameter for caching additional data associated with the instantiation process.</param>
-        /// <param name="sequenceChannel">The sequence channel used to maintain message order for network delivery.</param>
-        /// <returns>The instantiated network identity as observed on the server.</returns>
-        public static NetworkIdentity Spawn(this NetworkIdentity prefab, NetworkPeer peer, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
-        {
-            dataCache ??= DataCache.None;
-            var identity = NetworkManager.SpawnOnServer(prefab, peer);
-            identity.SpawnOnClient(target, deliveryMode, groupId, dataCache, sequenceChannel);
-            return identity;
-        }
-
-        /// <summary>
-        /// Spawns a network identity on the server for a specific peer.
-        /// </summary>
-        /// <param name="prefab">The prefab to instantiate.</param>
-        /// <param name="peer">The peer who will receive the instantiated object.</param>
-        /// <returns>The instantiated network identity.</returns>
-        public static NetworkIdentity SpawnOnServer(this NetworkIdentity prefab, NetworkPeer peer)
-        {
-            return NetworkManager.SpawnOnServer(prefab, peer);
-        }
-
-        /// <summary>
-        /// Spawns a network identity on the server for a specific peer.
-        /// </summary>
-        /// <param name="prefab">The prefab to instantiate.</param>
-        /// <param name="peer">The peer who will receive the instantiated object.</param>
-        /// <param name="identityId">The ID of the instantiated object.</param>
-        /// <returns>The instantiated network identity.</returns>
-        public static NetworkIdentity SpawnOnServer(this NetworkIdentity prefab, NetworkPeer peer, int identityId)
-        {
-            return NetworkManager.SpawnOnServer(prefab, peer, identityId);
-        }
-
-        /// <summary>
-        /// Spawns a network identity on the server for a specific peer.
-        /// </summary>
-        /// <param name="prefab">The network identity prefab to instantiate on the server.</param>
-        /// <param name="peerId">The network peer associated with the spawned object.</param>
-        /// <param name="identityId">The ID of the instantiated object.</param>
-        /// <returns>The instantiated network identity object on the server.</returns>
-        public static NetworkIdentity SpawnOnServer(this NetworkIdentity prefab, int peerId, int identityId = 0)
-        {
-            return NetworkManager.SpawnOnServer(prefab, peerId, identityId);
-        }
-
-        /// <summary>
-        /// Spawns a network identity on a client with specified peer and identity identifiers.
-        /// </summary>
-        /// <param name="prefab">The network identity prefab to instantiate on the client.</param>
-        /// <param name="peerId">The identifier of the peer who will own the instantiated object.</param>
-        /// <param name="identityId">The unique identifier for the instantiated network identity.</param>
-        /// <returns>The instantiated network identity on the client.</returns>
-        public static NetworkIdentity SpawnOnClient(this NetworkIdentity prefab, int peerId, int identityId)
-        {
-            return NetworkManager.SpawnOnClient(prefab, peerId, identityId);
-        }
 
         internal static string ToSizeSuffix(this double value, int decimalPlaces = 1)
         {
@@ -791,6 +711,14 @@ namespace Omni.Core
             }
 
             return false;
+        }
+
+        public static ObservableDictionary<TKey, TValue> ToObservableDictionary<TKey, TValue, TSource>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector, Func<TSource, TValue> valueSelector) where TKey : notnull
+        {
+            var dict = new ObservableDictionary<TKey, TValue>();
+            foreach (var item in source)
+                dict.Add(keySelector(item), valueSelector(item));
+            return dict;
         }
     }
 }

@@ -13,20 +13,29 @@ using static Omni.Core.NetworkManager;
 
 namespace Omni.Core
 {
+    public enum SearchMode
+    {
+        DepthFirst,
+        BreadthFirst
+    }
+
     /// <summary>
     /// Represents a network group that manages a collection of peers and shared data.
     /// It provides functionality for group management, data synchronization, and sub-group handling.
     /// </summary>
     [JsonObject(MemberSerialization.OptIn)]
     [MemoryPackable]
+    [Serializable]
     public partial class NetworkGroup : IEquatable<NetworkGroup>
     {
+        [MemoryPackIgnore]
+        public static NetworkGroup None { get; } = new(0, "None", false);
+
         [MemoryPackIgnore] private readonly bool isNameBuilder;
         [MemoryPackIgnore] private bool _autoSyncSharedData;
 
         [MemoryPackIgnore] internal readonly Dictionary<int, NetworkPeer> _peersById = new();
-        [MemoryPackIgnore] internal List<NetworkCache> AppendCaches { get; } = new();
-        [MemoryPackIgnore] internal Dictionary<int, NetworkCache> OverwriteCaches { get; } = new();
+        [MemoryPackIgnore] internal readonly List<NetworkGroup> _subGroups = new();
 
         /// <summary>
         /// Gets the unique identifier for the group.
@@ -55,22 +64,14 @@ namespace Omni.Core
         /// <summary>
         /// Gets the main group to which this group belongs.
         /// </summary>
-
         [MemoryPackIgnore]
-        public NetworkGroup MainGroup { get; internal set; }
+        public NetworkGroup Parent { get; internal set; }
 
         /// <summary>
         /// Gets the number of peers currently in the group.
         /// </summary>
         [MemoryPackIgnore]
         public int PeerCount => _peersById.Count;
-
-        /// <summary>
-        /// Gets a dictionary of NetworkIdentity components that are associated with this network group.
-        /// This dictionary keeps track of all networked objects that belong to this specific group.
-        /// </summary>
-        [MemoryPackIgnore]
-        public Dictionary<int, NetworkIdentity> Identities { get; } = new();
 
         /// <summary>
         /// Gets the non-synchronized data for the group.
@@ -167,7 +168,6 @@ namespace Omni.Core
         public NetworkGroup(string groupName)
         {
             string[] subGroups = groupName.Split("->");
-
             Identifier = groupName;
             Depth = subGroups.Length;
             Name = subGroups[Depth - 1];
@@ -177,7 +177,6 @@ namespace Omni.Core
         internal NetworkGroup(int groupId, string groupName, bool isServer)
         {
             string[] subGroups = groupName.Split("->");
-
             Id = groupId;
             Identifier = groupName;
             Depth = subGroups.Length;
@@ -259,24 +258,43 @@ namespace Omni.Core
         public NetworkGroup AddSubGroup(string subGroupName)
         {
             string newIdentifier = $"{Identifier}->{subGroupName}";
-            return !isNameBuilder ? Matchmaking.Server.AddGroup(newIdentifier) : new NetworkGroup(newIdentifier);
+            if (!isNameBuilder)
+            {
+                var nextGroup = Matchmaking.Server.AddGroup(newIdentifier);
+                nextGroup.Parent = this;
+                _subGroups.Add(nextGroup);
+                return nextGroup;
+            }
+            else
+            {
+                var ng = new NetworkGroup(newIdentifier);
+                ng.Parent = this; // Adiciona referência ao pai
+                return ng;
+            }
         }
 
         /// <summary>
         /// Attempts to add a sub-group to the current group.
         /// </summary>
         /// <param name="subGroupName">The name of the sub-group.</param>
-        /// <param name="subGroup">The resulting sub-group, if successful.</param>
+        /// <param name="nextGroup">The resulting sub-group, if successful.</param>
         /// <returns>True if the sub-group was added successfully; otherwise, false.</returns>
-        public bool TryAddSubGroup(string subGroupName, out NetworkGroup subGroup)
+        public bool TryAddSubGroup(string subGroupName, out NetworkGroup nextGroup)
         {
             string newIdentifier = $"{Identifier}->{subGroupName}";
             if (!isNameBuilder)
             {
-                return Matchmaking.Server.TryAddGroup(newIdentifier, out subGroup);
+                bool success = Matchmaking.Server.TryAddGroup(newIdentifier, out nextGroup);
+                if (success)
+                {
+                    nextGroup.Parent = this;
+                    _subGroups.Add(nextGroup);
+                }
+                return success;
             }
 
-            subGroup = new NetworkGroup(newIdentifier);
+            nextGroup = new NetworkGroup(newIdentifier);
+            nextGroup.Parent = this;
             return true;
         }
 
@@ -290,40 +308,18 @@ namespace Omni.Core
             MasterClient = peer;
         }
 
-        public void SyncSharedData(ServerOptions options)
+        public void SyncSharedData()
         {
-            SyncSharedData(options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
-                options.SequenceChannel);
+            SyncSharedData(NetworkConstants.k_ShareAllKeys);
         }
 
-        public void SyncSharedData(Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
+        public void SyncSharedData(string key)
         {
-            dataCache ??= DataCache.None;
-            SyncSharedData(NetworkConstants.SHARED_ALL_KEYS, target, deliveryMode, groupId, dataCache,
-                sequenceChannel);
+            Internal_SyncSharedData(key);
         }
 
-        public void SyncSharedData(string key, ServerOptions options)
+        private void Internal_SyncSharedData(string key)
         {
-            SyncSharedData(key, options.Target, options.DeliveryMode, options.GroupId, options.DataCache,
-                options.SequenceChannel);
-        }
-
-        public void SyncSharedData(string key, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
-        {
-            dataCache ??= DataCache.None;
-            Internal_SyncSharedData(key, target, deliveryMode, groupId, dataCache, sequenceChannel);
-        }
-
-        private void Internal_SyncSharedData(string key, Target target = Target.Auto,
-            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int groupId = 0, DataCache dataCache = default,
-            byte sequenceChannel = 0)
-        {
-            dataCache ??= DataCache.None;
             EnsureServerActive();
 
             if (MasterClient == null)
@@ -335,15 +331,14 @@ namespace Omni.Core
                 );
             }
 
-            if (SharedData.TryGetValue(key, out object value) || key == NetworkConstants.SHARED_ALL_KEYS)
+            if (SharedData.TryGetValue(key, out object value) || key == NetworkConstants.k_ShareAllKeys)
             {
-                value = key != NetworkConstants.SHARED_ALL_KEYS ? value : SharedData;
+                value = key != NetworkConstants.k_ShareAllKeys ? value : SharedData;
                 ImmutableKeyValuePair keyValuePair = new(key, value);
                 using var message = Pool.Rent(enableTracking: false);
                 message.Write(Id);
                 message.WriteAsJson(keyValuePair);
-                ServerSide.SendMessage(MessageType.SyncGroupSharedData, MasterClient, message, target, deliveryMode,
-                    groupId, dataCache, sequenceChannel);
+                ServerSide.SendMessage(NetworkPacketType.k_SyncGroupSharedData, MasterClient, message);
             }
             else
             {
@@ -354,206 +349,66 @@ namespace Omni.Core
             }
         }
 
-        /// <summary>
-        /// Removes a cache from the group based on the provided data cache.
-        /// </summary>
-        /// <param name="dataCache">The data cache to remove.</param>
-        public void RemoveCache(DataCache dataCache)
+        public NetworkGroup GetRoot()
         {
-            EnsureServerActive();
-            switch (dataCache.Mode)
-            {
-                case CacheMode.Group | CacheMode.New:
-                case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
-                    AppendCaches.RemoveAll(x => x.Mode == dataCache.Mode && x.Id == dataCache.Id);
-                    break;
-                case CacheMode.Group | CacheMode.Overwrite:
-                case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                    OverwriteCaches.Remove(dataCache.Id);
-                    break;
-                default:
-                    NetworkLogger.__Log__(
-                        "Delete Cache Error: Unsupported cache mode set.",
-                        NetworkLogger.LogType.Error
-                    );
-                    break;
-            }
+            var current = this;
+            while (current.Parent != null)
+                current = current.Parent;
+            return current;
         }
 
-        /// <summary>
-        /// Removes the specified cache from the group for the specified network peer.
-        /// </summary>
-        /// <param name="dataCache">The cache to remove.</param>
-        /// <param name="peer">The network peer from which to remove the cache.</param>
-        public void RemoveCacheFrom(DataCache dataCache, NetworkPeer peer)
+        public bool TryGetNextGroup(out NetworkGroup nextGroup, SearchMode mode = SearchMode.DepthFirst)
         {
-            EnsureServerActive();
-            switch (dataCache.Mode)
+            var root = GetRoot();
+            var list = new List<NetworkGroup>();
+            LinearizeGroups(root, mode, list);
+
+            int idx = list.IndexOf(this);
+            if (idx >= 0 && idx < list.Count - 1)
             {
-                case CacheMode.Group | CacheMode.New:
-                case CacheMode.Group | CacheMode.New | CacheMode.AutoDestroy:
-                    AppendCaches.RemoveAll(x =>
-                        x.Mode == dataCache.Mode && x.Id == dataCache.Id && x.Peer.Id == peer.Id
-                    );
-                    break;
-                case CacheMode.Group | CacheMode.Overwrite:
-                case CacheMode.Group | CacheMode.Overwrite | CacheMode.AutoDestroy:
-                    OverwriteCaches.Remove(dataCache.Id);
-                    break;
-                default:
-                    NetworkLogger.__Log__(
-                        "Delete Cache Error: Unsupported cache mode set.",
-                        NetworkLogger.LogType.Error
-                    );
-                    break;
+                nextGroup = list[idx + 1];
+                return true;
             }
+            nextGroup = null;
+            return false;
         }
 
-        /// <summary>
-        /// Removes all caches associated with the specified network peer from the group.
-        /// </summary>
-        /// <param name="peer">The network peer from which to remove all caches.</param>
-        public void RemoveAllCachesFrom(NetworkPeer peer)
+        public bool TryGetPreviousGroup(out NetworkGroup previousGroup, SearchMode mode = SearchMode.DepthFirst)
         {
-            EnsureServerActive();
-            AppendCaches.RemoveAll(x => x.Peer.Id == peer.Id);
-            var caches = OverwriteCaches.Values.Where(x => x.Peer.Id == peer.Id).ToList();
+            var root = GetRoot();
+            var list = new List<NetworkGroup>();
+            LinearizeGroups(root, mode, list);
 
-            foreach (var cache in caches)
+            int idx = list.IndexOf(this);
+            if (idx > 0)
             {
-                if (!OverwriteCaches.Remove(cache.Id))
+                previousGroup = list[idx - 1];
+                return true;
+            }
+            previousGroup = null;
+            return false;
+        }
+
+        private static void LinearizeGroups(NetworkGroup root, SearchMode mode, List<NetworkGroup> output)
+        {
+            if (mode == SearchMode.DepthFirst)
+            {
+                output.Add(root);
+                foreach (var sub in root._subGroups)
+                    LinearizeGroups(sub, mode, output);
+            }
+            else // BreadthFirst
+            {
+                var queue = new Queue<NetworkGroup>();
+                queue.Enqueue(root);
+                while (queue.Count > 0)
                 {
-                    NetworkLogger.__Log__(
-                        $"RemoveAllCachesFrom: Failed to remove cache {cache.Id} from peer {peer.Id}.",
-                        NetworkLogger.LogType.Error
-                    );
+                    var current = queue.Dequeue();
+                    output.Add(current);
+                    foreach (var sub in current._subGroups)
+                        queue.Enqueue(sub);
                 }
             }
-        }
-
-        internal void Internal_RemoveAllCachesFrom(NetworkPeer peer)
-        {
-            EnsureServerActive();
-            AppendCaches.RemoveAll(x => x.Peer.Id == peer.Id && x.AutoDestroyCache);
-            var caches = OverwriteCaches
-                .Values.Where(x => x.Peer.Id == peer.Id && x.AutoDestroyCache)
-                .ToList();
-
-            foreach (var cache in caches)
-            {
-                if (!OverwriteCaches.Remove(cache.Id))
-                {
-                    NetworkLogger.__Log__(
-                        $"InternalRemoveAllCachesFrom: Failed to remove cache {cache.Id} from peer {peer.Id}.",
-                        NetworkLogger.LogType.Error
-                    );
-                }
-            }
-        }
-
-        /// <summary>
-        /// Adds a NetworkIdentity component to the group's collection of managed identities.
-        /// </summary>
-        /// <param name="identity">The NetworkIdentity component to add to the group.</param>
-        /// <remarks>
-        /// The identity is stored in a dictionary using its IdentityId as the key for fast lookup.
-        /// This method is typically used when a networked object joins or is created within the group.
-        /// </remarks>
-        public void AddIdentity(NetworkIdentity identity)
-        {
-            Identities[identity.Id] = identity;
-        }
-
-        /// <summary>
-        /// Removes a NetworkIdentity component from the group's collection of managed identities.
-        /// </summary>
-        /// <param name="identity">The NetworkIdentity component to remove from the group.</param>
-        /// <returns>
-        /// True if the identity was successfully removed; false if the identity was not found in the group.
-        /// </returns>
-        /// <remarks>
-        /// This method is typically used when a networked object leaves the group or is destroyed.
-        /// </remarks>
-        public bool RemoveIdentity(NetworkIdentity identity)
-        {
-            return Identities.Remove(identity.Id);
-        }
-
-        /// <summary>
-        /// Removes a NetworkIdentity component from the group's collection of managed identities using its ID.
-        /// </summary>
-        /// <param name="identityId">The unique identifier of the NetworkIdentity to remove.</param>
-        /// <remarks>
-        /// - This is an overload that allows removal by ID without needing the NetworkIdentity reference
-        /// - Typically used during cleanup or when the NetworkIdentity component is no longer accessible
-        /// - Returns void, so caller cannot determine if removal was successful
-        /// </remarks>
-        public void RemoveIdentity(int identityId)
-        {
-            Identities.Remove(identityId);
-        }
-
-        /// <summary>
-        /// Removes all networked identities from the group.
-        /// </summary>
-        public void ClearAllIdentities()
-        {
-            Identities.Clear();
-        }
-
-        /// <summary>
-        /// Despawns all networked identities in this group for a specific peer using the provided server options.
-        /// </summary>
-        /// <param name="peer">The peer to despawn the identities for</param>
-        /// <param name="options">Server options containing delivery settings</param>
-        public void DespawnIdentitiesToPeer(NetworkPeer peer, ServerOptions options)
-        {
-            DespawnIdentitiesToPeer(peer, options.DeliveryMode, options.DataCache, options.SequenceChannel);
-        }
-
-        /// <summary>
-        /// Despawns all networked identities in this group for a specific peer with custom network settings.
-        /// </summary>
-        /// <param name="peer">The peer to despawn the identities for</param>
-        /// <param name="deliveryMode">How the despawn messages should be delivered (defaults to ReliableOrdered)</param>
-        /// <param name="dataCache">Optional cache settings for the despawn data</param>
-        /// <param name="sequenceChannel">Network channel to use for sending despawn messages</param>
-        public void DespawnIdentitiesToPeer(NetworkPeer peer, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
-            DataCache dataCache = default, byte sequenceChannel = 0)
-        {
-            EnsureServerActive();
-            foreach (var identity in Identities.Values)
-            {
-                identity.DespawnToPeer(peer, deliveryMode, dataCache, sequenceChannel);
-            }
-        }
-
-        /// <summary>
-        /// Despawns all networked identities in this group using the provided server options.
-        /// </summary>
-        /// <param name="options">Server options containing target and delivery settings</param>
-        public void DespawnIdentities(ServerOptions options)
-        {
-            DespawnIdentities(options.DeliveryMode, options.DataCache, options.SequenceChannel);
-        }
-
-        /// <summary>
-        /// Despawns all networked identities in this group with custom network settings.
-        /// </summary>
-        /// <param name="target">The target recipients for the despawn (defaults to Auto)</param>
-        /// <param name="deliveryMode">How the despawn messages should be delivered (defaults to ReliableOrdered)</param>
-        /// <param name="groupId">Optional group ID filter for despawning</param>
-        /// <param name="dataCache">Optional cache settings for the despawn data</param>
-        /// <param name="sequenceChannel">Network channel to use for sending despawn messages</param>
-        public void DespawnIdentities(DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, DataCache dataCache = default, byte sequenceChannel = 0)
-        {
-            EnsureServerActive();
-            foreach (var identity in Identities.Values)
-            {
-                identity.Despawn(Target.Auto, deliveryMode, Id, dataCache, sequenceChannel);
-            }
-
-            ClearAllIdentities();
         }
 
         /// <summary>
@@ -576,17 +431,6 @@ namespace Omni.Core
             SharedData.Clear();
         }
 
-        /// <summary>
-        /// Clears the cache collections associated with this group, including
-        /// the append and overwrite caches.
-        /// </summary>
-        public void ResetCacheCollections()
-        {
-            EnsureServerActive();
-            AppendCaches.Clear();
-            OverwriteCaches.Clear();
-        }
-
         [Conditional("OMNI_DEBUG")]
         private void EnsureServerActive([CallerMemberName] string caller = "")
         {
@@ -607,7 +451,7 @@ namespace Omni.Core
                 Id,
                 Identifier,
                 Name,
-                MainGroup = MainGroup?.Name,
+                MainGroup = Parent?.Name,
                 Data,
                 SharedData,
                 PeerCount,
