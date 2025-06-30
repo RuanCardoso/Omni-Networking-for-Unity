@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 5302e36466b8b0999b5bf06134ff67f8
+guid: 566e2f4d38623af459ce15cf38aa752d
 labels:
 - NuGetForUnity
 - RoslynAnalyzer
@@ -26,13 +26,12 @@ PluginImporter:
         Exclude GameCoreScarlett: 0
         Exclude GameCoreXboxOne: 0
         Exclude Linux64: 0
+        Exclude Lumin: 0
         Exclude OSXUniversal: 0
         Exclude PS4: 0
         Exclude PS5: 0
-        Exclude QNX: 0
         Exclude Stadia: 0
         Exclude Switch: 0
-        Exclude VisionOS: 0
         Exclude WebGL: 0
         Exclude Win: 0
         Exclude Win64: 0
