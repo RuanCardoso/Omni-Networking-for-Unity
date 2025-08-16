@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Omni.Inspector;
 
 namespace Omni.Core
@@ -13,6 +14,8 @@ namespace Omni.Core
     [DeltaSerializable]
     public struct Delta2<T> where T : unmanaged
     {
+        private static readonly IEqualityComparer<T> Comparer = EqualityComparer<T>.Default;
+
         /// <summary>
         /// The first value to be tracked for changes.
         /// </summary>
@@ -41,49 +44,24 @@ namespace Omni.Core
         /// Writes the delta between the current and last state to a <see cref="DataBuffer"/>.
         /// Only changed values are written, using a bitmask to indicate which fields have changed.
         /// </summary>
-        /// <param name="lastDelta">A reference to the previous <see cref="Delta4{T}"/> state.</param>
-        /// <returns>
-        /// A <see cref="DataBuffer"/> containing the bitmask and any changed values. The caller is responsible for disposing the buffer.
-        /// </returns>
-        public readonly DataBuffer Write(ref Delta2<T> lastDelta)
-        {
-            return Write(ref lastDelta, out _);
-        }
-
-        /// <summary>
-        /// Writes the delta between the current and last state to a <see cref="DataBuffer"/>.
-        /// Only changed values are written, using a bitmask to indicate which fields have changed.
-        /// </summary>
         /// <param name="lastDelta">A reference to the previous <see cref="Delta2{T}"/> state.</param>
         /// <returns>
         /// A <see cref="DataBuffer"/> containing the bitmask and any changed values. The caller is responsible for disposing the buffer.
         /// </returns>
-        public readonly DataBuffer Write(ref Delta2<T> lastDelta, out bool changed) // disposed by the caller
+        public readonly bool Write(ref Delta2<T> lastDelta, DataBuffer finalBlock) // disposed by the caller
         {
-            changed = false;
-            var data = NetworkManager.Pool.Rent();
             byte mask = 0;
+            if (!Comparer.Equals(a, lastDelta.a)) mask |= 1 << 0;
+            if (!Comparer.Equals(b, lastDelta.b)) mask |= 1 << 1;
 
-            if (!a.Equals(lastDelta.a))
-                mask |= 1 << 0;
-            if (!b.Equals(lastDelta.b))
-                mask |= 1 << 1;
+            finalBlock.Write(mask);
+            bool shifted = mask != 0;
 
-            data.Write(mask);
-
-            if ((mask & (1 << 0)) != 0)
-            {
-                data.Write(a);
-                changed = true;
-            }
-            if ((mask & (1 << 1)) != 0)
-            {
-                data.Write(b);
-                changed = true;
-            }
+            if ((mask & (1 << 0)) != 0) finalBlock.Write(a);
+            if ((mask & (1 << 1)) != 0) finalBlock.Write(b);
 
             lastDelta = this;
-            return data;
+            return shifted;
         }
 
         /// <summary>
@@ -99,26 +77,10 @@ namespace Omni.Core
         {
             Delta2<T> result = lastDelta;
             byte mask = data.Read<byte>();
-            if ((mask & (1 << 0)) != 0)
-                result.a = data.Read<T>();
-            if ((mask & (1 << 1)) != 0)
-                result.b = data.Read<T>();
-
+            if ((mask & (1 << 0)) != 0) result.a = data.Read<T>();
+            if ((mask & (1 << 1)) != 0) result.b = data.Read<T>();
             lastDelta = result;
             return result;
-        }
-
-        public override readonly bool Equals(object obj)
-        {
-            if (obj is Delta2<T> other)
-                return a.Equals(other.a) && b.Equals(other.b);
-
-            return false;
-        }
-
-        public override readonly int GetHashCode()
-        {
-            return HashCode.Combine(a, b);
         }
 
         public override readonly string ToString()

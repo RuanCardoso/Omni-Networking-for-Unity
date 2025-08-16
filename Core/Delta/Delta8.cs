@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Omni.Inspector;
 
 namespace Omni.Core
@@ -14,6 +15,8 @@ namespace Omni.Core
     [DeltaSerializable]
     public struct Delta8<T> where T : unmanaged
     {
+        private static readonly IEqualityComparer<T> Comparer = EqualityComparer<T>.Default;
+
         /// <summary>
         /// The first value to be tracked for changes.
         /// </summary>
@@ -87,87 +90,32 @@ namespace Omni.Core
         /// <returns>
         /// A <see cref="DataBuffer"/> containing the bitmask and any changed values. The caller is responsible for disposing the buffer.
         /// </returns>
-        public readonly DataBuffer Write(ref Delta8<T> lastDelta)
+        public readonly bool Write(ref Delta8<T> lastDelta, DataBuffer finalBlock) // disposed by the caller
         {
-            return Write(ref lastDelta, out _);
-        }
-
-        /// <summary>
-        /// Writes the delta between the current and last state to a <see cref="DataBuffer"/>.
-        /// Only changed values are written, using a bitmask to indicate which fields have changed.
-        /// </summary>
-        /// <param name="lastDelta">A reference to the previous <see cref="Delta4{T}"/> state.</param>
-        /// <returns>
-        /// A <see cref="DataBuffer"/> containing the bitmask and any changed values. The caller is responsible for disposing the buffer.
-        /// </returns>
-        public readonly DataBuffer Write(ref Delta8<T> lastDelta, out bool changed) // disposed by the caller
-        {
-            changed = false;
-            var data = NetworkManager.Pool.Rent();
             byte mask = 0;
+            if (!Comparer.Equals(a, lastDelta.a)) mask |= 1 << 0;
+            if (!Comparer.Equals(b, lastDelta.b)) mask |= 1 << 1;
+            if (!Comparer.Equals(c, lastDelta.c)) mask |= 1 << 2;
+            if (!Comparer.Equals(d, lastDelta.d)) mask |= 1 << 3;
+            if (!Comparer.Equals(e, lastDelta.e)) mask |= 1 << 4;
+            if (!Comparer.Equals(f, lastDelta.f)) mask |= 1 << 5;
+            if (!Comparer.Equals(g, lastDelta.g)) mask |= 1 << 6;
+            if (!Comparer.Equals(h, lastDelta.h)) mask |= 1 << 7;
 
-            if (!a.Equals(lastDelta.a))
-                mask |= 1 << 0;
-            if (!b.Equals(lastDelta.b))
-                mask |= 1 << 1;
-            if (!c.Equals(lastDelta.c))
-                mask |= 1 << 2;
-            if (!d.Equals(lastDelta.d))
-                mask |= 1 << 3;
-            if (!e.Equals(lastDelta.e))
-                mask |= 1 << 4;
-            if (!f.Equals(lastDelta.f))
-                mask |= 1 << 5;
-            if (!g.Equals(lastDelta.g))
-                mask |= 1 << 6;
-            if (!h.Equals(lastDelta.h))
-                mask |= 1 << 7;
+            finalBlock.Write(mask);
+            bool shifted = mask != 0;
 
-            data.Write(mask);
-
-            if ((mask & (1 << 0)) != 0)
-            {
-                data.Write(a);
-                changed = true;
-            }
-            if ((mask & (1 << 1)) != 0)
-            {
-                data.Write(b);
-                changed = true;
-            }
-            if ((mask & (1 << 2)) != 0)
-            {
-                data.Write(c);
-                changed = true;
-            }
-            if ((mask & (1 << 3)) != 0)
-            {
-                data.Write(d);
-                changed = true;
-            }
-            if ((mask & (1 << 4)) != 0)
-            {
-                data.Write(e);
-                changed = true;
-            }
-            if ((mask & (1 << 5)) != 0)
-            {
-                data.Write(f);
-                changed = true;
-            }
-            if ((mask & (1 << 6)) != 0)
-            {
-                data.Write(g);
-                changed = true;
-            }
-            if ((mask & (1 << 7)) != 0)
-            {
-                data.Write(h);
-                changed = true;
-            }
+            if ((mask & (1 << 0)) != 0) finalBlock.Write(a);
+            if ((mask & (1 << 1)) != 0) finalBlock.Write(b);
+            if ((mask & (1 << 2)) != 0) finalBlock.Write(c);
+            if ((mask & (1 << 3)) != 0) finalBlock.Write(d);
+            if ((mask & (1 << 4)) != 0) finalBlock.Write(e);
+            if ((mask & (1 << 5)) != 0) finalBlock.Write(f);
+            if ((mask & (1 << 6)) != 0) finalBlock.Write(g);
+            if ((mask & (1 << 7)) != 0) finalBlock.Write(h);
 
             lastDelta = this;
-            return data;
+            return shifted;
         }
 
         /// <summary>
@@ -183,38 +131,16 @@ namespace Omni.Core
         {
             Delta8<T> result = lastDelta;
             byte mask = data.Read<byte>();
-            if ((mask & (1 << 0)) != 0)
-                result.a = data.Read<T>();
-            if ((mask & (1 << 1)) != 0)
-                result.b = data.Read<T>();
-            if ((mask & (1 << 2)) != 0)
-                result.c = data.Read<T>();
-            if ((mask & (1 << 3)) != 0)
-                result.d = data.Read<T>();
-            if ((mask & (1 << 4)) != 0)
-                result.e = data.Read<T>();
-            if ((mask & (1 << 5)) != 0)
-                result.f = data.Read<T>();
-            if ((mask & (1 << 6)) != 0)
-                result.g = data.Read<T>();
-            if ((mask & (1 << 7)) != 0)
-                result.h = data.Read<T>();
-
+            if ((mask & (1 << 0)) != 0) result.a = data.Read<T>();
+            if ((mask & (1 << 1)) != 0) result.b = data.Read<T>();
+            if ((mask & (1 << 2)) != 0) result.c = data.Read<T>();
+            if ((mask & (1 << 3)) != 0) result.d = data.Read<T>();
+            if ((mask & (1 << 4)) != 0) result.e = data.Read<T>();
+            if ((mask & (1 << 5)) != 0) result.f = data.Read<T>();
+            if ((mask & (1 << 6)) != 0) result.g = data.Read<T>();
+            if ((mask & (1 << 7)) != 0) result.h = data.Read<T>();
             lastDelta = result;
             return result;
-        }
-
-        public override readonly bool Equals(object obj)
-        {
-            if (obj is Delta8<T> other)
-                return a.Equals(other.a) && b.Equals(other.b) && c.Equals(other.c) && d.Equals(other.d) && e.Equals(other.e) && f.Equals(other.f) && g.Equals(other.g) && h.Equals(other.h);
-
-            return false;
-        }
-
-        public override readonly int GetHashCode()
-        {
-            return HashCode.Combine(a, b, c, d, e, f, g, h);
         }
 
         public override readonly string ToString()
