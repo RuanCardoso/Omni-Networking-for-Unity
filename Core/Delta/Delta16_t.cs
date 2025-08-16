@@ -5,11 +5,16 @@ using Omni.Inspector;
 namespace Omni.Core
 {
     /// <summary>
-    /// Represents a delta structure holding sixteen unmanaged values, eight of type <typeparamref name="T1"/> and eight of type <typeparamref name="T2"/>.
-    /// Used for efficient network synchronization by only transmitting changed values.
+    /// Represents a delta structure holding sixteen unmanaged values:
+    /// eight of type <typeparamref name="T1"/> and eight of type <typeparamref name="T2"/>.
+    /// Optimized for efficient network synchronization by transmitting only changed values.
     /// </summary>
-    /// <typeparam name="T1">An unmanaged type to be tracked for delta changes (fields a1-h1).</typeparam>
-    /// <typeparam name="T2">An unmanaged type to be tracked for delta changes (fields a2-h2).</typeparam>
+    /// <typeparam name="T1">
+    /// An unmanaged type to be tracked for delta changes (fields a1–h1).
+    /// </typeparam>
+    /// <typeparam name="T2">
+    /// An unmanaged type to be tracked for delta changes (fields a2–h2).
+    /// </typeparam>
     [Serializable, Nested]
     [DeclareHorizontalGroup("G1")]
     [DeclareHorizontalGroup("G2")]
@@ -34,6 +39,9 @@ namespace Omni.Core
         [GroupNext("G4")]
         public T2 e2, f2, g2, h2;
 
+        /// <summary>
+        /// Initializes a new <see cref="Delta16_t{T1,T2}"/> with the specified values.
+        /// </summary>
         public Delta16_t(
             T1 a1, T1 b1, T1 c1, T1 d1, T1 e1, T1 f1, T1 g1, T1 h1,
             T2 a2, T2 b2, T2 c2, T2 d2, T2 e2, T2 f2, T2 g2, T2 h2)
@@ -44,6 +52,13 @@ namespace Omni.Core
             this.e2 = e2; this.f2 = f2; this.g2 = g2; this.h2 = h2;
         }
 
+        /// <summary>
+        /// Writes only the values that differ from <paramref name="lastDelta"/> into the buffer.
+        /// A 16-bit mask is written first to indicate which fields have changed.
+        /// </summary>
+        /// <param name="lastDelta">The previous delta state to compare against.</param>
+        /// <param name="finalBlock">The buffer where changes are written.</param>
+        /// <returns><c>true</c> if any value was written; otherwise <c>false</c>.</returns>
         public readonly bool Write(ref Delta16_t<T1, T2> lastDelta, DataBuffer finalBlock)
         {
             ushort mask = 0;
@@ -88,6 +103,13 @@ namespace Omni.Core
             return shifted;
         }
 
+        /// <summary>
+        /// Reads and applies delta changes from the buffer using a 16-bit mask.
+        /// Unchanged values are carried over from <paramref name="lastDelta"/>.
+        /// </summary>
+        /// <param name="lastDelta">The previous delta state to update.</param>
+        /// <param name="data">The buffer to read from.</param>
+        /// <returns>The reconstructed delta structure.</returns>
         public static Delta16_t<T1, T2> Read(ref Delta16_t<T1, T2> lastDelta, DataBuffer data)
         {
             Delta16_t<T1, T2> result = lastDelta;

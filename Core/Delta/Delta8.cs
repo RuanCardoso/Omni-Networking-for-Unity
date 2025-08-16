@@ -5,8 +5,8 @@ using Omni.Inspector;
 namespace Omni.Core
 {
     /// <summary>
-    /// Represents a delta structure holding four unmanaged values of type <typeparamref name="T"/>.
-    /// Used for efficient network synchronization by only transmitting changed values.
+    /// Represents a delta structure holding eight unmanaged values of type <typeparamref name="T"/>.
+    /// Used for efficient network synchronization by transmitting only changed values.
     /// </summary>
     /// <typeparam name="T">An unmanaged type to be tracked for delta changes.</typeparam>
     [Serializable, Nested]
@@ -60,16 +60,8 @@ namespace Omni.Core
         public T h;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Delta4{T}"/> struct with specified values.
+        /// Initializes a new instance of the <see cref="Delta8{T}"/> struct with specified values.
         /// </summary>
-        /// <param name="a">The initial value for <see cref="a"/>.</param>
-        /// <param name="b">The initial value for <see cref="b"/>.</param>
-        /// <param name="c">The initial value for <see cref="c"/>.</param>
-        /// <param name="d">The initial value for <see cref="d"/>.</param>
-        /// <param name="e">The initial value for <see cref="e"/>.</param>
-        /// <param name="f">The initial value for <see cref="f"/>.</param>
-        /// <param name="g">The initial value for <see cref="g"/>.</param>
-        /// <param name="h">The initial value for <see cref="h"/>.</param>
         public Delta8(T a, T b, T c, T d, T e, T f, T g, T h)
         {
             this.a = a;
@@ -83,13 +75,12 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Writes the delta between the current and last state to a <see cref="DataBuffer"/>.
-        /// Only changed values are written, using a bitmask to indicate which fields have changed.
+        /// Writes the delta between the current and last state into a <see cref="DataBuffer"/>.
+        /// A bitmask is used to indicate which fields have changed.
         /// </summary>
-        /// <param name="lastDelta">A reference to the previous <see cref="Delta4{T}"/> state.</param>
-        /// <returns>
-        /// A <see cref="DataBuffer"/> containing the bitmask and any changed values. The caller is responsible for disposing the buffer.
-        /// </returns>
+        /// <param name="lastDelta">A reference to the previous <see cref="Delta8{T}"/> state.</param>
+        /// <param name="finalBlock">The <see cref="DataBuffer"/> where the delta will be written.</param>
+        /// <returns><c>true</c> if any value was written (at least one field changed); otherwise, <c>false</c>.</returns>
         public readonly bool Write(ref Delta8<T> lastDelta, DataBuffer finalBlock) // disposed by the caller
         {
             byte mask = 0;
@@ -120,13 +111,11 @@ namespace Omni.Core
 
         /// <summary>
         /// Reads a delta from a <see cref="DataBuffer"/> and applies it to the last known state.
-        /// Only fields indicated by the bitmask are updated.
+        /// Only the fields indicated by the bitmask are updated.
         /// </summary>
-        /// <param name="lastDelta">A reference to the previous <see cref="Delta4{T}"/> state.</param>
+        /// <param name="lastDelta">A reference to the previous <see cref="Delta8{T}"/> state.</param>
         /// <param name="data">The <see cref="DataBuffer"/> containing the delta data.</param>
-        /// <returns>
-        /// A new <see cref="Delta4{T}"/> instance with updated values.
-        /// </returns>
+        /// <returns>A new <see cref="Delta8{T}"/> instance with updated values.</returns>
         public static Delta8<T> Read(ref Delta8<T> lastDelta, DataBuffer data)
         {
             Delta8<T> result = lastDelta;

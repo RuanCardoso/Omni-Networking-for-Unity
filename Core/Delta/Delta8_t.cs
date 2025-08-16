@@ -5,11 +5,12 @@ using Omni.Inspector;
 namespace Omni.Core
 {
     /// <summary>
-    /// Represents a delta structure holding eight unmanaged values, four of type <typeparamref name="T1"/> and four of type <typeparamref name="T2"/>.
-    /// Used for efficient network synchronization by only transmitting changed values.
+    /// Represents a delta structure holding eight unmanaged values, 
+    /// four of type <typeparamref name="T1"/> and four of type <typeparamref name="T2"/>.
+    /// Designed for efficient network synchronization by only transmitting changed values.
     /// </summary>
-    /// <typeparam name="T1">An unmanaged type to be tracked for delta changes (fields a1-d1).</typeparam>
-    /// <typeparam name="T2">An unmanaged type to be tracked for delta changes (fields a2-d2).</typeparam>
+    /// <typeparam name="T1">An unmanaged type tracked for delta changes (fields a1–d1).</typeparam>
+    /// <typeparam name="T2">An unmanaged type tracked for delta changes (fields a2–d2).</typeparam>
     [Serializable, Nested]
     [DeclareHorizontalGroup("G1")]
     [DeclareHorizontalGroup("G2")]
@@ -21,12 +22,29 @@ namespace Omni.Core
         private static readonly IEqualityComparer<T1> T1Comparer = EqualityComparer<T1>.Default;
         private static readonly IEqualityComparer<T2> T2Comparer = EqualityComparer<T2>.Default;
 
+        /// <summary>
+        /// Values of type <typeparamref name="T1"/> being tracked for changes.
+        /// </summary>
         [GroupNext("G1")]
         public T1 a1, b1, c1, d1;
 
+        /// <summary>
+        /// Values of type <typeparamref name="T2"/> being tracked for changes.
+        /// </summary>
         [GroupNext("G2")]
         public T2 a2, b2, c2, d2;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Delta8_t{T1,T2}"/> struct with specified values.
+        /// </summary>
+        /// <param name="a1">The initial value for <see cref="a1"/>.</param>
+        /// <param name="b1">The initial value for <see cref="b1"/>.</param>
+        /// <param name="c1">The initial value for <see cref="c1"/>.</param>
+        /// <param name="d1">The initial value for <see cref="d1"/>.</param>
+        /// <param name="a2">The initial value for <see cref="a2"/>.</param>
+        /// <param name="b2">The initial value for <see cref="b2"/>.</param>
+        /// <param name="c2">The initial value for <see cref="c2"/>.</param>
+        /// <param name="d2">The initial value for <see cref="d2"/>.</param>
         public Delta8_t(
             T1 a1, T1 b1, T1 c1, T1 d1,
             T2 a2, T2 b2, T2 c2, T2 d2)
@@ -35,6 +53,15 @@ namespace Omni.Core
             this.a2 = a2; this.b2 = b2; this.c2 = c2; this.d2 = d2;
         }
 
+        /// <summary>
+        /// Writes the delta between the current and last state to a <see cref="DataBuffer"/>.
+        /// Only changed values are written, using a bitmask to indicate which fields have changed.
+        /// </summary>
+        /// <param name="lastDelta">A reference to the previous <see cref="Delta8_t{T1,T2}"/> state.</param>
+        /// <param name="finalBlock">The <see cref="DataBuffer"/> to write into (disposed by the caller).</param>
+        /// <returns>
+        /// <c>true</c> if at least one value has changed and was written; otherwise, <c>false</c>.
+        /// </returns>
         public readonly bool Write(ref Delta8_t<T1, T2> lastDelta, DataBuffer finalBlock)
         {
             byte mask = 0;
@@ -63,6 +90,15 @@ namespace Omni.Core
             return shifted;
         }
 
+        /// <summary>
+        /// Reads a delta from a <see cref="DataBuffer"/> and applies it to the last known state.
+        /// Only fields indicated by the bitmask are updated.
+        /// </summary>
+        /// <param name="lastDelta">A reference to the previous <see cref="Delta8_t{T1,T2}"/> state.</param>
+        /// <param name="data">The <see cref="DataBuffer"/> containing the delta data.</param>
+        /// <returns>
+        /// A new <see cref="Delta8_t{T1,T2}"/> instance with updated values.
+        /// </returns>
         public static Delta8_t<T1, T2> Read(ref Delta8_t<T1, T2> lastDelta, DataBuffer data)
         {
             Delta8_t<T1, T2> result = lastDelta;

@@ -5,10 +5,14 @@ using Omni.Inspector;
 namespace Omni.Core
 {
     /// <summary>
-    /// Represents a delta structure holding four unmanaged values of type <typeparamref name="T"/>.
-    /// Used for efficient network synchronization by only transmitting changed values.
+    /// Represents a compact delta structure for four values of type <typeparamref name="T"/>.
+    /// Designed for network synchronization where only modified fields are serialized,
+    /// reducing bandwidth usage by leveraging a bitmask to mark changes.
     /// </summary>
-    /// <typeparam name="T">An unmanaged type to be tracked for delta changes.</typeparam>
+    /// <typeparam name="T">
+    /// An unmanaged value type supported by <see cref="DataBuffer"/>.
+    /// Examples: <see cref="int"/>, <see cref="float"/>, <see cref="bool"/>, etc.
+    /// </typeparam>
     [Serializable, Nested]
     [DeclareHorizontalGroup("G1")]
     [DeltaSerializable]
@@ -53,12 +57,19 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Writes the delta between the current and last state to a <see cref="DataBuffer"/>.
-        /// Only changed values are written, using a bitmask to indicate which fields have changed.
+        /// Writes changes between the current state and the <paramref name="lastDelta"/> into a <see cref="DataBuffer"/>.
+        /// A bitmask is written first to indicate which fields changed.
+        /// Only the changed fields are then serialized in order.
         /// </summary>
-        /// <param name="lastDelta">A reference to the previous <see cref="Delta4{T}"/> state.</param>
+        /// <param name="lastDelta">
+        /// Reference to the previous state. This value will be updated to the current state after writing.
+        /// </param>
+        /// <param name="finalBlock">
+        /// Destination <see cref="DataBuffer"/> to write into. Ownership remains with the caller.
+        /// </param>
         /// <returns>
-        /// A <see cref="DataBuffer"/> containing the bitmask and any changed values. The caller is responsible for disposing the buffer.
+        /// <see langword="true"/> if at least one value changed and was written,
+        /// otherwise <see langword="false"/>.
         /// </returns>
         public readonly bool Write(ref Delta4<T> lastDelta, DataBuffer finalBlock) // disposed by the caller
         {
@@ -81,13 +92,15 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Reads a delta from a <see cref="DataBuffer"/> and applies it to the last known state.
-        /// Only fields indicated by the bitmask are updated.
+        /// Reads and applies delta information from a <see cref="DataBuffer"/>.
+        /// Fields marked in the bitmask will be updated, preserving values of unchanged fields.
         /// </summary>
-        /// <param name="lastDelta">A reference to the previous <see cref="Delta4{T}"/> state.</param>
-        /// <param name="data">The <see cref="DataBuffer"/> containing the delta data.</param>
+        /// <param name="lastDelta">
+        /// Reference to the previous state. Will be updated with the newly applied delta.
+        /// </param>
+        /// <param name="data">The <see cref="DataBuffer"/> containing the serialized delta.</param>
         /// <returns>
-        /// A new <see cref="Delta4{T}"/> instance with updated values.
+        /// A new <see cref="Delta4{T}"/> representing the updated state.
         /// </returns>
         public static Delta4<T> Read(ref Delta4<T> lastDelta, DataBuffer data)
         {
