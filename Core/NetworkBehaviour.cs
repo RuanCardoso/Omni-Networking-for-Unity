@@ -914,25 +914,61 @@ namespace Omni.Core
 
         }
 
-        private void Internal_OnServerClientSpawned(NetworkPeer peer)
+        private void Internal_OnServerObjectSpawnedForPeer(NetworkPeer peer)
         {
-            OnServerClientSpawned(peer);
+            OnServerObjectSpawnedForPeer(peer);
             // Synchronizes all network variables with the client to ensure that the client has 
             // the most up-to-date data from the server immediately after the spawning process.
             SyncNetworkState(peer);
+            // Notify the owner that the object has been spawned for another peer.
+            using DataBuffer msg = Rent();
+            msg.Write(peer.Id);
+            Identity.RequestActionToClient(NetworkConstants.k_OwnerObjectSpawnedForPeer, msg, Target.Self);
         }
 
         /// <summary>
-        /// Called on the server when a client-side object has been fully spawned and registered.
-        /// This method ensures that the client object is ready and fully initialized on the network 
-        /// before the server performs any post-spawn operations.
+        /// Called on the server when a specific peer (client) has finished spawning this object.
+        /// This indicates that the peer has fully created and registered the object on their side,
+        /// and is now ready to receive initial state or data synchronization for it.
         ///
-        /// Override this method to implement server-side logic that depends on the client's readiness, 
-        /// such as initializing server-side resources, synchronizing data, or sending initial updates 
-        /// to the client. This guarantees that all client-side registrations are completed before 
-        /// the server proceeds with any setup.
+        /// Override this method to implement server-side logic that initializes the object
+        /// specifically for the new peer, such as sending initial state, authority data, or
+        /// performing per-peer setup.
+        /// 
+        /// <para>
+        /// Example: If Client A owns this object, when Client B joins and spawns it locally,
+        /// this method will be invoked on the server with <paramref name="peer"/> representing Client B.
+        /// </para>
         /// </summary>
-        protected virtual void OnServerClientSpawned(NetworkPeer peer)
+        /// <param name="peer">
+        /// The peer (client) that has just finished spawning this object
+        /// and is ready to receive initialization data from the server.
+        /// </param>
+        protected virtual void OnServerObjectSpawnedForPeer(NetworkPeer peer)
+        {
+        }
+
+        /// <summary>
+        /// Called on the client that owns this object when it has been spawned 
+        /// for another peer in the network.
+        /// 
+        /// This method allows the owner to react when a remote peer becomes 
+        /// ready to receive the initial state of this object. Typically, the 
+        /// owner can send RPCs or state updates to ensure the new peer is 
+        /// synchronized with the correct data.
+        /// 
+        /// <para><b>Use case:</b></para>
+        /// - In server-authoritative architectures, this is often not required, 
+        ///   since the server provides the initial state.
+        /// - In peer-authoritative or relay-only setups, this hook is important, 
+        ///   as the server only relays spawns, and the owner must provide the 
+        ///   authoritative state to the new peer.
+        /// 
+        /// <para><b>Parameters:</b></para>
+        /// <paramref name="peerId"/> — The peer id of the peer that has just spawned this object 
+        /// and is now ready to receive initial data from the owner.
+        /// </summary>
+        protected virtual void OnOwnerObjectSpawnedForPeer(int peerId)
         {
         }
 
@@ -942,21 +978,28 @@ namespace Omni.Core
             {
                 if (actionId == NetworkConstants.k_SpawnNotificationId)
                 {
-                    Internal_OnServerClientSpawned(peer);
+                    Internal_OnServerObjectSpawnedForPeer(peer);
                     return;
                 }
             }
             else
             {
-                if (actionId == NetworkConstants.k_SetOwnerId)
+                switch (actionId)
                 {
-                    if (IsMine) OnOwnershipGained();
-                    else OnOwnershipLost();
-                    return;
-                }
-                else if (actionId == NetworkConstants.k_DestroyEntityId)
-                {
-                    return;
+                    case NetworkConstants.k_SetOwnerId:
+                        {
+                            if (IsMine) OnOwnershipGained();
+                            else OnOwnershipLost();
+                            return;
+                        }
+                    case NetworkConstants.k_DestroyEntityId:
+                        return;
+                    case NetworkConstants.k_OwnerObjectSpawnedForPeer:
+                        {
+                            int peerId = data.Read<int>();
+                            OnOwnerObjectSpawnedForPeer(peerId);
+                            return;
+                        }
                 }
             }
 

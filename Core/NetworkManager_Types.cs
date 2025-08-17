@@ -93,8 +93,9 @@ namespace Omni.Core
         internal const string k_ShareAllKeys = "_All_";
         internal const string k_InvalidRpcName = "Unknown Rpc";
 
-        internal const byte k_SpawnNotificationId = 253;
-        internal const byte k_SetOwnerId = 254;
+        internal const byte k_SpawnNotificationId = 252;
+        internal const byte k_SetOwnerId = 253;
+        internal const byte k_OwnerObjectSpawnedForPeer = 254;
         public const byte k_DestroyEntityId = 255;
     }
 

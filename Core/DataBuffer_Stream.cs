@@ -10,7 +10,7 @@ namespace Omni.Core
     /// Provides a stream implementation that wraps a <see cref="DataBuffer"/>, 
     /// allowing read, write, and seek operations on its data.
     /// </summary>
-    internal sealed class DataBufferStream : Stream
+    internal class DataBufferStream : Stream
     {
         private readonly DataBuffer _buffer;
 

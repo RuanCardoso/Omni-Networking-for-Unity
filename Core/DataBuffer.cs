@@ -9,6 +9,24 @@ using UnityEngine;
 
 namespace Omni.Core
 {
+    /// <summary>
+    /// Represents a lightweight, data container designed 
+    /// for simplified usage in RPC calls and network message handling.
+    /// </summary>
+    /// <remarks>
+    /// This type is intended to provide a convenient way 
+    /// to work with serialized data during transmission, focusing on 
+    /// easy integration with RPC workflows.
+    /// </remarks>
+    public sealed class RpcBuffer : DataBuffer
+    {
+        private RpcBuffer() : base()
+        {
+
+        }
+
+    }
+
     // ref: https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Buffers/ArrayBufferWriter.cs
     /// <summary>
     /// A versatile and efficient buffer tailored for network communication and other data-intensive operations.
@@ -17,7 +35,7 @@ namespace Omni.Core
     /// This class offers functionality for implicit conversions to various data types, making it capable of seamless data manipulation.
     /// Designed for high-performance scenarios, the DataBuffer supports memory-span-based data access and ensures optimal use of resources through pooling mechanisms.
     /// </remarks>
-    public sealed partial class DataBuffer : IBufferWriter<byte>, IDisposable
+    public partial class DataBuffer : IBufferWriter<byte>, IDisposable
     {
         internal const int DefaultBufferSize = 32768;
         private readonly IBufferPooling<DataBuffer> _objectPooling;
@@ -101,7 +119,7 @@ namespace Omni.Core
         /// </remarks>
         public Stream Stream => _stream;
 
-        private DataBuffer()
+        internal DataBuffer()
         {
             _buffer = Array.Empty<byte>();
         }

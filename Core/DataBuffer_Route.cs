@@ -2,7 +2,7 @@ namespace Omni.Core
 {
     // Exclusively for Routes API.
     // Represents a buffer for managing data, used primarily within the Routes API.
-    public sealed partial class DataBuffer
+    public partial class DataBuffer
     {
         internal bool SendEnabled { get; set; }
         internal DeliveryMode DeliveryMode { get; private set; } = DeliveryMode.ReliableOrdered;
