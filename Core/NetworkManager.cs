@@ -60,7 +60,7 @@ namespace Omni.Core
         // Debug build: The production key is hardcoded for testing purposes.
         internal static byte[] ProductionKey = new byte[]
         {
-            36, 209, 27, 118, 198, 198, 212, 154, 35, 189, 161, 41, 109, 26, 6, 153,
+            36, 209, 27, 118, 198, 198, 212, 154, 35, 189, 161, 45, 109, 26, 6, 153,
             100, 137, 209, 89, 45, 170, 119, 124, 83, 164, 87, 97, 225, 206, 3, 13,
             230, 241, 150, 251, 99, 186, 103, 31, 190, 34, 150, 116, 99, 52, 80, 15,
             243, 197, 248, 227, 240, 191, 130, 200, 153, 92, 61, 176, 144, 205, 79, 27,
@@ -420,9 +420,17 @@ namespace Omni.Core
         /// </summary>
         public static bool IsServerActive { get; private set; }
 
+        internal static void ShowUnsupportedPlataformWarning()
+        {
+#if !UNITY_2022_3_OR_NEWER
+            throw new System.Exception("Omni Networking is not supported on this platform. Please upgrade to Unity 2022.3 or higher.");
+#endif
+        }
+
         bool _isInitialized = false;
         protected virtual void Awake()
         {
+            ShowUnsupportedPlataformWarning();
 #if !UNITY_EDITOR // log file in release mode, but without generating new stack trace
             Application.logMessageReceived += (string logString, string stackTrace, LogType type) =>
             {
