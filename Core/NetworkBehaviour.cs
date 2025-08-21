@@ -1069,6 +1069,7 @@ namespace Omni.Core
             if (!IsRegistered)
                 return;
 
+            OnPreUnregister();
             var identities = IsServer
                   ? NetworkManager.ServerSide.Identities
                   : NetworkManager.ClientSide.Identities;
@@ -1095,8 +1096,8 @@ namespace Omni.Core
                 NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
 
                 Identity.Unregister(m_ServiceName);
-                OnNetworkDestroy();
                 IsRegistered = false;
+                OnPostUnregister();
             }
         }
 
@@ -1131,18 +1132,67 @@ namespace Omni.Core
             {
                 if (Application.isPlaying)
                     Unregister();
+
+                OnNetworkDestroy();
             }
             catch { }
         }
 
         /// <summary>
-        /// Called when the object is unregistered from the network.
+        /// Called when the GameObject is being destroyed by Unity,
+        /// after the component has been unregistered from the network.
         /// </summary>
         /// <remarks>
-        /// Override this method to implement custom cleanup logic that needs to run when the object is unregistered from
-        /// all network-related systems. Typical use cases include releasing resources, unsubscribing from events, or resetting state.
+        /// This method is always invoked at the end of the <c>OnDestroy</c>
+        /// sequence, ensuring that the object is no longer registered
+        /// in the network when executed.  
+        /// 
+        /// Override this method to implement cleanup logic that should
+        /// occur strictly during Unity's destruction cycle, such as:
+        /// - Releasing Unity-specific resources
+        /// - Cleaning up editor-only references
+        /// - Logging or diagnostic information
         /// </remarks>
         protected virtual void OnNetworkDestroy()
+        {
+
+        }
+
+        /// <summary>
+        /// Called immediately before this component is unregistered
+        /// from the network.
+        /// </summary>
+        /// <remarks>
+        /// Override this method to implement logic that must occur
+        /// before the component is removed from the network.  
+        /// At this stage, the object is still fully registered and can
+        /// interact with other network entities.  
+        /// 
+        /// Example use cases:
+        /// - Sending a final state update
+        /// - Notifying dependent systems
+        /// - Stopping background coroutines
+        /// </remarks>
+        protected virtual void OnPreUnregister()
+        {
+        }
+
+        /// <summary>
+        /// Called immediately after this component has been unregistered
+        /// from the network.
+        /// </summary>
+        /// <remarks>
+        /// Override this method to implement logic that should occur
+        /// once the component has been fully removed from the network.  
+        /// At this stage, the object is no longer registered and should
+        /// not be used for further network operations.  
+        /// 
+        /// Example use cases:
+        /// - Final diagnostics or logging
+        /// - Releasing transient data
+        /// - Triggering dependent cleanup routines
+        /// </remarks>
+        protected virtual void OnPostUnregister()
         {
         }
 
