@@ -20,7 +20,9 @@ namespace Omni.Core
     [DefaultExecutionOrder(-5000)]
     public class BasedTickSystem : ITickData
     {
-        private readonly List<IBasedTickSystem> handlers = new();
+        // IdentityId, Script Id, Server
+        private readonly Dictionary<(int identityId, byte scriptId, bool isServer), IBasedTickSystem> handlers = new();
+
         private double deltaTimestep;
         private double elapsedDeltaTime;
         private double lastElapsedDeltaTime;
@@ -49,14 +51,9 @@ namespace Omni.Core
         /// Registers a handler implementing the ITickSystem interface to the NetworkTickSystem, allowing it to receive periodic tick updates.
         /// </summary>
         /// <param name="handler">The handler implementing ITickSystem to be registered for tick updates.</param>
-        public void Register(IBasedTickSystem handler)
+        public void Register((int identityId, byte scriptId, bool isServer) id, IBasedTickSystem handler)
         {
-            if (handlers.Contains(handler))
-            {
-                handlers.Remove(handler);
-            }
-
-            handlers.Add(handler);
+            handlers[id] = handler;
         }
 
         /// <summary>
@@ -64,9 +61,9 @@ namespace Omni.Core
         /// preventing it from receiving further periodic tick updates.
         /// </summary>
         /// <param name="handler">The handler implementing ITickSystem to be unregistered from tick updates.</param>
-        public void Unregister(IBasedTickSystem handler)
+        public void Unregister((int identityId, byte scriptId, bool isServer) id)
         {
-            handlers.Remove(handler);
+            handlers.Remove(id);
         }
 
         internal void UpdateTick()
@@ -87,7 +84,7 @@ namespace Omni.Core
                 ElapsedTicks++;
 
                 // Tick-tack..tick-tack..tick-tack..
-                foreach (var handler in handlers)
+                foreach (var handler in handlers.Values)
                     handler.OnTick(this);
 
                 if (CurrentTick == TickRate)

@@ -1048,7 +1048,7 @@ namespace Omni.Core
             AddRpcHandler();
 
             if (NetworkManager.TickSystemModuleEnabled)
-                NetworkManager.TickSystem.Register(this);
+                NetworkManager.TickSystem.Register((IdentityId, Id, IsServer), this);
 
             Identity.OnServerOwnershipTransferred += OnServerOwnershipTransferred;
             Identity.OnRequestAction += Internal_OnRequestedAction;
@@ -1087,7 +1087,7 @@ namespace Omni.Core
                 rpcHandlers.Remove(key);
 
                 if (NetworkManager.TickSystemModuleEnabled)
-                    NetworkManager.TickSystem.Unregister(this);
+                    NetworkManager.TickSystem.Unregister((IdentityId, Id, IsServer));
 
                 Identity.OnServerOwnershipTransferred -= OnServerOwnershipTransferred;
                 Identity.OnRequestAction -= Internal_OnRequestedAction;
