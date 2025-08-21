@@ -212,7 +212,7 @@ namespace Omni.Core
 
             buffer.SeekToEnd();
             byte[] data = buffer.ToArray();
-            byte[] encryptedData = AesEncryptor.Encrypt(data, 0, data.Length, peer._aesKey, out byte[] Iv);
+            byte[] encryptedData = AesProvider.Encrypt(data, 0, data.Length, peer._aesKey, out byte[] Iv);
 
             // Encrypt
             var encryptedBuffer = NetworkManager.Pool.Rent();
@@ -261,7 +261,7 @@ namespace Omni.Core
 
             byte[] iv = buffer.ReadAsBinary<byte[]>();
             byte[] encryptedData = buffer.ReadAsBinary<byte[]>();
-            byte[] decryptedData = AesEncryptor.Decrypt(encryptedData, 0, encryptedData.Length, peer._aesKey, iv);
+            byte[] decryptedData = AesProvider.Decrypt(encryptedData, 0, encryptedData.Length, peer._aesKey, iv);
 
             // Decrypt
             var decryptedBuffer = NetworkManager.Pool.Rent();
