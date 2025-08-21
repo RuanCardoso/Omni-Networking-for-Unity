@@ -20,7 +20,7 @@ namespace Omni.Core.Cryptography
     /// <summary>
     /// Provides methods for computing and validating cryptographic hashes using various algorithms.
     /// </summary>
-    public static class Hasher
+    public static class HashProvider
     {
         /// <summary>
         /// Validates if the provided input matches the specified hash when processed with the selected algorithm.

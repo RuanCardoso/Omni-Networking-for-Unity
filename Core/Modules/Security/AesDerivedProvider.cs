@@ -18,7 +18,7 @@ namespace Omni.Core.Cryptography
     /// It uses PBKDF2 for key derivation with a random salt.
     /// The encrypted output format is: [salt (16 bytes)][IV (16 bytes)][encrypted data]
     /// </remarks>
-    public static class Encryptor
+    public static class AesDerivedProvider
     {
         // This constant is used to determine the keysize of the encryption algorithm in bits.
         // We divide this by 8 within the code below to get the equivalent number of bytes.

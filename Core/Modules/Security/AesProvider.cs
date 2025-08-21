@@ -35,7 +35,7 @@ namespace Omni.Core.Cryptography
     /// This implementation automatically generates initialization vectors (IV) for encryption
     /// operations to enhance security.
     /// </remarks>
-    public static class AesEncryptor
+    public static class AesProvider
     {
 #if OMNI_DEBUG
         static int _keySize = 128;

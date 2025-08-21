@@ -443,7 +443,7 @@ namespace Omni.Core
                 }
             };
 #endif
-            // MemoryPackFormatterProvider.Register(new ....Formatter());
+            MemoryPackFormatterProvider.Register(new RpcBufferFormatter());
             if (ProductionKey == null)
             {
                 throw new NotSupportedException(
@@ -485,10 +485,10 @@ namespace Omni.Core
                 return;
             }
 
+            _manager = this;
 #if OMNI_SERVER && !UNITY_EDITOR
             ShowDefaultOmniLog();
 #endif
-
             // Start http server
             if (m_EnableHttpServer)
             {
@@ -504,7 +504,6 @@ namespace Omni.Core
             BufferWriterExtensions.DefaultEncoding = m_UseUtf8 ? Encoding.UTF8 : Encoding.ASCII;
             Bridge.UseDapper = m_UseDapper;
 
-            _manager = this;
             QualitySettings.vSyncCount = 0;
 #if !UNITY_SERVER || UNITY_EDITOR
             Application.targetFrameRate = m_LockClientFps > 0 ? m_LockClientFps : -1;
@@ -643,9 +642,18 @@ namespace Omni.Core
             NetworkLogger.Log("Debug Mode Enabled: Detailed logs and debug features are active.");
 #else
             NetworkLogger.Log("Release Mode Active: Optimized for production with minimal logging.");
-            if(!Manager.m_TlsHandshake)
+            if (!Manager.m_TlsHandshake)
             {
-                NetworkLogger.Log("TLS Handshake is disabled. Please enable it in the NetworkManager to ensure secure connections. See Omni Documentation for more information.", false, NetworkLogger.LogType.Warning);
+                NetworkLogger.Log("TLS Handshake is disabled. AES key exchange will still occur, but the server certificate is not verified against a trusted authority. This may expose connections to MITM attacks. See Omni Documentation for more information.", false, NetworkLogger.LogType.Warning);
+            }
+            else
+            {
+                NetworkLogger.Log("Certificate validation is disabled. The server will not warn about expired, revoked, or untrusted certificates. It is strongly recommended to enable certificate validation in production environments. See Omni Documentation for more information.", false, NetworkLogger.LogType.Warning);
+            }
+
+            if (!m_UseSecureRoutes)
+            {
+                NetworkLogger.Log("Secure Routes are disabled. Transport data is not automatically encrypted. You must explicitly enable encryption for each route that requires protection. See Omni Documentation for more information.", false, NetworkLogger.LogType.Warning);
             }
 #endif
         }
@@ -1334,7 +1342,7 @@ namespace Omni.Core
             NetworkHelper.EnsureRunningOnMainThread();
             // Set the default peer, used when the server sends to nothing(peerId = 0).
             NetworkPeer serverPeer = ServerSide.ServerPeer;
-            serverPeer._aesKey = AesEncryptor.GenerateKey();
+            serverPeer._aesKey = AesProvider.GenerateKey();
             serverPeer.IsConnected = true;
             serverPeer.IsAuthenticated = true;
 
@@ -1405,11 +1413,11 @@ namespace Omni.Core
                     // ensuring the integrity and authenticity of the server's public key and protecting the connection.
                     string token = NetworkHelper.GenerateRandomToken();
                     byte[] tokenBytes = Encoding.UTF8.GetBytes(token);
-                    byte[] tokenSignature = RsaEncryptor.Sign(tokenBytes, ServerSide.RsaPrivateKey);
+                    byte[] tokenSignature = RsaProvider.Compute(tokenBytes, ServerSide.PEMPrivateKey);
                     message.WriteAsBinary(tokenBytes);
                     // Writes the encrypted server's RSA public key to the buffer
                     // If the public key were modified (MITM) the connection would fail because the server public key is validated by the server and the client.
-                    byte[] encryptedRsaPublicKey = Encryptor.Encrypt(ServerSide.RsaPublicKey, ProductionKey);
+                    byte[] encryptedRsaPublicKey = AesDerivedProvider.Encrypt(ServerSide.PEMPublicKey, ProductionKey);
                     message.WriteAsBinary(encryptedRsaPublicKey);
                     message.WriteAsBinary(tokenSignature);
 
@@ -1638,8 +1646,8 @@ namespace Omni.Core
                                     byte[] tokenSignature = header.ReadAsBinary<byte[]>();
 
                                     // Validate server public key
-                                    string publicKey = Encryptor.DecryptToString(rsaServerPublicKey, ProductionKey);
-                                    if (!RsaEncryptor.Validate(tokenBytes, tokenSignature, publicKey))
+                                    string publicKey = AesDerivedProvider.DecryptToString(rsaServerPublicKey, ProductionKey);
+                                    if (!RsaProvider.Validate(tokenBytes, tokenSignature, publicKey))
                                         throw new CryptographicException("The server's public key could not be verified.");
                                     if (m_TlsHandshake)
                                     {
@@ -1658,12 +1666,12 @@ namespace Omni.Core
                                     ClientSide.Peers.Add(localPeerId, LocalPeer);
 
                                     // Generate an AES session key for encryption.
-                                    ClientSide.RsaServerPublicKey = publicKey;
-                                    byte[] aesKey = AesEncryptor.GenerateKey();
+                                    ClientSide.PEMServerPublicKey = publicKey;
+                                    byte[] aesKey = AesProvider.GenerateKey();
                                     LocalPeer._aesKey = aesKey;
 
                                     // Encrypt the AES session key using the server's RSA public key.
-                                    byte[] encryptedAesKey = RsaEncryptor.Encrypt(aesKey, ClientSide.RsaServerPublicKey);
+                                    byte[] encryptedAesKey = RsaProvider.Encrypt(aesKey, ClientSide.PEMServerPublicKey);
                                     // Send the encrypted AES key to the server to begin the handshake.
                                     using DataBuffer authMessage = Pool.Rent(enableTracking: false);
                                     authMessage.WriteAsBinary(encryptedAesKey);
@@ -1673,11 +1681,11 @@ namespace Omni.Core
                                 {
                                     // Read and decrypt the AES key sent by the client using the server's RSA private key.
                                     byte[] aesKey = header.ReadAsBinary<byte[]>();
-                                    peer._aesKey = RsaEncryptor.Decrypt(aesKey, ServerSide.RsaPrivateKey);
+                                    peer._aesKey = RsaProvider.Decrypt(aesKey, ServerSide.PEMPrivateKey);
 
                                     // Encrypt the server's AES key using the client's decrypted AES key.
                                     byte[] serverAesKey = ServerSide.ServerPeer._aesKey;
-                                    byte[] encryptedServerAesKey = AesEncryptor.Encrypt(serverAesKey, 0, serverAesKey.Length, peer._aesKey, out byte[] iv);
+                                    byte[] encryptedServerAesKey = AesProvider.Encrypt(serverAesKey, 0, serverAesKey.Length, peer._aesKey, out byte[] iv);
 
                                     // Send the encrypted server AES key and initialization vector (IV) to the client.
                                     using var message = Pool.Rent(enableTracking: false);
@@ -1700,7 +1708,7 @@ namespace Omni.Core
 
                                     NetworkPeer serverPeerInClientSide = ClientSide.ServerPeer;
                                     // Decrypt the server's AES key using the client's AES key and IV.
-                                    serverPeerInClientSide._aesKey = AesEncryptor.Decrypt(serverAesKeyEncrypted, 0, serverAesKeyEncrypted.Length, LocalPeer._aesKey, iv);
+                                    serverPeerInClientSide._aesKey = AesProvider.Decrypt(serverAesKeyEncrypted, 0, serverAesKeyEncrypted.Length, LocalPeer._aesKey, iv);
 
                                     // Mark the peer as connected and authenticated.
                                     LocalPeer.IsConnected = true;
@@ -1713,7 +1721,7 @@ namespace Omni.Core
                                 else
                                 {
                                     NetworkLogger.__Log__(
-                                        $"[NetworkManager] Server accepted connection from client at {endPoint.Address}:{endPoint.Port}",
+                                        $"[NetworkManager] Server accepted connection from client at {endPoint.Address}:{endPoint.Port} {(m_TlsHandshake ? "(TLS)" : "")}",
                                         NetworkLogger.LogType.Log
                                     );
 

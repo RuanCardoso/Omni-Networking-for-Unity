@@ -15,7 +15,7 @@ namespace Omni.Core
     // High-level methods for sending network messages.
     public partial class NetworkManager
     {
-        private const string k_PublicKeyFile = "cert_public_key.txt";
+        private const string k_PublicKeyFile = "PinnedPublicKey.txt";
         public static partial class ClientSide
         {
             internal const DeliveryMode Default_DeliveryMode = DeliveryMode.ReliableOrdered;
@@ -37,7 +37,7 @@ namespace Omni.Core
             /// This property stores the public key used in RSA cryptographic operations.
             /// The public key is utilized to encrypt data, ensuring that only the holder of the corresponding private key can decrypt it.
             /// </summary>
-            internal static string RsaServerPublicKey { get; set; }
+            internal static string PEMServerPublicKey { get; set; }
 
             internal static Dictionary<int, NetworkGroup> Groups { get; } = new();
 
@@ -222,7 +222,7 @@ namespace Omni.Core
             /// This property stores the public key used in RSA cryptographic operations.
             /// The public key is utilized to encrypt data, ensuring that only the holder of the corresponding private key can decrypt it.
             /// </summary>
-            internal static string RsaPublicKey { get; private set; }
+            internal static string PEMPublicKey { get; private set; }
 
             /// <summary>
             /// Gets the RSA private key.
@@ -230,7 +230,7 @@ namespace Omni.Core
             /// The private key is crucial for decrypting data that has been encrypted with the corresponding public key.
             /// It is also used to sign data, ensuring the authenticity and integrity of the message.
             /// </summary>
-            internal static string RsaPrivateKey { get; private set; }
+            internal static string PEMPrivateKey { get; private set; }
 
             internal static Dictionary<int, NetworkGroup> Groups => GroupsById;
             internal static Dictionary<int, IRpcMessage> StaticRpcHandlers { get; } = new();
@@ -272,32 +272,28 @@ namespace Omni.Core
                     NetworkLogger.__Log__(details, NetworkLogger.LogType.Warning);
                 }
 #endif
-                using (var cert = new X509Certificate2(certName, certPassword))
-                {
-                    using (var rsa = cert.GetRSAPrivateKey())
-                    {
-                        RsaPrivateKey = rsa.ToXmlString(true);
-                    }
+                using var cert = new X509Certificate2(certName, certPassword);
+                using var priRsa = cert.GetRSAPrivateKey();
+                PEMPrivateKey = priRsa.ToPemString(true);
 
-                    using (var rsa = cert.GetRSAPublicKey())
-                    {
-                        RsaPublicKey = rsa.ToXmlString(false);
+                using var pubRsa = cert.GetRSAPublicKey();
+                PEMPublicKey = pubRsa.ToPemString(false);
 #if UNITY_EDITOR
-                        string resourceDir = Path.Combine(Application.dataPath, "Resources");
-                        Directory.CreateDirectory(resourceDir);
-                        string fullPath = Path.Combine(resourceDir, k_PublicKeyFile);
-                        File.WriteAllText(fullPath, RsaPublicKey);
-                        UnityEditor.AssetDatabase.Refresh();
+                string resourceDir = Path.Combine(Application.dataPath, "Resources");
+                if (!Directory.Exists(resourceDir))
+                    Directory.CreateDirectory(resourceDir);
+
+                string fullPath = Path.Combine(resourceDir, k_PublicKeyFile);
+                File.WriteAllText(fullPath, PEMPublicKey);
+                UnityEditor.AssetDatabase.Refresh();
 #endif
-                    }
-                }
             }
 
             internal static void GenerateRsaKeys()
             {
-                RsaEncryptor.GetKeys(out var rsaPrivateKey, out var rsaPublicKey);
-                RsaPrivateKey = rsaPrivateKey;
-                RsaPublicKey = rsaPublicKey;
+                RsaProvider.GetKeys(out var rsaPrivateKey, out var rsaPublicKey);
+                PEMPrivateKey = rsaPrivateKey;
+                PEMPublicKey = rsaPublicKey;
             }
 
             public static NetworkIdentity GetIdentity(int identityId)
