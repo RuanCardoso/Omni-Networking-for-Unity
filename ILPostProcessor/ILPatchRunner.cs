@@ -34,7 +34,9 @@ namespace Omni.ILPatch
 
                 // Run patches
                 NetworkVariablePatch.Process(assembly, diagnostics);
-                StripCodePatch.Process(assembly, diagnostics);
+                // Strip code from client only
+                if (!HasDefine(compiledAssembly, "UNITY_EDITOR") && !HasDefine(compiledAssembly, "UNITY_SERVER"))
+                    StripCodePatch.Process(assembly, diagnostics);
 
                 using MemoryStream pdbOut = new();
                 WriterParameters asmWriterParams = new()

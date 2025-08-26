@@ -1,3 +1,4 @@
+using MemoryPack;
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using System;
@@ -5,10 +6,66 @@ using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 using UnityEngine;
+
+#pragma warning disable CS9074 // The 'scoped' modifier of parameter doesn't match overridden or implemented member.
 
 namespace Omni.Core
 {
+    /// <summary>
+    /// Provides a custom formatter for <see cref="DataBuffer"/> objects, 
+    /// which allows for efficient serialization and deserialization.
+    /// </summary>
+    /// <remarks>
+    /// This class is used by the MemoryPack library to handle the serialization 
+    /// and deserialization of <see cref="DataBuffer"/> objects. It provides 
+    /// optimized methods for serializing and deserializing the buffer, minimizing
+    /// memory allocations and maximizing performance.
+    /// </remarks>
+    internal class DataBufferFormatter : MemoryPackFormatter<ReadOnlyBuffer>
+    {
+        public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref ReadOnlyBuffer value)
+        {
+            if (value == null)
+            {
+                writer.WriteNullObjectHeader();
+                return;
+            }
+
+            ReadOnlySpan<byte> data = value._buffer.BufferAsSpan;
+            int length = value._buffer.Length;
+            writer.WriteVarInt(length);
+            writer.WriteSpan(data);
+        }
+
+        public override void Deserialize(ref MemoryPackReader reader, ref ReadOnlyBuffer value)
+        {
+            if (reader.PeekIsNull())
+            {
+                reader.Advance(1); // skip null block
+                value = null;
+                return;
+            }
+
+            var buffer = NetworkManager.Pool.Rent(); // Disposed by the caller.
+            int length = reader.ReadVarIntInt32();
+
+            // Initialize a read-only buffer instance backed by the rented pool buffer.
+            value = buffer.AsReadOnlyBuffer();
+            // Configure the internal buffer boundaries to match the expected payload length.
+            // This ensures both logical length and end position are consistent with the data to be read.
+            value._buffer.SetLength(length);
+            value._buffer.SetEndPosition(length);
+
+            // Read the serialized payload directly into the underlying buffer array.
+            // Only the valid data region [0..length) is targeted, avoiding overread of unused capacity.
+            byte[] dstBuffer = value._buffer.GetBuffer();
+            Span<byte> dstSpan = dstBuffer.AsSpan(0, length);
+            reader.ReadSpan(ref dstSpan);
+        }
+    }
+
     /// <summary>
     /// Represents a lightweight, data container designed 
     /// for simplified usage in RPC calls and network message handling.
@@ -18,13 +75,23 @@ namespace Omni.Core
     /// to work with serialized data during transmission, focusing on 
     /// easy integration with RPC workflows.
     /// </remarks>
-    public sealed class RpcBuffer : DataBuffer
+    public sealed class ReadOnlyBuffer
     {
-        private RpcBuffer() : base()
+        internal readonly DataBuffer _buffer;
+        internal ReadOnlyBuffer(DataBuffer buffer)
         {
-
+            _buffer = buffer;
         }
 
+        /// <summary>
+        /// Retrieves the underlying <see cref="DataBuffer"/>.
+        /// <para>This buffer should be disposed by the caller.</para>
+        /// </summary>
+        /// <returns>The underlying <see cref="DataBuffer"/>.</returns>
+        public DataBuffer GetBuffer()
+        {
+            return _buffer;
+        }
     }
 
     // ref: https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/System/Buffers/ArrayBufferWriter.cs
@@ -162,10 +229,10 @@ namespace Omni.Core
 
         internal DataBuffer(int capacity = DefaultBufferSize, IBufferPooling<DataBuffer> pool = null)
         {
-            if (capacity <= 0)
+            if (capacity < 0)
             {
                 NetworkLogger.PrintHyperlink();
-                throw new ArgumentException(null, nameof(capacity));
+                throw new ArgumentException("Capacity cannot be less than 0.", nameof(capacity));
             }
 
             _objectPooling = pool;

@@ -2040,7 +2040,7 @@ namespace Omni.Core.Components
         }
 
         [Client(2, DeliveryMode = DeliveryMode.Unreliable)]
-        private void NonServerOwnedTeleportFromServerClientRpc(Vector3 newPosition, Vector3 newRotation, Vector3 newScale)
+        private void NonServerOwnedTeleportFromServerClientRpcA(Vector3 newPosition, Vector3 newRotation, Vector3 newScale)
         {
             if (HasAuthorityOrOwnedByServer)
             {
@@ -2052,9 +2052,9 @@ namespace Omni.Core.Components
         }
 
         [Server(3, DeliveryMode = DeliveryMode.Unreliable)]
-        private void TeleportServerRpc(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
+        private void TeleportServerRpcA(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
         {
-            TeleportClientRpc(position, rotation, scale, tempOwnerTime);
+            TeleportClientRpcA(position, rotation, scale, tempOwnerTime);
 
             NetworkTransformState teleportState = new();
             teleportState.CaptureFromSync(this);
@@ -2068,7 +2068,7 @@ namespace Omni.Core.Components
         }
 
         [Client(3)]
-        private void TeleportClientRpc(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
+        private void TeleportClientRpcA(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
         {
             if (HasAuthorityOrOwnedByServer || IsServer) return;
 

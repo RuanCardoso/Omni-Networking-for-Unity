@@ -1525,6 +1525,6 @@ namespace Omni.Core
 
     public static partial class BufferWriterExtensions
     {
-        // ToDo
+        public static ReadOnlyBuffer AsReadOnlyBuffer(this DataBuffer buffer) => new(buffer);
     }
 }

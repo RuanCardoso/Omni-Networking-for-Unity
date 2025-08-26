@@ -48,15 +48,14 @@ namespace Omni.Core
     { }
 
     /// <summary>
-    /// Marks a method to be stripped from client builds.
+    /// Indicates that a member should be removed from client builds.
     /// </summary>
     /// <remarks>
-    /// When applied to a method, this attribute signals the IL post-processor to remove the method
-    /// from the compiled assembly in client builds. This is useful for server-only methods that
-    /// should not be included in client builds, helping to reduce the client build size and
-    /// prevent execution of server-specific code on clients.
+    /// Apply this attribute to methods or fields that are server-only.
+    /// During IL post-processing, the member will be stripped from client assemblies,
+    /// ensuring that client builds are smaller, cleaner, and free from server-only logic.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-    public sealed class StripAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
+    public sealed class StripFromClientAttribute : Attribute
     { }
 }

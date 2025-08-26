@@ -6,7 +6,11 @@ namespace Omni.Core
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
     public sealed class GenRpcAttribute : Attribute
     {
-        public GenRpcAttribute(string classname) { }
+        public string ClassName { get; }
+        public GenRpcAttribute(string classname)
+        {
+            ClassName = classname;
+        }
     }
 
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
@@ -31,6 +35,7 @@ namespace Omni.Core
         /// </value>
         public byte SequenceChannel { get; set; } = 0;
 
+        public EventAttribute() { }
         public EventAttribute(byte id)
         {
             Id = id;
@@ -52,6 +57,11 @@ namespace Omni.Core
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
     public class ClientAttribute : EventAttribute
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ClientAttribute"/> class. with an automatically generated identifier.
+        /// </summary>
+        public ClientAttribute() { }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ClientAttribute"/> class with the specified rpc ID.
         /// </summary>
@@ -86,6 +96,11 @@ namespace Omni.Core
         /// Default is <c>Target.Auto</c>, which automatically determines the appropriate target based on context.
         /// </value>
         public Target Target { get; set; } = Target.Auto;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ServerAttribute"/> class. with an automatically generated identifier.
+        /// </summary>
+        public ServerAttribute() { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ServerAttribute"/> class with the specified rpc ID.

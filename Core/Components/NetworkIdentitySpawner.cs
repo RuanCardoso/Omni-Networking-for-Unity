@@ -117,11 +117,11 @@ namespace Omni.Core.Components
 
         [Server(k_SpawnRpcId, Target = Target.Everyone)]
         [Server(k_SpawnCacheRpcId, Target = Target.Self)]
-        private void SpawnStubRpc() { } // stub rpc -> only used for rpc registration with optional parameters
+        private void SpawnStubRpcA() { } // stub rpc -> only used for rpc registration with optional parameters
 
         [Client(k_SpawnRpcId)]
         [Client(k_SpawnCacheRpcId)]
-        private void SpawnRpc(string prefabName, int peerId, int identityId)
+        private void SpawnRpcA(string prefabName, int peerId, int identityId)
         {
             var prefab = NetworkManager.GetPrefab(prefabName);
             prefab.SpawnOnClient(peerId, identityId);

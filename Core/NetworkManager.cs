@@ -443,7 +443,7 @@ namespace Omni.Core
                 }
             };
 #endif
-            MemoryPackFormatterProvider.Register(new RpcBufferFormatter());
+            MemoryPackFormatterProvider.Register(new DataBufferFormatter());
             if (ProductionKey == null)
             {
                 throw new NotSupportedException(

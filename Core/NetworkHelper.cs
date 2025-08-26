@@ -522,7 +522,7 @@ namespace Omni.Core
         internal static Dictionary<string, string> ParseQueryStringToDictionary(NameValueCollection queryString)
         {
             string[] allKeys = queryString.AllKeys;
-            Dictionary<string, string> parameters = new(allKeys.Length);
+            Dictionary<string, string> parameters = new(allKeys.Length, StringComparer.OrdinalIgnoreCase);
             foreach (string key in allKeys)
             {
                 if (string.IsNullOrEmpty(key))
@@ -538,35 +538,6 @@ namespace Omni.Core
         {
             double factor = Math.Pow(10, decimalPlaces);
             return Math.Truncate(value * factor) / factor;
-        }
-
-        internal static bool IsValidJson(string strInput)
-        {
-            if (string.IsNullOrWhiteSpace(strInput))
-                return false;
-
-            strInput = strInput.Trim();
-            if ((strInput.StartsWith("{") && strInput.EndsWith("}")) || // For object
-                (strInput.StartsWith("[") && strInput.EndsWith("]"))) // For array
-            {
-                try
-                {
-                    JToken.Parse(strInput);
-                    return true;
-                }
-                catch (JsonReaderException)
-                {
-                    return false;
-                }
-                catch (Exception)
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
         }
     }
 }

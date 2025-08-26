@@ -1,0 +1,53 @@
+# Listen externally on port 5056
+:5056 {
+    # Reverse proxy to the internal HttpListener (port 80)
+    reverse_proxy 127.0.0.1:80
+}
+
+# ==============================
+# 🔹 SSL (HTTPS)
+# To enable automatic TLS, use a valid domain:
+example.com {
+    # Manual certificate (use your own paths)
+    tls /etc/ssl/fullchain.pem /etc/ssl/privkey.pem
+
+    # Or automatic certificate via ACME (Let's Encrypt)
+    # tls youremail@example.com
+
+    reverse_proxy 127.0.0.1:80
+}
+# ==============================
+
+# ==============================
+# 🔹 Rate limiting by client IP (example: 100 requests per minute)
+(rate_limit_api) {
+    rate_limit {
+        zone api {
+            key {remote_host}
+            events 100
+            window 1m
+        }
+    }
+}
+# ==============================
+
+# ==============================
+# 🔹 Maximum upload size (example: 20 MB)
+(request_limits) {
+    request_body {
+        max_size 20MB
+    }
+}
+# ==============================
+
+# ==============================
+# 🔹 Timeouts (adjust as needed)
+(servers_timeouts) {
+    servers :5056 {
+        timeouts {
+            read_body 15s
+            write 30s
+        }
+    }
+}
+# ==============================

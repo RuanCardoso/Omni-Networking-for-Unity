@@ -12,6 +12,7 @@ using Cookie = Omni.Core.Web.Net.Cookie;
 using Omni.Shared;
 using Newtonsoft.Json.Linq;
 using Omni.Collections;
+using System.Collections.Concurrent;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
 #endif
@@ -33,7 +34,7 @@ namespace Omni.Core
             "yB/s"
         };
 
-        private static readonly Dictionary<string, Dictionary<string, object>> _sessions = new();
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, object>> _sessions = new();
 
         internal static string ToSizeSuffix(this double value, int decimalPlaces = 1)
         {
@@ -202,11 +203,11 @@ namespace Omni.Core
         /// <remarks>
         /// This extension method provides a convenient way to send text-based responses.
         /// </remarks>
-        public static void Send(this HttpListenerResponse response, string plainText, int statusCode = 200, bool willBlock = true)
+        public static void SendAsText(this HttpListenerResponse response, string plainText, int statusCode = 200, bool willBlock = true)
         {
             response.StatusCode = statusCode;
             response.ContentEncoding = Encoding.UTF8;
-            response.ContentType = NetworkHelper.IsValidJson(plainText) ? "application/json" : "text/plain";
+            response.ContentType = "text/plain";
 
             byte[] data = Encoding.UTF8.GetBytes(plainText);
             response.ContentLength64 = data.Length;
@@ -222,7 +223,7 @@ namespace Omni.Core
         /// <remarks>
         /// This extension method provides a convenient way to send JSON-formatted responses.
         /// </remarks>
-        public static void Send(this HttpListenerResponse response, object result, int statusCode = 200, bool willBlock = true)
+        public static void SendAsJson(this HttpListenerResponse response, object result, int statusCode = 200, bool willBlock = true)
         {
             response.StatusCode = statusCode;
             response.ContentEncoding = Encoding.UTF8;
@@ -245,7 +246,7 @@ namespace Omni.Core
         /// </remarks>
         public static void Reject(this HttpListenerResponse response, string message = "Server rejected the request.", bool willBlock = true)
         {
-            Send(response, message, 403, willBlock);
+            SendAsText(response, message, 403, willBlock);
         }
 
         /// <summary>
@@ -259,19 +260,22 @@ namespace Omni.Core
         /// </remarks>
         public static void Reject(this HttpListenerResponse response, object result, bool willBlock = true)
         {
-            Send(response, result, 403, willBlock);
+            SendAsJson(response, result, 403, willBlock);
         }
 
         /// <summary>
-        /// Parses the HTTP request as a multipart/form-data request.
+        /// Parses the request body as <c>multipart/form-data</c>.
         /// </summary>
-        /// <param name="request">The HTTP request to parse.</param>
-        /// <returns>The parsed form data.</returns>
+        /// <param name="request">The HTTP request.</param>
+        /// <returns>A <see cref="MultipartFormDataParser"/> containing the parsed form data.</returns>
+        /// <exception cref="NotSupportedException">
+        /// Thrown if the request method is not POST or the content type is not <c>multipart/form-data</c>.
+        /// </exception>
         /// <remarks>
-        /// This extension method provides a convenient way to parse the body of an HTTP request
-        /// as a multipart/form-data request.
+        /// This method reads the entire request body into memory.  
+        /// For large uploads, consider using <see cref="ParseMultipartStreaming"/>.
         /// </remarks>
-        public static MultipartFormDataParser ParseMultipartFormData(this HttpListenerRequest request)
+        public static MultipartFormDataParser ParseMultipart(this HttpListenerRequest request)
         {
             try
             {
@@ -292,17 +296,20 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Parses the HTTP request as a multipart/form-data request, returning a <see cref="StreamingMultipartFormDataParser"/>
-        /// which can be used to process the request in a streaming fashion. This is useful for handling large form data
-        /// requests without loading the entire request into memory.
+        /// Parses the request body as <c>multipart/form-data</c> in a streaming fashion.
         /// </summary>
-        /// <param name="request">The HTTP request to parse.</param>
-        /// <returns>A <see cref="StreamingMultipartFormDataParser"/> which can be used to process the request in a streaming fashion.</returns>
+        /// <param name="request">The HTTP request.</param>
+        /// <returns>
+        /// A <see cref="StreamingMultipartFormDataParser"/> for processing form data sequentially 
+        /// without loading the entire request into memory.
+        /// </returns>
+        /// <exception cref="NotSupportedException">
+        /// Thrown if the request method is not POST or the content type is not <c>multipart/form-data</c>.
+        /// </exception>
         /// <remarks>
-        /// This extension method provides a convenient way to parse the body of an HTTP request
-        /// as a multipart/form-data request in a streaming fashion.
+        /// Recommended for handling large file uploads or when memory usage is a concern.
         /// </remarks>
-        public static StreamingMultipartFormDataParser ParseMultipartFormDataStreaming(this HttpListenerRequest request)
+        public static StreamingMultipartFormDataParser ParseMultipartStreaming(this HttpListenerRequest request)
         {
             try
             {
@@ -323,22 +330,21 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Gets the parameters from a GET or POST request as a dictionary of string key-value pairs.
+        /// Parses parameters from a GET query string or a POST form request (<c>application/x-www-form-urlencoded</c>).
         /// </summary>
-        /// <param name="request">The HTTP request containing the parameters to parse.</param>
-        /// <returns>A dictionary of string key-value pairs representing the parameters from the request.</returns>
-        /// <remarks>
-        /// This extension method provides a convenient way to parse the parameters from a GET or POST request.
-        /// </remarks>
-        public static Dictionary<string, string> ParseRequestParametersToDictionary(this HttpListenerRequest request)
+        /// <param name="request">The HTTP request.</param>
+        /// <returns>A dictionary of key-value pairs representing the request parameters.</returns>
+        /// <exception cref="NotSupportedException">
+        /// Thrown if the request method/content type is not supported.
+        /// </exception>
+        public static Dictionary<string, string> ParseForm(this HttpListenerRequest request)
         {
             try
             {
                 if (request.HttpMethod == "GET")
-                {
                     return NetworkHelper.ParseQueryStringToDictionary(request.QueryString);
-                }
-                else if (request.HttpMethod == "POST")
+
+                if (request.HttpMethod == "POST")
                 {
                     if (request.ContentType.StartsWith("application/x-www-form-urlencoded"))
                     {
@@ -347,25 +353,53 @@ namespace Omni.Core
                         return NetworkHelper.ParseQueryStringToDictionary(queryString);
                     }
                     else if (request.ContentType.StartsWith("application/json"))
-                    {
-                        using StreamReader parameters = new(request.InputStream, request.ContentEncoding);
-                        return NetworkManager.FromJson<Dictionary<string, string>>(parameters.ReadToEnd());
-                    }
+                        throw new NotSupportedException($"JSON requests are not supported. Use {nameof(ParseJson)} instead.");
                     else if (request.ContentType.StartsWith("multipart/form-data"))
-                    {
-                        throw new NotSupportedException($"Multipart/form-data requests are not supported. Use {nameof(ParseMultipartFormData)} instead.");
-                    }
+                        throw new NotSupportedException($"Multipart/form-data requests are not supported. Use {nameof(ParseMultipart)} instead.");
                     else
-                    {
                         throw new NotSupportedException("Unsupported content type: " + request.ContentType);
-                    }
                 }
 
                 throw new NotSupportedException("Error parsing request parameters, only GET and POST requests are supported.");
             }
             catch (Exception ex)
             {
-                throw new Exception("ParseRequestParametersToDictionary -> " + ex.Message, ex);
+                throw new Exception($"{nameof(ParseForm)} -> " + ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// Parses parameters from a JSON POST request (<c>application/json</c>).
+        /// </summary>
+        /// <param name="request">The HTTP request.</param>
+        /// <param name="TValue">The type of the values in the dictionary.</param>
+        /// <returns>A dictionary of key-value pairs representing the JSON request body.</returns>
+        /// <exception cref="NotSupportedException">
+        /// Thrown if the request method/content type is not supported.
+        /// </exception>
+        public static Dictionary<string, TValue> ParseJson<TValue>(this HttpListenerRequest request)
+        {
+            try
+            {
+                if (request.HttpMethod != "POST")
+                    throw new NotSupportedException("JSON parsing only supports POST requests.");
+
+                if (request.ContentType.StartsWith("application/json"))
+                {
+                    using StreamReader parameters = new(request.InputStream, request.ContentEncoding);
+                    var rawDictionary = NetworkManager.FromJson<Dictionary<string, TValue>>(parameters.ReadToEnd());
+                    return new Dictionary<string, TValue>(rawDictionary, StringComparer.OrdinalIgnoreCase);
+                }
+                else if (request.ContentType.StartsWith("multipart/form-data"))
+                    throw new NotSupportedException($"Multipart/form-data requests are not supported. Use {nameof(ParseMultipart)} instead.");
+                else if (request.ContentType.StartsWith("application/x-www-form-urlencoded"))
+                    throw new NotSupportedException($"URL encoded requests are not supported. Use {nameof(ParseForm)} instead.");
+                else
+                    throw new NotSupportedException("Unsupported content type: " + request.ContentType);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"{nameof(ParseJson)} -> " + ex.Message, ex);
             }
         }
 
@@ -375,7 +409,7 @@ namespace Omni.Core
         /// <param name="response">The HTTP response to which the session cookie will be added.</param>
         /// <param name="request">The HTTP request used to determine security settings.</param>
         /// <param name="expires">Optional expiration time for the session cookie. Defaults to a non-persistent session if null.</param>
-        public static void StartSession(this HttpListenerResponse response, HttpListenerRequest request, DateTime? expires = null)
+        public static ConcurrentDictionary<string, object> StartSession(this HttpListenerResponse response, HttpListenerRequest request, DateTime? expires = null)
         {
             if (expires == null)
             {
@@ -392,7 +426,8 @@ namespace Omni.Core
             };
 
             response.SetCookie(sessionCookie);
-            _sessions[sessionId] = new Dictionary<string, object>();
+            _sessions[sessionId] = new ConcurrentDictionary<string, object>();
+            return _sessions[sessionId];
         }
 
         /// <summary>
@@ -409,7 +444,7 @@ namespace Omni.Core
         /// <remarks>
         /// Modifying the returned dictionary directly updates the session data.
         /// </remarks>
-        public static Dictionary<string, object> GetSession(this HttpListenerRequest request)
+        public static ConcurrentDictionary<string, object> GetSession(this HttpListenerRequest request)
         {
             var cookie = request.Cookies["OMNI-SESSID"];
             if (cookie == null)
@@ -439,7 +474,7 @@ namespace Omni.Core
         /// <param name="request">The HTTP request containing the session cookie.</param>
         /// <param name="session">The session data as a dictionary of key-value pairs, if found.</param>
         /// <returns><c>true</c> if the session data is successfully retrieved; otherwise, <c>false</c>.</returns>
-        public static bool TryGetSession(this HttpListenerRequest request, out Dictionary<string, object> session)
+        public static bool TryGetSession(this HttpListenerRequest request, out ConcurrentDictionary<string, object> session)
         {
             session = null;
             var cookie = request.Cookies["OMNI-SESSID"];
@@ -475,7 +510,7 @@ namespace Omni.Core
             StartSession(response, request, DateTime.UnixEpoch);
 
             string sessionId = cookie.Value;
-            return _sessions.Remove(sessionId);
+            return _sessions.TryRemove(sessionId, out _);
         }
 
         /// <summary>
@@ -541,7 +576,7 @@ namespace Omni.Core
                 return;
             }
 
-            @ref = Convert.ChangeType(@ref, typeof(T));
+            @ref = Convert.ChangeType(@ref, typeof(T)); // dont cast to T => (T)Convert.ChangeType() is redundant.....
         }
 
         /// <summary>

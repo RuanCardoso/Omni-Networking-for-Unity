@@ -334,28 +334,44 @@ namespace Omni.Core
             }
 
             /// <summary>
-            /// Sends a Remote Procedure Call (RPC) to a specific peer, bypassing the standard ownership-based RPC routing.
-            /// Unlike regular RPCs that are sent from the object's owner to other peers, this method allows sending RPCs
-            /// directly to any connected peer regardless of object ownership.
+            /// Sends a Remote Procedure Call (RPC) to a specific <see cref="NetworkPeer"/>,
+            /// bypassing the default ownership-based routing rules.
             /// </summary>
             /// <remarks>
-            /// This method is particularly useful for:
+            /// This overload is available **only on the server side** and supports two main usage scenarios:
+            /// <list type="number">
+            ///   <item>
+            ///     <description>
+            ///     <b>Direct targeting:</b>  
+            ///     The RPC is executed on the same identity and behaviour script, but instead of being
+            ///     routed back to the object's owner, it is delivered directly to the specified <paramref name="peer"/>.  
+            ///     Useful when you want to send an RPC to a single peer that does not own the object.
+            ///     </description>
+            ///   </item>
+            ///   <item>
+            ///     <description>
+            ///     <b>Ownership bypass for routing:</b>  
+            ///     The specified <paramref name="peer"/> becomes the "source" of the RPC for routing purposes.  
+            ///     This means if you provide a <paramref name="group"/> or set <c>Target.All</c> (or similar),
+            ///     the message will be broadcast as if it originated from the given peer, instead of from the owner.  
+            ///     This allows selective distribution of RPCs without being restricted by object ownership.
+            ///     </description>
+            ///   </item>
+            /// </list>
+            /// 
+            /// Typical use cases include:
             /// <list type="bullet">
-            ///   <item><description>Targeted communication with specific peers</description></item>
-            ///   <item><description>Implementing private messaging systems</description></item>
-            ///   <item><description>Sending peer-specific updates or notifications</description></item>
-            ///   <item><description>Selective state synchronization</description></item>
+            ///   <item><description>Selective communication to a single peer without changing ownership</description></item>
+            ///   <item><description>Broadcasting from a chosen peer to a group of others</description></item>
+            ///   <item><description>Bypassing ownership restrictions in server-controlled scenarios</description></item>
             /// </list>
             /// </remarks>
             /// <param name="rpcId">The unique identifier for the RPC message.</param>
-            /// <param name="peer">The specific peer that should receive this RPC.</param>
-            /// <param name="buffer">Optional data buffer containing additional RPC parameters.</param>
-            /// <param name="target">Defines the target scope for the RPC. Defaults to Target.SelfOnly.</param>
-            /// <param name="deliveryMode">Specifies how the RPC should be delivered. Defaults to DeliveryMode.ReliableOrdered.</param>
-            /// <param name="dataCache">Determines if and how the RPC should be cached. Defaults to DataCache.None.</param>
-            /// <param name="sequenceChannel">The sequence channel for organizing RPC messages. Defaults to 0.</param>
+            /// <param name="peer">The target peer or the peer to be used as the routing source.</param>
+            /// <param name="message">Optional data buffer containing additional RPC parameters.</param>
+            /// <param name="group">Defines the network group scope for the RPC. Can be null if not used.</param>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void RpcToPeer(byte rpcId, NetworkPeer peer, DataBuffer message = null, NetworkGroup group = null)
+            public void RpcViaPeer(byte rpcId, NetworkPeer peer, DataBuffer message = null, NetworkGroup group = null)
             {
                 m_NetworkBehaviour.SetupRpcMessage(rpcId, group, true, default);
                 m_NetworkBehaviour.__ServerRpcHandler.GetRpcParameters(rpcId, out _, out var target, out _);
