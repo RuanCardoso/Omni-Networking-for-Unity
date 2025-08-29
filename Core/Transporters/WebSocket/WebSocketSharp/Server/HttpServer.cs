@@ -67,16 +67,16 @@ namespace Omni.Core.Web.Server
   {
     #region Private Fields
 
-    private System.Net.IPAddress    _address;
-    private string                  _docRootPath;
-    private bool                    _isSecure;
-    private HttpListener            _listener;
-    private Logger                  _log;
-    private int                     _port;
-    private Thread                  _receiveThread;
+    private System.Net.IPAddress _address;
+    private string _docRootPath;
+    private bool _isSecure;
+    private HttpListener _listener;
+    private Logger _log;
+    private int _port;
+    private Thread _receiveThread;
     private WebSocketServiceManager _services;
-    private volatile ServerState    _state;
-    private object                  _sync;
+    private volatile ServerState _state;
+    private object _sync;
 
     #endregion
 
@@ -89,9 +89,9 @@ namespace Omni.Core.Web.Server
     /// The new instance listens for incoming requests on
     /// <see cref="System.Net.IPAddress.Any"/> and port 80.
     /// </remarks>
-    public HttpServer ()
+    public HttpServer()
     {
-      init ("*", System.Net.IPAddress.Any, 80, false);
+      init("*", System.Net.IPAddress.Any, 80, false);
     }
 
     /// <summary>
@@ -114,8 +114,8 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
-    public HttpServer (int port)
-      : this (port, port == 443)
+    public HttpServer(int port)
+      : this(port, port == 443)
     {
     }
 
@@ -155,36 +155,38 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentNullException">
     /// <paramref name="url"/> is <see langword="null"/>.
     /// </exception>
-    public HttpServer (string url)
+    public HttpServer(string url)
     {
       if (url == null)
-        throw new ArgumentNullException ("url");
+        throw new ArgumentNullException("url");
 
       if (url.Length == 0)
-        throw new ArgumentException ("An empty string.", "url");
+        throw new ArgumentException("An empty string.", "url");
 
       Uri uri;
       string msg;
 
-      if (!tryCreateUri (url, out uri, out msg))
-        throw new ArgumentException (msg, "url");
+      if (!tryCreateUri(url, out uri, out msg))
+        throw new ArgumentException(msg, "url");
 
-      var host = uri.GetDnsSafeHost (true);
-      var addr = host.ToIPAddress ();
+      var host = uri.GetDnsSafeHost(true);
+      var addr = host.ToIPAddress();
 
-      if (addr == null) {
+      if (addr == null)
+      {
         msg = "The host part could not be converted to an IP address.";
 
-        throw new ArgumentException (msg, "url");
+        throw new ArgumentException(msg, "url");
       }
 
-      if (!addr.IsLocal ()) {
+      if (!addr.IsLocal())
+      {
         msg = "The IP address of the host is not a local IP address.";
 
-        throw new ArgumentException (msg, "url");
+        throw new ArgumentException(msg, "url");
       }
 
-      init (host, addr, uri.Port, uri.Scheme == "https");
+      init(host, addr, uri.Port, uri.Scheme == "https");
     }
 
     /// <summary>
@@ -206,15 +208,16 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
-    public HttpServer (int port, bool secure)
+    public HttpServer(int port, bool secure)
     {
-      if (!port.IsPortNumber ()) {
+      if (!port.IsPortNumber())
+      {
         var msg = "Less than 1 or greater than 65535.";
 
-        throw new ArgumentOutOfRangeException ("port", msg);
+        throw new ArgumentOutOfRangeException("port", msg);
       }
 
-      init ("*", System.Net.IPAddress.Any, port, secure);
+      init("*", System.Net.IPAddress.Any, port, secure);
     }
 
     /// <summary>
@@ -247,8 +250,8 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
-    public HttpServer (System.Net.IPAddress address, int port)
-      : this (address, port, port == 443)
+    public HttpServer(System.Net.IPAddress address, int port)
+      : this(address, port, port == 443)
     {
     }
 
@@ -281,24 +284,26 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="port"/> is less than 1 or greater than 65535.
     /// </exception>
-    public HttpServer (System.Net.IPAddress address, int port, bool secure)
+    public HttpServer(System.Net.IPAddress address, int port, bool secure)
     {
       if (address == null)
-        throw new ArgumentNullException ("address");
+        throw new ArgumentNullException("address");
 
-      if (!address.IsLocal ()) {
+      if (!address.IsLocal())
+      {
         var msg = "Not a local IP address.";
 
-        throw new ArgumentException (msg, "address");
+        throw new ArgumentException(msg, "address");
       }
 
-      if (!port.IsPortNumber ()) {
+      if (!port.IsPortNumber())
+      {
         var msg = "Less than 1 or greater than 65535.";
 
-        throw new ArgumentOutOfRangeException ("port", msg);
+        throw new ArgumentOutOfRangeException("port", msg);
       }
 
-      init (address.ToString (true), address, port, secure);
+      init(address.ToString(true), address, port, secure);
     }
 
     #endregion
@@ -312,8 +317,10 @@ namespace Omni.Core.Web.Server
     /// A <see cref="System.Net.IPAddress"/> that represents the local IP
     /// address on which to listen for incoming requests.
     /// </value>
-    public System.Net.IPAddress Address {
-      get {
+    public System.Net.IPAddress Address
+    {
+      get
+      {
         return _address;
       }
     }
@@ -338,14 +345,18 @@ namespace Omni.Core.Web.Server
     ///   <see cref="Net.AuthenticationSchemes.Anonymous"/>.
     ///   </para>
     /// </value>
-    public AuthenticationSchemes AuthenticationSchemes {
-      get {
+    public AuthenticationSchemes AuthenticationSchemes
+    {
+      get
+      {
         return _listener.AuthenticationSchemes;
       }
 
-      set {
-        lock (_sync) {
-          if (!canSet ())
+      set
+      {
+        lock (_sync)
+        {
+          if (!canSet())
             return;
 
           _listener.AuthenticationSchemes = value;
@@ -392,48 +403,54 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentNullException">
     /// The value specified for a set operation is <see langword="null"/>.
     /// </exception>
-    public string DocumentRootPath {
-      get {
+    public string DocumentRootPath
+    {
+      get
+      {
         return _docRootPath;
       }
 
-      set {
+      set
+      {
         if (value == null)
-          throw new ArgumentNullException ("value");
+          throw new ArgumentNullException("value");
 
         if (value.Length == 0)
-          throw new ArgumentException ("An empty string.", "value");
+          throw new ArgumentException("An empty string.", "value");
 
-        value = value.TrimSlashOrBackslashFromEnd ();
+        value = value.TrimSlashOrBackslashFromEnd();
 
         if (value == "/")
-          throw new ArgumentException ("An absolute root.", "value");
+          throw new ArgumentException("An absolute root.", "value");
 
         if (value == "\\")
-          throw new ArgumentException ("An absolute root.", "value");
+          throw new ArgumentException("An absolute root.", "value");
 
         if (value.Length == 2 && value[1] == ':')
-          throw new ArgumentException ("An absolute root.", "value");
+          throw new ArgumentException("An absolute root.", "value");
 
         string full = null;
 
-        try {
-          full = Path.GetFullPath (value);
+        try
+        {
+          full = Path.GetFullPath(value);
         }
-        catch (Exception ex) {
-          throw new ArgumentException ("An invalid path string.", "value", ex);
+        catch (Exception ex)
+        {
+          throw new ArgumentException("An invalid path string.", "value", ex);
         }
 
         if (full == "/")
-          throw new ArgumentException ("An absolute root.", "value");
+          throw new ArgumentException("An absolute root.", "value");
 
-        full = full.TrimSlashOrBackslashFromEnd ();
+        full = full.TrimSlashOrBackslashFromEnd();
 
         if (full.Length == 2 && full[1] == ':')
-          throw new ArgumentException ("An absolute root.", "value");
+          throw new ArgumentException("An absolute root.", "value");
 
-        lock (_sync) {
-          if (!canSet ())
+        lock (_sync)
+        {
+          if (!canSet())
             return;
 
           _docRootPath = value;
@@ -447,8 +464,10 @@ namespace Omni.Core.Web.Server
     /// <value>
     /// <c>true</c> if the server has started; otherwise, <c>false</c>.
     /// </value>
-    public bool IsListening {
-      get {
+    public bool IsListening
+    {
+      get
+      {
         return _state == ServerState.Start;
       }
     }
@@ -460,8 +479,10 @@ namespace Omni.Core.Web.Server
     /// <c>true</c> if the server provides secure connections; otherwise,
     /// <c>false</c>.
     /// </value>
-    public bool IsSecure {
-      get {
+    public bool IsSecure
+    {
+      get
+      {
         return _isSecure;
       }
     }
@@ -483,12 +504,15 @@ namespace Omni.Core.Web.Server
     ///   The default value is <c>false</c>.
     ///   </para>
     /// </value>
-    public bool KeepClean {
-      get {
+    public bool KeepClean
+    {
+      get
+      {
         return _services.KeepClean;
       }
 
-      set {
+      set
+      {
         _services.KeepClean = value;
       }
     }
@@ -502,8 +526,10 @@ namespace Omni.Core.Web.Server
     /// <value>
     /// A <see cref="Logger"/> that provides the logging function.
     /// </value>
-    public Logger Log {
-      get {
+    public Logger Log
+    {
+      get
+      {
         return _log;
       }
     }
@@ -515,8 +541,10 @@ namespace Omni.Core.Web.Server
     /// An <see cref="int"/> that represents the number of the port on which
     /// to listen for incoming requests.
     /// </value>
-    public int Port {
-      get {
+    public int Port
+    {
+      get
+      {
         return _port;
       }
     }
@@ -540,14 +568,18 @@ namespace Omni.Core.Web.Server
     ///   The default value is <see langword="null"/>.
     ///   </para>
     /// </value>
-    public string Realm {
-      get {
+    public string Realm
+    {
+      get
+      {
         return _listener.Realm;
       }
 
-      set {
-        lock (_sync) {
-          if (!canSet ())
+      set
+      {
+        lock (_sync)
+        {
+          if (!canSet())
             return;
 
           _listener.Realm = value;
@@ -578,14 +610,18 @@ namespace Omni.Core.Web.Server
     ///   The default value is <c>false</c>.
     ///   </para>
     /// </value>
-    public bool ReuseAddress {
-      get {
+    public bool ReuseAddress
+    {
+      get
+      {
         return _listener.ReuseAddress;
       }
 
-      set {
-        lock (_sync) {
-          if (!canSet ())
+      set
+      {
+        lock (_sync)
+        {
+          if (!canSet())
             return;
 
           _listener.ReuseAddress = value;
@@ -607,12 +643,15 @@ namespace Omni.Core.Web.Server
     /// <exception cref="InvalidOperationException">
     /// The server does not provide secure connections.
     /// </exception>
-    public ServerSslConfiguration SslConfiguration {
-      get {
-        if (!_isSecure) {
+    public ServerSslConfiguration SslConfiguration
+    {
+      get
+      {
+        if (!_isSecure)
+        {
           var msg = "The server does not provide secure connections.";
 
-          throw new InvalidOperationException (msg);
+          throw new InvalidOperationException(msg);
         }
 
         return _listener.SslConfiguration;
@@ -647,14 +686,18 @@ namespace Omni.Core.Web.Server
     ///   The default value is <see langword="null"/>.
     ///   </para>
     /// </value>
-    public Func<IIdentity, NetworkCredential> UserCredentialsFinder {
-      get {
+    public Func<IIdentity, NetworkCredential> UserCredentialsFinder
+    {
+      get
+      {
         return _listener.UserCredentialsFinder;
       }
 
-      set {
-        lock (_sync) {
-          if (!canSet ())
+      set
+      {
+        lock (_sync)
+        {
+          if (!canSet())
             return;
 
           _listener.UserCredentialsFinder = value;
@@ -682,12 +725,15 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentOutOfRangeException">
     /// The value specified for a set operation is zero or less.
     /// </exception>
-    public TimeSpan WaitTime {
-      get {
+    public TimeSpan WaitTime
+    {
+      get
+      {
         return _services.WaitTime;
       }
 
-      set {
+      set
+      {
         _services.WaitTime = value;
       }
     }
@@ -700,8 +746,10 @@ namespace Omni.Core.Web.Server
     /// A <see cref="WebSocketServiceManager"/> that manages the WebSocket
     /// services provided by the server.
     /// </value>
-    public WebSocketServiceManager WebSocketServices {
-      get {
+    public WebSocketServiceManager WebSocketServices
+    {
+      get
+      {
         return _services;
       }
     }
@@ -754,51 +802,57 @@ namespace Omni.Core.Web.Server
 
     #region Private Methods
 
-    private void abort ()
+    private void abort()
     {
-      lock (_sync) {
+      lock (_sync)
+      {
         if (_state != ServerState.Start)
           return;
 
         _state = ServerState.ShuttingDown;
       }
 
-      try {
-        _services.Stop (1006, String.Empty);
+      try
+      {
+        _services.Stop(1006, String.Empty);
       }
-      catch (Exception ex) {
-        _log.Fatal (ex.Message);
-        _log.Debug (ex.ToString ());
+      catch (Exception ex)
+      {
+        _log.Fatal(ex.Message);
+        _log.Debug(ex.ToString());
       }
 
-      try {
-        _listener.Abort ();
+      try
+      {
+        _listener.Abort();
       }
-      catch (Exception ex) {
-        _log.Fatal (ex.Message);
-        _log.Debug (ex.ToString ());
+      catch (Exception ex)
+      {
+        _log.Fatal(ex.Message);
+        _log.Debug(ex.ToString());
       }
 
       _state = ServerState.Stop;
     }
 
-    private bool canSet ()
+    private bool canSet()
     {
       return _state == ServerState.Ready || _state == ServerState.Stop;
     }
 
-    private bool checkCertificate (out string message)
+    private bool checkCertificate(out string message)
     {
       message = null;
 
       var byUser = _listener.SslConfiguration.ServerCertificate != null;
 
       var path = _listener.CertificateFolderPath;
-      var withPort = EndPointListener.CertificateExists (_port, path);
+      var withPort = EndPointListener.CertificateExists(_port, path);
 
       var either = byUser || withPort;
 
-      if (!either) {
+      if (!either)
+      {
         message = "There is no server certificate for secure connection.";
 
         return false;
@@ -806,33 +860,34 @@ namespace Omni.Core.Web.Server
 
       var both = byUser && withPort;
 
-      if (both) {
+      if (both)
+      {
         var msg = "The server certificate associated with the port is used.";
 
-        _log.Warn (msg);
+        _log.Warn(msg);
       }
 
       return true;
     }
 
-    private static HttpListener createListener (
+    private static HttpListener createListener(
       string hostname,
       int port,
       bool secure
     )
     {
-      var ret = new HttpListener ();
+      var ret = new HttpListener();
 
       var fmt = "{0}://{1}:{2}/";
       var schm = secure ? "https" : "http";
-      var pref = String.Format (fmt, schm, hostname, port);
+      var pref = String.Format(fmt, schm, hostname, port);
 
-      ret.Prefixes.Add (pref);
+      ret.Prefixes.Add(pref);
 
       return ret;
     }
 
-    private void init (
+    private void init(
       string hostname,
       System.Net.IPAddress address,
       int port,
@@ -844,13 +899,13 @@ namespace Omni.Core.Web.Server
       _isSecure = secure;
 
       _docRootPath = "./Public";
-      _listener = createListener (hostname, port, secure);
+      _listener = createListener(hostname, port, secure);
       _log = _listener.Log;
-      _services = new WebSocketServiceManager (_log);
-      _sync = new object ();
+      _services = new WebSocketServiceManager(_log);
+      _sync = new object();
     }
 
-    private void processRequest (HttpListenerContext context)
+    private void processRequest(HttpListenerContext context)
     {
       var method = context.Request.HttpMethod;
       var evt = method == "GET"
@@ -871,99 +926,112 @@ namespace Omni.Core.Web.Server
                               ? OnTrace
                               : null;
 
-      if (evt == null) {
+      if (evt == null)
+      {
         context.ErrorStatusCode = 501;
 
-        context.SendError ();
+        context.SendError();
 
         return;
       }
 
-      var e = new HttpRequestEventArgs (context, _docRootPath);
+      var e = new HttpRequestEventArgs(context, _docRootPath);
 
-      evt (this, e);
+      evt(this, e);
 
+      // By OMNI
       // context.Response.Close ();
     }
 
-    private void processRequest (HttpListenerWebSocketContext context)
+    private void processRequest(HttpListenerWebSocketContext context)
     {
       var uri = context.RequestUri;
 
-      if (uri == null) {
-        context.Close (HttpStatusCode.BadRequest);
+      if (uri == null)
+      {
+        context.Close(HttpStatusCode.BadRequest);
 
         return;
       }
 
       var path = uri.AbsolutePath;
 
-      if (path.IndexOfAny (new[] { '%', '+' }) > -1)
-        path = HttpUtility.UrlDecode (path, Encoding.UTF8);
+      if (path.IndexOfAny(new[] { '%', '+' }) > -1)
+        path = HttpUtility.UrlDecode(path, Encoding.UTF8);
 
       WebSocketServiceHost host;
 
-      if (!_services.InternalTryGetServiceHost (path, out host)) {
-        context.Close (HttpStatusCode.NotImplemented);
+      if (!_services.InternalTryGetServiceHost(path, out host))
+      {
+        context.Close(HttpStatusCode.NotImplemented);
 
         return;
       }
 
-      host.StartSession (context);
+      host.StartSession(context);
     }
 
-    private void receiveRequest ()
+    private void receiveRequest()
     {
-      while (true) {
+      while (true)
+      {
         HttpListenerContext ctx = null;
 
-        try {
-          ctx = _listener.GetContext ();
+        try
+        {
+          ctx = _listener.GetContext();
 
-          ThreadPool.QueueUserWorkItem (
-            state => {
-              try {
-                if (ctx.Request.IsUpgradeRequest ("websocket")) {
-                  processRequest (ctx.GetWebSocketContext (null));
+          ThreadPool.QueueUserWorkItem(
+            state =>
+            {
+              try
+              {
+                if (ctx.Request.IsUpgradeRequest("websocket"))
+                {
+                  processRequest(ctx.GetWebSocketContext(null));
 
                   return;
                 }
 
-                processRequest (ctx);
+                processRequest(ctx);
               }
-              catch (Exception ex) {
-                _log.Error (ex.Message);
-                _log.Debug (ex.ToString ());
+              catch (Exception ex)
+              {
+                _log.Error(ex.Message);
+                _log.Debug(ex.ToString());
 
-                ctx.Connection.Close (true);
+                ctx.Connection.Close(true);
               }
             }
           );
         }
-        catch (HttpListenerException ex) {
+        catch (HttpListenerException ex)
+        {
           if (_state == ServerState.ShuttingDown)
             return;
 
-          _log.Fatal (ex.Message);
-          _log.Debug (ex.ToString ());
+          _log.Fatal(ex.Message);
+          _log.Debug(ex.ToString());
 
           break;
         }
-        catch (InvalidOperationException ex) {
+        catch (InvalidOperationException ex)
+        {
           if (_state == ServerState.ShuttingDown)
             return;
 
-          _log.Fatal (ex.Message);
-          _log.Debug (ex.ToString ());
+          _log.Fatal(ex.Message);
+          _log.Debug(ex.ToString());
 
           break;
         }
-        catch (Exception ex) {
-          _log.Fatal (ex.Message);
-          _log.Debug (ex.ToString ());
+        catch (Exception ex)
+        {
+          _log.Fatal(ex.Message);
+          _log.Debug(ex.ToString());
 
           if (ctx != null)
-            ctx.Connection.Close (true);
+            ctx.Connection.Close(true);
 
           if (_state == ServerState.ShuttingDown)
             return;
@@ -972,29 +1040,33 @@ namespace Omni.Core.Web.Server
         }
       }
 
-      abort ();
+      abort();
     }
 
-    private void start ()
+    private void start()
     {
-      lock (_sync) {
+      lock (_sync)
+      {
         if (_state == ServerState.Start || _state == ServerState.ShuttingDown)
           return;
 
-        if (_isSecure) {
+        if (_isSecure)
+        {
           string msg;
 
-          if (!checkCertificate (out msg))
-            throw new InvalidOperationException (msg);
+          if (!checkCertificate(out msg))
+            throw new InvalidOperationException(msg);
         }
 
-        _services.Start ();
+        _services.Start();
 
-        try {
-          startReceiving ();
+        try
+        {
+          startReceiving();
         }
-        catch {
-          _services.Stop (1011, String.Empty);
+        catch
+        {
+          _services.Stop(1011, String.Empty);
 
           throw;
         }
@@ -1003,61 +1075,68 @@ namespace Omni.Core.Web.Server
       }
     }
 
-    private void startReceiving ()
+    private void startReceiving()
     {
-      try {
-        _listener.Start ();
+      try
+      {
+        _listener.Start();
       }
-      catch (Exception ex) {
+      catch (Exception ex)
+      {
         var msg = "The underlying listener has failed to start.";
 
-        throw new InvalidOperationException (msg, ex);
+        throw new InvalidOperationException(msg, ex);
       }
 
-      var receiver = new ThreadStart (receiveRequest);
-      _receiveThread = new Thread (receiver);
+      var receiver = new ThreadStart(receiveRequest);
+      _receiveThread = new Thread(receiver);
       _receiveThread.IsBackground = true;
 
-      _receiveThread.Start ();
+      _receiveThread.Start();
     }
 
-    private void stop (ushort code, string reason)
+    private void stop(ushort code, string reason)
     {
-      lock (_sync) {
+      lock (_sync)
+      {
         if (_state != ServerState.Start)
           return;
 
         _state = ServerState.ShuttingDown;
       }
 
-      try {
-        _services.Stop (code, reason);
+      try
+      {
+        _services.Stop(code, reason);
       }
-      catch (Exception ex) {
-        _log.Fatal (ex.Message);
-        _log.Debug (ex.ToString ());
+      catch (Exception ex)
+      {
+        _log.Fatal(ex.Message);
+        _log.Debug(ex.ToString());
       }
 
-      try {
+      try
+      {
         var timeout = 5000;
 
-        stopReceiving (timeout);
+        stopReceiving(timeout);
       }
-      catch (Exception ex) {
-        _log.Fatal (ex.Message);
-        _log.Debug (ex.ToString ());
+      catch (Exception ex)
+      {
+        _log.Fatal(ex.Message);
+        _log.Debug(ex.ToString());
       }
 
       _state = ServerState.Stop;
     }
 
-    private void stopReceiving (int millisecondsTimeout)
+    private void stopReceiving(int millisecondsTimeout)
     {
-      _listener.Stop ();
-      _receiveThread.Join (millisecondsTimeout);
+      _listener.Stop();
+      _receiveThread.Join(millisecondsTimeout);
     }
 
-    private static bool tryCreateUri (
+    private static bool tryCreateUri(
       string uriString,
       out Uri result,
       out string message
@@ -1066,15 +1145,17 @@ namespace Omni.Core.Web.Server
       result = null;
       message = null;
 
-      var uri = uriString.ToUri ();
+      var uri = uriString.ToUri();
 
-      if (uri == null) {
+      if (uri == null)
+      {
         message = "An invalid URI string.";
 
         return false;
       }
 
-      if (!uri.IsAbsoluteUri) {
+      if (!uri.IsAbsoluteUri)
+      {
         message = "A relative URI.";
 
         return false;
@@ -1083,25 +1164,29 @@ namespace Omni.Core.Web.Server
       var schm = uri.Scheme;
       var isHttpSchm = schm == "http" || schm == "https";
 
-      if (!isHttpSchm) {
+      if (!isHttpSchm)
+      {
         message = "The scheme part is not 'http' or 'https'.";
 
         return false;
       }
 
-      if (uri.PathAndQuery != "/") {
+      if (uri.PathAndQuery != "/")
+      {
         message = "It includes either or both path and query components.";
 
         return false;
       }
 
-      if (uri.Fragment.Length > 0) {
+      if (uri.Fragment.Length > 0)
+      {
         message = "It includes the fragment component.";
 
         return false;
       }
 
-      if (uri.Port == 0) {
+      if (uri.Port == 0)
+      {
         message = "The port part is zero.";
 
         return false;
@@ -1166,10 +1251,10 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentNullException">
     /// <paramref name="path"/> is <see langword="null"/>.
     /// </exception>
-    public void AddWebSocketService<TBehavior> (string path)
-      where TBehavior : WebSocketBehavior, new ()
+    public void AddWebSocketService<TBehavior>(string path)
+      where TBehavior : WebSocketBehavior, new()
     {
-      _services.AddService<TBehavior> (path, null);
+      _services.AddService<TBehavior>(path, null);
     }
 
     /// <summary>
@@ -1235,13 +1320,13 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentNullException">
     /// <paramref name="path"/> is <see langword="null"/>.
     /// </exception>
-    public void AddWebSocketService<TBehavior> (
+    public void AddWebSocketService<TBehavior>(
       string path,
       Action<TBehavior> initializer
     )
-      where TBehavior : WebSocketBehavior, new ()
+      where TBehavior : WebSocketBehavior, new()
     {
-      _services.AddService<TBehavior> (path, initializer);
+      _services.AddService<TBehavior>(path, initializer);
     }
 
     /// <summary>
@@ -1285,9 +1370,9 @@ namespace Omni.Core.Web.Server
     /// <exception cref="ArgumentNullException">
     /// <paramref name="path"/> is <see langword="null"/>.
     /// </exception>
-    public bool RemoveWebSocketService (string path)
+    public bool RemoveWebSocketService(string path)
     {
-      return _services.RemoveService (path);
+      return _services.RemoveService(path);
     }
 
     /// <summary>
@@ -1307,12 +1392,12 @@ namespace Omni.Core.Web.Server
     ///   The underlying <see cref="HttpListener"/> has failed to start.
     ///   </para>
     /// </exception>
-    public void Start ()
+    public void Start()
     {
       if (_state == ServerState.Start || _state == ServerState.ShuttingDown)
         return;
 
-      start ();
+      start();
     }
 
     /// <summary>
@@ -1321,12 +1406,12 @@ namespace Omni.Core.Web.Server
     /// <remarks>
     /// This method works if the current state of the server is Start.
     /// </remarks>
-    public void Stop ()
+    public void Stop()
     {
       if (_state != ServerState.Start)
         return;
 
-      stop (1001, String.Empty);
+      stop(1001, String.Empty);
     }
 
     #endregion

@@ -9,6 +9,7 @@ using System.Net;
 using Omni.Inspector;
 using UnityEngine;
 using Omni.Shared;
+using Omni.Core.Web;
 
 #pragma warning disable
 
@@ -203,13 +204,29 @@ namespace Omni.Core
         [SerializeField]
         [Group("MiscTabs"), Tab("Http Server")]
         [LabelWidth(120)]
+        [Indent(1)]
+        [ShowIf(nameof(m_EnableHttpServer))]
+        private bool m_UseKestrel = false;
+
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Http Server")]
+        [LabelWidth(120)]
+        [ShowIf(nameof(m_EnableHttpServer))]
         private bool m_EnableHttpSsl = false;
 
         [InfoBox("When SSL is enabled, the default port will automatically change to 443 if set to 80.")]
         [SerializeField]
         [Group("MiscTabs"), Tab("Http Server")]
         [LabelWidth(120)]
+        [ShowIf(nameof(m_EnableHttpServer))]
+        [HideIf(nameof(m_UseKestrel))]
         private int m_HttpServerPort = 80;
+
+        [SerializeField]
+        [Group("MiscTabs"), Tab("Http Server")]
+        [LabelWidth(120)]
+        [ShowIf(nameof(m_EnableHttpServer)), ShowIf(nameof(m_UseKestrel))]
+        private KestrelOptions m_KestrelOptions = new();
 
         [SerializeField]
         private List<NetworkIdentity> m_NetworkPrefabs = new();

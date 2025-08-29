@@ -493,7 +493,7 @@ namespace Omni.Core
             if (m_EnableHttpServer)
             {
                 var webServer = gameObject.AddComponent<HttpRouteManager>();
-                webServer.StartServices(m_EnableHttpSsl, m_HttpServerPort);
+                webServer.StartServices(m_EnableHttpSsl, m_HttpServerPort, m_UseKestrel ? m_KestrelOptions : null);
                 NetworkService.Register(webServer);
             }
 
@@ -1023,9 +1023,22 @@ namespace Omni.Core
                 )
                 {
                     IPAddress[] addresses = Dns.GetHostAddresses(ConnectAddress);
-                    NetworkLogger.Print($"Trying to connecting to Ip: {addresses[0]}", NetworkLogger.LogType.Log);
+
+                    NetworkLogger.Print(
+                        $"[Network] Resolving host '{ConnectAddress}' → Found {addresses.Length} IP(s):",
+                        NetworkLogger.LogType.Log);
+
                     for (int i = 0; i < addresses.Length; i++)
-                        NetworkLogger.Print($"Ip {i + 1}: {addresses[i]}", NetworkLogger.LogType.Log);
+                    {
+                        string family = addresses[i].AddressFamily.ToString();
+                        NetworkLogger.Print(
+                            $"({i + 1}/{addresses.Length}) {addresses[i]} [{family}]",
+                            NetworkLogger.LogType.Log);
+                    }
+
+                    NetworkLogger.Print(
+                        $"[Network] Attempting connection to primary IP: {addresses[0]}",
+                        NetworkLogger.LogType.Log);
                 }
 #endif
 #elif UNITY_SERVER && !UNITY_EDITOR

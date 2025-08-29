@@ -29,10 +29,7 @@ namespace Omni.Core.Web
 
     public class HttpService : WebSocketService
     {
-        protected override void OnMessage(Web.MessageEventArgs e)
-        {
-            Send(e.Data);
-        }
+        
     }
 }
 
@@ -135,8 +132,8 @@ namespace Omni.Core.Modules.Connection
 
         private ITransporterReceive IManager;
         internal event Action<string, IPEndPoint, bool> OnStringDataReceived;
-        internal event Action<HttpListenerRequest, HttpListenerResponse> OnGetRequest;
-        internal event Action<HttpListenerRequest, HttpListenerResponse> OnPostRequest;
+        internal event Action<kHttpRequest, kHttpResponse> OnGetRequest;
+        internal event Action<kHttpRequest, kHttpResponse> OnPostRequest;
 
         private WebServer.HttpServer httpServer;
         private WebServer.WebSocketServer webSocketServer;
@@ -148,7 +145,6 @@ namespace Omni.Core.Modules.Connection
         private bool enableSsl = false;
 
         internal bool EnableWebSocket { get; set; } = true;
-
         internal bool EnableWebSocketSsl
         {
             get => enableSsl;
@@ -182,8 +178,8 @@ namespace Omni.Core.Modules.Connection
                     httpServer.AddWebSocketService<HttpService>("/");
                     httpServer.DocumentRootPath = HttpServerDocumentRootPath;
 
-                    httpServer.OnGet += (sender, e) => OnGetRequest?.Invoke(e.Request, e.Response);
-                    httpServer.OnPost += (sender, e) => OnPostRequest?.Invoke(e.Request, e.Response);
+                    httpServer.OnGet += (sender, e) => OnGetRequest?.Invoke(new kHttpRequest(e.Request), new kHttpResponse(e.Response));
+                    httpServer.OnPost += (sender, e) => OnPostRequest?.Invoke(new kHttpRequest(e.Request), new kHttpResponse(e.Response));
                 }
 
                 webSocketServer =

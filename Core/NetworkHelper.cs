@@ -1,11 +1,7 @@
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Omni.Shared;
 using Omni.Threading.Tasks;
 using OpenNat;
 using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -396,18 +392,6 @@ namespace Omni.Core
         }
 
         /// <summary>
-        /// Returns the minimum value between the given value and the specified minimum value.
-        /// If the given value is less than the minimum value, returns 0; otherwise, returns the difference between the given value and the minimum value.
-        /// </summary>
-        /// <param name="value">The value to be compared with the minimum value.</param>
-        /// <param name="min">The minimum value to compare with.</param>
-        /// <returns>The minimum value or the difference between the given value and the minimum value.</returns>
-        internal static double MinMax(double value, double min)
-        {
-            return value < min ? 0 : value - min;
-        }
-
-        /// <summary>
         /// Shows a debug label on the screen at the position of the given object.
         /// </summary>
         /// <param name="label">The label to be displayed.</param>
@@ -517,21 +501,6 @@ namespace Omni.Core
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(target);
 #endif
-        }
-
-        internal static Dictionary<string, string> ParseQueryStringToDictionary(NameValueCollection queryString)
-        {
-            string[] allKeys = queryString.AllKeys;
-            Dictionary<string, string> parameters = new(allKeys.Length, StringComparer.OrdinalIgnoreCase);
-            foreach (string key in allKeys)
-            {
-                if (string.IsNullOrEmpty(key))
-                    continue;
-
-                parameters[key] = queryString[key];
-            }
-
-            return parameters;
         }
 
         internal static double Truncate(double value, int decimalPlaces)

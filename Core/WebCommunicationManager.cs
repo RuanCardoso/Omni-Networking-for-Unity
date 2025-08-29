@@ -6,9 +6,9 @@ using Omni.Core.Interfaces;
 using Omni.Core.Modules.Connection;
 using Omni.Shared;
 using UnityEngine;
-using HttpListenerRequest = Omni.Core.Web.Net.HttpListenerRequest;
-using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
 using System.Buffers;
+using Omni.Threading.Tasks;
+using System.Linq;
 
 #pragma warning disable
 
@@ -83,12 +83,25 @@ namespace Omni.Core.Web
                 }
 
                 /// <summary>
-                /// Sends data to the server using a DataBuffer.
+                /// Sends data to the server.
                 /// </summary>
-                /// <param name="data">The data buffer to send.</param>
-                public void Send(DataBuffer data)
+                /// <param name="buffer">
+                /// The data buffer containing the data to be sent.
+                /// </param>
+                public void Send(DataBuffer buffer)
                 {
-                    configuration.clientTransporter.Send(data.BufferAsSpan, default, default, default);
+                    Send(buffer.BufferAsSpan);
+                }
+
+                /// <summary>
+                /// Sends raw data to the server.
+                /// </summary>
+                /// <param name="data">
+                /// The read-only span of bytes containing the data to be sent.
+                /// </param>
+                public void Send(ReadOnlySpan<byte> data)
+                {
+                    configuration.clientTransporter.Send(data, default, default, default);
                 }
 
                 /// <summary>
@@ -166,9 +179,14 @@ namespace Omni.Core.Web
                     configuration.serverTransporter.Disconnect(endPoint);
                 }
 
-                public void Send(DataBuffer data, IPEndPoint endPoint)
+                public void Send(DataBuffer buffer, IPEndPoint endPoint)
                 {
-                    configuration.serverTransporter.Send(data.BufferAsSpan, endPoint, default, default);
+                    Send(buffer.BufferAsSpan, endPoint);
+                }
+
+                public void Send(ReadOnlySpan<byte> data, IPEndPoint endPoint)
+                {
+                    configuration.serverTransporter.Send(data, endPoint, default, default);
                 }
 
                 public void Send(string data, IPEndPoint endPoint)
@@ -250,16 +268,39 @@ namespace Omni.Core.Web
 
             public int Port { get; set; } = 80;
             public string DocumentRootPath { get; set; } = Application.dataPath;
-            public event Action<HttpListenerRequest, HttpListenerResponse, string> OnRequestHandled;
+            public event Action<kHttpRequest, kHttpResponse, string> OnRequestHandled;
 
-            internal Dictionary<string, Func<HttpListenerRequest, HttpListenerResponse, Task>> GetRoutesAsync { get; } = new();
-            internal Dictionary<string, Func<HttpListenerRequest, HttpListenerResponse, Task>> PostRoutesAsync { get; } = new();
+            internal Dictionary<string, Action<kHttpRequest, kHttpResponse>> GetRoutes { get; } = new();
+            internal Dictionary<string, Action<kHttpRequest, kHttpResponse>> PostRoutes { get; } = new();
+            internal bool HasAnyRoutes => GetRoutes.Count > 0 || PostRoutes.Count > 0;
 
             internal HttpServerConfiguration(WebTransporter serverTransporter, WebTransporter clientTransporter) : base(
                 serverTransporter, clientTransporter)
             {
                 serverTransporter.OnGetRequest += OnGet;
                 serverTransporter.OnPostRequest += OnPost;
+            }
+
+            internal void KestrelOnRequest(KestrelRequest request, KestrelResponse response)
+            {
+                KestrelRoute route = request.Route;
+                switch (route.Method)
+                {
+                    case "GET":
+                        OnGet(new kHttpRequest(request), new kHttpResponse(response));
+                        break;
+                    case "POST":
+                        //OnPost(request, response, route.Route);
+                        break;
+                }
+            }
+
+            internal List<KestrelRoute> CreateKestrelRoutes()
+            {
+                List<KestrelRoute> routes = new();
+                routes.AddRange(GetRoutes.Keys.Select(route => new KestrelRoute() { Route = route, Method = "GET" }));
+                routes.AddRange(PostRoutes.Keys.Select(route => new KestrelRoute() { Route = route, Method = "POST" }));
+                return routes;
             }
 
             public void AddHttpService<T>(string path) where T : HttpService, new()
@@ -278,24 +319,9 @@ namespace Omni.Core.Web
             /// </summary>
             /// <param name="routeName">The route name to register the callback for.</param>
             /// <param name="callback">The callback to invoke when a GET request is received with a matching route.</param>
-            public void GetAsync(string routeName, Func<HttpListenerRequest, HttpListenerResponse, Task> callback)
+            public void Get(string routeName, Action<kHttpRequest, kHttpResponse> callback)
             {
-                GetRoutesAsync[routeName] = callback;
-            }
-
-            /// <summary>
-            /// Registers a route for HTTP GET requests with the given <paramref name="routeName"/>.
-            /// The given callback is invoked when a GET request is received with a matching route.
-            /// The callback is provided with the request and response objects, but does not have to return a value.
-            /// </summary>
-            /// <param name="routeName">The route name to register the callback for.</param>
-            /// <param name="callback">The callback to invoke when a GET request is received with a matching route.</param>
-            public void Get(string routeName, Action<HttpListenerRequest, HttpListenerResponse> callback)
-            {
-                GetRoutesAsync[routeName] = async (req, res) =>
-                {
-                    callback(req, res);
-                };
+                GetRoutes[routeName] = callback;
             }
 
             /// <summary>
@@ -304,27 +330,12 @@ namespace Omni.Core.Web
             /// </summary>
             /// <param name="routeName">The route name to register the callback for.</param>
             /// <param name="callback">The callback to invoke when a POST request is received with a matching route.</param>
-            public void PostAsync(string routeName, Func<HttpListenerRequest, HttpListenerResponse, Task> callback)
+            public void Post(string routeName, Action<kHttpRequest, kHttpResponse> callback)
             {
-                PostRoutesAsync[routeName] = callback;
+                PostRoutes[routeName] = callback;
             }
 
-            /// <summary>
-            /// Registers a route for HTTP POST requests with the given <paramref name="routeName"/>.
-            /// The given callback is invoked when a POST request is received with a matching route.
-            /// The callback is provided with the request and response objects, but does not have to return a value.
-            /// </summary>
-            /// <param name="routeName">The route name to register the callback for.</param>
-            /// <param name="callback">The callback to invoke when a POST request is received with a matching route.</param>
-            public void Post(string routeName, Action<HttpListenerRequest, HttpListenerResponse> callback)
-            {
-                PostRoutesAsync[routeName] = async (req, res) =>
-                {
-                    callback(req, res);
-                };
-            }
-
-            private async void OnGet(HttpListenerRequest req, HttpListenerResponse res)
+            private void OnGet(kHttpRequest req, kHttpResponse res)
             {
                 try
                 {
@@ -349,11 +360,13 @@ namespace Omni.Core.Web
                             return;
                         }
 
-                        if (GetRoutesAsync.TryGetValue(path, out var getCallback))
+                        if (GetRoutes.TryGetValue(path, out var getCallback))
                         {
-                            SetDefaultOptions(req, res, path);
-                            await getCallback(req, res);
-                            ValidateContentLength(res);
+                            // Allows the client to modify or override the default options if a path is specified.
+                            if (!string.IsNullOrEmpty(path))
+                                OnRequestHandled?.Invoke(req, res, path);
+
+                            getCallback(req, res);
                         }
                         else
                         {
@@ -370,14 +383,13 @@ namespace Omni.Core.Web
                     NetworkLogger.PrintHyperlink(ex);
                     NetworkLogger.__Log__(ex.Message, NetworkLogger.LogType.Error);
                     res.Reject("An unexpected error occurred while processing the request. Please try again later.");
-                }
-                finally
-                {
-                    res.Close();
+#if OMNI_DEBUG
+                    throw;
+#endif
                 }
             }
 
-            private async void OnPost(HttpListenerRequest req, HttpListenerResponse res)
+            private void OnPost(kHttpRequest req, kHttpResponse res)
             {
                 try
                 {
@@ -385,11 +397,13 @@ namespace Omni.Core.Web
                     string path = req.RawUrl;
                     if (path.StartsWith("/"))
                     {
-                        if (PostRoutesAsync.TryGetValue(path, out var postCallback))
+                        if (PostRoutes.TryGetValue(path, out var postCallback))
                         {
-                            SetDefaultOptions(req, res, path);
-                            await postCallback(req, res);
-                            ValidateContentLength(res);
+                            // Allows the client to modify or override the default options if a path is specified.
+                            if (!string.IsNullOrEmpty(path))
+                                OnRequestHandled?.Invoke(req, res, path);
+
+                            postCallback(req, res);
                         }
                         else
                         {
@@ -407,30 +421,18 @@ namespace Omni.Core.Web
                     NetworkLogger.__Log__(ex.Message, NetworkLogger.LogType.Error);
                     res.Reject("An unexpected error occurred while processing the request. Please try again later.");
                 }
-                finally
-                {
-                    res.Close();
-                }
             }
 
-            private void ValidateContentLength(HttpListenerResponse res)
-            {
-                if (res.ContentLength64 <= 0)
-                {
-                    res.Reject("The server response content length is invalid. Please verify the response content and try again.");
-                }
-            }
-
-            private void SetDefaultOptions(HttpListenerRequest req, HttpListenerResponse res, string path = null)
+            private void SetDefaultOptions(kHttpRequest req, kHttpResponse res)
             {
                 res.SetHeader("server", "Omni Server");
                 res.KeepAlive = true;
-                // Allows the client to modify or override the default options if a path is specified.
-                if (!string.IsNullOrEmpty(path))
-                    OnRequestHandled?.Invoke(req, res, path);
             }
         }
 
+        private const int KestrelInitializeDelay = 1000;
+
+        private KestrelLowLevel kestrelTransporter;
         private WebTransporter serverTransporter;
         private WebTransporter clientTransporter;
 
@@ -441,7 +443,7 @@ namespace Omni.Core.Web
         /// Initializes and starts the network services for both WebSocket and HTTP communication.
         /// </summary>
         /// <param name="onSetup">An optional setup action that allows customization of WebSocket and HTTP server configurations.</param>
-        protected void StartServices(Action<WebSocketConfiguration, HttpServerConfiguration> onSetup = null)
+        protected async void StartServices(KestrelOptions kestrelOptions, Action<WebSocketConfiguration, HttpServerConfiguration> onSetup = null)
         {
             // Create the transporters
             GameObject clientObject = new("WebClient Transporter");
@@ -467,8 +469,8 @@ namespace Omni.Core.Web
             serverTransporter.EnableWebSocket = clientTransporter.EnableWebSocket = WebSocket.Enabled;
             serverTransporter.EnableWebSocketSsl = clientTransporter.EnableWebSocketSsl = WebSocket.EnableSsl;
 
-            serverTransporter.EnableHttpServer = clientTransporter.EnableHttpServer = HttpServer.Enabled;
-            serverTransporter.EnableHttpServerSsl = clientTransporter.EnableHttpServerSsl = HttpServer.EnableSsl;
+            serverTransporter.EnableHttpServer = clientTransporter.EnableHttpServer = HttpServer.Enabled && kestrelOptions == null;
+            serverTransporter.EnableHttpServerSsl = clientTransporter.EnableHttpServerSsl = HttpServer.EnableSsl && kestrelOptions == null;
 
             serverTransporter.HttpServerDocumentRootPath =
                 clientTransporter.HttpServerDocumentRootPath = HttpServer.DocumentRootPath;
@@ -480,6 +482,17 @@ namespace Omni.Core.Web
             serverTransporter.Initialize(this, isServer: true);
             clientTransporter.Initialize(this, isServer: false);
             serverTransporter.Listen(WebSocket.Server.Port);
+
+            if (kestrelOptions != null)
+            {
+                await UniTask.WaitUntil(() => HttpServer.HasAnyRoutes);
+                NetworkLogger.__Log__("[Kestrel] Waiting for Kestrel to initialize...");
+                await UniTask.Delay(KestrelInitializeDelay);
+
+                kestrelTransporter = new KestrelLowLevel();
+                kestrelTransporter.Initialize(kestrelOptions, HttpServer.CreateKestrelRoutes());
+                kestrelTransporter.OnRequest += HttpServer.KestrelOnRequest;
+            }
         }
 
         /// <summary>
@@ -561,6 +574,7 @@ namespace Omni.Core.Web
         protected virtual void OnApplicationQuit()
         {
             StopServices();
+            kestrelTransporter?.Close();
         }
     }
 }
