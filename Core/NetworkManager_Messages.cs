@@ -252,7 +252,7 @@ namespace Omni.Core
                     throw new CryptographicException($"The cert config file was not found at '{certPath}'. Please ensure the path is correct and the certificate exists.");
                 }
 
-                var dict = FromJson<Dictionary<string, string>>(File.ReadAllText(CertificateFile));
+                var dict = FromJson<Dictionary<string, string>>(File.ReadAllText(NetworkConstants.k_CertificateFile));
                 string certName = dict["cert"];
                 string certPassword = dict["password"];
 

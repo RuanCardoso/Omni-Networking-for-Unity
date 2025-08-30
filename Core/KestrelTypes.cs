@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using MemoryPack;
 using Omni.Inspector;
 
@@ -8,13 +9,32 @@ namespace Omni.Core.Web
 
     [MemoryPackable]
     [Serializable]
+    [DeclareFoldoutGroup("Network", Expanded = true)]
+    [DeclareFoldoutGroup("Limits", Expanded = false)]
     public partial class KestrelOptions
     {
+        [GroupNext("Network")]
+        [LabelWidth(120)]
+        [ReadOnly]
+        public bool m_UseHttps;
+
+        [ReadOnly]
+        [ShowIf(nameof(m_UseHttps))]
+        [LabelWidth(120)]
+        public string m_CertificateFile = NetworkConstants.k_CertificateFile;
+
+        [LabelWidth(120)]
+        public int m_Port = 80;
+
+        [GroupNext("Limits")]
         [LabelWidth(120)]
         public int m_KeepAliveTimeout = 130;
 
         [LabelWidth(120)]
-        public int m_Port = 80;
+        public int m_MaxConnections = 2000;
+
+        [LabelWidth(120)]
+        public int m_RequestTimeout = 30;
     }
 
     [MemoryPackable]

@@ -29,7 +29,7 @@ namespace Omni.Core.Web
 
     public class HttpService : WebSocketService
     {
-        
+
     }
 }
 
@@ -187,12 +187,12 @@ namespace Omni.Core.Modules.Connection
 
                 if ((EnableWebSocket && EnableWebSocketSsl) || (EnableHttpServer && EnableHttpServerSsl))
                 {
-                    if (File.Exists(NetworkManager.CertificateFile))
+                    if (File.Exists(NetworkConstants.k_CertificateFile))
                     {
                         try
                         {
                             var dict = NetworkManager.FromJson<Dictionary<string, string>>(
-                                File.ReadAllText(NetworkManager.CertificateFile));
+                                File.ReadAllText(NetworkConstants.k_CertificateFile));
 
                             // Setup SSL(Secure Socket Layer)
                             if (EnableWebSocket && EnableWebSocketSsl)
@@ -217,7 +217,7 @@ namespace Omni.Core.Modules.Connection
                     else
                     {
                         NetworkLogger.__Log__(
-                            $"[WebTransporter] Certificate configuration not found at: {Path.GetFullPath(NetworkManager.CertificateFile)}", NetworkLogger.LogType.Error);
+                            $"[WebTransporter] Certificate configuration not found at: {Path.GetFullPath(NetworkConstants.k_CertificateFile)}", NetworkLogger.LogType.Error);
                     }
                 }
 

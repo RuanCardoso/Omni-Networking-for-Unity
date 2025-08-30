@@ -18,7 +18,7 @@ namespace Omni.Core.Web
         private readonly byte[] data = new byte[4096 * 8 * 2]; // 64KB Buffer
 
         private readonly BlockingCollection<KestrelChannelMessage> channel = new();
-        private readonly TcpClient tcpClient = new();
+        private TcpClient tcpClient = new();
 
         private bool isConnected = false;
         private NetworkStream Stream => tcpClient.GetStream();
@@ -30,12 +30,26 @@ namespace Omni.Core.Web
             new Thread(() =>
             {
                 cancellationTokenSource = new();
-                tcpClient.Connect("localhost", kPort);
-                isConnected = true;
-
-                InternalInitialize(options, routes);
-                NetworkLogger.__Log__("[Kestrel] Communication channel established.");
-                Run();
+                while (!isConnected && !cancellationTokenSource.IsCancellationRequested)
+                {
+                    try
+                    {
+                        if (tcpClient.ConnectAsync("localhost", kPort).Wait(int.MaxValue, cancellationTokenSource.Token))
+                        {
+                            isConnected = true;
+                            InternalInitialize(options, routes);
+                            NetworkLogger.__Log__("[Kestrel] Communication channel established.");
+                            Run();
+                        }
+                    }
+                    catch
+                    {
+                        tcpClient.Dispose();
+                        Thread.Sleep(1000);
+                        tcpClient = new();
+                        continue;
+                    }
+                }
             }
             )
             {

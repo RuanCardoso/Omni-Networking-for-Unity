@@ -87,6 +87,7 @@ namespace Omni.Core
 
     public class NetworkConstants
     {
+        internal const string k_CertificateFile = "certificate.json";
         internal const byte k_NetworkVariableRpcId = 255; // TODO: Add it to the source generator. Don't change, used by Source Generator
         internal const int k_InvalidMasterClientId = -1;
 

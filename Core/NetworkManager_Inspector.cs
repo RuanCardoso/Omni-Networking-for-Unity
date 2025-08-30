@@ -184,7 +184,7 @@ namespace Omni.Core
         [SerializeField]
         [Group("MiscTabs"), Tab("Advanced")]
         [ReadOnly, LabelWidth(150)]
-        private string certificateFile = "certificate.json";
+        private string certificateFile = NetworkConstants.k_CertificateFile;
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Advanced")]
@@ -216,7 +216,6 @@ namespace Omni.Core
         [ValidateInput("OnEnableHttpSsl")]
         private bool m_EnableHttpSsl = false;
 
-        [InfoBox("When SSL is enabled, the default port will automatically change to 443 if set to 80.")]
         [SerializeField]
         [Group("MiscTabs"), Tab("Http Server")]
         [LabelWidth(120)]
@@ -228,6 +227,9 @@ namespace Omni.Core
         [Group("MiscTabs"), Tab("Http Server")]
         [LabelWidth(120)]
         [ShowIf(nameof(m_EnableHttpServer)), ShowIf(nameof(m_UseKestrel))]
+        [InlineProperty]
+        [HideLabel]
+        [Title("Kestrel Options", HorizontalLine = true)]
         private KestrelOptions m_KestrelOptions = new();
 
         [SerializeField]
@@ -249,8 +251,6 @@ namespace Omni.Core
         [SerializeField] private bool m_EnableDeepDebug = true;
 
         public static string ConnectAddress => Manager.m_ConnectAddresses[0];
-        public static string CertificateFile => Manager.certificateFile;
-
         internal static bool EnableDeepDebug => Manager.m_EnableDeepDebug;
         internal static bool MatchmakingModuleEnabled => Manager.m_MatchModule;
         internal static bool TickSystemModuleEnabled => Manager.m_TickModule;
@@ -303,6 +303,8 @@ namespace Omni.Core
             // Trim the list.
             for (int i = 0; i < m_ConnectAddresses.Count; i++)
                 m_ConnectAddresses[i] = m_ConnectAddresses[i].Trim();
+
+            m_KestrelOptions.m_UseHttps = m_EnableHttpSsl;
         }
 
         [ContextMenu("Strip Components")]
@@ -482,7 +484,7 @@ namespace Omni.Core
 
         private TriValidationResult OnEnableHttpSsl()
         {
-            if (m_EnableHttpSsl)
+            if (m_EnableHttpServer && m_EnableHttpSsl)
             {
                 return TriValidationResult.Warning(
                     "Built-in HTTP SSL support is experimental. For production environments, it is strongly recommended to use a full-featured and professional proxy (e.g., Nginx, Caddy, HAProxy) in front of the server."

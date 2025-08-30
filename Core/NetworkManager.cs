@@ -867,10 +867,10 @@ namespace Omni.Core
 
                 try
                 {
-                    if (!File.Exists(CertificateFile))
+                    if (!File.Exists(NetworkConstants.k_CertificateFile))
                     {
                         // Create certificate file if it doesn't exist
-                        using var fileStream = File.Create(CertificateFile);
+                        using var fileStream = File.Create(NetworkConstants.k_CertificateFile);
                         using StreamWriter sw = new(fileStream);
                         sw.WriteLine("{\"cert\": \"cert.pfx\", \"password\": \"password for cert.pfx\"}");
                     }
@@ -880,7 +880,7 @@ namespace Omni.Core
                     NetworkLogger.__Log__("Failed to create certificate file: " + ex.Message, NetworkLogger.LogType.Error);
                 }
 
-                if (Manager.m_TlsHandshake) ServerSide.LoadRsaKeysFromCert(CertificateFile, Manager.m_WarnIfCertInvalid);
+                if (Manager.m_TlsHandshake) ServerSide.LoadRsaKeysFromCert(NetworkConstants.k_CertificateFile, Manager.m_WarnIfCertInvalid);
                 else ServerSide.GenerateRsaKeys();
                 Connection.Server.Listen(port);
 #else
