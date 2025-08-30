@@ -24,6 +24,9 @@ namespace Omni.Core.Web
         public string m_CertificateFile = NetworkConstants.k_CertificateFile;
 
         [LabelWidth(120)]
+        public string m_Domain = "*";
+
+        [LabelWidth(120)]
         public int m_Port = 80;
 
         [GroupNext("Limits")]
