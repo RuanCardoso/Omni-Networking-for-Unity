@@ -148,8 +148,7 @@ namespace Omni.Core.Web
             if (kestrelResponse != null)
             {
                 kestrelResponse.Data = data;
-                byte[] response = MemoryPackSerializer.Serialize(kestrelResponse);
-                kestrelResponse.KestrelLowLevel.Send(KestrelMessageType.DispatchResponse, response);
+                kestrelResponse.KestrelLowLevel.AddKestrelResponse(kestrelResponse);
                 return;
             }
 

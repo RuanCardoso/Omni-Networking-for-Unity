@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using MemoryPack;
@@ -95,19 +97,19 @@ namespace Omni.Core.Web
 
     internal class KestrelChannelMessage
     {
-        public KestrelRequest request;
-        public KestrelResponse response;
+        public KestrelMessageType MessageType;
+        public byte[] Payload;
     }
 
     internal class KestrelLowLevel
     {
         private const int headerSize = 5;
         private readonly byte[] header = new byte[headerSize];
-        private readonly byte[] data = new byte[4096 * 8 * 8]; // 32kb
+        private readonly byte[] data = new byte[4096 * 8]; // 32kb
 
-        private System.Threading.Channels.Channel<KestrelChannelMessage> channel = System.Threading.Channels.Channel.CreateUnbounded<KestrelChannelMessage>();
-
-        private NamedPipeClientStream pipeClient;
+        private NetworkStream Stream => tcpClient.GetStream();
+        private readonly BlockingCollection<KestrelChannelMessage> channel = new();
+        private readonly TcpClient tcpClient = new();
         private bool isConnected = false;
         private CancellationTokenSource cancellationTokenSource;
 
@@ -117,8 +119,7 @@ namespace Omni.Core.Web
             new Thread(() =>
             {
                 cancellationTokenSource = new();
-                pipeClient = new("localhost", "HttpPipe", PipeDirection.InOut, PipeOptions.Asynchronous);
-                pipeClient.Connect();
+                tcpClient.Connect("localhost", 7070);
                 isConnected = true;
 
                 InternalInitialize(options, routes);
@@ -131,7 +132,7 @@ namespace Omni.Core.Web
                 Name = "KestrelLowLevel_Reader"
             }.Start();
 
-            new Thread(async () =>
+            new Thread(() =>
             {
                 while (!cancellationTokenSource.IsCancellationRequested)
                 {
@@ -142,8 +143,8 @@ namespace Omni.Core.Web
 
                     try
                     {
-                        var message = await channel.Reader.ReadAsync();
-                        OnRequest?.Invoke(message.request, message.response);
+                        var message = channel.Take();
+                        Send(message.MessageType, message.Payload);
                     }
                     catch
                     {
@@ -169,14 +170,14 @@ namespace Omni.Core.Web
                 try
                 {
                     // read the header, exactly 4 bytes (int) + 1 (Kestrel Message)
-                    pipeClient.ReadExactly(header);
+                    Stream.ReadExactly(header);
                     int length = BitConverter.ToInt32(header);
                     if (length > 0)
                     {
                         KestrelMessageType kestrelMessage = (KestrelMessageType)header[^1];
                         // read the rest of the data
                         Span<byte> payload = data.AsSpan()[..length];
-                        pipeClient.ReadExactly(payload);
+                        Stream.ReadExactly(payload);
                         switch (kestrelMessage)
                         {
                             case KestrelMessageType.DispatchRequest:
@@ -184,14 +185,10 @@ namespace Omni.Core.Web
                                     var request = MemoryPackSerializer.Deserialize<KestrelRequest>(payload);
                                     var response = new KestrelResponse() { UniqueId = request.UniqueId, KestrelLowLevel = this };
 
-                                    KestrelChannelMessage message = new()
+                                    Task.Run(() =>
                                     {
-                                        request = request,
-                                        response = response
-                                    };
-
-                                    //channel.Writer.TryWrite(message);
-                                    OnRequest?.Invoke(request, response);
+                                        OnRequest?.Invoke(request, response);
+                                    });
                                     break;
                                 }
                             default:
@@ -207,7 +204,17 @@ namespace Omni.Core.Web
             }
         }
 
-        static readonly object padLock = new();
+        internal void AddKestrelResponse(KestrelResponse response)
+        {
+            KestrelChannelMessage message = new()
+            {
+                MessageType = KestrelMessageType.DispatchResponse,
+                Payload = MemoryPackSerializer.Serialize(response)
+            };
+
+            channel.Add(message);
+        }
+
         internal void Send(KestrelMessageType kestrelMessage, ReadOnlySpan<byte> payload)
         {
             if (!isConnected)
@@ -231,11 +238,8 @@ namespace Omni.Core.Web
                 header.CopyTo(packet);
                 payload.CopyTo(packet[header.Length..]);
 
-                //lock (padLock)
-                {
-                    // write the packet to the pipe
-                    pipeClient.Write(packet);
-                }
+                // write the packet to the pipe
+                Stream.Write(packet);
             }
         }
 
@@ -256,7 +260,7 @@ namespace Omni.Core.Web
 
         internal void Close()
         {
-            pipeClient.Dispose();
+            tcpClient.Dispose();
             cancellationTokenSource.Cancel();
             cancellationTokenSource.Dispose();
             isConnected = false;
