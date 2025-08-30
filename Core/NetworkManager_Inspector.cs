@@ -199,6 +199,7 @@ namespace Omni.Core
         [SerializeField]
         [Group("MiscTabs"), Tab("Http Server")]
         [LabelWidth(120)]
+        [ValidateInput("OnEnableHttpServer")]
         private bool m_EnableHttpServer = false;
 
         [SerializeField]
@@ -212,6 +213,7 @@ namespace Omni.Core
         [Group("MiscTabs"), Tab("Http Server")]
         [LabelWidth(120)]
         [ShowIf(nameof(m_EnableHttpServer))]
+        [ValidateInput("OnEnableHttpSsl")]
         private bool m_EnableHttpSsl = false;
 
         [InfoBox("When SSL is enabled, the default port will automatically change to 443 if set to 80.")]
@@ -243,7 +245,7 @@ namespace Omni.Core
 #if OMNI_RELEASE
         [HideInInspector]
 #endif
-        [InfoBox("Disabling this option may hinder debugging capabilities and make it more difficult to identify and resolve issues. However, it can significantly improve editor performance.", TriMessageType.Warning)]
+        [ValidateInput("OnEnableDeepDebug")]
         [SerializeField] private bool m_EnableDeepDebug = true;
 
         public static string ConnectAddress => Manager.m_ConnectAddresses[0];
@@ -463,6 +465,43 @@ namespace Omni.Core
 #else
             m_HasConnectionDisplayHud = false;
 #endif
+        }
+
+        private TriValidationResult OnEnableHttpServer()
+        {
+            if (m_EnableHttpServer)
+            {
+                return TriValidationResult.Warning(
+                    "The built-in HTTP server feature is experimental and may be unstable. Use with caution. " +
+                    "For high-demand or production environments, it is strongly recommended to enable and configure Kestrel instead."
+                );
+            }
+
+            return TriValidationResult.Valid;
+        }
+
+        private TriValidationResult OnEnableHttpSsl()
+        {
+            if (m_EnableHttpSsl)
+            {
+                return TriValidationResult.Warning(
+                    "Built-in HTTP SSL support is experimental. For production environments, it is strongly recommended to use a full-featured and professional proxy (e.g., Nginx, Caddy, HAProxy) in front of the server."
+                );
+            }
+
+            return TriValidationResult.Valid;
+        }
+
+        private TriValidationResult OnEnableDeepDebug()
+        {
+            if (!m_EnableDeepDebug)
+            {
+                return TriValidationResult.Warning(
+                    "Disabling this option may hinder debugging capabilities and make it more difficult to identify and resolve issues. However, it can significantly improve editor performance."
+                );
+            }
+
+            return TriValidationResult.Valid;
         }
     }
 }

@@ -432,7 +432,7 @@ namespace Omni.Core.Web
 
         private const int KestrelInitializeDelay = 1000;
 
-        private KestrelLowLevel kestrelTransporter;
+        private KestrelProcessor kestrelTransporter;
         private WebTransporter serverTransporter;
         private WebTransporter clientTransporter;
 
@@ -489,7 +489,7 @@ namespace Omni.Core.Web
                 NetworkLogger.__Log__("[Kestrel] Waiting for Kestrel to initialize...");
                 await UniTask.Delay(KestrelInitializeDelay);
 
-                kestrelTransporter = new KestrelLowLevel();
+                kestrelTransporter = new KestrelProcessor();
                 kestrelTransporter.Initialize(kestrelOptions, HttpServer.CreateKestrelRoutes());
                 kestrelTransporter.OnRequest += HttpServer.KestrelOnRequest;
             }
