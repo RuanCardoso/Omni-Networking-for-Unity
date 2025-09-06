@@ -8,7 +8,7 @@ namespace Omni.Core.Web
         private readonly HttpListenerResponse listenerResponse;
         private readonly KestrelResponse kestrelResponse;
 
-        internal long ContentLength
+        public long ContentLength
         {
             get
             {
@@ -30,7 +30,7 @@ namespace Omni.Core.Web
             }
         }
 
-        internal bool KeepAlive
+        public bool KeepAlive
         {
             get
             {
@@ -52,7 +52,7 @@ namespace Omni.Core.Web
             }
         }
 
-        internal int StatusCode
+        public int StatusCode
         {
             get
             {
@@ -74,7 +74,7 @@ namespace Omni.Core.Web
             }
         }
 
-        internal Encoding ContentEncoding
+        public Encoding ContentEncoding
         {
             get
             {
@@ -93,7 +93,7 @@ namespace Omni.Core.Web
             }
         }
 
-        internal string ContentType
+        public string ContentType
         {
             get
             {
@@ -125,7 +125,7 @@ namespace Omni.Core.Web
             kestrelResponse = response;
         }
 
-        internal void SetHeader(string name, string value)
+        public void SetHeader(string name, string value)
         {
             if (kestrelResponse != null)
             {
@@ -136,7 +136,7 @@ namespace Omni.Core.Web
             listenerResponse.SetHeader(name, value);
         }
 
-        internal void SetCookie(Cookie cookie)
+        public void SetCookie(Cookie cookie)
         {
             if (kestrelResponse != null)
             {
@@ -147,7 +147,7 @@ namespace Omni.Core.Web
             listenerResponse.SetCookie(cookie);
         }
 
-        internal void Close(byte[] data)
+        public void Close(byte[] data)
         {
             if (data == null || data.Length == 0)
                 data = Encoding.UTF8.GetBytes("The server did not provide any response.");
@@ -162,7 +162,7 @@ namespace Omni.Core.Web
             listenerResponse.Close(data, willBlock: true);
         }
 
-        internal void Close()
+        public void Close()
         {
             // Kestrel does not support Close(), so we do nothing.
             if (kestrelResponse == null)

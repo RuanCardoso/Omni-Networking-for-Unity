@@ -11,15 +11,15 @@ namespace Omni.Core.Web
         private readonly HttpListenerRequest listenerRequest;
         private readonly KestrelRequest kestrelRequest;
 
-        internal string RawUrl => listenerRequest?.RawUrl ?? kestrelRequest.RawUrl;
-        internal string HttpMethod => listenerRequest?.HttpMethod ?? kestrelRequest.HttpMethod;
-        internal string ContentType => listenerRequest?.ContentType ?? kestrelRequest.ContentType;
-        internal bool IsSecureConnection => listenerRequest?.IsSecureConnection ?? kestrelRequest.IsSecureConnection;
+        public string RawUrl => listenerRequest?.RawUrl ?? kestrelRequest.RawUrl;
+        public string HttpMethod => listenerRequest?.HttpMethod ?? kestrelRequest.HttpMethod;
+        public string ContentType => listenerRequest?.ContentType ?? kestrelRequest.ContentType;
+        public bool IsSecureConnection => listenerRequest?.IsSecureConnection ?? kestrelRequest.IsSecureConnection;
         public CookieCollection Cookies => listenerRequest?.Cookies ?? kestrelRequest.Cookies.ToCookieCollection();
         public NameValueCollection Headers => listenerRequest?.Headers ?? kestrelRequest.Headers.ToNameValueCollection();
-        internal Encoding ContentEncoding => listenerRequest?.ContentEncoding ?? Encoding.UTF8;
-        internal Stream InputStream => listenerRequest?.InputStream ?? new MemoryStream(kestrelRequest.InputStream);
-        internal NameValueCollection QueryString => listenerRequest?.QueryString ?? CreateQueryString(kestrelRequest.QueryString);
+        public Encoding ContentEncoding => listenerRequest?.ContentEncoding ?? Encoding.UTF8;
+        public Stream InputStream => listenerRequest?.InputStream ?? new MemoryStream(kestrelRequest.InputStream);
+        public NameValueCollection QueryString => listenerRequest?.QueryString ?? CreateQueryString(kestrelRequest.QueryString);
         public kNet.IPEndPoint RemoteEndPoint => listenerRequest?.RemoteEndPoint ?? CreateRemoteEndPoint(kestrelRequest.RemoteEndPoint);
 
         internal kHttpRequest(HttpListenerRequest request)

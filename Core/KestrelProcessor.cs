@@ -106,7 +106,7 @@ namespace Omni.Core.Web
                                     break;
                                 }
                             default:
-                                Console.WriteLine($"Unknown Kestrel message type: {kestrelMessage}");
+                                NetworkLogger.__Log__($"Unknown Kestrel message type: {kestrelMessage}", NetworkLogger.LogType.Error);
                                 break;
                         }
                     }
