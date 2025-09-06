@@ -226,17 +226,16 @@ namespace Omni.Core.Web
         public static ConcurrentDictionary<string, object> StartSession(this kHttpResponse response, kHttpRequest request, DateTime? expires = null)
         {
             if (expires == null)
-            {
                 expires = DateTime.MinValue;
-            }
 
             string sessionId = Guid.NewGuid().ToString();
-            Cookie sessionCookie = new Cookie("OMNI-SESSID", sessionId)
+            Cookie sessionCookie = new("OMNI-SESSID", sessionId)
             {
                 Path = "/",
                 HttpOnly = true,
                 Secure = request.IsSecureConnection,
                 Expires = expires.Value,
+                SameSite = "Strict"
             };
 
             response.SetCookie(sessionCookie);
@@ -340,6 +339,27 @@ namespace Omni.Core.Web
             }
 
             return parameters;
+        }
+
+        internal static CookieCollection ToCookieCollection(this IEnumerable<SerializableCookie> cookies)
+        {
+            var collection = new CookieCollection();
+            foreach (var sc in cookies)
+                collection.Add(sc.ToCookie());
+
+            return collection;
+        }
+
+        internal static NameValueCollection ToNameValueCollection(this IEnumerable<SerializableHeader> headers)
+        {
+            var collection = new NameValueCollection();
+            foreach (var h in headers)
+            {
+                foreach (var v in h.Values)
+                    collection.Add(h.Name, v);
+            }
+
+            return collection;
         }
     }
 }

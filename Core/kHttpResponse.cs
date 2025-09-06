@@ -1,8 +1,5 @@
 using System.Text;
-using System.Threading.Tasks;
-using MemoryPack;
 using Omni.Core.Web.Net;
-using Omni.Shared;
 
 namespace Omni.Core.Web
 {
@@ -130,14 +127,24 @@ namespace Omni.Core.Web
 
         internal void SetHeader(string name, string value)
         {
-            if (kestrelResponse == null) // Coming Soon, Kestrel does not support headers.
-                listenerResponse.SetHeader(name, value);
+            if (kestrelResponse != null)
+            {
+                kestrelResponse.Headers.Add(new SerializableHeader(name, value));
+                return;
+            }
+
+            listenerResponse.SetHeader(name, value);
         }
 
         internal void SetCookie(Cookie cookie)
         {
-            if (kestrelResponse == null) // Coming Soon, Kestrel does not support cookies.
-                listenerResponse.SetCookie(cookie);
+            if (kestrelResponse != null)
+            {
+                kestrelResponse.Cookies.Add(new SerializableCookie(cookie));
+                return;
+            }
+
+            listenerResponse.SetCookie(cookie);
         }
 
         internal void Close(byte[] data)

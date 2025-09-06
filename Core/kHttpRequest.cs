@@ -15,9 +15,10 @@ namespace Omni.Core.Web
         internal string HttpMethod => listenerRequest?.HttpMethod ?? kestrelRequest.HttpMethod;
         internal string ContentType => listenerRequest?.ContentType ?? kestrelRequest.ContentType;
         internal bool IsSecureConnection => listenerRequest?.IsSecureConnection ?? kestrelRequest.IsSecureConnection;
-        internal CookieCollection Cookies => listenerRequest?.Cookies ?? null;
+        public CookieCollection Cookies => listenerRequest?.Cookies ?? kestrelRequest.Cookies.ToCookieCollection();
+        public NameValueCollection Headers => listenerRequest?.Headers ?? kestrelRequest.Headers.ToNameValueCollection();
         internal Encoding ContentEncoding => listenerRequest?.ContentEncoding ?? Encoding.UTF8;
-        internal Stream InputStream => listenerRequest?.InputStream ?? null;
+        internal Stream InputStream => listenerRequest?.InputStream ?? new MemoryStream(kestrelRequest.InputStream);
         internal NameValueCollection QueryString => listenerRequest?.QueryString ?? CreateQueryString(kestrelRequest.QueryString);
         public kNet.IPEndPoint RemoteEndPoint => listenerRequest?.RemoteEndPoint ?? CreateRemoteEndPoint(kestrelRequest.RemoteEndPoint);
 

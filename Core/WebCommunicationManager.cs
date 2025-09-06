@@ -290,7 +290,7 @@ namespace Omni.Core.Web
                         OnGet(new kHttpRequest(request), new kHttpResponse(response));
                         break;
                     case "POST":
-                        //OnPost(request, response, route.Route);
+                        OnPost(new kHttpRequest(request), new kHttpResponse(response));
                         break;
                 }
             }
@@ -382,9 +382,11 @@ namespace Omni.Core.Web
                 {
                     NetworkLogger.PrintHyperlink(ex);
                     NetworkLogger.__Log__(ex.Message, NetworkLogger.LogType.Error);
-                    res.Reject("An unexpected error occurred while processing the request. Please try again later.");
 #if OMNI_DEBUG
+                    res.Reject($"An unexpected error occurred while processing the request. Please try again later\nDetails: {ex.Message}");
                     throw;
+#else
+                    res.Reject("An unexpected error occurred while processing the request. Please try again later.");
 #endif
                 }
             }
@@ -419,7 +421,12 @@ namespace Omni.Core.Web
                 {
                     NetworkLogger.PrintHyperlink(ex);
                     NetworkLogger.__Log__(ex.Message, NetworkLogger.LogType.Error);
+#if OMNI_DEBUG
+                    res.Reject($"An unexpected error occurred while processing the request. Please try again later\nDetails: {ex.Message}");
+                    throw;
+#else
                     res.Reject("An unexpected error occurred while processing the request. Please try again later.");
+#endif
                 }
             }
 
