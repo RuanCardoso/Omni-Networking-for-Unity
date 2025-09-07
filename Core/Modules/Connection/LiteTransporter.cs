@@ -50,7 +50,7 @@ namespace Omni.Core.Modules.Connection
                 // Get the checksum from the end of the packet
                 ReadOnlySpan<byte> checksum = data.AsSpan(offset, ChecksumSize);
                 // Calculate the checksum for the data without the checksum itself
-                if (!HmacProvider.Validate(data, 0, offset, NetworkManager.ProductionKey, checksum))
+                if (!HmacProvider.Validate(data, 0, offset, NetworkManager.SharedKey, checksum))
                 {
                     NetworkLogger.__Log__(
                         $"[LiteTransporter] Invalid checksum detected - Packet discarded (Checksum: {BitConverter.ToString(checksum.ToArray())})",
@@ -69,7 +69,7 @@ namespace Omni.Core.Modules.Connection
                 // Get the end of the packet
                 Span<byte> dataSpan = data.AsSpan(offset + length, ChecksumSize);
                 // Calculate the checksum for the data
-                ReadOnlySpan<byte> checksum = HmacProvider.Compute(data, offset, length, NetworkManager.ProductionKey);
+                ReadOnlySpan<byte> checksum = HmacProvider.Compute(data, offset, length, NetworkManager.SharedKey);
                 // Copy the checksum to the end of the packet
                 checksum.CopyTo(dataSpan);
                 length += ChecksumSize;

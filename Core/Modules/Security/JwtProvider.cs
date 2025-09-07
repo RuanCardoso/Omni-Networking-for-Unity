@@ -142,7 +142,7 @@ namespace Omni.Core.Cryptography
                 }
                 else
                 {
-                    signature = HmacProvider.Compute(_encoding.GetBytes(dataToSign), NetworkManager.ProductionKey, GetHmacAlgorithm(alg));
+                    signature = HmacProvider.Compute(_encoding.GetBytes(dataToSign), NetworkManager.SecretKey, GetHmacAlgorithm(alg));
                 }
 
                 var signatureEncoded = Base64UrlEncode(signature);
@@ -200,7 +200,7 @@ namespace Omni.Core.Cryptography
                 }
                 else
                 {
-                    if (!HmacProvider.Validate(_encoding.GetBytes(dataToVerify), NetworkManager.ProductionKey, signature, GetHmacAlgorithm(alg)))
+                    if (!HmacProvider.Validate(_encoding.GetBytes(dataToVerify), NetworkManager.SecretKey, signature, GetHmacAlgorithm(alg)))
                         return false;
                 }
 
