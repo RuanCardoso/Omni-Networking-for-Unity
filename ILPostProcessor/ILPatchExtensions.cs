@@ -77,13 +77,5 @@ namespace Omni.ILPatch
         {
             ilProcessor.Body.OptimizeMacros();
         }
-
-        internal static List<Instruction> GetInstructions(this MethodDefinition method, List<DiagnosticMessage> diagnostics)
-        {
-            if (!ILPatchHelper.IsValidMethod(method, diagnostics))
-                return new List<Instruction>();
-
-            return method.Body.Instructions.ToList();
-        }
     }
 }

@@ -60,12 +60,12 @@ namespace Omni.ILPatch
             foreach (var type in module.Types)
             {
                 IEnumerable<(MethodDefinition Method, Instruction Instruction, int Index)> methodsToPatch = type.Methods
-                    .SelectMany(m => m.GetInstructions(null)
+                    .SelectMany(m => GetInstructions(m, null)
                         .Where(i => IsNetworkVariableInstance(i, m))
                         .Select(i => (
                             Method: m,
                             Instruction: i,
-                            Index: m.GetInstructions(diagnostics).IndexOf(i) - 1 // ldarg/ldarg_0
+                            Index: GetInstructions(m, diagnostics).IndexOf(i) - 1 // ldarg/ldarg_0
                         ))
                     );
 
@@ -74,7 +74,7 @@ namespace Omni.ILPatch
                     var ilProcessor = method.Body.GetILProcessor();
                     ilProcessor.Deoptimize();
 
-                    var instructions = method.GetInstructions(diagnostics);
+                    var instructions = GetInstructions(method, diagnostics);
                     if (method.IsSetter || method.IsGetter)
                         continue;
 
@@ -224,6 +224,40 @@ namespace Omni.ILPatch
                     && pDef.Method.HasThis;
 
             return isNetworkVariableInstance && (previousIsLdarg_0 || previousIsLdarg);
+        }
+
+        private static List<Instruction> GetInstructions(MethodDefinition method, List<DiagnosticMessage> diagnostics)
+        {
+            if (!IsValidMethod(method, diagnostics))
+                return new List<Instruction>();
+
+            return method.Body.Instructions.ToList();
+        }
+
+        private static bool IsValidMethod(MethodDefinition method, List<DiagnosticMessage> diagnostics)
+        {
+            if (!method.HasBody)
+                return false;
+
+            if (method.IsAbstract || method.IsPInvokeImpl || method.IsRuntime)
+                return false;
+
+            if (method.ReturnType.IsByReference)
+                return false;
+
+            if (method.IsConstructor) // Use the Start() or Awake() for initialization
+                return false;
+
+            if (method.IsStatic)
+                return false;
+
+            if (method.HasGenericParameters || method.IsGenericInstance)
+                return false;
+
+            if (method.Name.StartsWith("_"))
+                return false;
+
+            return true;
         }
     }
 }

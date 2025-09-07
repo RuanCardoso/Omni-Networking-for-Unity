@@ -9,6 +9,12 @@ using System;
 
 namespace Omni.ILPatch
 {
+    internal class EndInstruction
+    {
+        public Instruction Instruction { get; set; }
+        public TypeDefinition Type { get; set; }
+    }
+
     internal static class StripCodePatch
     {
         private const string AttributeName = "StripFromClientAttribute";
@@ -19,36 +25,81 @@ namespace Omni.ILPatch
             foreach (var type in module.Types)
             {
                 StripMethods(type);
-                StripField(type, diagnostics);
+                var properties = StripProperties(type);
+                StripFields(type, diagnostics, properties);
             }
         }
 
-        private static void StripField(TypeDefinition dType, List<DiagnosticMessage> diagnostics)
+        private static void StripFields(TypeDefinition dType, List<DiagnosticMessage> diagnostics, List<string> backfields)
         {
             IEnumerable<MethodDefinition> ctors = dType.Methods
                 .Where(m => m.IsConstructor && !m.IsStatic && m.HasBody)
                 .Where(m => m.Body.Instructions.Any(i =>
                     i.OpCode == OpCodes.Stfld &&
                     i.Operand is FieldReference fr &&
-                    fr.Resolve().HasAttribute(AttributeName))); // Optimized search
+                    (fr.Resolve().HasAttribute(AttributeName) || backfields.Any(name => fr.Name.Contains(name))))); // Optimized search
 
-            var handlers = new Dictionary<Code, Action<Instruction>>
+            var handlers = new Dictionary<Code, Func<Instruction, TypeDefinition, ILProcessor, bool>>
             {
-                { Code.Ldstr,  i => i.Operand = "" }, // string
-                { Code.Ldc_I4, i => i.Operand = 0 }, // [int, bool, char, short, byte]
-                { Code.Ldc_I8, i => i.Operand = 0L }, // [long, ulong]
-                { Code.Ldc_R4, i => i.Operand = 0f }, // [float]
-                { Code.Ldc_R8, i => i.Operand = 0d }, // [double]
-                { Code.Newobj, i =>
+                { Code.Ldstr,  (i, tDef, il) =>
                     {
-                        i.OpCode = OpCodes.Ldnull;
-                        i.Operand = null;
+                       i.Operand = "";
+                       return false;
+                    }
+                }, // string
+                { Code.Ldc_I4, (i, tDef, il) =>
+                    {
+                        i.Operand = 0;
+                        return false;
+                    }
+                }, // [int, bool, char, short, byte]
+                { Code.Ldc_I8, (i, tDef, il) =>
+                    {
+                        i.Operand = 0L;
+                        return false;
+                    }
+                }, // [long, ulong]
+                { Code.Ldc_R4, (i, tDef, il) =>
+                    {
+                        i.Operand = 0f;
+                        return false;
+                    }
+                }, // [float]
+                { Code.Ldc_R8, (i, tDef, il) =>
+                    {
+                        i.Operand = 0d;
+                        return false;
+                    }
+                }, // [double]
+                { Code.Newobj, (i, tDef, il) =>
+                    {
+                        if (tDef == null)
+                            return false;
+
+                        if (!tDef.IsValueType)
+                        {
+                            i.OpCode = OpCodes.Ldnull;
+                            i.Operand = null;
+                            return true;
+                        }
+
+                        var tempVar = new VariableDefinition(tDef);
+                        il.Body.Variables.Add(tempVar);
+                        il.Body.InitLocals = true;
+
+                        i.OpCode = OpCodes.Ldloca;
+                        i.Operand = tempVar;
+
+                        il.InsertAfter(i, Instruction.Create(OpCodes.Initobj, tDef));
+                        il.InsertAfter(i.Next, Instruction.Create(OpCodes.Ldloc, tempVar));
+                        return true;
                     }
                 }
             };
 
             foreach (var ctor in ctors)
             {
+                List<EndInstruction> endInstructions = new List<EndInstruction>();
                 var il = ctor.Body.GetILProcessor();
                 il.Deoptimize();
 
@@ -57,50 +108,75 @@ namespace Omni.ILPatch
                 for (int i = 0; i < instructions.Count; i++)
                 {
                     var cInstruction = instructions[i];
-                    if (cInstruction.Operand is FieldReference fieldRef)
+                    if (cInstruction.OpCode == OpCodes.Stfld && cInstruction.Operand is FieldReference fieldRef)
                     {
                         var fieldDef = fieldRef.Resolve();
-                        if (fieldDef.HasAttribute(AttributeName))
+                        if (fieldDef.HasAttribute(AttributeName) || backfields.Any(name => fieldDef.Name.Contains(name)))
                         {
-                            if (cInstruction.OpCode == OpCodes.Stfld) // Field assignment
+                            var isMatch = false;
+                            var pInstruction = cInstruction.Previous;
+                            while (pInstruction.OpCode != OpCodes.Ldarg) // Stop when ldarg
                             {
-                                var isMatch = false;
-                                var pInstruction = cInstruction.Previous;
-                                while (pInstruction.OpCode != OpCodes.Ldarg) // Find ldarg
+                                if (pInstruction.OpCode == OpCodes.Ldtoken && pInstruction.Operand is FieldReference fr) // Field Generated By The Compiler <PrivateImplementations>
                                 {
-                                    if (pInstruction.OpCode == OpCodes.Ldtoken && pInstruction.Operand is FieldReference fr)
-                                    {
-                                        var ldDef = fr.Resolve();
-                                        if (ldDef.InitialValue != null)
-                                            ldDef.InitialValue = new byte[ldDef.InitialValue.Length];
+                                    var ldDef = fr.Resolve();
+                                    if (ldDef.InitialValue != null)
+                                        ldDef.InitialValue = new byte[ldDef.InitialValue.Length];
 
+                                    isMatch = true;
+                                }
+                                else
+                                {
+                                    if (handlers.TryGetValue(pInstruction.OpCode.Code, out var set))
+                                    {
                                         isMatch = true;
-                                        break;
+                                        var typeDef = fieldDef.FieldType.Resolve();
+                                        bool stripUnusedParameters = set(pInstruction, typeDef, il);
+                                        if (stripUnusedParameters) // add the stfld instruction to the list.
+                                            endInstructions.Add(new EndInstruction { Instruction = cInstruction, Type = typeDef });
                                     }
-                                    else
-                                    {
-                                        if (handlers.TryGetValue(pInstruction.OpCode.Code, out var setOperand))
-                                        {
-                                            isMatch = true;
-                                            setOperand(pInstruction);
-                                            break;
-                                        }
-                                    }
-
-                                    pInstruction = pInstruction.Previous;
                                 }
 
-                                if (!isMatch)
-                                {
-                                    ILPatchHelper.OutputDebugString($"The attribute [StripFromClient] is not supported for the field {fieldDef.Name} in the type {fieldDef.DeclaringType.Name}.", diagnostics, DiagnosticType.Error);
-                                }
+                                pInstruction = pInstruction.Previous;
+                            }
+
+                            if (!isMatch)
+                            {
+                                ILPatchHelper.OutputDebugString($"The attribute [StripFromClient] is not supported for the field {fieldDef.Name} in the type {fieldDef.DeclaringType.Name}.", diagnostics, DiagnosticType.Error);
                             }
                         }
                     }
                 }
 
+                foreach (var endInstruction in endInstructions)
+                {
+                    if (endInstruction.Type.IsValueType)
+                    {
+                        RemoveUpTo(il, endInstruction.Instruction, OpCodes.Ldarg, new OpCode[] { OpCodes.Ldloca, OpCodes.Initobj, OpCodes.Ldloc });
+                    }
+                    else
+                    {
+                        RemoveUpTo(il, endInstruction.Instruction, OpCodes.Ldarg, new OpCode[] { OpCodes.Ldnull });
+                    }
+                }
+
                 il.Optimize();
             }
+        }
+
+        private static List<string> StripProperties(TypeDefinition type)
+        {
+            var properties = type.Properties.Where(x => x.HasAttribute(AttributeName));
+            IEnumerable<MethodDefinition> getMethods = properties.Where(x => x.GetMethod != null).Select(x => x.GetMethod);
+            IEnumerable<MethodDefinition> setMethods = properties.Where(x => x.SetMethod != null).Select(x => x.SetMethod);
+
+            foreach (var method in getMethods)
+                StripSingleMethod(method);
+
+            foreach (var method in setMethods)
+                StripSingleMethod(method);
+
+            return properties.Select(x => x.Name).ToList();
         }
 
         private static void StripMethods(TypeDefinition type)
@@ -109,39 +185,76 @@ namespace Omni.ILPatch
                 .Where(m => m.HasAttribute(AttributeName));
 
             foreach (var method in methods)
+                StripSingleMethod(method);
+        }
+
+        private static void StripSingleMethod(MethodDefinition method)
+        {
+            if (!method.HasBody)
+                return;
+
+            if (method.IsAbstract || method.IsPInvokeImpl || method.IsRuntime)
+                return;
+
+            if (method.IsConstructor)
+                return;
+
+            var il = method.Body.GetILProcessor();
+            il.Body.Variables.Clear();
+            il.Body.Instructions.Clear();
+            il.Body.ExceptionHandlers.Clear();
+            il.Body.InitLocals = false;
+            il.Body.MaxStackSize = 1;
+
+            if (method.ReturnType.FullName == "System.Void")
             {
-                if (!ILPatchHelper.IsValidMethod(method, null))
-                    continue;
-
-                var il = method.Body.GetILProcessor();
-                il.Body.Variables.Clear();
-                il.Body.Instructions.Clear();
-                il.Body.ExceptionHandlers.Clear();
-                il.Body.InitLocals = false;
-                il.Body.MaxStackSize = 1;
-
-                if (method.ReturnType.FullName == "System.Void")
+                il.Emit(OpCodes.Ret);
+            }
+            else
+            {
+                if (method.ReturnType.IsValueType || method.ReturnType.IsGenericParameter)
                 {
-                    il.Emit(OpCodes.Ret);
+                    var tempVar = new VariableDefinition(method.ReturnType);
+                    il.Body.Variables.Add(tempVar);
+                    il.Emit(OpCodes.Ldloca_S, tempVar);
+                    il.Emit(OpCodes.Initobj, method.ReturnType);
+                    il.Emit(OpCodes.Ldloc_S, tempVar);
+                    il.Body.InitLocals = true;
                 }
                 else
                 {
-                    if (method.ReturnType.IsValueType)
-                    {
-                        il.Body.InitLocals = true;
-                        var tempVar = new VariableDefinition(method.ReturnType);
-                        il.Body.Variables.Add(tempVar);
-                        il.Emit(OpCodes.Ldloca_S, tempVar);
-                        il.Emit(OpCodes.Initobj, method.ReturnType);
-                        il.Emit(OpCodes.Ldloc_S, tempVar);
-                    }
-                    else
-                    {
-                        il.Emit(OpCodes.Ldnull);
-                    }
-
-                    il.Emit(OpCodes.Ret);
+                    il.Emit(OpCodes.Ldnull);
                 }
+
+                il.Emit(OpCodes.Ret);
+            }
+
+            return;
+        }
+
+        public static void RemoveUpTo(
+            ILProcessor il,
+            Instruction end,
+            OpCode startOpCode,
+            params OpCode[] keepOpCodes)
+        {
+            if (il == null) throw new ArgumentNullException(nameof(il));
+            if (end == null) throw new ArgumentNullException(nameof(end));
+
+            var keepSet = new HashSet<OpCode>(keepOpCodes ?? Array.Empty<OpCode>());
+
+            var current = end.Previous;
+            while (current != null)
+            {
+                var prev = current.Previous;
+
+                if (current.OpCode == startOpCode)
+                    break;
+
+                if (!keepSet.Contains(current.OpCode))
+                    il.Remove(current);
+
+                current = prev;
             }
         }
     }

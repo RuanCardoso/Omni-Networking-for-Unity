@@ -48,14 +48,17 @@ namespace Omni.Core
     { }
 
     /// <summary>
-    /// Indicates that a member should be removed from client builds.
+    /// Marks a instance member to be stripped from client assemblies in production builds.
     /// </summary>
     /// <remarks>
-    /// Apply this attribute to methods or fields that are server-only.
-    /// During IL post-processing, the member will be stripped from client assemblies,
-    /// ensuring that client builds are smaller, cleaner, and free from server-only logic.
+    /// Apply this attribute to methods, properties, or fields that should remain server-only.
+    /// During IL post-processing, the member will be removed from the client assembly,
+    /// but only when building with the <c>OMNI_RELEASE</c> define (i.e., production client builds).
+    /// This ensures that:
+    /// - Editor and server builds remain intact for debugging and development.
+    /// - Production client builds are smaller, cleaner, and free from server-only logic.
     /// </remarks>
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public sealed class StripFromClientAttribute : Attribute
     { }
 }
