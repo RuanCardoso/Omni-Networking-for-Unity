@@ -1094,27 +1094,27 @@ namespace Omni.Core
             {
                 if (oldRef != null && destroy)
                     Destroy(oldRef.gameObject);
-
-                var rpcHandlers = Identity.IsServer
-                    ? NetworkManager.ServerSide.LocalRpcHandlers
-                    : NetworkManager.ClientSide.LocalRpcHandlers;
-
-                var key = (IdentityId, m_Id);
-                rpcHandlers.Remove(key);
-
-                if (NetworkManager.TickSystemModuleEnabled)
-                    NetworkManager.TickSystem.Unregister((IdentityId, Id, IsServer));
-
-                Identity.OnServerOwnershipTransferred -= OnServerOwnershipTransferred;
-                Identity.OnRequestAction -= Internal_OnRequestedAction;
-                NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
-                NetworkManager.OnSceneLoaded -= OnSceneLoaded;
-                NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
-
-                Identity.Unregister(m_ServiceName);
-                IsRegistered = false;
-                OnPostUnregister();
             }
+
+            var rpcHandlers = Identity.IsServer
+                ? NetworkManager.ServerSide.LocalRpcHandlers
+                : NetworkManager.ClientSide.LocalRpcHandlers;
+
+            var key = (IdentityId, m_Id);
+            rpcHandlers.Remove(key);
+
+            if (NetworkManager.TickSystemModuleEnabled)
+                NetworkManager.TickSystem.Unregister((IdentityId, Id, IsServer));
+
+            Identity.OnServerOwnershipTransferred -= OnServerOwnershipTransferred;
+            Identity.OnRequestAction -= Internal_OnRequestedAction;
+            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
+            NetworkManager.OnSceneLoaded -= OnSceneLoaded;
+            NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
+
+            Identity.Unregister(m_ServiceName);
+            IsRegistered = false;
+            OnPostUnregister();
         }
 
         [Conditional("OMNI_DEBUG")]
