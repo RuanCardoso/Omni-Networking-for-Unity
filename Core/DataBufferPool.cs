@@ -53,8 +53,9 @@ namespace Omni.Core
             else
             {
                 NetworkLogger.__Log__(
-                    "Buffer Pool Warning: A new buffer has been created. To enhance performance and reduce garbage collection pressure, consider increasing the initial pool capacity.",
-                    NetworkLogger.LogType.Warning);
+                    "BufferPool: created a new buffer. Increase the initial pool capacity to avoid extra allocations.",
+                    NetworkLogger.LogType.Warning
+                );
 
                 return new DataBuffer(DefaultCapacity, pool: this);
             }
@@ -94,7 +95,8 @@ namespace Omni.Core
                     )
                     {
                         NetworkLogger.Print(
-                            "Memory Leak Detected: The DataBuffer object has not been disposed of or returned to the pool within the expected time frame. This may indicate a missing 'using' statement, failure to call 'Dispose', extended processing time, or an unintended persistent reference to the object. Please ensure proper disposal or review the processing logic to avoid potential performance issues.",
+                            "Memory leak detected: DataBuffer was not disposed or returned to the pool. " +
+                            "Ensure proper disposal (use 'using' or call Dispose) to avoid performance issues.",
                             NetworkLogger.LogType.Error
                         );
 

@@ -112,15 +112,16 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new Exception(
-                    $"{ex.Message} - The buffer acquired from the pool does not have sufficient space. " +
-                    "Consider increasing the initial capacity of the pool to handle larger data."
+                    $"{ex.Message} - Buffer from the pool is too small. " +
+                    "Increase the pool’s initial capacity to handle larger data."
                 );
             }
             catch (Exception ex)
             {
                 NetworkLogger.PrintHyperlink();
                 throw new Exception(
-                    $"An error occurred during compression: {ex.Message}. Please verify the data and compression settings."
+                    $"Compression failed: {ex.Message}. " +
+                    "Check the input data and compression settings."
                 );
             }
         }
@@ -441,7 +442,7 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new InvalidOperationException(
-                    "Operation not supported: The type parameter T is a reference type or contains references, which violates the constraints for this operation.");
+                    "Operation not supported: The type parameter (T) is a reference type or contains references, which violates the constraints for this operation.");
             }
 
             if (size_t > (uint)destination.Length)
@@ -449,7 +450,7 @@ namespace Omni.Core
                 NetworkLogger.PrintHyperlink();
                 throw new ArgumentOutOfRangeException(
                     nameof(destination),
-                    "The size of the type T exceeds the available length of the destination span. Ensure the destination span has sufficient capacity."
+                    "The size of the type (T) exceeds the available length of the destination span. Ensure the destination span has sufficient capacity."
                 );
             }
 #endif
@@ -940,7 +941,7 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new InvalidOperationException(
-                    "Operation not supported: The type parameter T is a reference type or contains references, which violates the constraints for this operation."
+                    "Operation not supported: The type parameter (T) is a reference type or contains references, which violates the constraints for this operation."
                 );
             }
 
@@ -949,7 +950,7 @@ namespace Omni.Core
                 NetworkLogger.PrintHyperlink();
                 throw new ArgumentOutOfRangeException(
                     nameof(source),
-                    "The size of the type T exceeds the available length of the source span. Ensure the source span has sufficient capacity."
+                    "The size of the type (T) exceeds the available length of the source span. Ensure the source span has sufficient capacity."
                 );
             }
 #endif

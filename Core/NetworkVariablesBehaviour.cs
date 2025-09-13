@@ -53,9 +53,9 @@ namespace Omni.Core
                 isClientAuthority, checkEquality, propertyName, deliveryMode, target, sequenceChannel)))
             {
                 NetworkLogger.__Log__(
-                     $"Error: Network variable '{propertyName}' (ID: {propertyId}) is already registered. " +
-                     "Ensure that the ID is unique and not reused for multiple variables.",
-                     NetworkLogger.LogType.Error
+                    $"NetworkVariable registration failed: '{propertyName}' (Id={propertyId}) is already registered. " +
+                    "Use unique IDs for each variable.",
+                    NetworkLogger.LogType.Error
                 );
             }
         }
@@ -173,9 +173,8 @@ namespace Omni.Core
             if (oldValue == null || newValue == null)
             {
                 NetworkLogger.__Log__(
-                    $"Error: Network variable '{name}' (ID: {id}) contains a null value. " +
-                    "Network variables must be initialized before comparison. " +
-                    "Initialize this variable in OnStart() or OnAwake() to prevent this error.",
+                    $"NetworkVariable error: '{name}' (Id={id}) is null. " +
+                    "Initialize it in OnStart or Awake before using.",
                     NetworkLogger.LogType.Error
                 );
 
@@ -190,13 +189,26 @@ namespace Omni.Core
                 }
 
                 var type = typeof(T);
+                if (!type.IsValueType)
+                {
+                    if (newValue.Equals(oldValue))
+                    {
+                        NetworkLogger.__Log__(
+                            $"NetworkVariable '{field.Name}' (Id={id}) was not synchronized because the old and new reference values are equal.",
+                            NetworkLogger.LogType.Warning
+                        );
+
+                        return true;
+                    }
+                }
+
                 if (type.IsValueType)
                 {
 #if OMNI_DEBUG
                     if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
                     {
                         NetworkLogger.__Log__(
-                            $"Warning: The struct '{type.Name}' contains reference-type fields. It is recommended to keep structs simple and free of references to ensure optimal performance.",
+                            $"The struct '{type.Name}' contains reference-type fields. It is recommended to keep structs simple and free of references to ensure optimal performance.",
                             NetworkLogger.LogType.Warning
                         );
                     }

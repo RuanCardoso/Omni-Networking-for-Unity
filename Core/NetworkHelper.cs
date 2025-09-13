@@ -399,21 +399,24 @@ namespace Omni.Core
         /// This method is useful for debugging purposes, as it allows you to display a label on the screen at the position of a given object.
         /// </remarks>
         [Conditional("OMNI_DEBUG")]
-        public static void ShowGUILabel(string label, Transform transform, float up = 1.0f)
+        public static void ShowGUILabel(string label, Transform transform, float up = 1.0f, Camera camera = null)
         {
             Vector3 worldPosition = transform.position + Vector3.up * up;
 
-            if (Camera.main == null)
+            if (camera == null)
+                camera = Camera.main;
+
+            if (camera == null)
             {
                 NetworkLogger.Print(
-                     "[NetworkHelper.ShowGUILabel] Main camera not found. Please ensure a camera exists in the scene with the 'MainCamera' tag. Debug labels cannot be displayed without a properly tagged camera.",
-                     NetworkLogger.LogType.Error);
+                    "No camera available. Assign a camera to render debug labels.",
+                    NetworkLogger.LogType.Error
+                );
 
                 return;
             }
 
-            Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition);
-
+            Vector3 screenPosition = camera.WorldToScreenPoint(worldPosition);
             if (screenPosition.z > 0)
             {
                 const float boxWidth = 145;
@@ -430,51 +433,6 @@ namespace Omni.Core
                     GUI.Box(new Rect(x, y, boxWidth, boxHeight), label, style);
             }
         }
-
-        //		/// <summary>
-        //		/// Saves the configuration of a given component to a file in JSON format.
-        //		/// This method is intended to be used only on the server side.
-        //		/// </summary>
-        //		/// <typeparam name="T">The type of the component to be saved.</typeparam>
-        //		/// <param name="component">The component instance to be saved.</param>
-        //		/// <param name="fileName">The name of the file where the component's configuration will be saved.</param>
-        //#if OMNI_DEBUG
-        //		[Conditional("UNITY_STANDALONE"), Conditional("UNITY_EDITOR")]
-        //#else
-        //        [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
-        //#endif
-        //		public static void SaveComponent<T>(T component, string fileName)
-        //		{
-        //			using StreamWriter writer = new(fileName, false);
-        //			writer.Write(NetworkManager.ToJson(component));
-        //		}
-
-        //		/// <summary>
-        //		/// Loads the configuration from a file and populates the target object with this data.
-        //		/// This method is intended to be used only on the server side.
-        //		/// </summary>
-        //		/// <param name="target">The object to be populated with the configuration data.</param>
-        //		/// <param name="fileName">The name of the file from which the configuration will be read.</param>
-        //#if OMNI_DEBUG
-        //		[Conditional("UNITY_STANDALONE"), Conditional("UNITY_EDITOR")]
-        //#else
-        //        [Conditional("UNITY_SERVER"), Conditional("UNITY_EDITOR")]
-        //#endif
-        //		public static void LoadComponent(object target, string fileName)
-        //		{
-        //			if (File.Exists(fileName))
-        //			{
-        //				try
-        //				{
-        //					using StreamReader reader = new(fileName);
-        //					JsonConvert.PopulateObject(reader.ReadToEnd(), target);
-        //				}
-        //				catch
-        //				{
-        //					File.Delete(fileName);
-        //				}
-        //			}
-        //		}
 
         /// <summary>
         /// Checks if the current platform supports server hosting capabilities.

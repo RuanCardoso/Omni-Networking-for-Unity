@@ -674,7 +674,8 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new InvalidOperationException(
-                    $"NetworkIdentity({transform.root.name}) has not been assigned to this object. This indicates the object was not properly instantiated and registered through the network system. Ensure initialization and registration are completed before accessing the Identity property."
+                    $"NetworkIdentity is missing on object '{transform.root.name}'. " +
+                    "Make sure the object is instantiated and registered through the network system before accessing Identity."
                 );
             }
             internal set => _identity = value;
@@ -783,7 +784,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new Exception(
-                    "Client-side-only property 'Client' was accessed improperly from the server side. This usage is invalid. Ensure this property is accessed exclusively on the client side to avoid runtime errors."
+                    "Invalid access: the 'Client' property is client-side only and cannot be used on the server."
                 );
             }
             private set => _local = value;
@@ -816,7 +817,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new Exception(
-                    "Access to the 'Server' property is restricted to server-side use only. Detected an invalid access attempt from the client side. Please ensure this property is used exclusively in server-side logic."
+                    "Invalid access: the 'Server' property is server-side only and cannot be used on the client."
                 );
             }
             private set => _remote = value;
@@ -988,8 +989,13 @@ namespace Omni.Core
         {
         }
 
-        private void Internal_OnRequestedAction(byte actionId, DataBuffer data, NetworkPeer peer)
+        private void Internal_OnRequestedAction(byte actionId, DataBuffer rawData, NetworkPeer peer)
         {
+            // allow multiples reads from the "same" databuffer.
+            using var data = Rent(enableTracking: false);
+            data.Internal_CopyFrom(rawData);
+            data.SeekToBegin();
+
             if (IsServer)
             {
                 if (actionId == NetworkConstants.k_SpawnNotificationId)
@@ -1127,8 +1133,9 @@ namespace Omni.Core
                 if (method.DeclaringType?.Name != nameof(NetworkBehaviour) && !NetworkManager.TickSystemModuleEnabled)
                 {
                     NetworkLogger.__Log__(
-                        "The Tick System Module is required to use the OnTick method. Please enable the Tick System Module in the inspector to proceed.",
-                        logType: NetworkLogger.LogType.Error);
+                        "OnTick requires the Tick System Module. Enable it in the inspector.",
+                        NetworkLogger.LogType.Error
+                    );
                 }
             }
         }
@@ -1413,17 +1420,14 @@ namespace Omni.Core
                             {
 #if OMNI_DEBUG
                                 NetworkLogger.__Log__(
-                                    $"[Security] Network Variable modification rejected: Client lacks permission to modify '{field.Name}' (ID: {id}). " +
-                                    $"This variable is not marked with 'ClientAuthority' option. " +
-                                    $"Client ID: {peer.Id}, Object: {GetType().Name}",
+                                    $"NetworkVariable modification rejected. " +
+                                    $"Client {peer.Id} is not allowed to modify '{field.Name}' (Id={id}).",
                                     NetworkLogger.LogType.Error
                                 );
 #else
                                 NetworkLogger.__Log__(
-                                    $"[Security] Client {peer.Id} disconnected: Unauthorized network variable modification attempt. " +
-                                    $"Attempted to modify '{field.Name}' (ID: {id}) without proper permissions. " +
-                                    $"To allow client modifications, either enable 'AllowNetworkVariablesFromClients' in NetworkManager " +
-                                    $"or mark the variable with 'ClientAuthority' option.",
+                                    $"Client {peer.Id} disconnected: tried to modify '{field.Name}' (Id={id}) without permission. " +
+                                    "Enable 'IsClientAuthority' if client writes are intended.",
                                     NetworkLogger.LogType.Error
                                 );
 
@@ -1453,10 +1457,8 @@ namespace Omni.Core
                             if (!Identity.isOwnershipTransitioning)
                             {
                                 NetworkLogger.__Log__(
-                                    "[RPC Ownership Error] RPC rejected: Only the client with ownership of the object can send RPCs to the server. " +
-                                    "Ensure the client has authority over the target object before attempting this operation." +
-                                    "You can disable this restriction if ownership verification is not required." +
-                                    $"Rpc Id: '{rpcId}', Rpc Name: '{m_ServerRpcHandler.GetRpcName(rpcId)}' in Class: '{GetType().Name}'.",
+                                    $"RPC rejected: only the owning client can call this RPC. " +
+                                    $"RpcId={rpcId}, Name={m_ServerRpcHandler.GetRpcName(rpcId)}, Object={GetType().Name}",
                                     NetworkLogger.LogType.Error
                                 );
                             }
@@ -1482,7 +1484,7 @@ namespace Omni.Core
                 else methodName = m_ClientRpcHandler.GetRpcName(rpcId);
 
                 NetworkLogger.__Log__(
-                    $"[RPC Error] An exception occurred while processing the RPC -> " +
+                    $"An exception occurred while processing the RPC -> " +
                     $"Rpc Id: '{rpcId}', Rpc Name: '{methodName}' in Class: '{GetType().Name}' -> " +
                     $"Exception Details: {ex.Message}. ",
                     NetworkLogger.LogType.Error

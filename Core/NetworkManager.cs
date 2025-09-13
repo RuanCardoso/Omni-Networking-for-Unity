@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using UnityEngine.Profiling;
 using ParrelSync;
 #endif
 using MemoryPack;
@@ -27,7 +28,6 @@ using Omni.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Omni.Core.Attributes;
-using UnityEngine.Profiling;
 using System.IO;
 using Omni.Inspector;
 
@@ -478,11 +478,11 @@ namespace Omni.Core
 #if UNITY_EDITOR
             NetworkLogger.Initialize("EditorLog");
 #if OMNI_RELEASE
-            NetworkLogger.Log("The production key is: " + BitConverter.ToString(SharedKey));
+            NetworkLogger.Log("The shared key is: " + BitConverter.ToString(SharedKey));
 #endif
 #else
             string _uniqueLogId = Guid.NewGuid().ToString();
-            NetworkLogger.Log($"The log ID for this session is: {_uniqueLogId}");
+            NetworkLogger.Log($"The log id for this session is: {_uniqueLogId}");
             NetworkLogger.Initialize(_uniqueLogId);
 #endif
             // NetworkHelper.LoadComponent(this, "setup.cfg");
@@ -645,7 +645,7 @@ namespace Omni.Core
         private void ShowDefaultOmniLog()
         {
             NetworkLogger.Log("Welcome to Omni Server Console. The server is now ready to handle connections and process requests.");
-            NetworkLogger.Log($"The production key is: {BitConverter.ToString(SharedKey)}");
+            NetworkLogger.Log($"The shared key is: {BitConverter.ToString(SharedKey)}");
 #if OMNI_DEBUG
             NetworkLogger.Log("Debug Mode Enabled: Detailed logs and debug features are active.");
 #else
@@ -1172,9 +1172,11 @@ namespace Omni.Core
                 if (target == Target.Self && isExplicitGroup)
                 {
                     NetworkLogger.__Log__(
-                        $"Warning: Target.SelfOnly with group ID {toGroup.Id} is logically inconsistent. When sending to self only, the group ID is irrelevant as messages are routed directly to the sender. Consider using group ID 0 for self-targeted messages.",
-                        NetworkLogger.LogType.Warning
+                        "Target.Self cannot be combined with a Group. Self-targeted messages are always routed directly to the sender. Remove the Group parameter.",
+                        NetworkLogger.LogType.Error
                     );
+
+                    return;
                 }
 
                 var peersById = PeersById;
@@ -1185,7 +1187,7 @@ namespace Omni.Core
                         if (!toGroup._peersById.ContainsKey(sender.Id) && sender.Id != 0)
                         {
                             NetworkLogger.__Log__(
-                                "Access Denied: Across-group messaging is currently disabled. To enable this functionality, set 'AllowAcrossGroupMessage' to true in the group settings or ensure the sender belongs to the target group.",
+                                "Cannot send message: the sender does not belong to the target group and cross-group messaging is disabled. Enable 'AllowAcrossGroupMessage' or add the sender to the group.",
                                 NetworkLogger.LogType.Error
                             );
 
@@ -1212,8 +1214,10 @@ namespace Omni.Core
                             if (isExplicitGroup)
                             {
                                 NetworkLogger.__Log__(
-                                     $"Error: Cannot use Target.GroupOnly with group ID {toGroup.Id}. When using Target.GroupOnly, the system automatically broadcasts to all groups the sender belongs to. Specifying a specific group ID conflicts with this behavior. Use Target.AllPlayers instead if you need to target a specific group.",
-                                     NetworkLogger.LogType.Error
+                                    $"Cannot use Target.Group with an explicit group (Id={toGroup.Id}, Name={toGroup.Name}). " +
+                                    "Target.Group always sends to the sender’s MainGroup. " +
+                                    "To send to a SubGroup, pass the SubGroup instance explicitly instead, with Target.Everyone",
+                                    NetworkLogger.LogType.Error
                                 );
 
                                 return;
@@ -1222,7 +1226,8 @@ namespace Omni.Core
                             if (sender.Id == 0)
                             {
                                 NetworkLogger.__Log__(
-                                    "Error: The server peer (ID 0) cannot use group targeting. Server peers must specify an explicit group ID when broadcasting messages.",
+                                    "The server cannot use Target.Group because it does not belong to any group. " +
+                                    "When sending from the server, you must always specify the target group explicitly as a parameter.",
                                     NetworkLogger.LogType.Error
                                 );
 
@@ -1232,8 +1237,9 @@ namespace Omni.Core
                             if (!sender.IsInAnyGroup)
                             {
                                 NetworkLogger.__Log__(
-                                     "Error: Failed to send group message. The sender is not a member of any groups. Join at least one group before attempting to send group-targeted messages.",
-                                     NetworkLogger.LogType.Error
+                                    "Cannot send group message: the sender does not have a MainGroup (Group=null). " +
+                                    "Join a MainGroup before sending group-targeted messages.",
+                                    NetworkLogger.LogType.Error
                                 );
 
                                 return;
@@ -1244,7 +1250,8 @@ namespace Omni.Core
                                 if (!peer.IsAuthenticated)
                                 {
                                     NetworkLogger.__Log__(
-                                        "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
+                                        $"Skipped sending to unauthenticated peer (PeerId={peer.Id}). " +
+                                        "This may be expected during handshake, but check if the connection is valid.",
                                         NetworkLogger.LogType.Warning
                                     );
 
@@ -1269,8 +1276,9 @@ namespace Omni.Core
                                 if (!peer.IsAuthenticated)
                                 {
                                     NetworkLogger.__Log__(
-                                        "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
-                                        NetworkLogger.LogType.Warning
+                                         $"Skipped sending to unauthenticated peer (PeerId={peer.Id}). " +
+                                         "This may be expected during handshake, but check if the connection is valid.",
+                                         NetworkLogger.LogType.Warning
                                     );
 
                                     continue;
@@ -1294,7 +1302,8 @@ namespace Omni.Core
                             if (!sender.IsAuthenticated)
                             {
                                 NetworkLogger.__Log__(
-                                    "Warning: The server attempted to send a message to an unauthenticated peer. This may occasionally be acceptable, but verify the connection state if unexpected.",
+                                    $"Skipped sending to unauthenticated peer (PeerId={sender.Id}). " +
+                                    "This may be expected during handshake, but check if the connection is valid.",
                                     NetworkLogger.LogType.Warning
                                 );
 
@@ -2136,6 +2145,9 @@ namespace Omni.Core
 
         public virtual void OnDestroy()
         {
+            if (!gameObject.activeSelf)
+                return;
+
             try
             {
                 if (Application.isPlaying)

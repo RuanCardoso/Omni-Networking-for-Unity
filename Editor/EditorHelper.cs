@@ -89,12 +89,6 @@ namespace Omni.Editor
                 }
             }
 
-            string versionDefine = $"OMNI_V_{NetworkLogger.Version}";
-            if (!currentDefines.Contains(versionDefine))
-            {
-                currentDefines.Add(versionDefine);
-            }
-
             string[] newDefines = currentDefines.ToArray();
             List<string> originalDefines = GetDefines();
             if (!newDefines.SequenceEqual(originalDefines))

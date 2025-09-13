@@ -134,7 +134,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new NullReferenceException(
-                    "The 'Server' property is null. Ensure this property is accessed only on the server-side. Verify that 'Awake()' and 'Start()' have been called or initialize the property manually before use."
+                    "The 'Server' property is null. Access it only on the server side after initialization (Awake/Start)."
                 );
             }
             internal set => remote = value;
@@ -459,19 +459,17 @@ namespace Omni.Core
                         {
 #if OMNI_DEBUG
                             NetworkLogger.__Log__(
-                                $"[Security] Network Variable modification rejected: Client lacks permission to modify '{field.Name}' (ID: {id}). " +
-                                $"This variable is not marked with 'ClientAuthority' option. " +
-                                $"Client ID: {peer.Id}, Object: {GetType().Name}",
+                                $"NetworkVariable modification rejected. " +
+                                $"ClientId={peer.Id} tried to modify '{field.Name}' (Id={id}) without authority. " +
+                                $"Object={GetType().Name}",
                                 NetworkLogger.LogType.Error
                             );
 #else
                             NetworkLogger.__Log__(
-                                $"[Security] Client {peer.Id} disconnected: Unauthorized network variable modification attempt. " +
-                                $"Attempted to modify '{field.Name}' (ID: {id}) without proper permissions. " +
-                                $"To allow client modifications, either enable 'AllowNetworkVariablesFromClients' in NetworkManager " +
-                                $"or mark the variable with 'ClientAuthority' option.",
-                                NetworkLogger.LogType.Error
-                            );
+                                 $"Client {peer.Id} disconnected: tried to modify '{field.Name}' (Id={id}) without permission. " +
+                                 "Enable 'IsClientAuthority' if this is intended.",
+                                 NetworkLogger.LogType.Error
+                             );
 
                             peer.Disconnect();
 #endif
@@ -496,7 +494,7 @@ namespace Omni.Core
             {
                 string methodName = m_RpcHandler.GetRpcName(rpcId);
                 NetworkLogger.__Log__(
-                    $"[RPC Error] An exception occurred while processing the RPC -> " +
+                    $"An exception occurred while processing the RPC -> " +
                     $"Rpc Id: '{rpcId}', Rpc Name: '{methodName}' in Class: '{GetType().Name}' -> " +
                     $"Exception Details: {ex.Message}. ",
                     NetworkLogger.LogType.Error

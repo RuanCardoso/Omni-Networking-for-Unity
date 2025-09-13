@@ -90,7 +90,7 @@ namespace Omni.Core
 
                 NetworkLogger.PrintHyperlink();
                 throw new NullReferenceException(
-                    "The 'Client' property is null. Ensure this property is accessed only on the client-side. Verify that 'Awake()' and 'Start()' have been called or initialize the property manually before use."
+                    "The 'Client' property is null. Access it only on the client side after initialization (Awake/Start)."
                 );
             }
             internal set => local = value;
@@ -351,7 +351,7 @@ namespace Omni.Core
             {
                 string methodName = m_RpcHandler.GetRpcName(rpcId);
                 NetworkLogger.__Log__(
-                    $"[RPC Error] An exception occurred while processing the RPC -> " +
+                    $"An exception occurred while processing the RPC -> " +
                     $"Rpc Id: '{rpcId}', Rpc Name: '{methodName}' in Class: '{GetType().Name}' -> " +
                     $"Exception Details: {ex.Message}. ",
                     NetworkLogger.LogType.Error

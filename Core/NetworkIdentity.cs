@@ -714,10 +714,8 @@ namespace Omni.Core
                 if (isOwnershipTransitioning && !m_AllowInstantOwnershipTransfer)
                 {
                     NetworkLogger.__Log__(
-                        "[Ownership Transfer Blocked] A transfer request was ignored because an ownership transition is already in progress for this object. " +
-                        "Only one ownership transfer can be processed at a time to ensure data integrity and prevent race conditions. " +
-                        "Please wait for the current transfer to complete before attempting another request or enable instant ownership transfer. " +
-                        $"Object: '{name}', Current Owner: '{Owner?.Id}', Requested New Owner: '{peer?.Id}'.",
+                        $"Ownership transfer ignored: another transfer is already in progress. " +
+                        $"Object='{name}', CurrentOwner={Owner?.Id}, RequestedOwner={peer?.Id}",
                         NetworkLogger.LogType.Warning
                     );
 

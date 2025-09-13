@@ -226,9 +226,8 @@ namespace Omni.Core
             catch (Exception ex)
             {
                 NetworkLogger.__Log__(
-                    $"[Serialization] Operation failed for {typeof(T).Name}: {ex.Message}\n" +
-                    $"Method: DeepClone ({(useBinarySerializer ? "Binary" : "JSON")})\n" +
-                    $"Exception: {ex.GetType().Name}",
+                    $"Serialization failed for {typeof(T).Name}: {ex.Message}. " +
+                    $"Method=DeepClone({(useBinarySerializer ? "Binary" : "JSON")}), Exception={ex.GetType().Name}",
                     NetworkLogger.LogType.Error
                 );
 
@@ -278,14 +277,14 @@ namespace Omni.Core
             catch (InvalidCastException)
             {
                 NetworkLogger.__Log__(
-                    $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                    $"Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
                     NetworkLogger.LogType.Error
                 );
             }
             catch (Exception ex)
             {
                 NetworkLogger.__Log__(
-                    $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                    $"Exception while casting value for key '{name}': {ex.Message}",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -320,14 +319,14 @@ namespace Omni.Core
             catch (InvalidCastException)
             {
                 NetworkLogger.__Log__(
-                    $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                    $"Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
                     NetworkLogger.LogType.Error
                 );
             }
             catch (Exception ex)
             {
                 NetworkLogger.__Log__(
-                    $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                    $"Exception while casting value for key '{name}': {ex.Message}",
                     NetworkLogger.LogType.Error
                 );
             }
@@ -361,14 +360,14 @@ namespace Omni.Core
                 catch (InvalidCastException)
                 {
                     NetworkLogger.__Log__(
-                        $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                        $"Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
                         NetworkLogger.LogType.Error
                     );
                 }
                 catch (Exception ex)
                 {
                     NetworkLogger.__Log__(
-                        $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                        $"Exception while casting value for key '{name}': {ex.Message}",
                         NetworkLogger.LogType.Error
                     );
                 }
@@ -409,14 +408,14 @@ namespace Omni.Core
                 catch (InvalidCastException)
                 {
                     NetworkLogger.__Log__(
-                        $"[Dictionary] Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
+                        $"Failed to cast value for key '{name}' from {@ref?.GetType().Name ?? "null"} to {typeof(T).Name}",
                         NetworkLogger.LogType.Error
                     );
                 }
                 catch (Exception ex)
                 {
                     NetworkLogger.__Log__(
-                        $"[Dictionary] Exception while casting value for key '{name}': {ex.Message}",
+                        $"Exception while casting value for key '{name}': {ex.Message}",
                         NetworkLogger.LogType.Error
                     );
                 }

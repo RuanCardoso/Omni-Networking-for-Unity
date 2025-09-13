@@ -268,7 +268,7 @@ namespace Omni.Core
                 NetworkLogger.PrintHyperlink();
                 throw new ObjectDisposedException(
                     nameof(DataBuffer),
-                    "Cannot read the buffer because this DataBuffer instance has already been disposed. Ensure the instance is valid before reading from it."
+                    "Cannot read from DataBuffer: the instance has already been disposed."
                 );
             }
 
@@ -276,7 +276,7 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new ArgumentException(
-                    "The 'count' parameter must be a non-negative integer. Advancing by a negative value is not allowed.",
+                    "The 'count' parameter cannot be negative.",
                     nameof(count)
                 );
             }
@@ -285,7 +285,8 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new ArgumentException(
-                    $"The 'count' parameter exceeds the remaining buffer capacity. Current position: {_position}, Buffer length: {_buffer.Length}, Requested count: {count}.",
+                    $"The 'count' parameter exceeds buffer capacity. " +
+                    $"Position={_position}, BufferLength={_buffer.Length}, Requested={count}.",
                     nameof(count)
                 );
             }
@@ -294,7 +295,8 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new InvalidOperationException(
-                    $"Cannot advance past the end of the buffer. Insufficient data available for reading. Current position: {_position}, Buffer length: {_length}, Requested count: {count}."
+                    $"Cannot advance past the end of the buffer. " +
+                    $"Position={_position}, BufferLength={_length}, Requested={count}."
                 );
             }
 #endif
@@ -330,7 +332,6 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Memory<byte> GetMemory(int sizeHint = 0) // interface!
         {
-            CheckAndResizeBuffer(sizeHint);
             return _buffer.AsMemory(_position);
         }
 
@@ -349,14 +350,12 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<byte> GetSpan(int sizeHint = 0) // interface!
         {
-            CheckAndResizeBuffer(sizeHint);
             return _buffer.AsSpan(_position);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal Span<byte> Internal_GetSpan(int length)
         {
-            CheckAndResizeBuffer(length);
             return _buffer.AsSpan(_position, length);
         }
 
@@ -514,20 +513,6 @@ namespace Omni.Core
             return _position > 0 ? _position : _endPosition;
         }
 
-        [Conditional("OMNI_DEBUG")]
-        private void CheckAndResizeBuffer(int sizeHint)
-        {
-            if (sizeHint > FreeCapacity)
-            {
-                NetworkLogger.PrintHyperlink();
-                throw new NotSupportedException(
-                    $"The buffer cannot be resized to the requested size ({sizeHint}). The requested size exceeds the maximum capacity of the buffer ({Capacity}). "
-                    + "Buffer resizing is disabled to maintain optimal performance. "
-                    + "To resolve this issue, consider using a buffer with a larger initial capacity or switching to a different data structure better suited to your needs."
-                );
-            }
-        }
-
 #if OMNI_DEBUG
         internal Action _onDisposed;
 #endif
@@ -553,15 +538,17 @@ namespace Omni.Core
             {
                 NetworkLogger.PrintHyperlink();
                 throw new ObjectDisposedException(
-                    "Cannot dispose this DataBuffer because it has already been disposed. Ensure Dispose is called only once."
+                    nameof(DataBuffer),
+                    "DataBuffer has already been disposed."
                 );
             }
 
             if (_objectPooling == null)
             {
                 NetworkLogger.PrintHyperlink();
-                throw new ArgumentNullException("",
-                    "Cannot dispose this DataBuffer because it was not acquired from a buffer pool. Only pooled buffers should be disposed."
+                throw new ArgumentNullException(
+                    nameof(_objectPooling),
+                    "Cannot dispose DataBuffer: it was not acquired from a buffer pool."
                 );
             }
 

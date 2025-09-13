@@ -216,16 +216,6 @@ namespace Omni.Core
                 return peer;
             }
 
-            NetworkLogger.__Log__(
-                $"[NetworkGroup {Id}:{Name}] Peer with ID {peerId} not found in group. This could happen if:" +
-                $"\n- The peer has disconnected" +
-                $"\n- The peer never joined this group" +
-                $"\n- The peer ID is incorrect" +
-                $"\n- The group has been cleared or reset" +
-                $"\nPeer count in group: {PeerCount}, Group Name: '{Name}'",
-                NetworkLogger.LogType.Error
-            );
-
             return null;
         }
 

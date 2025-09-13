@@ -69,7 +69,6 @@ namespace Omni.Core
                 return publicKeyAsset.text;
             }
 
-
             public static NetworkIdentity GetIdentity(int identityId)
             {
                 if (Identities.TryGetValue(identityId, out NetworkIdentity identity))
@@ -78,11 +77,6 @@ namespace Omni.Core
                 }
                 else
                 {
-                    NetworkLogger.__Log__(
-                        $"Get Error: Identity with ID {identityId} not found.",
-                        NetworkLogger.LogType.Error
-                    );
-
                     return null;
                 }
             }
@@ -304,11 +298,6 @@ namespace Omni.Core
                 }
                 else
                 {
-                    NetworkLogger.__Log__(
-                        $"Get Error: Identity with ID {identityId} not found.",
-                        NetworkLogger.LogType.Error
-                    );
-
                     return null;
                 }
             }
@@ -361,11 +350,6 @@ namespace Omni.Core
                     return group;
                 }
 
-                NetworkLogger.__Log__(
-                    $"Get Error: Group with ID {groupId} not found.",
-                    NetworkLogger.LogType.Error
-                );
-
                 return null;
             }
 
@@ -392,16 +376,9 @@ namespace Omni.Core
                 {
                     if (!group._peersById.TryAdd(peer.Id, peer))
                     {
-                        NetworkLogger.__Log__(
-                            $"JoinGroup: Failed to add peer: {peer.Id} to group: {groupName} because it already exists.",
-                            NetworkLogger.LogType.Error
-                        );
-
-                        OnPlayerFailedJoinGroup?.Invoke(
-                            peer,
-                            $"JoinGroup: Failed to add peer: {peer.Id} to group: {groupName} because it already exists."
-                        );
-
+                        string msg = $"JoinGroup failed: peer {peer.Id} is already in group '{groupName}'.";
+                        OnPlayerFailedJoinGroup?.Invoke(peer, msg);
+                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
                         return;
                     }
 
@@ -413,16 +390,9 @@ namespace Omni.Core
                     group._peersById.Add(peer.Id, peer);
                     if (!GroupsById.TryAdd(uniqueId, group))
                     {
-                        NetworkLogger.__Log__(
-                            $"JoinGroup: Failed to add group: {groupName} because it already exists.",
-                            NetworkLogger.LogType.Error
-                        );
-
-                        OnPlayerFailedJoinGroup?.Invoke(
-                            peer,
-                            $"JoinGroup: Failed to add group: {groupName} because it already exists."
-                        );
-
+                        string msg = $"JoinGroup failed: group '{groupName}' (Id={uniqueId}) already exists.";
+                        OnPlayerFailedJoinGroup?.Invoke(peer, msg);
+                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
                         return;
                     }
 
@@ -433,12 +403,9 @@ namespace Omni.Core
                 {
                     if (!peer._groups.TryAdd(group.Id, group))
                     {
-                        OnPlayerFailedJoinGroup?.Invoke(
-                            peer,
-                            "JoinGroup: Failed to add group to peer!!!"
-                        );
-
-                        NetworkLogger.__Log__("JoinGroup: Failed to add group to peer!!!");
+                        var msg = $"JoinGroup failed: group '{group.Name}' (Id={group.Id}) is already assigned to peer {peer.Id}.";
+                        OnPlayerFailedJoinGroup?.Invoke(peer, msg);
+                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
                         return;
                     }
 
@@ -500,7 +467,8 @@ namespace Omni.Core
                         if (!peer._groups.Remove(group.Id))
                         {
                             NetworkLogger.__Log__(
-                                "LeaveGroup: Failed to remove group from peer!!!"
+                                $"LeaveGroup failed: group '{group.Name}' (Id={group.Id}) was never assigned to peer {peer.Id}.",
+                                NetworkLogger.LogType.Error
                             );
 
                             return;
@@ -514,28 +482,16 @@ namespace Omni.Core
                     }
                     else
                     {
-                        NetworkLogger.__Log__(
-                            $"LeaveGroup: Failed to remove peer: {peer.Id} from group: {groupName} because it does not exist.",
-                            NetworkLogger.LogType.Error
-                        );
-
-                        OnPlayerFailedLeaveGroup?.Invoke(
-                            peer,
-                            $"LeaveGroup: Failed to remove peer: {peer.Id} from group: {groupName} because it does not exist."
-                        );
+                        var msg = $"LeaveGroup failed: peer {peer.Id} cannot be removed from group '{groupName}'.";
+                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
+                        OnPlayerFailedLeaveGroup?.Invoke(peer, msg);
                     }
                 }
                 else
                 {
-                    NetworkLogger.__Log__(
-                        $"LeaveGroup: {groupName} not found. Please verify the group name and ensure the group is properly registered.",
-                        NetworkLogger.LogType.Error
-                    );
-
-                    OnPlayerFailedLeaveGroup?.Invoke(
-                        peer,
-                        $"LeaveGroup: {groupName} not found. Please verify the group name and ensure the group is properly registered."
-                    );
+                    var msg = $"LeaveGroup failed: group '{groupName}' was not found.";
+                    NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
+                    OnPlayerFailedLeaveGroup?.Invoke(peer, msg);
                 }
             }
 
@@ -545,10 +501,8 @@ namespace Omni.Core
                 {
                     if (!GroupsById.Remove(group.Id))
                     {
-                        NetworkLogger.__Log__(
-                            $"LeaveGroup: Destroy was called on group: {group.Name} but it does not exist.",
-                            NetworkLogger.LogType.Error
-                        );
+                        var msg = $"Tried to destroy group '{group.Name}' (Id={group.Id}) but it was not found.";
+                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
                     }
 
                     // Dereferencing to allow for GC(Garbage Collector).
