@@ -839,7 +839,6 @@ namespace Omni.Core
                 case Module.Matchmaking:
                     {
                         Matchmaking = new NetworkMatchmaking();
-                        Matchmaking.Initialize();
                         NetworkService.Register(Matchmaking);
                     }
                     break;

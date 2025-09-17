@@ -8,6 +8,7 @@ using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
 using Omni.Core.Web;
 using static Omni.Core.Modules.Matchmaking.NetworkMatchmaking;
+using Omni.Core.Modules.Matchmaking;
 
 #pragma warning disable
 
@@ -113,9 +114,9 @@ namespace Omni.Core
         /// game lobbies, team assignment, custom matchmaking rules, and player grouping logic.
         /// </remarks>
         /// <value>
-        /// The <see cref="MatchServer"/> instance for handling server-side matchmaking operations.
+        /// The <see cref="NetworkMatchmaking"/> instance for handling server-side matchmaking operations.
         /// </value>
-        protected MatchServer Matchmaking => NetworkManager.Matchmaking.Server;
+        protected NetworkMatchmaking Matchmaking => NetworkManager.Matchmaking;
 
         /// <summary>
         /// Provides access to the <see cref="NetworkEventServer"/> instance, 
@@ -271,11 +272,11 @@ namespace Omni.Core
         {
             if (MatchmakingModuleEnabled)
             {
-                NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
-                NetworkManager.Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
+                NetworkManager.Matchmaking.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
+                NetworkManager.Matchmaking.OnPlayerLeftGroup += OnPlayerLeftGroup;
 
-                NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
-                NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+                NetworkManager.Matchmaking.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
+                NetworkManager.Matchmaking.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
             }
         }
 
@@ -289,11 +290,11 @@ namespace Omni.Core
 
             if (MatchmakingModuleEnabled)
             {
-                NetworkManager.Matchmaking.Server.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
-                NetworkManager.Matchmaking.Server.OnPlayerLeftGroup -= OnPlayerLeftGroup;
+                NetworkManager.Matchmaking.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
+                NetworkManager.Matchmaking.OnPlayerLeftGroup -= OnPlayerLeftGroup;
 
-                NetworkManager.Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
-                NetworkManager.Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
+                NetworkManager.Matchmaking.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
+                NetworkManager.Matchmaking.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
             }
 
             NetworkService.Unregister(m_ServiceName);

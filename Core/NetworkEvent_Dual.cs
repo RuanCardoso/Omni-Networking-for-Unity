@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
 using static Omni.Core.Modules.Matchmaking.NetworkMatchmaking;
+using Omni.Core.Modules.Matchmaking;
 
 #pragma warning disable
 
@@ -89,23 +90,9 @@ namespace Omni.Core
         /// game lobbies, team assignment, custom matchmaking rules, and player grouping logic.
         /// </remarks>
         /// <value>
-        /// The <see cref="MatchServer"/> instance for handling server-side matchmaking operations.
+        /// The <see cref="NetworkMatchmaking"/> instance for handling server-side matchmaking operations.
         /// </value>
-        protected MatchServer ServerMatchmaking => NetworkManager.Matchmaking.Server;
-
-        /// <summary>
-        /// Gets the client-side matchmaking manager that handles player grouping, matchmaking, and lobby functionality.
-        /// This property provides access to methods for joining, leaving, and interacting with player groups and matches.
-        /// </summary>
-        /// <remarks>
-        /// This property offers a convenient shorthand to access the client matchmaking system without directly
-        /// referencing the NetworkManager's matchmaking module. Use this for implementing features such as
-        /// joining game lobbies, requesting team assignments, and participating in matchmaking services.
-        /// </remarks>
-        /// <value>
-        /// The <see cref="MatchClient"/> instance for handling client-side matchmaking operations.
-        /// </value>
-        protected MatchClient ClientMatchmaking => NetworkManager.Matchmaking.Client;
+        protected NetworkMatchmaking Matchmaking => NetworkManager.Matchmaking;
 
         /// <summary>
         /// Provides access to the <see cref="NetworkEventClient"/> instance, 
@@ -329,14 +316,11 @@ namespace Omni.Core
         {
             if (MatchmakingModuleEnabled)
             {
-                Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
-                Matchmaking.Client.OnLeftGroup += OnLeftGroup;
+                Matchmaking.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
+                Matchmaking.OnPlayerLeftGroup += OnPlayerLeftGroup;
 
-                Matchmaking.Server.OnPlayerJoinedGroup += OnPlayerJoinedGroup;
-                Matchmaking.Server.OnPlayerLeftGroup += OnPlayerLeftGroup;
-
-                Matchmaking.Server.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
-                Matchmaking.Server.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
+                Matchmaking.OnPlayerFailedJoinGroup += OnPlayerFailedJoinGroup;
+                Matchmaking.OnPlayerFailedLeaveGroup += OnPlayerFailedLeaveGroup;
             }
         }
 
@@ -356,14 +340,11 @@ namespace Omni.Core
 
             if (MatchmakingModuleEnabled)
             {
-                Matchmaking.Client.OnJoinedGroup -= OnJoinedGroup;
-                Matchmaking.Client.OnLeftGroup -= OnLeftGroup;
+                Matchmaking.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
+                Matchmaking.OnPlayerLeftGroup -= OnPlayerLeftGroup;
 
-                Matchmaking.Server.OnPlayerJoinedGroup -= OnPlayerJoinedGroup;
-                Matchmaking.Server.OnPlayerLeftGroup -= OnPlayerLeftGroup;
-
-                Matchmaking.Server.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
-                Matchmaking.Server.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
+                Matchmaking.OnPlayerFailedJoinGroup -= OnPlayerFailedJoinGroup;
+                Matchmaking.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
             }
 
             NetworkService.Unregister(m_ServiceName);
@@ -427,14 +408,6 @@ namespace Omni.Core
                         break;
                 }
             }
-        }
-
-        protected virtual void OnJoinedGroup(string groupName, DataBuffer buffer)
-        {
-        }
-
-        protected virtual void OnLeftGroup(string groupName, string reason)
-        {
         }
 
         #endregion

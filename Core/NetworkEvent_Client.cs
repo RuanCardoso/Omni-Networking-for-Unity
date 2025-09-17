@@ -60,20 +60,6 @@ namespace Omni.Core
         protected TransporterRouteManager.ClientRouteManager Router => NetworkManager._transporterRouteManager.Client;
 
         /// <summary>
-        /// Gets the client-side matchmaking manager that handles player grouping, matchmaking, and lobby functionality.
-        /// This property provides access to methods for joining, leaving, and interacting with player groups and matches.
-        /// </summary>
-        /// <remarks>
-        /// This property offers a convenient shorthand to access the client matchmaking system without directly
-        /// referencing the NetworkManager's matchmaking module. Use this for implementing features such as
-        /// joining game lobbies, requesting team assignments, and participating in matchmaking services.
-        /// </remarks>
-        /// <value>
-        /// The <see cref="MatchClient"/> instance for handling client-side matchmaking operations.
-        /// </value>
-        protected MatchClient Matchmaking => NetworkManager.Matchmaking.Client;
-
-        /// <summary>
         /// Provides access to the <see cref="NetworkEventClient"/> instance, 
         /// allowing the client to send Remote Procedure Calls (RPCs) to the server.
         /// </summary>
@@ -159,7 +145,6 @@ namespace Omni.Core
             ___InjectServices___();
             if (m_UnregisterOnLoad)
             {
-                RegisterMatchmakingEvents();
                 Internal_OnClientStart();
 
                 OnStart();
@@ -224,15 +209,6 @@ namespace Omni.Core
             ClientSide.OnMessage += OnMessage;
         }
 
-        protected void RegisterMatchmakingEvents()
-        {
-            if (MatchmakingModuleEnabled)
-            {
-                NetworkManager.Matchmaking.Client.OnJoinedGroup += OnJoinedGroup;
-                NetworkManager.Matchmaking.Client.OnLeftGroup += OnLeftGroup;
-            }
-        }
-
         protected void Unregister()
         {
             NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
@@ -241,12 +217,6 @@ namespace Omni.Core
             NetworkManager.OnClientIdentitySpawned -= OnClientIdentitySpawned;
             NetworkManager.OnPeerSharedDataChanged -= OnPeerSharedDataChanged;
             ClientSide.OnMessage -= OnMessage;
-
-            if (MatchmakingModuleEnabled)
-            {
-                NetworkManager.Matchmaking.Client.OnJoinedGroup -= OnJoinedGroup;
-                NetworkManager.Matchmaking.Client.OnLeftGroup -= OnLeftGroup;
-            }
 
             NetworkService.Unregister(m_ServiceName);
             OnStop();
@@ -307,14 +277,6 @@ namespace Omni.Core
                         break;
                 }
             }
-        }
-
-        protected virtual void OnJoinedGroup(string groupName, DataBuffer buffer)
-        {
-        }
-
-        protected virtual void OnLeftGroup(string groupName, string reason)
-        {
         }
 
         public void SetupRpcMessage(byte rpcId, NetworkGroup group, bool _, byte networkVariableId)

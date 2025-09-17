@@ -250,7 +250,7 @@ namespace Omni.Core
             string newIdentifier = $"{Identifier}->{subGroupName}";
             if (!isNameBuilder)
             {
-                var nextGroup = Matchmaking.Server.AddGroup(newIdentifier);
+                var nextGroup = Matchmaking.AddGroup(newIdentifier);
                 nextGroup.Parent = this;
                 _subGroups.Add(nextGroup);
                 return nextGroup;
@@ -274,7 +274,7 @@ namespace Omni.Core
             string newIdentifier = $"{Identifier}->{subGroupName}";
             if (!isNameBuilder)
             {
-                bool success = Matchmaking.Server.TryAddGroup(newIdentifier, out nextGroup);
+                bool success = Matchmaking.TryAddGroup(newIdentifier, out nextGroup);
                 if (success)
                 {
                     nextGroup.Parent = this;
