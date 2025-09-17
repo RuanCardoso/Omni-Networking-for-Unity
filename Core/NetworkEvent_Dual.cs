@@ -479,7 +479,7 @@ namespace Omni.Core
             }
         }
 
-        protected virtual void OnPlayerJoinedGroup(DataBuffer buffer, NetworkGroup group, NetworkPeer peer)
+        protected virtual void OnPlayerJoinedGroup(NetworkGroup group, NetworkPeer peer)
         {
         }
 

@@ -205,10 +205,8 @@ namespace Omni.Core
         private static event Action<byte, DataBuffer, NetworkPeer, int> OnServerCustomMessage;
         private static event Action<byte, DataBuffer, int> OnClientCustomMessage;
 
-        internal static event Action<string, DataBuffer> OnJoinedGroup; // for client
-        internal static event Action<DataBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup; // for server
+        internal static event Action<NetworkGroup, NetworkPeer> OnPlayerJoinedGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedJoinGroup; // for server
-        internal static event Action<string, string> OnLeftGroup; // for client
         internal static event Action<NetworkGroup, NetworkPeer, Phase, string> OnPlayerLeftGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
 
@@ -1894,56 +1892,6 @@ namespace Omni.Core
                                     }
 
                                     behaviour.OnRpcReceived(rpcId, message, peer, isServer, channel);
-                                }
-                            }
-                            break;
-                        case NetworkPacketType.k_LeaveGroup:
-                            {
-                                string groupName = header.ReadString();
-                                string reason = header.ReadString();
-
-                                if (isServer)
-                                {
-                                    ServerSide.LeaveGroup(groupName, reason, peer);
-                                }
-                                else
-                                {
-                                    OnLeftGroup?.Invoke(groupName, reason);
-                                }
-                            }
-                            break;
-                        case NetworkPacketType.k_JoinGroup:
-                            {
-                                string groupName = header.ReadString();
-                                using var message = EndOfHeader();
-
-                                if (isServer)
-                                {
-                                    if (string.IsNullOrEmpty(groupName))
-                                    {
-                                        NetworkLogger.__Log__(
-                                            "JoinGroup: Group name cannot be null or empty.",
-                                            NetworkLogger.LogType.Error
-                                        );
-
-                                        return;
-                                    }
-
-                                    if (groupName.Length > 256)
-                                    {
-                                        NetworkLogger.__Log__(
-                                            "JoinGroup: Group name cannot be longer than 256 characters.",
-                                            NetworkLogger.LogType.Error
-                                        );
-
-                                        return;
-                                    }
-
-                                    ServerSide.JoinGroup(groupName, message, peer, includeBufferInResponse: true);
-                                }
-                                else
-                                {
-                                    OnJoinedGroup?.Invoke(groupName, message);
                                 }
                             }
                             break;

@@ -14,7 +14,7 @@ namespace Omni.Core.Modules.Matchmaking
         /// The second parameter is the <see cref="NetworkGroup"/> that the player has joined.
         /// The third parameter is the <see cref="NetworkPeer"/> object representing the player.
         /// </remarks>
-        public event Action<DataBuffer, NetworkGroup, NetworkPeer> OnPlayerJoinedGroup
+        public event Action<NetworkGroup, NetworkPeer> OnPlayerJoinedGroup
         {
             add => NetworkManager.OnPlayerJoinedGroup += value;
             remove => NetworkManager.OnPlayerJoinedGroup -= value;
@@ -102,24 +102,9 @@ namespace Omni.Core.Modules.Matchmaking
         /// <remarks>
         /// This method allows a player represented by a <see cref="NetworkPeer"/> object to join a specified <see cref="NetworkGroup"/> on the server.
         /// </remarks>
-        public void JoinGroup(NetworkGroup group, NetworkPeer peer)
+        public void JoinGroup(NetworkGroup group, NetworkPeer peer, bool autoJoinParents = true)
         {
-            NetworkManager.ServerSide.JoinGroup(group.Identifier, DataBuffer.Empty, peer, includeBufferInResponse: false);
-        }
-
-        /// <summary>
-        /// Joins a specified group on the server and sends additional data to the group.
-        /// </summary>
-        /// <param name="group">The <see cref="NetworkGroup"/> object to join.</param>
-        /// <param name="buffer">An optional <see cref="DataBuffer"/> containing data to be sent to the group upon joining.</param>
-        /// <param name="peer">The <see cref="NetworkPeer"/> object representing the player.</param>
-        /// <remarks>
-        /// This method allows a player represented by a <see cref="NetworkPeer"/> object to join a specified <see cref="NetworkGroup"/> on the server,
-        /// optionally sending additional data contained in a <see cref="DataBuffer"/> to the group upon joining.
-        /// </remarks>
-        public void JoinGroup(NetworkGroup group, NetworkPeer peer, DataBuffer buffer)
-        {
-            NetworkManager.ServerSide.JoinGroup(group.Identifier, buffer, peer, includeBufferInResponse: true);
+            NetworkManager.ServerSide.JoinGroup(group.Identifier, peer, autoJoinParents);
         }
 
         /// <summary>
@@ -132,13 +117,9 @@ namespace Omni.Core.Modules.Matchmaking
         /// This method allows a player represented by a <see cref="NetworkPeer"/> object to leave a specified <see cref="NetworkGroup"/> on the server.
         /// The optional reason parameter can provide additional context for why the player is leaving the group.
         /// </remarks>
-        public void LeaveGroup(
-            NetworkGroup group,
-            NetworkPeer peer,
-            string reason = "Leave event called by server."
-        )
+        public void LeaveGroup(NetworkGroup group, NetworkPeer peer, bool autoLeaveChildren = true, string reason = "Leave event called by server.")
         {
-            NetworkManager.ServerSide.LeaveGroup(group.Identifier, reason, peer);
+            NetworkManager.ServerSide.LeaveGroup(group.Identifier, reason, peer, autoLeaveChildren);
         }
 
         /// <summary>

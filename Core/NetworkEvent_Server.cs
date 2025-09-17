@@ -404,10 +404,9 @@ namespace Omni.Core
         /// <summary>
         /// Called when a player has joined a group.
         /// </summary>
-        /// <param name="buffer">The buffer containing additional data related to the player joining the group.</param>
         /// <param name="group">The network group that the player joined.</param>
         /// <param name="peer">The network peer representing the player who joined the group.</param>
-        protected virtual void OnPlayerJoinedGroup(DataBuffer buffer, NetworkGroup group, NetworkPeer peer)
+        protected virtual void OnPlayerJoinedGroup(NetworkGroup group, NetworkPeer peer)
         {
         }
 

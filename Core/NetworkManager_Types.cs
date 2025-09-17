@@ -247,8 +247,6 @@ namespace Omni.Core
         internal const byte k_Authenticate = 1;
         internal const byte k_BeginHandshake = 2;
         internal const byte k_EndHandshake = 3;
-        internal const byte k_JoinGroup = 4;
-        internal const byte k_LeaveGroup = 5;
         internal const byte k_LocalRpc = 6;
         internal const byte k_StaticRpc = 7;
         internal const byte k_NtpQuery = 8;
