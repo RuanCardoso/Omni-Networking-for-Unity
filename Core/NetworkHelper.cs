@@ -466,5 +466,74 @@ namespace Omni.Core
             double factor = Math.Pow(10, decimalPlaces);
             return Math.Truncate(value * factor) / factor;
         }
+
+        /// <summary>
+        /// Determines whether the specified host belongs to an internal or private network.
+        /// Includes localhost, loopback addresses, private IPv4 ranges (10/8, 192.168/16, 172.16–31/12, 169.254/16),
+        /// IPv6 local addresses (::1, link-local, site-local, fc00::/7), docker container names, etc.
+        /// </summary>
+        /// <param name="host">The host string, which may be an IP address or hostname/container name.</param>
+        /// <returns><c>true</c> if the host is internal; otherwise, <c>false</c>.</returns>
+        public static bool IsInternalHost(string host)
+        {
+            if (string.IsNullOrWhiteSpace(host))
+                return false;
+
+            // Check for localhost explicitly
+            if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Try to parse as IP address first
+            if (System.Net.IPAddress.TryParse(host, out var ip))
+            {
+                return IsInternalIpAddress(ip);
+            }
+
+            // If not a valid IP, try to resolve the hostname/container name
+            try
+            {
+                var hostAddresses = System.Net.Dns.GetHostAddresses(host);
+                foreach (var address in hostAddresses)
+                {
+                    if (IsInternalIpAddress(address))
+                        return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Helper method to check if an IPAddress is internal/private.
+        /// </summary>
+        /// <param name="ip">The IPAddress to check.</param>
+        /// <returns><c>true</c> if the IP is internal; otherwise, <c>false</c>.</returns>
+        private static bool IsInternalIpAddress(System.Net.IPAddress ip)
+        {
+            if (System.Net.IPAddress.IsLoopback(ip))
+                return true;
+
+            byte[] bytes = ip.GetAddressBytes();
+
+            return ip.AddressFamily switch
+            {
+                System.Net.Sockets.AddressFamily.InterNetwork => // IPv4
+                    (bytes[0] == 10) || // 10.0.0.0/8
+                    (bytes[0] == 192 && bytes[1] == 168) || // 192.168.0.0/16
+                    (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) || // 172.16.0.0/12
+                    (bytes[0] == 169 && bytes[1] == 254), // 169.254.0.0/16 (APIPA)
+
+                System.Net.Sockets.AddressFamily.InterNetworkV6 => // IPv6
+                    ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal ||
+                    ip.Equals(System.Net.IPAddress.IPv6Loopback) ||
+                    bytes[0] == 0xfc || bytes[0] == 0xfd, // fc00::/7 (Unique Local)
+
+                _ => false
+            };
+        }
     }
 }

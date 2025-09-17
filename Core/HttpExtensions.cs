@@ -5,9 +5,18 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Text;
 using Omni.Core.Web.Net;
+using UnityEngine.Networking;
 
 namespace Omni.Core.Web
 {
+    internal class DisableSslValidationHandler : CertificateHandler
+    {
+        protected override bool ValidateCertificate(byte[] certificateData)
+        {
+            return true;
+        }
+    }
+
     public static class HttpExtensions
     {
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, object>> _sessions = new();
@@ -360,6 +369,24 @@ namespace Omni.Core.Web
             }
 
             return collection;
+        }
+
+        /// <summary>
+        /// Configures the given <see cref="UnityWebRequest"/> to trust internal hosts
+        /// such as <c>localhost</c> or <c>127.0.0.1</c>, bypassing SSL certificate validation
+        /// to allow secure communication between services running on the same machine or network.
+        /// </summary>
+        /// <param name="request">
+        /// The <see cref="UnityWebRequest"/> instance to configure.
+        /// </param>
+        public static void TrustInternalHosts(this UnityWebRequest request)
+        {
+            var uri = new Uri(request.url);
+            string host = uri.Host;
+
+            // Allow internal hosts to bypass SSL validation
+            if (NetworkHelper.IsInternalHost(host))
+                request.certificateHandler = new DisableSslValidationHandler();
         }
     }
 }
