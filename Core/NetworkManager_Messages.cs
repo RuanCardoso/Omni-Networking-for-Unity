@@ -1,6 +1,7 @@
 using Omni.Core.Cryptography;
 using Omni.Core.Interfaces;
 using Omni.Shared;
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using UnityEngine;
+using Omni.Threading.Tasks;
 
 namespace Omni.Core
 {
@@ -72,13 +74,9 @@ namespace Omni.Core
             public static NetworkIdentity GetIdentity(int identityId)
             {
                 if (Identities.TryGetValue(identityId, out NetworkIdentity identity))
-                {
                     return identity;
-                }
-                else
-                {
-                    return null;
-                }
+
+                return null;
             }
 
             public static bool TryGetIdentity(int identityId, out NetworkIdentity identity)
@@ -109,42 +107,6 @@ namespace Omni.Core
                 message.Write(rpcId);
                 message.Internal_CopyFrom(data);
                 SendMessage(NetworkPacketType.k_LocalRpc, message);
-            }
-
-            internal static void JoinGroup(string groupName, DataBuffer buffer)
-            {
-                if (string.IsNullOrEmpty(groupName))
-                {
-                    throw new Exception("Group name cannot be null or empty.");
-                }
-
-                if (groupName.Length > 256)
-                {
-                    throw new Exception("Group name cannot be longer than 256 characters.");
-                }
-
-                using DataBuffer message = Pool.Rent(enableTracking: false);
-                message.WriteString(groupName);
-                message.Internal_CopyFrom(buffer);
-                SendMessage(NetworkPacketType.k_JoinGroup, new(message));
-            }
-
-            internal static void LeaveGroup(string groupName, string reason = "Leave called by user.")
-            {
-                if (string.IsNullOrEmpty(groupName))
-                {
-                    throw new Exception("Group name cannot be null or empty.");
-                }
-
-                if (groupName.Length > 256)
-                {
-                    throw new Exception("Group name cannot be longer than 256 characters.");
-                }
-
-                using DataBuffer message = Pool.Rent(enableTracking: false);
-                message.WriteString(groupName);
-                message.WriteString(reason);
-                SendMessage(NetworkPacketType.k_LeaveGroup, new(message));
             }
 
             internal static void AddRpcMessage(int identityId, IRpcMessage behaviour)
@@ -358,48 +320,54 @@ namespace Omni.Core
                 return GroupsById.TryGetValue(groupId, out group);
             }
 
-            internal static void JoinGroup(string groupName, DataBuffer buffer, NetworkPeer peer, bool includeBufferInResponse)
+            internal static void JoinGroup(string groupName, NetworkPeer peer, bool autoJoinParents, bool isRecursiveCall = false)
             {
-                void SendJoinGroupResponse()
-                {
-                    using DataBuffer message = Pool.Rent(enableTracking: false);
-                    message.WriteString(groupName);
-                    if (includeBufferInResponse)
-                        message.Internal_CopyFrom(buffer);
-
-                    SetTarget(Target.Self);
-                    SendMessage(NetworkPacketType.k_JoinGroup, peer, message);
-                }
-
                 int uniqueId = GetGroupIdByName(groupName);
                 if (GroupsById.TryGetValue(uniqueId, out NetworkGroup group))
                 {
                     if (!group._peersById.TryAdd(peer.Id, peer))
                     {
-                        string msg = $"JoinGroup failed: peer {peer.Id} is already in group '{groupName}'.";
+                        string msg = $"JoinGroup failed: peer {peer.Id} is already in group '{group.Name}'.";
                         OnPlayerFailedJoinGroup?.Invoke(peer, msg);
                         NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
                         return;
                     }
 
-                    EnterGroup(buffer, peer, group);
-                }
-                else
-                {
-                    group = new NetworkGroup(uniqueId, groupName, isServer: true);
-                    group._peersById.Add(peer.Id, peer);
-                    if (!GroupsById.TryAdd(uniqueId, group))
+                    if (!isRecursiveCall)
                     {
-                        string msg = $"JoinGroup failed: group '{groupName}' (Id={uniqueId}) already exists.";
-                        OnPlayerFailedJoinGroup?.Invoke(peer, msg);
-                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
-                        return;
+                        var parents = new Stack<NetworkGroup>();
+                        var current = group.Parent;
+
+                        while (current != null)
+                        {
+                            parents.Push(current);
+                            current = current.Parent;
+                        }
+
+                        while (parents.Count > 0)
+                        {
+                            var parent = parents.Pop();
+                            if (!parent.TryGetPeer(peer.Id, out _))
+                            {
+                                if (!autoJoinParents)
+                                {
+                                    string msg = $"JoinGroup failed: Peer {peer.Id} is not in required parent group(s) for '{group.Name}'. " +
+                                                 "Enable autoJoinParents or join parent groups manually first.";
+
+                                    OnPlayerFailedJoinGroup?.Invoke(peer, msg);
+                                    NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
+                                    return;
+                                }
+
+                                JoinGroup(parent.Identifier, peer, autoJoinParents, isRecursiveCall: true);
+                            }
+                        }
                     }
 
-                    EnterGroup(buffer, peer, group);
+                    EnterGroup(peer, group);
                 }
 
-                void EnterGroup(DataBuffer buffer, NetworkPeer peer, NetworkGroup group)
+                static void EnterGroup(NetworkPeer peer, NetworkGroup group)
                 {
                     if (!peer._groups.TryAdd(group.Id, group))
                     {
@@ -420,8 +388,7 @@ namespace Omni.Core
                         group.SetMasterClient(peer);
                     }
 
-                    SendJoinGroupResponse();
-                    OnPlayerJoinedGroup?.Invoke(buffer, group, peer);
+                    OnPlayerJoinedGroup?.Invoke(group, peer);
                 }
             }
 
@@ -446,18 +413,8 @@ namespace Omni.Core
                 return GroupsById.TryAdd(groupId, group);
             }
 
-            internal static void LeaveGroup(string groupName, string reason, NetworkPeer peer)
+            internal static void LeaveGroup(string groupName, string reason, NetworkPeer peer, bool autoLeaveChildren, bool isRecursiveCall = false)
             {
-                void SendResponseToClient()
-                {
-                    using DataBuffer message = Pool.Rent(enableTracking: false);
-                    message.WriteString(groupName);
-                    message.WriteString(reason);
-
-                    SetTarget(Target.Self);
-                    SendMessage(NetworkPacketType.k_LeaveGroup, peer, message);
-                }
-
                 int groupId = GetGroupIdByName(groupName);
                 if (GroupsById.TryGetValue(groupId, out NetworkGroup group))
                 {
@@ -474,15 +431,47 @@ namespace Omni.Core
                             return;
                         }
 
-                        SendResponseToClient();
-                        OnPlayerLeftGroup?.Invoke(group, peer, Phase.Active, reason);
+                        static void CollectSubGroupsBottomUp(NetworkGroup parent, List<NetworkGroup> result)
+                        {
+                            for (int i = parent._subGroups.Count - 1; i >= 0; i--)
+                            {
+                                NetworkGroup child = parent._subGroups[i];
+                                CollectSubGroupsBottomUp(child, result);
+                                result.Add(child);
+                            }
+                        }
 
+                        if (!isRecursiveCall)
+                        {
+                            var ordered = new List<NetworkGroup>();
+                            CollectSubGroupsBottomUp(group, ordered);
+
+                            foreach (var child in ordered)
+                            {
+                                if (child.TryGetPeer(peer.Id, out _))
+                                {
+                                    if (!autoLeaveChildren)
+                                    {
+                                        string msg = $"LeaveGroup failed: Peer {peer.Id} is still in child/descendant group(s) of '{group.Name}'. " +
+                                                     "Enable autoLeaveChildren or leave child groups manually first.";
+
+                                        OnPlayerFailedLeaveGroup?.Invoke(peer, msg);
+                                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
+                                        return;
+                                    }
+
+                                    LeaveGroup(child.Identifier, reason, peer, autoLeaveChildren, isRecursiveCall: true);
+                                }
+                            }
+                        }
+
+                        OnPlayerLeftGroup?.Invoke(group, peer, Phase.Active, reason);
                         if (group.DestroyWhenEmpty)
                             DestroyGroupWhenEmpty(group);
                     }
                     else
                     {
-                        var msg = $"LeaveGroup failed: peer {peer.Id} cannot be removed from group '{groupName}'.";
+                        var msg = $"LeaveGroup failed: peer {peer.Id} cannot be removed from group '{group.Name}'.";
                         NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
                         OnPlayerFailedLeaveGroup?.Invoke(peer, msg);
                     }
@@ -495,8 +484,10 @@ namespace Omni.Core
                 }
             }
 
-            internal static void DestroyGroupWhenEmpty(NetworkGroup group)
+            internal static async void DestroyGroupWhenEmpty(NetworkGroup group)
             {
+                // Let's schedule the destruction and cleanup for a few seconds in the future, to avoid problems while a group is still being used even after it is immediately empty.
+                await UniTask.Delay(2500); // 2.5 seconds it's fine.
                 if (group._peersById.Count == 0)
                 {
                     if (!GroupsById.Remove(group.Id))
