@@ -105,7 +105,7 @@ namespace Omni.Core
                 compressor.Write(data.BufferAsSpan);
 
                 var compressedBuffer = NetworkManager.Pool.Rent(); // Disposed by the caller!
-                compressor.CopyTo(compressedBuffer); // IBufferWriter<byte> implementation
+                compressor.CopyTo(compressedBuffer); // IBufferWriter<byte> implementation, auto-advance.
                 return compressedBuffer;
             }
             catch (NotSupportedException ex)
@@ -144,6 +144,7 @@ namespace Omni.Core
             using var compressedBuffer = CompressWithBrotliToNewBuffer(data, level, window);
             data.Reset();
             data.Write(compressedBuffer.BufferAsSpan);
+            // SeekToBegin is not needed here.
         }
 
         /// <summary>
@@ -170,6 +171,7 @@ namespace Omni.Core
             sequenceData.CopyTo(decompressedBuffer.Internal_GetSpan(length));
             decompressedBuffer.SetLength(length);
             decompressedBuffer.SetEndPosition(length);
+            // SeekToBegin is not needed here, CopyTo uses a 'Span' not a 'IBufferWriter<byte>' implementation
             return decompressedBuffer;
         }
 
@@ -238,6 +240,7 @@ namespace Omni.Core
             using var encryptedBuffer = EncryptToNewBuffer(buffer, peer);
             buffer.Reset();
             buffer.Write(encryptedBuffer.BufferAsSpan);
+            // SeekToBegin is not needed here.
         }
 
         /// <summary>
@@ -260,13 +263,14 @@ namespace Omni.Core
                 throw new ArgumentNullException(nameof(peer), "The peer cannot be null.");
             }
 
+            buffer.SeekToBegin();
             byte[] iv = buffer.ReadAsBinary<byte[]>();
             byte[] encryptedData = buffer.ReadAsBinary<byte[]>();
             byte[] decryptedData = AesProvider.Decrypt(encryptedData, 0, encryptedData.Length, peer._aesKey, iv);
 
             // Decrypt
             var decryptedBuffer = NetworkManager.Pool.Rent();
-            BuffersExtensions.Write(decryptedBuffer, decryptedData);
+            decryptedBuffer.Write(decryptedData.AsSpan());
             decryptedBuffer.SeekToBegin();
             return decryptedBuffer;
         }
@@ -1526,6 +1530,6 @@ namespace Omni.Core
 
     public static partial class BufferWriterExtensions
     {
-        public static ReadOnlyBuffer AsReadOnlyBuffer(this DataBuffer buffer) => new(buffer);
+        public static ReadOnlyDataBuffer AsReadOnlyDataBuffer(this DataBuffer buffer) => new(buffer);
     }
 }
