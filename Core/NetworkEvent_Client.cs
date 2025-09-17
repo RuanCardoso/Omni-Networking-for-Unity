@@ -358,6 +358,9 @@ namespace Omni.Core
                 );
 
                 NetworkLogger.PrintHyperlink(ex);
+#if OMNI_DEBUG
+                throw;
+#endif
             }
         }
     }

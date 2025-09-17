@@ -268,43 +268,47 @@ namespace Omni.Core
 
         public virtual void OnValidate()
         {
-            m_CurrentVersion = NetworkLogger.Version;
-            if (m_HttpServerPort == 80 && m_EnableHttpSsl)
+            try
             {
-                m_HttpServerPort = 443;
-                NetworkHelper.EditorSaveObject(gameObject);
-            }
-            else if (m_HttpServerPort == 443 && !m_EnableHttpSsl)
-            {
-                m_HttpServerPort = 80;
-                NetworkHelper.EditorSaveObject(gameObject);
-            }
-
-#if OMNI_DEBUG
-            m_ClientScriptingBackend = ScriptingBackend.Mono;
-            m_ServerScriptingBackend = ScriptingBackend.Mono;
-#endif
-            m_ConnectionModule = true;
-            if (!Application.isPlaying)
-            {
-                if (m_ClientTransporter != null || m_ServerTransporter != null)
+                m_CurrentVersion = NetworkLogger.Version;
+                if (m_HttpServerPort == 80 && m_EnableHttpSsl)
                 {
-                    m_ClientTransporter = m_ServerTransporter = null;
-                    throw new Exception("Transporter cannot be set. Is automatically initialized.");
+                    m_HttpServerPort = 443;
+                    NetworkHelper.EditorSaveObject(gameObject);
+                }
+                else if (m_HttpServerPort == 443 && !m_EnableHttpSsl)
+                {
+                    m_HttpServerPort = 80;
+                    NetworkHelper.EditorSaveObject(gameObject);
                 }
 
-                GetExternalIp();
-                SetScriptingBackend();
-                StripComponents();
+#if OMNI_DEBUG
+                m_ClientScriptingBackend = ScriptingBackend.Mono;
+                m_ServerScriptingBackend = ScriptingBackend.Mono;
+#endif
+                m_ConnectionModule = true;
+                if (!Application.isPlaying)
+                {
+                    if (m_ClientTransporter != null || m_ServerTransporter != null)
+                    {
+                        m_ClientTransporter = m_ServerTransporter = null;
+                        throw new Exception("Transporter cannot be set. Is automatically initialized.");
+                    }
+
+                    GetExternalIp();
+                    SetScriptingBackend();
+                    StripComponents();
+                }
+
+                DisableAutoStartIfHasHud();
+                Application.runInBackground = m_RunInBackground;
+                // Trim the list.
+                for (int i = 0; i < m_ConnectAddresses.Count; i++)
+                    m_ConnectAddresses[i] = m_ConnectAddresses[i].Trim();
+
+                m_KestrelOptions.m_UseHttps = m_EnableHttpSsl;
             }
-
-            DisableAutoStartIfHasHud();
-            Application.runInBackground = m_RunInBackground;
-            // Trim the list.
-            for (int i = 0; i < m_ConnectAddresses.Count; i++)
-                m_ConnectAddresses[i] = m_ConnectAddresses[i].Trim();
-
-            m_KestrelOptions.m_UseHttps = m_EnableHttpSsl;
+            catch { }
         }
 
         [ContextMenu("Strip Components")]
