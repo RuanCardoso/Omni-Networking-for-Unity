@@ -132,7 +132,7 @@ namespace Omni.Core
         [SerializeField]
         [Group("MiscTabs"), Tab("Basic")]
         [Min(0)]
-        private int m_LockServerFps = 0; // 0 = Unlocked
+        private int m_LockServerFps = 300; // 0 = Unlocked -> But the CPU will be maxed out.
 
         [SerializeField]
         [Group("MiscTabs"), Tab("Advanced")]
