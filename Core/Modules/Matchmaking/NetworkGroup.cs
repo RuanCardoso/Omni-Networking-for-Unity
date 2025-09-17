@@ -68,6 +68,36 @@ namespace Omni.Core
         public NetworkGroup Parent { get; internal set; }
 
         /// <summary>
+        /// Gets the next group in the hierarchy.
+        /// </summary>
+        [MemoryPackIgnore]
+        public NetworkGroup Next
+        {
+            get
+            {
+                if (TryGetNextGroup(out var next))
+                    return next;
+
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the previous group in the hierarchy.
+        /// </summary>
+        [MemoryPackIgnore]
+        public NetworkGroup Previous
+        {
+            get
+            {
+                if (TryGetPreviousGroup(out var previous))
+                    return previous;
+
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Gets the number of peers currently in the group.
         /// </summary>
         [MemoryPackIgnore]
@@ -212,9 +242,7 @@ namespace Omni.Core
             }
 
             if (_peersById.TryGetValue(peerId, out var peer))
-            {
                 return peer;
-            }
 
             return null;
         }
@@ -339,6 +367,10 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Retrieves the root <see cref="NetworkGroup"/> object from the current <see cref="NetworkGroup"/> hierarchy.
+        /// </summary>
+        /// <returns>The root <see cref="NetworkGroup"/> object.</returns>
         public NetworkGroup GetRoot()
         {
             var current = this;
@@ -359,6 +391,7 @@ namespace Omni.Core
                 nextGroup = list[idx + 1];
                 return true;
             }
+
             nextGroup = null;
             return false;
         }
@@ -375,6 +408,7 @@ namespace Omni.Core
                 previousGroup = list[idx - 1];
                 return true;
             }
+
             previousGroup = null;
             return false;
         }
