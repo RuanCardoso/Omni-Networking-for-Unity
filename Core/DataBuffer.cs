@@ -23,9 +23,9 @@ namespace Omni.Core
     /// optimized methods for serializing and deserializing the buffer, minimizing
     /// memory allocations and maximizing performance.
     /// </remarks>
-    internal class DataBufferFormatter : MemoryPackFormatter<ReadOnlyBuffer>
+    internal class DataBufferFormatter : MemoryPackFormatter<ReadOnlyDataBuffer>
     {
-        public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref ReadOnlyBuffer value)
+        public override void Serialize<TBufferWriter>(ref MemoryPackWriter<TBufferWriter> writer, ref ReadOnlyDataBuffer value)
         {
             if (value == null)
             {
@@ -39,7 +39,7 @@ namespace Omni.Core
             writer.WriteSpan(data);
         }
 
-        public override void Deserialize(ref MemoryPackReader reader, ref ReadOnlyBuffer value)
+        public override void Deserialize(ref MemoryPackReader reader, ref ReadOnlyDataBuffer value)
         {
             if (reader.PeekIsNull())
             {
@@ -52,7 +52,7 @@ namespace Omni.Core
             int length = reader.ReadVarIntInt32();
 
             // Initialize a read-only buffer instance backed by the rented pool buffer.
-            value = buffer.AsReadOnlyBuffer();
+            value = buffer.AsReadOnlyDataBuffer();
             // Configure the internal buffer boundaries to match the expected payload length.
             // This ensures both logical length and end position are consistent with the data to be read.
             value._buffer.SetLength(length);
@@ -75,10 +75,10 @@ namespace Omni.Core
     /// to work with serialized data during transmission, focusing on 
     /// easy integration with RPC workflows.
     /// </remarks>
-    public sealed class ReadOnlyBuffer
+    public sealed class ReadOnlyDataBuffer
     {
         internal readonly DataBuffer _buffer;
-        internal ReadOnlyBuffer(DataBuffer buffer)
+        internal ReadOnlyDataBuffer(DataBuffer buffer)
         {
             _buffer = buffer;
         }
@@ -88,7 +88,7 @@ namespace Omni.Core
         /// <para>This buffer should be disposed by the caller.</para>
         /// </summary>
         /// <returns>The underlying <see cref="DataBuffer"/>.</returns>
-        public DataBuffer GetBuffer()
+        public DataBuffer AsDataBuffer()
         {
             return _buffer;
         }

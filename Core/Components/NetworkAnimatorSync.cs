@@ -214,7 +214,7 @@ namespace Omni.Core.Components
         }
 
         [Client(2)]
-        void TestRpcA(ReadOnlyBuffer buffer)
+        void TestRpcA(ReadOnlyDataBuffer buffer)
         {
            // print("value: " + buffer.Read<int>());
            // print("value: " + buffer.ReadString());
