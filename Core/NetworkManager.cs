@@ -85,7 +85,6 @@ namespace Omni.Core
         internal static byte[] SecretKey => new byte[0];
 #endif
 #endif
-
         internal readonly static TransporterRouteManager _transporterRouteManager = new();
         private static bool _allowLoadScene;
 
@@ -512,12 +511,6 @@ namespace Omni.Core
             BufferWriterExtensions.DefaultEncoding = m_UseUtf8 ? Encoding.UTF8 : Encoding.ASCII;
             Bridge.UseDapper = m_UseDapper;
 
-            QualitySettings.vSyncCount = 0;
-#if !UNITY_SERVER || UNITY_EDITOR
-            Application.targetFrameRate = m_LockClientFps > 0 ? m_LockClientFps : -1;
-#else
-            Application.targetFrameRate = m_LockServerFps > 0 ? m_LockServerFps : -1;
-#endif
             AotHelper.EnsureDictionary<string, object>(); // Add IL2CPP Support to Dictionary for AOT
             UnityMainThreadId = Thread.CurrentThread.ManagedThreadId;
             DisableAutoStartIfHasHud();
@@ -614,6 +607,12 @@ namespace Omni.Core
 
         private void Update()
         {
+            QualitySettings.vSyncCount = 0;
+#if !UNITY_SERVER || UNITY_EDITOR
+            Application.targetFrameRate = m_LockClientFps > 0 ? m_LockClientFps : -1;
+#else
+            Application.targetFrameRate = m_LockServerFps > 0 ? m_LockServerFps : -1;
+#endif
             if (!_isInitialized)
                 return;
 
@@ -662,6 +661,15 @@ namespace Omni.Core
             if (!m_UseSecureRoutes)
             {
                 NetworkLogger.Log("Secure Routes are disabled. Transport data is not automatically encrypted. You must explicitly enable encryption for each route that requires protection. See Omni Documentation for more information.", false, NetworkLogger.LogType.Warning);
+            }
+
+            if (Debug.isDebugBuild)
+            {
+                NetworkLogger.Log(
+                    "Debug build detected: debug features are enabled. " +
+                    "This mode is useful for testing but should be disabled in production builds to avoid performance overhead and unnecessary logs.",
+                    NetworkLogger.LogType.Warning
+                );
             }
 #endif
         }
@@ -1121,23 +1129,54 @@ namespace Omni.Core
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected virtual ReadOnlySpan<byte> PrepareClientMessageForSending(byte msgType, ReadOnlySpan<byte> message, byte channel)
+        protected virtual DataBuffer PrepareMessageForSending(byte msgType, ReadOnlySpan<byte> raw, byte channel, bool isServer)
         {
+            if (channel > NetworkChannel.CompressedEncrypted)
+                throw new Exception("The channel must be less than or equal to " + NetworkChannel.CompressedEncrypted);
+
+            var message = CompressAndEncrypt(raw, channel, isServer);
             byte packed = (byte)(msgType | channel << 4);
-            using DataBuffer header = Pool.Rent(enableTracking: false);
+            var header = Pool.Rent(enableTracking: false);
             header.Write(packed);
-            header.Write(message);
-            return header.BufferAsSpan;
+            if (message == null) header.Write(raw);
+            else
+            {
+                header.Internal_CopyFrom(message);
+                message.Dispose();
+            }
+
+            return header;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected virtual ReadOnlySpan<byte> PrepareServerMessageForSending(byte msgType, ReadOnlySpan<byte> message, byte channel)
+        private DataBuffer CompressAndEncrypt(ReadOnlySpan<byte> data, byte channel, bool isServer)
         {
-            byte packed = (byte)(msgType | channel << 4);
-            using DataBuffer header = Pool.Rent(enableTracking: false);
-            header.Write(packed);
-            header.Write(message);
-            return header.BufferAsSpan;
+            switch (channel)
+            {
+                case NetworkChannel.Compressed:
+                    {
+                        DataBuffer _buffer = Pool.Rent(enableTracking: false);
+                        _buffer.Write(data);
+                        _buffer.CompressWithBrotliInPlace();
+                        return _buffer;
+                    }
+                case NetworkChannel.Encrypted:
+                    {
+                        DataBuffer _buffer = Pool.Rent(enableTracking: false);
+                        _buffer.Write(data);
+                        _buffer.EncryptInPlace(isServer ? ServerSide.ServerPeer : ClientSide.ServerPeer);
+                        return _buffer;
+                    }
+                case NetworkChannel.CompressedEncrypted: // compression first then encryption
+                    {
+                        DataBuffer _buffer = Pool.Rent(enableTracking: false);
+                        _buffer.Write(data);
+                        _buffer.CompressWithBrotliInPlace();
+                        _buffer.EncryptInPlace(isServer ? ServerSide.ServerPeer : ClientSide.ServerPeer);
+                        return _buffer;
+                    }
+                default:
+                    return null;
+            }
         }
 
         protected virtual void Internal_SendToClient(byte msgType, ReadOnlySpan<byte> _data, NetworkPeer sender, DeliveryMode deliveryMode, Target target, NetworkGroup toGroup, byte sequenceChannel)
@@ -1165,8 +1204,9 @@ namespace Omni.Core
                 }
             }
 
-            void Send(ReadOnlySpan<byte> message, NetworkPeer sender) => Connection.Server.Send(message, sender.EndPoint, deliveryMode, sequenceChannel);
-            ReadOnlySpan<byte> message = PrepareServerMessageForSending(msgType, _data, sequenceChannel);
+            using var message = PrepareMessageForSending(msgType, _data, sequenceChannel, isServer: true);
+            void SendToPeer(NetworkPeer sender) => Connection.Server.Send(message.BufferAsSpan, sender.EndPoint, deliveryMode, sequenceChannel);
+
             if (IsServerActive)
             {
                 if (target == Target.Self && isExplicitGroup)
@@ -1201,7 +1241,7 @@ namespace Omni.Core
                 // Authentication step!
                 if (msgType is NetworkPacketType.k_BeginHandshake or NetworkPacketType.k_EndHandshake)
                 {
-                    Send(message, sender);
+                    SendToPeer(sender);
                     return;
                 }
 
@@ -1264,7 +1304,7 @@ namespace Omni.Core
                                 if (peer.Equals(sender) && target == Target.GroupOthers)
                                     continue;
 
-                                Send(message, peer);
+                                SendToPeer(peer);
                             }
                         }
                         break;
@@ -1290,14 +1330,22 @@ namespace Omni.Core
                                 if (peer.Equals(sender) && target == Target.Others)
                                     continue;
 
-                                Send(message, peer);
+                                SendToPeer(peer);
                             }
                         }
                         break;
                     case Target.Self:
                         {
                             if (sender.Id == ServerSide.ServerPeer.Id)
+                            {
+                                NetworkLogger.__Log__(
+                                    "Message ignored: the server cannot send messages to itself. " +
+                                    "Depending on the situation, this warning can be safely ignored.",
+                                    NetworkLogger.LogType.Warning
+                                );
+
                                 return;
+                            }
 
                             if (!sender.IsAuthenticated)
                             {
@@ -1311,7 +1359,7 @@ namespace Omni.Core
                             }
 
                             // group id doesn't make sense here, because peersById is not used for target.Self.
-                            Send(message, sender);
+                            SendToPeer(sender);
                         }
                         break;
                 }
@@ -1321,8 +1369,8 @@ namespace Omni.Core
         private void SendClientAuthenticationMessage(byte msgType, DataBuffer authMessage)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            Connection.Client.Send(PrepareClientMessageForSending(msgType, authMessage.BufferAsSpan, 0), LocalEndPoint,
-                DeliveryMode.ReliableOrdered, 0);
+            using var buffer = PrepareMessageForSending(msgType, authMessage.BufferAsSpan, 0, isServer: false);
+            Connection.Client.Send(buffer.BufferAsSpan, LocalEndPoint, DeliveryMode.ReliableOrdered, 0);
         }
 
         protected virtual void Internal_SendToServer(byte msgType, ReadOnlySpan<byte> _data, DeliveryMode deliveryMode, byte sequenceChannel)
@@ -1330,7 +1378,8 @@ namespace Omni.Core
             NetworkHelper.EnsureRunningOnMainThread();
             if (_localPeer != null && _localPeer.IsConnected)
             {
-                Connection.Client.Send(PrepareClientMessageForSending(msgType, _data, sequenceChannel), LocalEndPoint, deliveryMode, sequenceChannel);
+                using var buffer = PrepareMessageForSending(msgType, _data, sequenceChannel, isServer: false);
+                Connection.Client.Send(buffer.BufferAsSpan, LocalEndPoint, deliveryMode, sequenceChannel);
             }
             else
             {
@@ -1530,27 +1579,54 @@ namespace Omni.Core
         {
         }
 
-        public virtual void Internal_OnDataReceived(ReadOnlySpan<byte> _data, DeliveryMode deliveryMethod,
-            IPEndPoint endPoint, byte _channel_, bool isServer, out byte msgType)
+        public virtual void Internal_OnDataReceived(ReadOnlySpan<byte> rawData, DeliveryMode deliveryMethod, IPEndPoint endPoint, byte _channel_, bool isServer, out byte msgType)
         {
             NetworkHelper.EnsureRunningOnMainThread();
             if (PeersByIp.TryGetValue(endPoint, out NetworkPeer peer) || !isServer)
             {
                 try
                 {
-                    if (isServer) Connection.Server.ReceivedBandwidth.Add(_data.Length);
-                    else Connection.Client.ReceivedBandwidth.Add(_data.Length);
+                    if (isServer) Connection.Server.ReceivedBandwidth.Add(rawData.Length);
+                    else Connection.Client.ReceivedBandwidth.Add(rawData.Length);
 #if OMNI_DEBUG && UNITY_EDITOR
                     Profiler.BeginSample(isServer ? "Omni_OnServerDataReceived" : "Omni_OnClientDataReceived");
 #endif
-                    int _length = _data.Length;
+                    // Extract the packed header byte (message type + channel).
+                    byte packed = rawData[0];
+                    msgType = (byte)(packed & 0x0F);        // Lower 4 bits = message type
+                    byte channel = (byte)((packed >> 4) & 0x0F); // Upper 4 bits = channel
+
+                    // Skip the header byte, leaving only the payload.
+                    ReadOnlySpan<byte> payload = rawData.Slice(1);
+                    int payloadLength = payload.Length;
+
+                    // Rent a buffer and write the payload into it.
                     using DataBuffer header = Pool.Rent(enableTracking: false);
-                    header.Write(_data);
+                    header.Write(payload);
+
+                    // Handle transformations depending on channel type.
+                    switch (channel)
+                    {
+                        case NetworkChannel.Compressed:
+                            header.DecompressWithBrotliInPlace();
+                            payloadLength = header.Length;
+                            break;
+                        case NetworkChannel.Encrypted:
+                            header.DecryptInPlace(isServer ? ServerSide.ServerPeer : ClientSide.ServerPeer);
+                            payloadLength = header.Length;
+                            break;
+                        case NetworkChannel.CompressedEncrypted:
+                            header.DecryptInPlace(isServer ? ServerSide.ServerPeer : ClientSide.ServerPeer);
+                            header.DecompressWithBrotliInPlace();
+                            payloadLength = header.Length;
+                            break;
+                        default:
+                            break;
+                    }
+
+                    // Reset read position for further processing.
                     header.SeekToBegin();
 
-                    byte packed = header.Read<byte>();
-                    msgType = (byte)(packed & 0xF);
-                    byte channel = (byte)((packed >> 4) & 0xF);
                     if (!isServer)
                     {
                         if (msgType != NetworkPacketType.k_BeginHandshake && msgType != NetworkPacketType.k_EndHandshake)
@@ -1571,7 +1647,7 @@ namespace Omni.Core
                     DataBuffer EndOfHeader() // Disposed by the caller(not user)!
                     {
                         DataBuffer message = Pool.Rent(enableTracking: false);
-                        message.Write(header.Internal_GetSpan(_length));
+                        message.Write(header.Internal_GetSpan(payloadLength - header.Position));
                         message.SeekToBegin();
                         return message;
                     }
