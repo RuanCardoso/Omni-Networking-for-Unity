@@ -85,7 +85,7 @@ namespace Omni.Core
         }
     }
 
-    public class NetworkConstants
+    public static class NetworkConstants
     {
         internal const string k_CertificateFile = "certificate.json";
         internal const byte k_NetworkVariableRpcId = 255; // TODO: Add it to the source generator. Don't change, used by Source Generator
@@ -98,6 +98,131 @@ namespace Omni.Core
         internal const byte k_SetOwnerId = 253;
         internal const byte k_OwnerObjectSpawnedForPeer = 254;
         public const byte k_DestroyEntityId = 255;
+    }
+
+    public static class NetworkChannel
+    {
+        /// <summary>
+        /// The default channel used for sending and receiving messages.
+        /// </summary>
+        public const byte Default = 0;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 1).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel = 1;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 2).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel2 = 2;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 3).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel3 = 3;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 4).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel4 = 4;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 5).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel5 = 5;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 6).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel6 = 6;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 7).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel7 = 7;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 8).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel8 = 8;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 9).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel9 = 9;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 10).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel10 = 10;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 11).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel11 = 11;
+
+        /// <summary>
+        /// Represents the default communication channel (value = 12).
+        /// This channel is used exclusively to send and receive messages
+        /// when operating with the Lite transporter. It is not valid or
+        /// recognized by other transport implementations and will be ignored.
+        /// </summary>
+        public const byte Channel12 = 12;
+
+        /// <summary>
+        /// Identifies a message that is compressed before transmission.
+        /// When using the Lite transporter, this type will be delivered
+        /// through a separate channel dedicated to compressed messages.
+        /// </summary>
+        public const byte Compressed = 13;
+
+        /// <summary>
+        /// Identifies a message that is encrypted before transmission.
+        /// When using the Lite transporter, this type will be delivered
+        /// through a separate channel dedicated to encrypted messages.
+        /// </summary>
+        public const byte Encrypted = 14;
+
+        /// <summary>
+        /// Identifies a message that is both compressed and encrypted before transmission.
+        /// When using the Lite transporter, this type will be delivered
+        /// through a separate channel dedicated to compressed and encrypted messages.
+        /// </summary>
+        public const byte CompressedEncrypted = 15;
     }
 
     internal enum ScriptingBackend

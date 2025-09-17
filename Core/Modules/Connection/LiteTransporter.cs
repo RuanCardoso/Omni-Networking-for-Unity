@@ -116,8 +116,8 @@ namespace Omni.Core.Modules.Connection
         private int m_MaxEventsPerFrame = 0; // 0 - No limit
 
         [SerializeField]
-        [Range(1, 64), LabelWidth(140)]
-        private byte m_ChannelsCount = 3;
+        [ReadOnly]
+        private byte m_ChannelsCount = 64;
 
         [SerializeField]
         [Tooltip("Specifies whether IPv6 is enabled. Note: Not all platforms may support this.")]
@@ -483,6 +483,14 @@ namespace Omni.Core.Modules.Connection
         public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
             ThrowAnErrorIfNotInitialized();
+            if (sequenceChannel == NetworkChannel.Compressed || sequenceChannel == NetworkChannel.Encrypted || sequenceChannel == NetworkChannel.CompressedEncrypted)
+            {
+                // When using special message types (Compressed, Encrypted, or CompressedEncrypted),
+                // override the sequence channel to 64. This ensures they run on a dedicated channel
+                // separate from the standard ones (only valid for Lite transporter).
+                sequenceChannel = 64;
+            }
+
             if (isServer)
             {
                 if (_peers.TryGetValue(target, out NetPeer peer))
