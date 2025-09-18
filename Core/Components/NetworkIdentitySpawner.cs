@@ -19,9 +19,6 @@ namespace Omni.Core.Components
     [DeclareFoldoutGroup("Spawn Options", Expanded = false)]
     public partial class NetworkIdentitySpawner : DualBehaviour
     {
-        private const int k_SpawnRpcId = 1;
-        private const int k_SpawnCacheRpcId = 2;
-
         [ReadOnly]
         [SerializeField]
         private List<CachedIdentity> m_CachedIdentities = new();
@@ -97,7 +94,7 @@ namespace Omni.Core.Components
                 if (identity == null)
                     continue;
 
-                Server.Rpc(k_SpawnCacheRpcId, peer, cachedIdentity.m_PrefabName, identity.Owner.Id, identity.Id);
+                ClientSpawnRpc(cachedIdentity.m_PrefabName, identity.Owner.Id, identity.Id, peer, target: Target.Self);
             }
 
             if (m_LocalPlayer != null)
@@ -112,16 +109,11 @@ namespace Omni.Core.Components
             var prefab = NetworkManager.GetPrefab(prefabName);
             var identity = prefab.SpawnOnServer(peer.Id, prefab.EntityType);
             m_CachedIdentities.Add(new CachedIdentity { m_PrefabName = prefabName, m_Identity = identity });
-            Server.Rpc(k_SpawnRpcId, peer, prefabName, peer.Id, identity.Id);
+            ClientSpawnRpc(prefabName, peer.Id, identity.Id, peer, target: Target.Everyone);
         }
 
-        [Server(k_SpawnRpcId, Target = Target.Everyone)]
-        [Server(k_SpawnCacheRpcId, Target = Target.Self)]
-        private void SpawnStubRpcA() { } // stub rpc -> only used for rpc registration with optional parameters
-
-        [Client(k_SpawnRpcId)]
-        [Client(k_SpawnCacheRpcId)]
-        private void SpawnRpcA(string prefabName, int peerId, int identityId)
+        [Client]
+        private void ClientSpawn(string prefabName, int peerId, int identityId)
         {
             var prefab = NetworkManager.GetPrefab(prefabName);
             prefab.SpawnOnClient(peerId, identityId);
