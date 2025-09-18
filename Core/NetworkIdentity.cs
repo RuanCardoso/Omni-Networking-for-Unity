@@ -92,7 +92,7 @@ namespace Omni.Core
         [SerializeField]
         [LabelWidth(154), DisableInPlayMode]
         [Group("Debug"), Tab("Basic")]
-        private bool m_AutoDestroyed = true;
+        private bool m_AutoDestroy = true;
 
         [MemoryPackIgnore, JsonIgnore]
         [SerializeField]
@@ -212,11 +212,10 @@ namespace Omni.Core
 
         async void Start()
         {
-            if (m_AutoDestroyed && IsRegistered && IsServer)
+            if (m_AutoDestroy && IsRegistered && IsServer)
             {
                 await UniTask.WaitUntil(() => !Owner.IsConnected);
-                RequestActionToClient(NetworkConstants.k_DestroyEntityId);
-                Destroy(gameObject);
+                Despawn(true);
             }
         }
 
@@ -253,6 +252,8 @@ namespace Omni.Core
         void OnDestroy()
         {
             OnRequestAction -= OnRequestedAction;
+            if (IsServer && m_AutoDestroy)
+                Despawn(false);
         }
 
         /// <summary>
@@ -597,6 +598,25 @@ namespace Omni.Core
             }
 
             return success;
+        }
+
+        /// <summary>
+        /// Requests destruction of this networked entity for all targeted clients.  
+        /// Must be called on the server.
+        /// </summary>
+        /// <exception cref="NotSupportedException">
+        /// Thrown if invoked on a non-server instance.
+        /// </exception>
+        public void Despawn(bool destroyInServer, Target target = Target.Auto, NetworkGroup group = null, NetworkPeer peer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
+        {
+            if (!IsServer)
+            {
+                throw new NotSupportedException("Despawn() can only be called on the server.");
+            }
+
+            RequestActionToClient(NetworkConstants.k_DestroyEntityId, null, target, group, peer, deliveryMode, seqChannel);
+            if (destroyInServer)
+                Destroy(gameObject);
         }
 
         public NetworkIdentity SpawnOnServer(int peerId, EntityType entityType)
