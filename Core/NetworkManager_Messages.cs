@@ -379,6 +379,16 @@ namespace Omni.Core
 
                     if (!group.IsSubGroup)
                     {
+                        if (peer.MainGroup != null)
+                        {
+                            var msg = $"JoinGroup failed: Peer {peer.Id} is already member of a main group '{peer.MainGroup.Name}' (Id={peer.MainGroup.Id}). " +
+                                      "Each peer can only be member of one main group at the same time.";
+
+                            OnPlayerFailedJoinGroup?.Invoke(peer, msg);
+                            NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
+                            return;
+                        }
+
                         peer.MainGroup = group;
                     }
 
@@ -465,9 +475,13 @@ namespace Omni.Core
                             }
                         }
 
+                        if (!group.IsSubGroup)
+                            peer.MainGroup = null;
+
                         OnPlayerLeftGroup?.Invoke(group, peer, Phase.Active, reason);
                         if (group.DestroyWhenEmpty)
                             DestroyGroupWhenEmpty(group);
+                        OnPlayerLeftGroup?.Invoke(group, peer, Phase.Ended, reason);
                     }
                     else
                     {
@@ -490,16 +504,13 @@ namespace Omni.Core
                 await UniTask.Delay(2500); // 2.5 seconds it's fine.
                 if (group._peersById.Count == 0)
                 {
-                    if (!GroupsById.Remove(group.Id))
+                    if (GroupsById.Remove(group.Id))
                     {
-                        var msg = $"Tried to destroy group '{group.Name}' (Id={group.Id}) but it was not found.";
-                        NetworkLogger.__Log__(msg, NetworkLogger.LogType.Error);
+                        // Dereferencing to allow for GC(Garbage Collector).
+                        group.ClearAllPeers();
+                        group.ResetDataCollections();
+                        group._subGroups.Clear();
                     }
-
-                    // Dereferencing to allow for GC(Garbage Collector).
-                    group.ClearAllPeers();
-                    group.ResetDataCollections();
-                    group._subGroups.Clear();
                 }
             }
 
