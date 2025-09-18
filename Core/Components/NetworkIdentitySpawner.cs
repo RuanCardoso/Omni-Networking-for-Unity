@@ -107,7 +107,7 @@ namespace Omni.Core.Components
         private void Spawn(string prefabName, NetworkPeer peer)
         {
             var prefab = NetworkManager.GetPrefab(prefabName);
-            var identity = prefab.SpawnOnServer(peer.Id, prefab.EntityType);
+            var identity = prefab.SpawnOnServer(peer.Id);
             m_CachedIdentities.Add(new CachedIdentity { m_PrefabName = prefabName, m_Identity = identity });
             ClientSpawnRpc(prefabName, peer.Id, identity.Id, peer, target: Target.Everyone);
         }

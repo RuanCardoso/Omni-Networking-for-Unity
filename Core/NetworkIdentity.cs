@@ -16,25 +16,12 @@ using System.Runtime.CompilerServices;
 
 namespace Omni.Core
 {
-    public enum EntityType
-    {
-        Generic,
-        Player,
-    }
-
     [DeclareTabGroup("Debug")]
     [JsonObject(MemberSerialization.OptIn)]
     [MemoryPackable(GenerateType.NoGenerate)]
     [Serializable]
     public sealed partial class NetworkIdentity : OmniBehaviour, IEquatable<NetworkIdentity>
     {
-        enum EditorViewMode
-        {
-            Both,
-            ClientOnly,
-            ServerOnly
-        }
-
         [MemoryPackIgnore, JsonIgnore]
         internal string _prefabName;
 
@@ -83,12 +70,6 @@ namespace Omni.Core
         private bool isOwnedByTheServer;
 
         [MemoryPackIgnore, JsonIgnore]
-        [SerializeField, HideInInspector] // TODO: Not implemented
-        [LabelWidth(154), DisableInPlayMode]
-        [Group("Debug"), Tab("Basic")]
-        private EntityType m_EntityType;
-
-        [MemoryPackIgnore, JsonIgnore]
         [SerializeField]
         [LabelWidth(154), DisableInPlayMode]
         [Group("Debug"), Tab("Basic")]
@@ -109,7 +90,6 @@ namespace Omni.Core
         [SerializeField, ReadOnly]
         private List<NetworkBehaviour> m_NetworkBehaviours = new();
 
-        public EntityType EntityType => m_EntityType;
         /// <summary>
         /// Gets the unique identifier for this network identity.
         /// </summary>
@@ -607,7 +587,7 @@ namespace Omni.Core
         /// <exception cref="NotSupportedException">
         /// Thrown if invoked on a non-server instance.
         /// </exception>
-        public void Despawn(bool destroyInServer, Target target = Target.Auto, NetworkGroup group = null, NetworkPeer peer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
+        public void Despawn(bool destroyInServer = true, Target target = Target.Auto, NetworkGroup group = null, NetworkPeer peer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
         {
             if (!IsServer)
             {
@@ -619,9 +599,9 @@ namespace Omni.Core
                 Destroy(gameObject);
         }
 
-        public NetworkIdentity SpawnOnServer(int peerId, EntityType entityType)
+        public NetworkIdentity SpawnOnServer(int peerId)
         {
-            return SpawnOnServer(peerId, entityType == EntityType.Generic ? 0 : peerId);
+            return SpawnOnServer(peerId, 0);
         }
 
         /// <summary>
