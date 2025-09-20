@@ -1,13 +1,10 @@
 using Omni.Core.Interfaces;
 using Omni.Shared;
 using System;
-using System.Collections;
 using System.ComponentModel;
 using Omni.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
-using static Omni.Core.Modules.Matchmaking.NetworkMatchmaking;
 
 #pragma warning disable
 
@@ -46,6 +43,23 @@ namespace Omni.Core
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public __RpcHandler<DataBuffer, int, __Null__, __Null__, __Null__> __ClientRpcHandler => m_RpcHandler;
+
+        /// <summary>
+        /// Defines the default <see cref="NetworkGroup"/> associated with this object.  
+        /// Used whenever no group is explicitly specified in a network operation  
+        /// (e.g., RPCs, etc).
+        /// </summary>
+        public NetworkGroup DefaultGroup
+        {
+            get
+            {
+                throw new NotImplementedException("This property is not implemented for the ClientBehaviour class.");
+            }
+            set
+            {
+                throw new NotImplementedException("This property is not implemented for the ClientBehaviour class.");
+            }
+        }
 
         /// <summary>
         /// Gets the client-side routing manager that handles network message routing and delivery.
@@ -116,17 +130,16 @@ namespace Omni.Core
         {
             if (NetworkService.Exists(m_ServiceName))
             {
-                m_UnregisterOnLoad = false;
+                allowUnregisterService = false;
+                gameObject.SetActive(false);
+                Destroy(gameObject, 1f);
                 return;
             }
 
-            if (m_UnregisterOnLoad)
-            {
-                InitializeServiceLocator();
-                InitializeBehaviour();
-                RegisterSystemEvents();
-                OnAwake();
-            }
+            InitializeServiceLocator();
+            InitializeBehaviour();
+            RegisterSystemEvents();
+            OnAwake();
         }
 
         /// <summary>
@@ -143,15 +156,10 @@ namespace Omni.Core
         private void InitStart()
         {
             ___InjectServices___();
-            if (m_UnregisterOnLoad)
-            {
-                Internal_OnClientStart();
+            Internal_OnClientStart();
 
-                OnStart();
-                Service.UpdateReference(m_ServiceName);
-            }
-
-            m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+            OnStart();
+            Service.UpdateReference(m_ServiceName);
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -201,7 +209,6 @@ namespace Omni.Core
 
         protected void RegisterSystemEvents()
         {
-            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
             NetworkManager.OnClientIdentitySpawned += OnClientIdentitySpawned;
@@ -211,15 +218,28 @@ namespace Omni.Core
 
         protected void Unregister()
         {
-            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
             NetworkManager.OnClientConnected -= OnClientConnected;
             NetworkManager.OnClientDisconnected -= OnClientDisconnected;
             NetworkManager.OnClientIdentitySpawned -= OnClientIdentitySpawned;
             NetworkManager.OnPeerSharedDataChanged -= OnPeerSharedDataChanged;
             ClientSide.OnMessage -= OnMessage;
 
-            NetworkService.Unregister(m_ServiceName);
+            if (allowUnregisterService)
+                NetworkService.Unregister(m_ServiceName);
+
             OnStop();
+        }
+
+        protected virtual void OnDestroy()
+        {
+            try
+            {
+                Unregister();
+            }
+            catch
+            {
+                // avoid exceptions on (Editor Only)
+            }
         }
 
         protected virtual void OnPeerSharedDataChanged(NetworkPeer peer, string key)
@@ -228,14 +248,6 @@ namespace Omni.Core
 
         protected virtual void OnClientIdentitySpawned(NetworkIdentity identity)
         {
-        }
-
-        protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
-        {
-            if (m_UnregisterOnLoad)
-            {
-                Unregister();
-            }
         }
 
         protected virtual void OnClientConnected()

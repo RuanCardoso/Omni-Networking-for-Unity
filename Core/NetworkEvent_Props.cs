@@ -305,9 +305,10 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Rpc(byte rpcId, NetworkPeer peer, DataBuffer message = null, NetworkGroup group = null)
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             m_NetworkMessage.SetupRpcMessage(rpcId, group, true, default);
             m_NetworkMessage.__ServerRpcHandler.GetRpcParameters(rpcId, out _, out var target, out _);
-            if (target == Target.Auto && peer.Id != 0)
+            if (target == Target.Auto && peer.Id != 0 && group == null)
                 ServerSide.SetTarget(Target.Self);
             ServerSide.Rpc(rpcId, peer, m_NetworkMessage.IdentityId, message);
         }
@@ -322,6 +323,7 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void SendMessage(byte rpcId, NetworkPeer peer, IMessage message, NetworkGroup group = null)
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var buffer = message.Serialize();
             Rpc(rpcId, peer, buffer, group);
         }
@@ -336,6 +338,7 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Rpc<T1>(byte msgId, NetworkPeer peer, T1 p1, NetworkGroup group = null)
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             Rpc(msgId, peer, message, group);
@@ -353,6 +356,7 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Rpc<T1, T2>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, NetworkGroup group = null)
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             message.WriteAsBinary(p2);
@@ -373,6 +377,7 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Rpc<T1, T2, T3>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, NetworkGroup group = null)
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             message.WriteAsBinary(p2);
@@ -396,6 +401,7 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Rpc<T1, T2, T3, T4>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, T4 p4, NetworkGroup group = null)
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             message.WriteAsBinary(p2);
@@ -422,6 +428,7 @@ namespace Omni.Core
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Rpc<T1, T2, T3, T4, T5>(byte msgId, NetworkPeer peer, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, NetworkGroup group = null)
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             message.WriteAsBinary(p2);
@@ -447,6 +454,7 @@ namespace Omni.Core
             where T5 : unmanaged
             where T6 : unmanaged
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             message.WriteAsBinary(p2);
@@ -474,6 +482,7 @@ namespace Omni.Core
             where T6 : unmanaged
             where T7 : unmanaged
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             message.WriteAsBinary(p2);
@@ -503,6 +512,7 @@ namespace Omni.Core
             where T7 : unmanaged
             where T8 : unmanaged
         {
+            group ??= m_NetworkMessage.DefaultGroup;
             using var message = Pool.Rent(enableTracking: false);
             message.WriteAsBinary(p1);
             message.WriteAsBinary(p2);

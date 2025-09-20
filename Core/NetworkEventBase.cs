@@ -17,7 +17,7 @@ namespace Omni.Core
         internal string m_ServiceName;
 
         [SerializeField] internal int m_Id;
-        internal bool m_UnregisterOnLoad = true;
+        internal bool allowUnregisterService = true;
 
         /// <summary>
         /// Called when the service is initialized.

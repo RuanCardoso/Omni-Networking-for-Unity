@@ -17,8 +17,7 @@ namespace Omni.Core
         [GroupNext("Service Settings")]
         [SerializeField]
         private string m_ServiceName;
-
-        private bool m_UnregisterOnLoad = true;
+        private bool allowUnregisterService = true;
 
         public string ServiceName
         {
@@ -41,16 +40,14 @@ namespace Omni.Core
         {
             if (NetworkService.Exists(m_ServiceName))
             {
-                m_UnregisterOnLoad = false;
+                allowUnregisterService = false;
+                gameObject.SetActive(false);
+                Destroy(gameObject, 1f);
                 return;
             }
 
-            if (m_UnregisterOnLoad)
-            {
-                NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
-                InitializeServiceLocator();
-                OnAwake();
-            }
+            InitializeServiceLocator();
+            OnAwake();
         }
 
         /// <summary>
@@ -67,13 +64,8 @@ namespace Omni.Core
         private void InitStart()
         {
             ___InjectServices___();
-            if (m_UnregisterOnLoad)
-            {
-                OnStart();
-                Service.UpdateReference(m_ServiceName);
-            }
-
-            m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+            OnStart();
+            Service.UpdateReference(m_ServiceName);
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -99,16 +91,21 @@ namespace Omni.Core
 
         protected void Unregister()
         {
-            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
-            NetworkService.Unregister(m_ServiceName);
+            if (allowUnregisterService)
+                NetworkService.Unregister(m_ServiceName);
+
             OnStop();
         }
 
-        protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
+        protected virtual void OnDestroy()
         {
-            if (m_UnregisterOnLoad)
+            try
             {
                 Unregister();
+            }
+            catch
+            {
+                // avoid exceptions on (Editor Only)
             }
         }
 

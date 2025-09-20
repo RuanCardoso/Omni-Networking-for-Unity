@@ -4,10 +4,8 @@ using System;
 using System.ComponentModel;
 using Omni.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using static Omni.Core.NetworkManager;
 using Omni.Core.Web;
-using static Omni.Core.Modules.Matchmaking.NetworkMatchmaking;
 using Omni.Core.Modules.Matchmaking;
 
 #pragma warning disable
@@ -53,6 +51,13 @@ namespace Omni.Core
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public __RpcHandler<DataBuffer, int, __Null__, __Null__, __Null__> __ClientRpcHandler => throw new NotImplementedException("This property is not implemented for the ServerBehaviour class.");
+
+        /// <summary>
+        /// Defines the default <see cref="NetworkGroup"/> associated with this object.  
+        /// Used whenever no group is explicitly specified in a network operation  
+        /// (e.g., RPCs, etc).
+        /// </summary>
+        public NetworkGroup DefaultGroup { get; set; } = null;
 
         private HttpRouteManager _http;
         /// <summary>
@@ -175,17 +180,16 @@ namespace Omni.Core
         {
             if (NetworkService.Exists(m_ServiceName))
             {
-                m_UnregisterOnLoad = false;
+                allowUnregisterService = false;
+                gameObject.SetActive(false);
+                Destroy(gameObject, 1f);
                 return;
             }
 
-            if (m_UnregisterOnLoad)
-            {
-                InitializeServiceLocator();
-                InitializeBehaviour();
-                RegisterSystemEvents();
-                OnAwake();
-            }
+            InitializeServiceLocator();
+            InitializeBehaviour();
+            RegisterSystemEvents();
+            OnAwake();
         }
 
         /// <summary>
@@ -202,16 +206,11 @@ namespace Omni.Core
         private void InitStart()
         {
             ___InjectServices___();
-            if (m_UnregisterOnLoad)
-            {
-                RegisterMatchmakingEvents();
-                Internal_OnServerStart();
+            RegisterMatchmakingEvents();
+            Internal_OnServerStart();
 
-                OnStart();
-                Service.UpdateReference(m_ServiceName);
-            }
-
-            m_UnregisterOnLoad = !NetworkHelper.IsDontDestroyOnLoad(gameObject);
+            OnStart();
+            Service.UpdateReference(m_ServiceName);
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -261,7 +260,6 @@ namespace Omni.Core
 
         protected void RegisterSystemEvents()
         {
-            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
             NetworkManager.OnServerInitialized += OnServerInitialized;
             NetworkManager.OnServerPeerConnected += Internal_OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected += OnServerPeerDisconnected;
@@ -282,7 +280,6 @@ namespace Omni.Core
 
         protected void Unregister()
         {
-            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
             NetworkManager.OnServerInitialized -= OnServerInitialized;
             NetworkManager.OnServerPeerConnected -= Internal_OnServerPeerConnected;
             NetworkManager.OnServerPeerDisconnected -= OnServerPeerDisconnected;
@@ -297,15 +294,21 @@ namespace Omni.Core
                 NetworkManager.Matchmaking.OnPlayerFailedLeaveGroup -= OnPlayerFailedLeaveGroup;
             }
 
-            NetworkService.Unregister(m_ServiceName);
+            if (allowUnregisterService)
+                NetworkService.Unregister(m_ServiceName);
+
             OnStop();
         }
 
-        protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
+        protected virtual void OnDestroy()
         {
-            if (m_UnregisterOnLoad)
+            try
             {
                 Unregister();
+            }
+            catch
+            {
+                // avoid exceptions on (Editor Only)
             }
         }
 
