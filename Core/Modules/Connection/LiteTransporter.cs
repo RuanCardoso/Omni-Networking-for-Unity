@@ -292,18 +292,29 @@ namespace Omni.Core.Modules.Connection
         [ClientOnly]
         private void OnP2PMessage(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
         {
-            ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
-            transporter.Internal_OnP2PDataReceived(data, remoteEndPoint);
-            reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
+            try
+            {
+                ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
+                transporter.Internal_OnP2PDataReceived(data, remoteEndPoint);
+            }
+            finally
+            {
+                reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
+            }
         }
 
         private void OnReceiveEvent(NetPeer peer, NetPacketReader reader, byte seqChannel, DeliveryMethod deliveryMode)
         {
-            ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
-            DeliveryMode mode = GetDeliveryMode(deliveryMode);
-
-            transporter.Internal_OnDataReceived(data, mode, peer, seqChannel, isServer, out _);
-            reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
+            try
+            {
+                ReadOnlySpan<byte> data = reader.GetRemainingBytesSpan();
+                DeliveryMode mode = GetDeliveryMode(deliveryMode);
+                transporter.Internal_OnDataReceived(data, mode, peer, seqChannel, isServer, out _);
+            }
+            finally
+            {
+                reader.Recycle(); // Avoid memory leaks - auto recycle is disabled.
+            }
         }
 
         [ServerOnly]
