@@ -765,19 +765,26 @@ namespace Omni.Core
 
         public void RequestActionToClient(byte actionId, DataBuffer data = null, Target target = Target.Auto, NetworkGroup group = null, NetworkPeer peer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
         {
-            if (IsClient)
+            try
             {
-                throw new NotSupportedException(
-                    "RequestAction failed: This operation is only allowed on the server. It invokes a remote action on the client-side entity, triggered by a server-side entity.");
+                if (IsClient)
+                {
+                    throw new NotSupportedException(
+                        "RequestAction failed: This operation is only allowed on the server. It invokes a remote action on the client-side entity, triggered by a server-side entity.");
+                }
+
+                using var message = NetworkManager.Pool.Rent(enableTracking: false);
+                message.Write(m_Id);
+                message.Write(actionId);
+                message.Internal_CopyFrom(data);
+
+                NetworkManager.ServerSide.SetDefaultNetworkConfiguration(deliveryMode, target, group, seqChannel);
+                NetworkManager.ServerSide.SendMessage(NetworkPacketType.k_RequestEntityAction, peer ?? Owner, message);
             }
-
-            using var message = NetworkManager.Pool.Rent(enableTracking: false);
-            message.Write(m_Id);
-            message.Write(actionId);
-            message.Internal_CopyFrom(data);
-
-            NetworkManager.ServerSide.SetDefaultNetworkConfiguration(deliveryMode, target, group, seqChannel);
-            NetworkManager.ServerSide.SendMessage(NetworkPacketType.k_RequestEntityAction, peer ?? Owner, message);
+            catch
+            {
+                // ignore editor errors
+            }
         }
 
         private void Reset()
