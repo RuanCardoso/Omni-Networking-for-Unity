@@ -18,14 +18,14 @@ namespace Omni.Core
 
     internal class NetworkVariableField
     {
-        internal string Name { get; }
-        internal int PropertyId { get; }
-        internal bool RequiresOwnership { get; }
-        internal bool IsClientAuthority { get; }
-        internal bool CheckEquality { get; }
-        internal DeliveryMode DeliveryMode { get; }
-        internal Target Target { get; }
-        internal byte SequenceChannel { get; }
+        internal string Name { get; set; }
+        internal int PropertyId { get; set; }
+        internal bool RequiresOwnership { get; set; }
+        internal bool IsClientAuthority { get; set; }
+        internal bool CheckEquality { get; set; }
+        internal DeliveryMode DeliveryMode { get; set; }
+        internal Target Target { get; set; }
+        internal byte SequenceChannel { get; set; }
 
         internal NetworkVariableField(int propertyId, bool requiresOwnership, bool isClientAuthority, bool checkEquality, string name, DeliveryMode deliveryMode, Target target, byte sequenceChannel)
         {
@@ -53,10 +53,36 @@ namespace Omni.Core
                 isClientAuthority, checkEquality, propertyName, deliveryMode, target, sequenceChannel)))
             {
                 NetworkLogger.__Log__(
-                    $"NetworkVariable registration failed: '{propertyName}' (Id={propertyId}) is already registered. " +
-                    "Use unique IDs for each variable.",
+                    $"[NetworkVariable Error] Duplicate registration detected for property '{propertyName}' (Id={propertyId}). " +
+                    "Each NetworkVariable must have a unique Id within the same NetworkBehaviour. " +
+                    "Tip: Check if two variables share the same [NetworkVariable] attribute Id or if a source generator conflict occurred.",
                     NetworkLogger.LogType.Error
                 );
+            }
+        }
+
+        /// <summary>
+        /// Overrides the parameters of all registered <see cref="NetworkVariableField"/> 
+        /// in <see cref="m_NetworkVariables"/> with the specified values.
+        /// </summary>
+        protected void OverrideNetworkVariableParameters(
+            Target target = Target.Auto,
+            DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered,
+            bool requiresOwnership = true,
+            bool isClientAuthority = false,
+            bool checkEquality = true,
+            byte sequenceChannel = 0)
+        {
+            foreach (var kvp in m_NetworkVariables)
+            {
+                var field = kvp.Value;
+
+                field.Target = target;
+                field.DeliveryMode = deliveryMode;
+                field.RequiresOwnership = requiresOwnership;
+                field.IsClientAuthority = isClientAuthority;
+                field.CheckEquality = checkEquality;
+                field.SequenceChannel = sequenceChannel;
             }
         }
 
