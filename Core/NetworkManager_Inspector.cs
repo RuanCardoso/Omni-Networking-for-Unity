@@ -28,34 +28,8 @@ namespace Omni.Core
         private bool m_SntpModule = true;
         #endregion
 
-        private TransporterBehaviour m_ServerTransporter;
-        private TransporterBehaviour m_ClientTransporter;
-
         private int frameCount = 0;
         private float deltaTime = 0f;
-
-        private static int p_UniqueId = 1; // 0 - is reserved for server
-
-        private static NetworkManager _manager;
-        private static NetworkManager Manager
-        {
-            get
-            {
-                if (_manager == null)
-                {
-                    throw new Exception(
-                        "Network Manager not initialized. Please add it to the scene."
-                    );
-                }
-
-                return _manager;
-            }
-            set => _manager = value;
-        }
-
-        private static Dictionary<int, NetworkGroup> GroupsById { get; } = new();
-        private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
-        private static Dictionary<int, NetworkPeer> PeersById { get; } = new();
 
         [SerializeField]
         [ReadOnly]
@@ -369,7 +343,7 @@ namespace Omni.Core
                 isClone = true;
             }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
             if (MPPM.IsVirtualPlayer)
             {
                 isClone = true;
