@@ -20,8 +20,10 @@ namespace Omni.Core
     }
 
     /// <summary>
-    /// Represents a network group that manages a collection of peers and shared data.
-    /// It provides functionality for group management, data synchronization, and sub-group handling.
+    /// Represents a flexible network container for organizing peers into logical units such as rooms, 
+    /// regions, teams, or zones. Supports hierarchical organization, data synchronization, and dynamic
+    /// group composition for complex multiplayer scenarios like Area of Interest, cross-group events,
+    /// and contextual networking.
     /// </summary>
     [JsonObject(MemberSerialization.OptIn)]
     [MemoryPackable]
@@ -156,7 +158,7 @@ namespace Omni.Core
                     throw new InvalidOperationException(
                         "Cannot retrieve peers in name builder mode. This NetworkGroup instance was created as a template " +
                         "using the name-based constructor and doesn't contain actual peer data. Use a fully initialized " +
-                        "NetworkGroup created through Matchmaking.Server.AddGroup() instead."
+                        "NetworkGroup created through Matchmaking.AddGroup() instead."
                     );
                 }
 
@@ -237,7 +239,7 @@ namespace Omni.Core
                 throw new InvalidOperationException(
                     "Cannot retrieve peers in name builder mode. This NetworkGroup instance was created as a template " +
                     "using the name-based constructor and doesn't contain actual peer data. Use a fully initialized " +
-                    "NetworkGroup created through Matchmaking.Server.AddGroup() instead."
+                    "NetworkGroup created through Matchmaking.AddGroup() instead."
                 );
             }
 
@@ -261,7 +263,7 @@ namespace Omni.Core
                 throw new InvalidOperationException(
                     "Cannot retrieve peers in name builder mode. This NetworkGroup instance was created as a template " +
                     "using the name-based constructor and doesn't contain actual peer data. Use a fully initialized " +
-                    "NetworkGroup created through Matchmaking.Server.AddGroup() instead."
+                    "NetworkGroup created through Matchmaking.AddGroup() instead."
                 );
             }
 
@@ -531,6 +533,38 @@ namespace Omni.Core
         public bool Equals(NetworkGroup other)
         {
             return other != null && Id == other.Id;
+        }
+
+        /// <summary>
+        /// Merges multiple groups into a single virtual group, combining all peers without duplicates.
+        /// Useful when you want to send RPCs or events to players from different groups at once.
+        /// </summary>
+        public static NetworkGroup Merge(params NetworkGroup[] groups)
+        {
+            if (groups == null || groups.Length == 0)
+                return None;
+
+            string groupName = $"{Guid.NewGuid()}";
+            int uniqueId = NetworkHelper.GetSafeHashCode();
+            var merged = new NetworkGroup(uniqueId, groupName, isServer: true)
+            {
+                DestroyWhenEmpty = false
+            };
+
+            var set = new HashSet<int>();
+            foreach (var group in groups)
+            {
+                if (group == null)
+                    continue;
+
+                foreach (var peer in group._peersById.Values)
+                {
+                    if (set.Add(peer.Id)) // avoid duplicates.
+                        merged._peersById[peer.Id] = peer;
+                }
+            }
+
+            return merged;
         }
     }
 }
