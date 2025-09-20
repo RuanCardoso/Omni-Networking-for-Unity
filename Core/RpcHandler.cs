@@ -1,5 +1,6 @@
 using Omni.Shared;
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -51,13 +52,13 @@ namespace Omni.Core
         private readonly int expectedArgsCount = -1;
 
         // int: method id, action: func with your parameters
-        private readonly Dictionary<int, Action> T0_action = new();
-        private readonly Dictionary<int, Action<T1>> T1_action = new();
-        private readonly Dictionary<int, Action<T1, T2>> T1_T2_action = new();
-        private readonly Dictionary<int, Action<T1, T2, T3>> T1_T2_T3_action = new();
-        private readonly Dictionary<int, Action<T1, T2, T3, T4>> T1_T2_T3_T4_action = new();
-        private readonly Dictionary<int, Action<T1, T2, T3, T4, T5>> T1_T2_T3_T4_T5_action = new();
-        private readonly Dictionary<int, RpcMethod> t_methods = new(); // int: method id, int: args count
+        private FrozenDictionary<int, Action> T0_actionFrozen;
+        private FrozenDictionary<int, Action<T1>> T1_actionFrozen;
+        private FrozenDictionary<int, Action<T1, T2>> T1_T2_actionFrozen;
+        private FrozenDictionary<int, Action<T1, T2, T3>> T1_T2_T3_actionFrozen;
+        private FrozenDictionary<int, Action<T1, T2, T3, T4>> T1_T2_T3_T4_actionFrozen;
+        private FrozenDictionary<int, Action<T1, T2, T3, T4, T5>> T1_T2_T3_T4_T5_actionFrozen;
+        private FrozenDictionary<int, RpcMethod> t_methodsFrozen; // int: method id, int: args count
 
         internal __RpcHandler(int expectedArgsCount = -1)
         {
@@ -66,7 +67,7 @@ namespace Omni.Core
 
         internal bool IsValid(int methodId, out int argsCount)
         {
-            bool success = t_methods.TryGetValue(methodId, out RpcMethod method);
+            bool success = t_methodsFrozen.TryGetValue(methodId, out RpcMethod method);
             if (success)
             {
                 argsCount = method.ArgsCount;
@@ -79,7 +80,7 @@ namespace Omni.Core
 
         internal bool IsRequiresOwnership(int methodId)
         {
-            bool success = t_methods.TryGetValue(methodId, out RpcMethod method);
+            bool success = t_methodsFrozen.TryGetValue(methodId, out RpcMethod method);
             return success && method.RequiresOwnership;
         }
 
@@ -92,7 +93,7 @@ namespace Omni.Core
                 );
             }
 
-            if (T0_action.TryGetValue(methodId, out var action))
+            if (T0_actionFrozen.TryGetValue(methodId, out var action))
             {
                 action?.Invoke();
             }
@@ -107,7 +108,7 @@ namespace Omni.Core
                 );
             }
 
-            if (T1_action.TryGetValue(methodId, out var action))
+            if (T1_actionFrozen.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1);
             }
@@ -122,7 +123,7 @@ namespace Omni.Core
                 );
             }
 
-            if (T1_T2_action.TryGetValue(methodId, out var action))
+            if (T1_T2_actionFrozen.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2);
             }
@@ -137,7 +138,7 @@ namespace Omni.Core
                 );
             }
 
-            if (T1_T2_T3_action.TryGetValue(methodId, out var action))
+            if (T1_T2_T3_actionFrozen.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3);
             }
@@ -152,7 +153,7 @@ namespace Omni.Core
                 );
             }
 
-            if (T1_T2_T3_T4_action.TryGetValue(methodId, out var action))
+            if (T1_T2_T3_T4_actionFrozen.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3, arg4);
             }
@@ -167,7 +168,7 @@ namespace Omni.Core
                 );
             }
 
-            if (T1_T2_T3_T4_T5_action.TryGetValue(methodId, out var action))
+            if (T1_T2_T3_T4_T5_actionFrozen.TryGetValue(methodId, out var action))
             {
                 action?.Invoke(arg1, arg2, arg3, arg4, arg5);
             }
@@ -185,6 +186,14 @@ namespace Omni.Core
             // Declared only, not inherited to optimize the search.
             // Delegates are used to avoid reflection overhead, it is much faster, like a direct call.
             // works with il2cpp.
+
+            Dictionary<int, Action> T0_action = new();
+            Dictionary<int, Action<T1>> T1_action = new();
+            Dictionary<int, Action<T1, T2>> T1_T2_action = new();
+            Dictionary<int, Action<T1, T2, T3>> T1_T2_T3_action = new();
+            Dictionary<int, Action<T1, T2, T3, T4>> T1_T2_T3_T4_action = new();
+            Dictionary<int, Action<T1, T2, T3, T4, T5>> T1_T2_T3_T4_T5_action = new();
+            Dictionary<int, RpcMethod> t_methods = new();
 
             Type type = target.GetType();
             MethodInfo[] methodInfos = type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -466,6 +475,24 @@ namespace Omni.Core
                     NetworkLogger.LogType.Error
                 );
             }
+
+            // Make stubs for unused rpc ids
+            for (int i = 1; i <= 255; i++)
+            {
+                if (!t_methods.ContainsKey(i))
+                {
+                    RpcMethod rpcMethod = RpcMethod.Stub(i, requiresOwnership: true, Target.Auto, DeliveryMode.ReliableOrdered, sequenceChannel: 0);
+                    t_methods.TryAdd(i, rpcMethod);
+                }
+            }
+
+            T0_actionFrozen = T0_action.ToFrozenDictionary();
+            T1_actionFrozen = T1_action.ToFrozenDictionary();
+            T1_T2_actionFrozen = T1_T2_action.ToFrozenDictionary();
+            T1_T2_T3_actionFrozen = T1_T2_T3_action.ToFrozenDictionary();
+            T1_T2_T3_T4_actionFrozen = T1_T2_T3_T4_action.ToFrozenDictionary();
+            T1_T2_T3_T4_T5_actionFrozen = T1_T2_T3_T4_T5_action.ToFrozenDictionary();
+            t_methodsFrozen = t_methods.ToFrozenDictionary();
         }
 
         [Conditional("OMNI_DEBUG")]
@@ -497,12 +524,8 @@ namespace Omni.Core
 
         internal void SetRpcParameters(int methodId, DeliveryMode deliveryMode, Target target, byte seqChannel)
         {
-            if (!t_methods.TryGetValue(methodId, out RpcMethod method))
-            {
-                RpcMethod rpcMethod = RpcMethod.Stub(methodId, true, target, deliveryMode, seqChannel);
-                t_methods.Add(methodId, rpcMethod);
-                method = rpcMethod;
-            }
+            if (!t_methodsFrozen.TryGetValue(methodId, out RpcMethod method))
+                return;
 
             if (method == null)
                 return;
@@ -512,30 +535,26 @@ namespace Omni.Core
             method.SequenceChannel = seqChannel;
         }
 
-        internal void GetRpcParameters(int methodId, out DeliveryMode deliveryMode, out Target target, out byte sequenceChannel)
+        internal void GetRpcParameters(int methodId, out DeliveryMode deliveryMode, out Target target, out byte seqChannel)
         {
             deliveryMode = DeliveryMode.ReliableOrdered;
             target = Target.Auto;
-            sequenceChannel = 0;
+            seqChannel = 0;
 
-            if (!t_methods.TryGetValue(methodId, out RpcMethod method))
-            {
-                RpcMethod rpcMethod = RpcMethod.Stub(methodId, true, target, deliveryMode, sequenceChannel);
-                t_methods.Add(methodId, rpcMethod);
-                method = rpcMethod;
-            }
+            if (!t_methodsFrozen.TryGetValue(methodId, out RpcMethod method))
+                return;
 
             if (method == null)
                 return;
 
             deliveryMode = method.DeliveryMode;
             target = method.Target;
-            sequenceChannel = method.SequenceChannel;
+            seqChannel = method.SequenceChannel;
         }
 
         internal string GetRpcName(int methodId)
         {
-            if (t_methods.TryGetValue(methodId, out RpcMethod method))
+            if (t_methodsFrozen.TryGetValue(methodId, out RpcMethod method))
             {
                 return method.MethodName;
             }
