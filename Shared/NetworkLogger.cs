@@ -143,7 +143,7 @@ namespace Omni.Shared
                     isClone = true;
                 }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
                 if (MPPM.IsVirtualPlayer)
                 {
                     isClone = true;
