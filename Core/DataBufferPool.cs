@@ -3,6 +3,7 @@ using Omni.Shared;
 using Omni.Threading.Tasks;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Omni.Core
@@ -39,21 +40,23 @@ namespace Omni.Core
         }
 
         /// <inheritdoc />
-        public DataBuffer Rent(bool enableTracking = true)
+        public DataBuffer Rent(bool enableTracking = true, [CallerMemberName] string methodName = "")
         {
             if (_pool.Count > 0)
             {
                 var buffer = _pool.Dequeue();
                 buffer._disposed = false;
 #if UNITY_EDITOR // Obs: Disable tracking in the build for best performance tests
-                CreateTrace(buffer, enableTracking && NetworkManager.EnableDeepDebug);
+                if (enableTracking && NetworkManager.EnableDeepDebug)
+                    CreateTrace(buffer, methodName);
 #endif
                 return buffer;
             }
             else
             {
                 NetworkLogger.__Log__(
-                    "BufferPool: created a new buffer. Increase the initial pool capacity to avoid extra allocations.",
+                    "BufferPool: created a new buffer. Increase the initial pool capacity to avoid extra allocations.\n" +
+                    "Method: " + methodName,
                     NetworkLogger.LogType.Warning
                 );
 
@@ -64,11 +67,8 @@ namespace Omni.Core
         // Let's track the object and check if it's back in the pool.
         // Very slow operation, but useful for debugging. Debug mode only.
         [Conditional("OMNI_DEBUG")]
-        private void CreateTrace(DataBuffer buffer, bool enableTracking = true)
+        private void CreateTrace(DataBuffer buffer, string methodName)
         {
-            if (!enableTracking)
-                return;
-
             CancellationTokenSource cts = new();
             string hyperlink = NetworkLogger.GetStackFramesToHyperlink();
 
@@ -96,7 +96,8 @@ namespace Omni.Core
                     {
                         NetworkLogger.Print(
                             "Memory leak detected: DataBuffer was not disposed or returned to the pool. " +
-                            "Ensure proper disposal (use 'using' or call Dispose) to avoid performance issues.",
+                            "Ensure proper disposal (use 'using' or call Dispose) to avoid performance issues.\n" +
+                            "Method: " + methodName,
                             NetworkLogger.LogType.Error
                         );
 
