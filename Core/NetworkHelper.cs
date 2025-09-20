@@ -75,8 +75,7 @@ namespace Omni.Core
         // scene objects are different from dynamic objects(instantiated);
         internal static int GenerateSceneUniqueId()
         {
-            Guid newGuid = Guid.NewGuid();
-            return newGuid.GetHashCode();
+            return GetSafeHashCode();
         }
 
         // Used for dynamic objects (instantiated).
@@ -534,6 +533,21 @@ namespace Omni.Core
 
                 _ => false
             };
+        }
+
+        /// <summary>
+        /// Generates a safe non-zero hash code based on a new GUID.
+        /// Retries until the generated hash is not zero.
+        /// </summary>
+        internal static int GetSafeHashCode()
+        {
+            int hash;
+            do
+            {
+                hash = Guid.NewGuid().GetHashCode();
+            } while (hash == 0);
+
+            return hash;
         }
     }
 }
