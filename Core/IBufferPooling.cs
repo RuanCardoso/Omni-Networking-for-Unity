@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Omni.Core.Interfaces
 {
     /// <summary>
@@ -25,7 +27,7 @@ namespace Omni.Core.Interfaces
         /// </para>
         /// </remarks>
         /// <returns>A reusable buffer of type <typeparamref name="T"/> from the pool.</returns>
-        T Rent(bool enableTracking = true);
+        T Rent(bool enableTracking = true, [CallerMemberName] string methodName = "");
 
         /// <summary>
         /// Returns a buffer to the pool for reuse.
