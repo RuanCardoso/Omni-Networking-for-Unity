@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Omni.Inspector;
 using UnityEngine;
 
@@ -44,9 +45,9 @@ namespace Omni.Core
         /// Rents a data buffer from the network manager's pool. The caller must ensure the buffer is disposed or used within a using statement.
         /// </summary>
         /// <returns>A rented data buffer.</returns>
-        protected DataBuffer Rent(bool enableTracking = true)
+        protected DataBuffer Rent(bool enableTracking = true, [CallerMemberName] string methodName = "")
         {
-            return NetworkManager.Pool.Rent(enableTracking);
+            return NetworkManager.Pool.Rent(enableTracking, methodName);
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]

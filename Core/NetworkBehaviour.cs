@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Omni.Inspector;
 using UnityEngine;
+using Omni.Core.Modules.Matchmaking;
 
 #pragma warning disable
 
@@ -883,6 +884,20 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Gets the server-side matchmaking manager that handles player grouping, matchmaking, and lobby functionality.
+        /// This property provides access to methods for creating, managing, and monitoring player groups and matches.
+        /// </summary>
+        /// <remarks>
+        /// This property offers a convenient shorthand to access the server matchmaking system without directly
+        /// referencing the NetworkManager's matchmaking module. Use this for implementing features such as
+        /// game lobbies, team assignment, custom matchmaking rules, and player grouping logic.
+        /// </remarks>
+        /// <value>
+        /// The <see cref="NetworkMatchmaking"/> instance for handling server-side matchmaking operations.
+        /// </value>
+        protected NetworkMatchmaking Matchmaking => NetworkManager.Matchmaking;
+
         [EditorBrowsable(EditorBrowsableState.Never)]
         [Obsolete("Don't override this method! The source generator will override it.")]
         protected internal virtual void ___InjectServices___()
@@ -955,7 +970,7 @@ namespace Omni.Core
             // the most up-to-date data from the server immediately after the spawning process.
             SyncNetworkState(peer);
             // Notify the owner that the object has been spawned for another peer.
-            using DataBuffer msg = Rent();
+            using DataBuffer msg = Rent(enableTracking: false);
             msg.Write(peer.Id);
             Identity.RequestActionToClient(NetworkConstants.k_OwnerObjectSpawnedForPeer, msg, Target.Self);
         }
@@ -1264,9 +1279,9 @@ namespace Omni.Core
         /// It must be disposed of properly or used within a <c>using</c> statement to ensure it is returned to the pool.
         /// </remarks>
         /// <returns>A rented <see cref="DataBuffer"/> instance from the pool.</returns>
-        protected DataBuffer Rent(bool enableTracking = true)
+        protected DataBuffer Rent(bool enableTracking = true, [CallerMemberName] string methodName = "")
         {
-            return NetworkManager.Pool.Rent(enableTracking);
+            return NetworkManager.Pool.Rent(enableTracking, methodName);
         }
 
         private void TryCallClientRpc(byte rpcId, DataBuffer buffer, int seqChannel)

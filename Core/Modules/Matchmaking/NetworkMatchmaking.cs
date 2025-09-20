@@ -123,6 +123,25 @@ namespace Omni.Core.Modules.Matchmaking
         }
 
         /// <summary>
+        /// Switches a peer from its current main group to the target group.
+        /// </summary>
+        public void SwitchGroup(NetworkPeer peer, NetworkGroup targetGroup, string reason = "SwitchGroup invoked by server.")
+        {
+            if (peer == null || targetGroup == null)
+                return;
+
+            var currentMainGroup = peer.MainGroup;
+
+            if (currentMainGroup != null && currentMainGroup.Id == targetGroup.Id)
+                return;
+
+            if (currentMainGroup != null)
+                LeaveGroup(currentMainGroup, peer, reason: reason);
+
+            JoinGroup(targetGroup, peer);
+        }
+
+        /// <summary>
         /// Retrieves the ID of the group associated with the specified group name.
         /// </summary>
         /// <param name="groupName">The name of the group.</param>
