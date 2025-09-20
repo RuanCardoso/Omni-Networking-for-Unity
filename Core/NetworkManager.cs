@@ -85,8 +85,14 @@ namespace Omni.Core
         internal static byte[] SecretKey => new byte[0];
 #endif
 #endif
+        private TransporterBehaviour m_ServerTransporter;
+        private TransporterBehaviour m_ClientTransporter;
         internal readonly static TransporterRouteManager _transporterRouteManager = new();
         private static bool _allowLoadScene;
+
+        private static Dictionary<int, NetworkGroup> GroupsById { get; } = new();
+        private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
+        private static Dictionary<int, NetworkPeer> PeersById { get; } = new();
 
         /// <summary>
         /// If enabled, the bandwidth monitor will account for only the Omni framework's payload bytes,
@@ -151,7 +157,6 @@ namespace Omni.Core
 
         /// <summary>
         /// Event triggered before a scene is loaded, providing the opportunity to perform any pre-load operations.
-        /// Triggered only in single mode.
         /// </summary>
         public static event Action<Scene, SceneOperationMode> OnBeforeSceneLoad;
 
@@ -209,6 +214,24 @@ namespace Omni.Core
         internal static event Action<NetworkPeer, string> OnPlayerFailedJoinGroup; // for server
         internal static event Action<NetworkGroup, NetworkPeer, Phase, string> OnPlayerLeftGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
+
+        private static int p_UniqueId = 1; // 0 - is reserved for server
+        private static NetworkManager _manager;
+        private static NetworkManager Manager
+        {
+            get
+            {
+                if (_manager == null)
+                {
+                    throw new InvalidOperationException(
+                        "NetworkManager is not initialized. You must add a NetworkManager to the scene before starting networking."
+                    );
+                }
+
+                return _manager;
+            }
+            set => _manager = value;
+        }
 
         private static NetworkConsole _console;
 
@@ -462,7 +485,7 @@ namespace Omni.Core
                 );
             }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
             if (MPPM.Player == VirtualPlayer.None)
             {
                 NetworkLogger.__Log__("To use virtual player mode, you need to: Configure appropriate tags (Main, Player2, Player3, or Player4) and verify that Unity Multiplayer Playmode is correctly configured. Refer to the documentation for more information on setting up virtual players.", NetworkLogger.LogType.Warning);
@@ -815,7 +838,7 @@ namespace Omni.Core
                                 isClone = true;
                             }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
                             if (MPPM.IsVirtualPlayer)
                             {
                                 isClone = true;
@@ -1963,19 +1986,7 @@ namespace Omni.Core
             }
 
             _allowLoadScene = true;
-            // OnBeforeSceneLoad is invoked only in Single mode because:
-            // - In Single mode, the current scene will be unloaded automatically. 
-            //   Therefore, it's necessary to perform cleanup operations, such as removing registered events,
-            //   destroying objects, and preparing for the next scene.
-            // - In Additive mode, existing scenes are not unloaded, so global cleanup is usually unnecessary.
-            //   The focus is on loading the new scene alongside the existing ones.
-            if (mode == LoadSceneMode.Single)
-            {
-                // This event is used to perform some operations before the scene is loaded.
-                // for example: removing registered events, destroying objects, etc.
-                // Only single mode, because the additive does not destroy/unregister anything.
-                OnBeforeSceneLoad?.Invoke(scene, op);
-            }
+            OnBeforeSceneLoad?.Invoke(scene, op);
         }
 
         public static void LoadScene(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
@@ -2253,7 +2264,7 @@ namespace Omni.Core
                 isClone = true;
             }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
             if (MPPM.IsVirtualPlayer)
             {
                 isClone = true;
