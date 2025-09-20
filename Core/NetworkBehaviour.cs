@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Omni.Inspector;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 #pragma warning disable
 
@@ -373,9 +372,10 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void RpcViaPeer(byte rpcId, NetworkPeer peer, DataBuffer message = null, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 m_NetworkBehaviour.SetupRpcMessage(rpcId, group, true, default);
                 m_NetworkBehaviour.__ServerRpcHandler.GetRpcParameters(rpcId, out _, out var target, out _);
-                if (target == Target.Auto && peer.Id != 0)
+                if (target == Target.Auto && peer.Id != 0 && group == null)
                     NetworkManager.ServerSide.SetTarget(Target.Self);
                 NetworkManager.ServerSide.Rpc(rpcId, peer, m_NetworkBehaviour.IdentityId, m_NetworkBehaviour.Id, message);
             }
@@ -393,6 +393,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc(byte rpcId, DataBuffer message = null, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 m_NetworkBehaviour.SetupRpcMessage(rpcId, group, true, default);
                 NetworkManager.ServerSide.Rpc(rpcId, m_NetworkBehaviour.Identity.Owner, m_NetworkBehaviour.IdentityId, m_NetworkBehaviour.Id, message);
             }
@@ -405,6 +406,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void SendMessage(byte rpcId, in IMessage message, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var buffer = message.Serialize();
                 Rpc(rpcId, buffer, group);
             }
@@ -419,6 +421,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1>(byte rpcId, T1 p1, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 Rpc(rpcId, message, group);
@@ -436,6 +439,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2>(byte rpcId, T1 p1, T2 p2, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 message.WriteAsBinary(p2);
@@ -456,6 +460,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3>(byte rpcId, T1 p1, T2 p2, T3 p3, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 message.WriteAsBinary(p2);
@@ -479,6 +484,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4>(byte rpcId, T1 p1, T2 p2, T3 p3, T4 p4, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 message.WriteAsBinary(p2);
@@ -505,6 +511,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4, T5>(byte rpcId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 message.WriteAsBinary(p2);
@@ -534,6 +541,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4, T5, T6>(byte rpcId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 message.WriteAsBinary(p2);
@@ -566,6 +574,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4, T5, T6, T7>(byte rpcId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 message.WriteAsBinary(p2);
@@ -601,6 +610,7 @@ namespace Omni.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Rpc<T1, T2, T3, T4, T5, T6, T7, T8>(byte rpcId, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7, T8 p8, NetworkGroup group = null)
             {
+                group ??= m_NetworkBehaviour.DefaultGroup;
                 using var message = NetworkManager.Pool.Rent(enableTracking: false);
                 message.WriteAsBinary(p1);
                 message.WriteAsBinary(p2);
@@ -680,6 +690,13 @@ namespace Omni.Core
             }
             internal set => _identity = value;
         }
+
+        /// <summary>
+        /// Defines the default <see cref="NetworkGroup"/> associated with this object.  
+        /// Used whenever no group is explicitly specified in a network operation  
+        /// (e.g., RPCs, etc).
+        /// </summary>
+        public NetworkGroup DefaultGroup { get; set; } = null;
 
         /// <summary>
         /// Gets the unique identifier of the associated <see cref="NetworkIdentity"/>.
@@ -1074,9 +1091,6 @@ namespace Omni.Core
 
             Identity.OnServerOwnershipTransferred += OnServerOwnershipTransferred;
             Identity.OnRequestAction += Internal_OnRequestedAction;
-            NetworkManager.OnBeforeSceneLoad += OnBeforeSceneLoad;
-            NetworkManager.OnSceneLoaded += OnSceneLoaded;
-            NetworkManager.OnSceneUnloaded += OnSceneUnloaded;
 
             IsRegistered = true;
         }
@@ -1114,9 +1128,6 @@ namespace Omni.Core
 
             Identity.OnServerOwnershipTransferred -= OnServerOwnershipTransferred;
             Identity.OnRequestAction -= Internal_OnRequestedAction;
-            NetworkManager.OnBeforeSceneLoad -= OnBeforeSceneLoad;
-            NetworkManager.OnSceneLoaded -= OnSceneLoaded;
-            NetworkManager.OnSceneUnloaded -= OnSceneUnloaded;
 
             Identity.Unregister(m_ServiceName);
             IsRegistered = false;
@@ -1225,46 +1236,6 @@ namespace Omni.Core
         /// by the server in response to a client request.
         /// </summary>
         protected virtual void OnRequestedAction(byte actionId, DataBuffer data, NetworkPeer peer)
-        {
-        }
-
-        /// <summary>
-        /// Called after a scene has been loaded.
-        /// </summary>
-        /// <param name="scene">The <see cref="Scene"/> that was loaded.</param>
-        /// <param name="mode">The <see cref="LoadSceneMode"/> used to load the scene.</param>
-        /// <remarks>
-        /// Override this method to perform any initialization or setup that needs to occur 
-        /// after a new scene is loaded. This method is invoked automatically by the network manager.
-        /// The default implementation unsubscribes this method from the scene load event to avoid duplicate invocations.
-        /// </remarks>
-        protected virtual void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-        }
-
-        /// <summary>
-        /// Called after a scene has been unloaded.
-        /// </summary>
-        /// <param name="scene">The <see cref="Scene"/> that was unloaded.</param>
-        /// <remarks>
-        /// Override this method to clean up or release resources related to the unloaded scene. 
-        /// The default implementation unsubscribes this method from the scene unload event to avoid duplicate invocations.
-        /// </remarks>
-        protected virtual void OnSceneUnloaded(Scene scene)
-        {
-        }
-
-        /// <summary>
-        /// Called before a single scene begins to load.
-        /// </summary>
-        /// <param name="scene">The <see cref="Scene"/> that is about to be loaded.</param>
-        /// <param name="op">The <see cref="SceneOperationMode"/> indicating the type of operation being performed.</param>
-        /// <remarks>
-        /// Override this method to prepare for the loading of a new scene. Typical use cases include saving the current state,
-        /// unloading unnecessary resources, or initializing data required for the new scene.
-        /// The default implementation unsubscribes this method from the scene preparation event to avoid duplicate invocations.
-        /// </remarks>
-        protected virtual void OnBeforeSceneLoad(Scene scene, SceneOperationMode op)
         {
         }
 

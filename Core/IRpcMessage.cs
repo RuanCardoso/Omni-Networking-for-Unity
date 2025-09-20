@@ -3,6 +3,7 @@ namespace Omni.Core.Interfaces
 {
     internal interface IRpcMessage
     {
+        NetworkGroup DefaultGroup { get; set; }
         int IdentityId { get; }
         __RpcHandler<DataBuffer, NetworkPeer, int, __Null__, __Null__> __ServerRpcHandler { get; }
         __RpcHandler<DataBuffer, int, __Null__, __Null__, __Null__> __ClientRpcHandler { get; }
