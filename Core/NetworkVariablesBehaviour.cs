@@ -42,6 +42,13 @@ namespace Omni.Core
 
     public class NetworkVariablesBehaviour : OmniBehaviour
     {
+        /// <summary>
+        /// When true, NetworkVariables will use MemoryPack serialization for equality checks 
+        /// instead of JSON. This provides faster and allocation-friendly comparisons, but requires 
+        /// the type to be supported by MemoryPack. If false, JSON-based DeepEquals will be used.
+        /// </summary>
+        protected virtual bool UseMemoryPackEquality { get; set; } = false;
+
         internal readonly Dictionary<byte, NetworkVariableField> m_NetworkVariables = new();
 
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -199,8 +206,9 @@ namespace Omni.Core
             if (oldValue == null || newValue == null)
             {
                 NetworkLogger.__Log__(
-                    $"NetworkVariable error: '{name}' (Id={id}) is null. " +
-                    "Initialize it in OnStart or Awake before using.",
+                    $"[NetworkVariable Error] The variable '{name}' (Id={id}) is null. " +
+                    "This usually means it was not initialized before use. " +
+                    "Make sure to assign it in OnAwake() or OnStart() before accessing it.",
                     NetworkLogger.LogType.Error
                 );
 
@@ -217,10 +225,11 @@ namespace Omni.Core
                 var type = typeof(T);
                 if (!type.IsValueType)
                 {
-                    if (newValue.Equals(oldValue))
+                    if (ReferenceEquals(oldValue, newValue))
                     {
                         NetworkLogger.__Log__(
-                            $"NetworkVariable '{field.Name}' (Id={id}) was not synchronized because the old and new reference values are equal.",
+                            $"[NetworkVariable Notice] '{field.Name}' (Id={id}) was not synchronized because the new value is the same reference as the old value. " +
+                            "No network update was sent since nothing actually changed.",
                             NetworkLogger.LogType.Warning
                         );
 
@@ -241,22 +250,9 @@ namespace Omni.Core
 #endif
                     return oldValue.Equals(newValue);
                 }
-                else if (typeof(IEnumerable).IsAssignableFrom(type))
-                {
-                    // Slower than the other checks, but it is the only way to compare complex types(List<T>, Dictionary<T>()).
-                    // It may be more recommended to avoid using complex types or just disable equality checking for these types.
-                    string oldJson = NetworkManager.ToJson(oldValue);
-                    string newJson = NetworkManager.ToJson(newValue);
-
-                    JToken oldToken = JToken.Parse(oldJson);
-                    JToken newToken = JToken.Parse(newJson);
-                    return JToken.DeepEquals(oldToken, newToken);
-                }
-                else
-                {
-                    // You must implement equals and GetHashCode()
-                    return oldValue.Equals(newValue);
-                }
+                else return UseMemoryPackEquality
+                    ? NetworkHelper.DeepEqualsMemoryPack(oldValue, newValue)
+                    : NetworkHelper.DeepEqualsJson(oldValue, newValue);
             }
 
             return false;

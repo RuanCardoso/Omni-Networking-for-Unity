@@ -1,3 +1,5 @@
+using MemoryPack;
+using Newtonsoft.Json.Linq;
 using Omni.Shared;
 using Omni.Threading.Tasks;
 using OpenNat;
@@ -458,6 +460,48 @@ namespace Omni.Core
 #if UNITY_EDITOR
             UnityEditor.EditorUtility.SetDirty(target);
 #endif
+        }
+
+        /// <summary>
+        /// Compares two objects by serializing them to JSON and using JToken.DeepEquals.  
+        /// Warning: This is slower than other approaches, but works as a fallback for complex types 
+        /// (e.g., List&lt;T&gt;, Dictionary&lt;T&gt;).  
+        /// Consider disabling equality checks or using MemoryPack for better performance.
+        /// </summary>
+        public static bool DeepEqualsJson(object oldValue, object newValue)
+        {
+            if (ReferenceEquals(oldValue, newValue))
+                return true;
+
+            if (oldValue is null || newValue is null)
+                return false;
+
+            string oldJson = NetworkManager.ToJson(oldValue);
+            string newJson = NetworkManager.ToJson(newValue);
+
+            JToken oldToken = JToken.Parse(oldJson);
+            JToken newToken = JToken.Parse(newJson);
+
+            return JToken.DeepEquals(oldToken, newToken);
+        }
+
+        /// <summary>
+        /// Compares two objects by serializing them with MemoryPack and checking for byte equality.  
+        /// Much faster and allocation-friendly compared to JSON.  
+        /// Works only if the objects are MemoryPack serializable.
+        /// </summary>
+        public static bool DeepEqualsMemoryPack<T>(T oldValue, T newValue)
+        {
+            if (ReferenceEquals(oldValue, newValue))
+                return true;
+
+            if (oldValue is null || newValue is null)
+                return false;
+
+            byte[] oldBytes = MemoryPackSerializer.Serialize(oldValue);
+            byte[] newBytes = MemoryPackSerializer.Serialize(newValue);
+
+            return oldBytes.AsSpan().SequenceEqual(newBytes);
         }
 
         internal static double Truncate(double value, int decimalPlaces)
