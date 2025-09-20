@@ -116,6 +116,12 @@ namespace Omni.Core.Modules.Connection
         private int m_MaxEventsPerFrame = 0; // 0 - No limit
 
         [SerializeField]
+        [Tooltip("Pool size for packets.")]
+        [LabelWidth(140)]
+        [Min(0)]
+        private int m_PoolSize = 1000;
+
+        [SerializeField]
         [ReadOnly]
         private byte m_ChannelsCount = 64;
 
@@ -257,6 +263,7 @@ namespace Omni.Core.Modules.Connection
                 SimulationPacketLossChance = m_LossPercent,
                 UnconnectedMessagesEnabled = false, // P2P
                 UpdateTime = m_UpdateTime,
+                PacketPoolSize = m_PoolSize
             };
 
             if (isServer)
@@ -584,6 +591,7 @@ namespace Omni.Core.Modules.Connection
                 liteTransporter.m_UseSecurityLayer = m_UseSecurityLayer;
                 liteTransporter.m_UpdateTime = m_UpdateTime;
                 liteTransporter.m_ManualMode = m_ManualMode;
+                liteTransporter.m_PoolSize = m_PoolSize;
 
                 // Lag properties
                 liteTransporter.m_SimulationMode = m_SimulationMode;
