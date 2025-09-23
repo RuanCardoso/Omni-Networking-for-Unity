@@ -26,7 +26,6 @@ using System.Threading;
 using Omni.Core.Web;
 using Omni.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Omni.Core.Attributes;
 using System.IO;
 using Omni.Inspector;
@@ -49,6 +48,41 @@ namespace Omni.Core
     [GenerateSecureKeys]
     public partial class NetworkManager : OmniBehaviour, ITransporterReceive
     {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void _Reset()
+        {
+            _transporterRouteManager = new();
+            UniquePeerId = 1; // 0 - Reserved for server
+
+            GroupsById.Clear();
+            PeersByIp.Clear();
+            PeersById.Clear();
+
+            // Reset Modules
+            _manager = null;
+            _connection = null;
+            _matchmaking = null;
+            _ntpClock = null;
+            _console = null;
+            _tickSystem = null;
+
+            // Resets events
+            OnServerInitialized = null;
+            OnServerPeerConnected = null;
+            OnServerPeerDisconnected = null;
+            OnClientConnected = null;
+            OnClientDisconnected = null;
+            OnClientIdentitySpawned = null;
+            OnGroupSharedDataChanged = null;
+            OnPeerSharedDataChanged = null;
+            OnClientCustomMessage = null;
+            OnServerCustomMessage = null;
+            OnPlayerJoinedGroup = null;
+            OnPlayerLeftGroup = null;
+            OnPlayerFailedJoinGroup = null;
+            OnPlayerFailedLeaveGroup = null;
+        }
+
         public static Transporter UnderlyingTransporter { get; internal set; }
 #if OMNI_DEBUG
         internal static byte[] SharedKey = new byte[]
@@ -85,10 +119,9 @@ namespace Omni.Core
         internal static byte[] SecretKey => new byte[0];
 #endif
 #endif
+        internal static TransporterRouteManager _transporterRouteManager = new();
         private TransporterBehaviour m_ServerTransporter;
         private TransporterBehaviour m_ClientTransporter;
-        internal readonly static TransporterRouteManager _transporterRouteManager = new();
-        private static bool _allowLoadScene;
 
         private static Dictionary<int, NetworkGroup> GroupsById { get; } = new();
         private static Dictionary<IPEndPoint, NetworkPeer> PeersByIp { get; } = new();
@@ -140,25 +173,6 @@ namespace Omni.Core
             }
             private set => m_Pool = value;
         }
-
-        /// <summary>
-        /// An event that is triggered after a scene has been successfully loaded.
-        /// It provides the loaded scene and the mode in which the scene was loaded.
-        /// </summary>
-        public static event Action<Scene, LoadSceneMode> OnSceneLoaded;
-
-        /// <summary>
-        /// Event triggered when a scene is unloaded. Subscribers can perform operations
-        /// related to the unloading process, such as cleanup of scene-specific resources or
-        /// states. It provides an opportunity to handle tasks that should occur immediately
-        /// when a scene is no longer active or present in memory.
-        /// </summary>
-        public static event Action<Scene> OnSceneUnloaded;
-
-        /// <summary>
-        /// Event triggered before a scene is loaded, providing the opportunity to perform any pre-load operations.
-        /// </summary>
-        public static event Action<Scene, SceneOperationMode> OnBeforeSceneLoad;
 
         /// <summary>
         /// Event triggered when the server is fully initialized and ready to handle network connections.
@@ -215,7 +229,7 @@ namespace Omni.Core
         internal static event Action<NetworkGroup, NetworkPeer, Phase, string> OnPlayerLeftGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
 
-        private static int p_UniqueId = 1; // 0 - is reserved for server
+        private static int UniquePeerId = 1; // 0 - Reserved for server
         private static NetworkManager _manager;
         private static NetworkManager Manager
         {
@@ -566,29 +580,6 @@ namespace Omni.Core
                 NetworkService.Register(_transporterRouteManager);
             }
 
-            // Used to perform some operations before the scene is loaded.
-            // for example: removing registered events. (:
-
-            int sceneIndex = 0;
-            SceneManager.sceneLoaded += (scene, mode) =>
-            {
-                if (!_allowLoadScene && sceneIndex > 0)
-                {
-                    throw new NotSupportedException(
-                        "Use 'NetworkManager.LoadScene() or NetworkManager.LoadSceneAsync()' to load a scene instead of 'SceneManager.LoadScene().'"
-                    );
-                }
-
-                if (sceneIndex > 0)
-                {
-                    _allowLoadScene = false;
-                    OnSceneLoaded?.Invoke(scene, mode);
-                }
-
-                sceneIndex++;
-            };
-
-            SceneManager.sceneUnloaded += (scene) => OnSceneUnloaded?.Invoke(scene);
             _isInitialized = true;
         }
 
@@ -1477,7 +1468,7 @@ namespace Omni.Core
         public virtual async void Internal_OnServerPeerConnected(IPEndPoint peer, NativePeer nativePeer)
         {
             NetworkHelper.EnsureRunningOnMainThread();
-            NetworkPeer newPeer = new(peer, p_UniqueId++, isServer: true)
+            NetworkPeer newPeer = new(peer, UniquePeerId++, isServer: true)
             {
                 _nativePeer = nativePeer
             };
@@ -1974,66 +1965,6 @@ namespace Omni.Core
             {
                 msgType = 0;
             }
-        }
-
-        private static void DestroyScene(LoadSceneMode mode, Scene scene, SceneOperationMode op)
-        {
-            if (_allowLoadScene)
-            {
-                throw new Exception(
-                    "Load Scene Error: The scene loading process is already in progress. Please wait for the current scene to fully load before attempting to load another scene."
-                );
-            }
-
-            _allowLoadScene = true;
-            OnBeforeSceneLoad?.Invoke(scene, op);
-        }
-
-        public static void LoadScene(string sceneName, LoadSceneMode mode = LoadSceneMode.Single)
-        {
-            DestroyScene(mode, SceneManager.GetSceneByName(sceneName), SceneOperationMode.Load);
-            SceneManager.LoadScene(sceneName, mode);
-        }
-
-        public static AsyncOperation LoadSceneAsync(
-            string sceneName,
-            LoadSceneMode mode = LoadSceneMode.Single
-        )
-        {
-            DestroyScene(mode, SceneManager.GetSceneByName(sceneName), SceneOperationMode.Load);
-            return SceneManager.LoadSceneAsync(sceneName, mode);
-        }
-
-        public static void LoadScene(int index, LoadSceneMode mode = LoadSceneMode.Single)
-        {
-            DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index), SceneOperationMode.Load);
-            SceneManager.LoadScene(index, mode);
-        }
-
-        public static AsyncOperation LoadSceneAsync(int index, LoadSceneMode mode = LoadSceneMode.Single)
-        {
-            DestroyScene(mode, SceneManager.GetSceneByBuildIndex(index), SceneOperationMode.Load);
-            return SceneManager.LoadSceneAsync(index, mode);
-        }
-
-        public static AsyncOperation UnloadSceneAsync(string sceneName,
-            UnloadSceneOptions options = UnloadSceneOptions.None)
-        {
-            DestroyScene(LoadSceneMode.Single, SceneManager.GetSceneByName(sceneName), SceneOperationMode.Unload);
-            return SceneManager.UnloadSceneAsync(sceneName, options);
-        }
-
-        public static AsyncOperation UnloadSceneAsync(int index, bool useBuildIndex = false,
-            UnloadSceneOptions options = UnloadSceneOptions.None)
-        {
-            DestroyScene(
-                LoadSceneMode.Single,
-                useBuildIndex
-                    ? SceneManager.GetSceneByBuildIndex(index)
-                    : SceneManager.GetSceneAt(index), SceneOperationMode.Unload
-            );
-
-            return SceneManager.UnloadSceneAsync(index, options);
         }
 
         /// <summary>
