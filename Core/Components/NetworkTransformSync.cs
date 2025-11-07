@@ -5,24 +5,6 @@ using Omni.Shared;
 
 namespace Omni.Core.Components
 {
-    enum TransformMovementState
-    {
-        Idle,
-        StartedMoving,
-        Moving
-    }
-
-    public enum AuthorityMode
-    {
-        Owner, Server
-    }
-
-    public enum UpdateMode
-    {
-        Update,
-        FixedUpdate
-    }
-
     public class NetworkTransformState
     {
         private const byte k_PositionMask = 1;
@@ -565,10 +547,7 @@ namespace Omni.Core.Components
     [DeclareTabGroup("Thresholds")]
     public partial class NetworkTransformSync : NetworkBehaviour
     {
-        private const byte k_StateSyncRpcId = 8;
-        private const byte k_StateSyncToOthersRpcId = 9;
         private const int k_PowMaxTime = 12;
-
         private readonly float minTimePrecision = Mathf.Pow(2, k_PowMaxTime - 24);
         internal float LocalTime { get; private set; }
 
@@ -1304,12 +1283,18 @@ namespace Omni.Core.Components
 
         void Update()
         {
+            if (!IsRegistered)
+                return;
+
             if (UpdateMode == UpdateMode.Update)
                 Process();
         }
 
         void FixedUpdate()
         {
+            if (!IsRegistered)
+                return;
+
             if (UpdateMode == UpdateMode.FixedUpdate)
                 Process();
 
@@ -1467,7 +1452,7 @@ namespace Omni.Core.Components
             {
                 using var writer = NetworkManager.Pool.Rent();
                 sendingTempState.Serialize(writer);
-                Client.Rpc(authorityMode == AuthorityMode.Server ? k_StateSyncRpcId : k_StateSyncToOthersRpcId, writer);
+                OnServerStateReceivedRpc(writer.AsReadOnlyDataBuffer());
             }
         }
 
@@ -2012,11 +1997,11 @@ namespace Omni.Core.Components
             latestTeleportedFromRotation = GetRotation();
             if (IsServer)
             {
-                Server.Rpc(3, GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime);
+                TeleportClientRpc(GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime);
             }
             else if (IsMine)
             {
-                Client.Rpc(3, GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime);
+                TeleportServerRpc(GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime);
             }
         }
 
@@ -2031,7 +2016,7 @@ namespace Omni.Core.Components
             }
             else if (IsServer)
             {
-                Server.Rpc(2, newPosition, newRotation.eulerAngles, newScale);
+                NonServerOwnedTeleportFromServerClientRpc(newPosition, newRotation.eulerAngles, newScale);
             }
             else
             {
@@ -2039,8 +2024,8 @@ namespace Omni.Core.Components
             }
         }
 
-        [Client(2, DeliveryMode = DeliveryMode.Unreliable)]
-        private void NonServerOwnedTeleportFromServerClientRpcA(Vector3 newPosition, Vector3 newRotation, Vector3 newScale)
+        [Client]
+        private void NonServerOwnedTeleportFromServerClient(Vector3 newPosition, Vector3 newRotation, Vector3 newScale)
         {
             if (HasAuthorityOrOwnedByServer)
             {
@@ -2051,10 +2036,10 @@ namespace Omni.Core.Components
             }
         }
 
-        [Server(3, DeliveryMode = DeliveryMode.Unreliable)]
-        private void TeleportServerRpcA(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
+        [Server]
+        private void TeleportServer(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
         {
-            TeleportClientRpcA(position, rotation, scale, tempOwnerTime);
+            TeleportClient(position, rotation, scale, tempOwnerTime);
 
             NetworkTransformState teleportState = new();
             teleportState.CaptureFromSync(this);
@@ -2067,8 +2052,8 @@ namespace Omni.Core.Components
             AddTeleportState(teleportState);
         }
 
-        [Client(3)]
-        private void TeleportClientRpcA(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
+        [Client]
+        private void TeleportClient(Vector3 position, Vector3 rotation, Vector3 scale, float tempOwnerTime)
         {
             if (HasAuthorityOrOwnedByServer || IsServer) return;
 
@@ -2209,21 +2194,28 @@ namespace Omni.Core.Components
         {
             using var message = NetworkManager.Pool.Rent();
             state.Serialize(message);
-            Server.Rpc(authorityMode == AuthorityMode.Server ? k_StateSyncRpcId : k_StateSyncToOthersRpcId, message);
+            switch (authorityMode)
+            {
+                case AuthorityMode.Server:
+                    OnClientStateReceivedRpc(message.AsReadOnlyDataBuffer(), target: Target.Auto);
+                    break;
+                default:
+                    OnClientStateReceivedRpc(message.AsReadOnlyDataBuffer(), target: Target.Others);
+                    break;
+            }
         }
 
-        [Client(k_StateSyncRpcId, DeliveryMode = DeliveryMode.Unreliable)]
-        [Client(k_StateSyncToOthersRpcId, DeliveryMode = DeliveryMode.Unreliable)]
-        void OnClientStateReceivedRpc(DataBuffer data) => OnServerStateReceivedRpc(data, Identity.Owner);
+        [Client]
+        void OnClientStateReceived(ReadOnlyDataBuffer data) => OnServerStateReceived(data, Identity.Owner);
 
-        [Server(k_StateSyncRpcId, DeliveryMode = DeliveryMode.Unreliable)]
-        [Server(k_StateSyncToOthersRpcId, Target = Target.Others, DeliveryMode = DeliveryMode.Unreliable)]
-        void OnServerStateReceivedRpc(DataBuffer data, NetworkPeer peer)
+        [Server]
+        void OnServerStateReceived(ReadOnlyDataBuffer readOnlyBuffer, NetworkPeer peer)
         {
+            using var data = readOnlyBuffer.AsDataBuffer();
             NetworkTransformState networkState = NetworkTransformState.Deserialize(data, this);
             if (IsServer)
             {
-                if (networkState.networkTransform == null || networkState.networkTransform.Identity.Owner.Id != peer.Id) return;
+                if (networkState.networkTransform == null || networkState.networkTransform.Identity.Owner.Id != peer.Id) return; // ownership validation
                 if (networkState.networkTransform.latestValidatedState == null || networkState.networkTransform.OnValidateState(networkState, networkState.networkTransform.latestValidatedState))
                 {
                     networkState.networkTransform.latestValidatedState = networkState;
