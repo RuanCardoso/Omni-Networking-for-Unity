@@ -10,8 +10,6 @@ using Omni.Core.Web;
 using Omni.Threading.Tasks;
 using Omni.Inspector;
 using UnityEngine;
-using HttpListenerRequest = Omni.Core.Web.Net.HttpListenerRequest;
-using HttpListenerResponse = Omni.Core.Web.Net.HttpListenerResponse;
 using WebClient = NativeWebSocket;
 using WebServer = Omni.Core.Web.Server;
 using System.Net.Sockets;
@@ -128,7 +126,7 @@ namespace Omni.Core.Modules.Connection
         }
 
         private bool isServer;
-        private bool isRunning;
+        private bool isInitialized;
 
         private ITransporterReceive IManager;
         internal event Action<string, IPEndPoint, bool> OnStringDataReceived;
@@ -162,7 +160,7 @@ namespace Omni.Core.Modules.Connection
             this.isServer = isServer;
             this.IManager = IManager;
 
-            if (isRunning)
+            if (isInitialized)
             {
                 throw new InvalidOperationException("[WebTransporter] Cannot initialize: Instance is already running. Call Stop() before reinitializing.");
             }
@@ -299,7 +297,7 @@ namespace Omni.Core.Modules.Connection
                 }
 
                 // Set to 'true' to indicate that the server is running.
-                isRunning = true;
+                isInitialized = true;
                 IManager.Internal_OnServerInitialized();
             }
         }
@@ -311,7 +309,7 @@ namespace Omni.Core.Modules.Connection
 
         internal void Update()
         {
-            if (!isServer && isRunning)
+            if (!isServer && isInitialized)
             {
 #if !UNITY_WEBGL || UNITY_EDITOR
                 webClient.DispatchMessageQueue();
@@ -334,7 +332,7 @@ namespace Omni.Core.Modules.Connection
             webClient.OnOpen += () =>
             {
                 // Set to 'true' to indicate that the client is running.
-                isRunning = true;
+                isInitialized = true;
                 IManager.Internal_OnClientConnected(localEndPoint, new NativePeer());
             };
 
@@ -368,12 +366,15 @@ namespace Omni.Core.Modules.Connection
         public void Send(ReadOnlySpan<byte> data, IPEndPoint target, DeliveryMode deliveryMode, byte sequenceChannel)
         {
 #if OMNI_DEBUG
-            if (sequenceChannel > 0)
+            if (sequenceChannel != NetworkChannel.Compressed && sequenceChannel != NetworkChannel.Encrypted && sequenceChannel != NetworkChannel.CompressedEncrypted)
             {
-                NetworkLogger.Print(
-                    $"[WebTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
-                    NetworkLogger.LogType.Warning
-                );
+                if (sequenceChannel > 0)
+                {
+                    NetworkLogger.Print(
+                        $"[WebTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
+                        NetworkLogger.LogType.Warning
+                    );
+                }
             }
 
             if (deliveryMode != DeliveryMode.ReliableOrdered)
@@ -478,7 +479,7 @@ namespace Omni.Core.Modules.Connection
 
         public async void Stop()
         {
-            if (isRunning)
+            if (isInitialized)
             {
                 if (isServer)
                 {
@@ -493,6 +494,9 @@ namespace Omni.Core.Modules.Connection
                     await webClient.Close();
                 }
             }
+
+            _peers.Clear();
+            isInitialized = false;
         }
 
         public void CopyTo(ITransporter ITransporter)

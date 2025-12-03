@@ -80,7 +80,7 @@ namespace Omni.Core.Modules.Connection
         private NetManager _manager;
 
         private bool isServer;
-        private bool isRunning;
+        private bool isInitialized;
 
         [SerializeField]
         [GroupNext("Settings")]
@@ -187,45 +187,6 @@ namespace Omni.Core.Modules.Connection
         private NetPeer localPeer;
         private readonly Dictionary<IPEndPoint, NetPeer> _peers = new();
 
-        public bool IsServer => isServer;
-        public bool IsRunning => isRunning;
-
-        public int MaxConnections
-        {
-            get => m_MaxConnections;
-            set => m_MaxConnections = value;
-        }
-
-        public int DisconnectTimeout
-        {
-            get => m_disconnectTimeout;
-            set => m_disconnectTimeout = value;
-        }
-
-        public int PingInterval
-        {
-            get => m_pingInterval;
-            set => m_pingInterval = value;
-        }
-
-        public bool IPv6Enabled
-        {
-            get => m_IPv6Enabled;
-            set => m_IPv6Enabled = value;
-        }
-
-        public bool UseNativeSockets
-        {
-            get => m_useNativeSockets;
-            set => m_useNativeSockets = value;
-        }
-
-        public bool UseSafeMtu
-        {
-            get => m_useSafeMtu;
-            set => m_useSafeMtu = value;
-        }
-
         public void Initialize(ITransporterReceive transporter, bool isServer)
         {
 #if !OMNI_DEBUG // Lag Simulator [Debug only!] - Disabled in Release(Production)
@@ -234,7 +195,7 @@ namespace Omni.Core.Modules.Connection
             this.isServer = isServer;
             this.transporter = transporter;
 
-            if (isRunning)
+            if (isInitialized)
             {
                 throw new InvalidOperationException("[LiteTransporter] Cannot initialize: Instance is already running. Call Stop() before reinitializing.");
             }
@@ -293,7 +254,7 @@ namespace Omni.Core.Modules.Connection
             }
 
             _listener.NetworkReceiveEvent += OnReceiveEvent;
-            isRunning = true;
+            isInitialized = true;
         }
 
         [ClientOnly]
@@ -386,7 +347,7 @@ namespace Omni.Core.Modules.Connection
 
         private void Update()
         {
-            if (isRunning)
+            if (isInitialized)
             {
                 _manager.PollEvents(m_MaxEventsPerFrame); // Rec
             }
@@ -395,7 +356,7 @@ namespace Omni.Core.Modules.Connection
         float elapsed = 0f;
         private void LateUpdate()
         {
-            if (isRunning && m_ManualMode)
+            if (isInitialized && m_ManualMode)
             {
                 elapsed += Time.deltaTime * 1000f;
                 int ms = Mathf.FloorToInt(elapsed);
@@ -433,6 +394,9 @@ namespace Omni.Core.Modules.Connection
 
         public void Listen(int port)
         {
+            if (!isInitialized)
+                isInitialized = true; // Fast play mode support
+
             ThrowAnErrorIfNotInitialized();
             if (isServer)
             {
@@ -454,12 +418,12 @@ namespace Omni.Core.Modules.Connection
 
             if (_manager.Start(IPAddress.Any, IPAddress.IPv6Any, port, m_ManualMode))
             {
-                if (isServer && isRunning)
+                if (isServer && isInitialized)
                 {
                     transporter.Internal_OnServerInitialized();
                 }
 
-#if UNITY_SERVER
+#if UNITY_SERVER && !UNITY_EDITOR
                 if (_manager.UseNativeSockets)
                 {
                     NetworkLogger.__Log__(
@@ -561,13 +525,15 @@ namespace Omni.Core.Modules.Connection
         public void Stop()
         {
             ThrowAnErrorIfNotInitialized();
+            _peers.Clear();
             _manager.Stop(true);
+            isInitialized = false;
         }
 
         [Conditional("OMNI_DEBUG")]
         private void ThrowAnErrorIfNotInitialized()
         {
-            if (!isRunning)
+            if (!isInitialized)
             {
                 throw new InvalidOperationException("[LiteTransporter] Operation failed - Transporter is not initialized. Call Initialize() before performing any network operations.");
             }
@@ -607,7 +573,7 @@ namespace Omni.Core.Modules.Connection
             LiteTransporter[] liteTransporters = GetComponentsInChildren<LiteTransporter>();
             foreach (LiteTransporter liteTransporter in liteTransporters)
             {
-                if (liteTransporter.isRunning)
+                if (liteTransporter.isInitialized)
                 {
                     bool simulateLag = liteTransporter.isServer
                         ? m_SimulationMode == NetworkSimulationMode.ServerOnly || m_SimulationMode == NetworkSimulationMode.Both

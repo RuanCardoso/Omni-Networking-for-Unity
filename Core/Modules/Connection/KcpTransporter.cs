@@ -95,7 +95,7 @@ namespace Omni.Core.Modules.Connection
         private KcpClient kcpClient;
 
         private bool isServer;
-        private bool isRunning;
+        private bool isInitialized;
 
         private ITransporterReceive transporter;
         private readonly Dictionary<IPEndPoint, int> _peers = new();
@@ -105,7 +105,7 @@ namespace Omni.Core.Modules.Connection
             this.isServer = isServer;
             this.transporter = transporter;
 
-            if (isRunning)
+            if (isInitialized)
             {
                 throw new InvalidOperationException("[KcpTransporter] Cannot initialize - Instance is already running. Call Stop() before reinitializing.");
             }
@@ -199,7 +199,7 @@ namespace Omni.Core.Modules.Connection
                 );
             }
 
-            isRunning = true;
+            isInitialized = true;
         }
 
         private void Awake()
@@ -210,7 +210,7 @@ namespace Omni.Core.Modules.Connection
         // before the world because has priority.
         private void Update()
         {
-            if (isRunning)
+            if (isInitialized)
             {
                 if (isServer)
                 {
@@ -225,7 +225,7 @@ namespace Omni.Core.Modules.Connection
 
         private void LateUpdate()
         {
-            if (isRunning)
+            if (isInitialized)
             {
                 if (isServer)
                 {
@@ -240,6 +240,9 @@ namespace Omni.Core.Modules.Connection
 
         public void Listen(int port)
         {
+            if (!isInitialized)
+                isInitialized = true; // Fast play mode support
+
             ThrowAnErrorIfNotInitialized();
             if (isServer)
             {
@@ -254,7 +257,7 @@ namespace Omni.Core.Modules.Connection
                 }
             }
 
-            if (isServer && isRunning)
+            if (isServer && isInitialized)
             {
                 kcpServer.Start((ushort)port);
                 transporter.Internal_OnServerInitialized();
@@ -295,12 +298,15 @@ namespace Omni.Core.Modules.Connection
         {
             ThrowAnErrorIfNotInitialized();
 #if OMNI_DEBUG
-            if (sequenceChannel > 0)
+            if (sequenceChannel != NetworkChannel.Compressed && sequenceChannel != NetworkChannel.Encrypted && sequenceChannel != NetworkChannel.CompressedEncrypted)
             {
-                NetworkLogger.Print(
-                    $"[KcpTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
-                    NetworkLogger.LogType.Warning
-                );
+                if (sequenceChannel > 0)
+                {
+                    NetworkLogger.Print(
+                        $"[KcpTransporter] Sequence channel {sequenceChannel} is not supported - Channel will be ignored",
+                        NetworkLogger.LogType.Warning
+                    );
+                }
             }
 #endif
             if (isServer)
@@ -327,6 +333,9 @@ namespace Omni.Core.Modules.Connection
             {
                 kcpClient.Disconnect();
             }
+
+            _peers.Clear();
+            isInitialized = false;
         }
 
         private KcpChannel GetKcpChannel(DeliveryMode deliveryMode)
@@ -361,7 +370,7 @@ namespace Omni.Core.Modules.Connection
         [Conditional("OMNI_DEBUG")]
         private void ThrowAnErrorIfNotInitialized()
         {
-            if (!isRunning)
+            if (!isInitialized)
             {
                 throw new Exception("[KcpTransporter] Operation failed - Transporter is not initialized. Call Initialize() before performing any network operations.");
             }
