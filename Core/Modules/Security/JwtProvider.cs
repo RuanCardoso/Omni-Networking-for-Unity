@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Omni.Shared;
+using static Omni.Core.NetworkManager;
 
 namespace Omni.Core.Cryptography
 {
@@ -75,6 +76,9 @@ namespace Omni.Core.Cryptography
         }
     }
 
+    // The class's methods must work for both sides, client and server.
+    // the keys must be shared.
+
     /// <summary>
     /// Provides utility methods for generating and verifying JSON Web Tokens (JWTs).
     /// </summary>
@@ -120,30 +124,16 @@ namespace Omni.Core.Cryptography
                     }
                 }
 
-                var headerJson = NetworkManager.ToJson(header);
-                var payloadJson = NetworkManager.ToJson(jwtPayload);
+                var headerJson = ToJson(header);
+                var payloadJson = ToJson(jwtPayload);
 
                 var headerEncoded = Base64UrlEncode(_encoding.GetBytes(headerJson));
                 var payloadEncoded = Base64UrlEncode(_encoding.GetBytes(payloadJson));
 
                 var dataToSign = $"{headerEncoded}.{payloadEncoded}";
-                byte[] signature;
-                if (isRSA)
-                {
-                    RsaHashAlgorithm rsaHashAlgorithm = algorithm switch
-                    {
-                        JwtAlgorithm.RS256 => RsaHashAlgorithm.SHA256,
-                        JwtAlgorithm.RS384 => RsaHashAlgorithm.SHA384,
-                        JwtAlgorithm.RS512 => RsaHashAlgorithm.SHA512,
-                        _ => throw new ArgumentException("Unsupported JWT algorithm.")
-                    };
-
-                    signature = RsaProvider.Compute(_encoding.GetBytes(dataToSign), NetworkManager.ServerSide.PEMPrivateKey, RsaKeyFormat.Pem, rsaHashAlgorithm);
-                }
-                else
-                {
-                    signature = HmacProvider.Compute(_encoding.GetBytes(dataToSign), NetworkManager.SecretKey, GetHmacAlgorithm(alg));
-                }
+                byte[] signature = isRSA
+                    ? RsaProvider.Compute(_encoding.GetBytes(dataToSign), ServerSide.PEMPrivateKey, RsaKeyFormat.Pem, GetRsaHashAlgorithm(algorithm))
+                    : HmacProvider.Compute(_encoding.GetBytes(dataToSign), SharedKey, GetHmacAlgorithm(algorithm));
 
                 var signatureEncoded = Base64UrlEncode(signature);
                 return $"{headerEncoded}.{payloadEncoded}.{signatureEncoded}";
@@ -176,8 +166,8 @@ namespace Omni.Core.Cryptography
                 var payloadJson = _encoding.GetString(Base64UrlDecode(parts[1]));
                 var signature = Base64UrlDecode(parts[2]);
 
-                var header = NetworkManager.FromJson<Dictionary<string, string>>(headerJson);
-                var jwtPayload = NetworkManager.FromJson<Dictionary<string, object>>(payloadJson);
+                var header = FromJson<Dictionary<string, string>>(headerJson);
+                var jwtPayload = FromJson<Dictionary<string, object>>(payloadJson);
 
                 var alg = header["alg"];
                 var isRSA = alg.StartsWith("RS");
@@ -187,20 +177,12 @@ namespace Omni.Core.Cryptography
                 var dataToVerify = $"{parts[0]}.{parts[1]}";
                 if (isRSA)
                 {
-                    RsaHashAlgorithm rsaHashAlgorithm = algorithm switch
-                    {
-                        JwtAlgorithm.RS256 => RsaHashAlgorithm.SHA256,
-                        JwtAlgorithm.RS384 => RsaHashAlgorithm.SHA384,
-                        JwtAlgorithm.RS512 => RsaHashAlgorithm.SHA512,
-                        _ => throw new ArgumentException("Unsupported JWT algorithm.")
-                    };
-
-                    if (!RsaProvider.Validate(_encoding.GetBytes(dataToVerify), signature, NetworkManager.ClientSide.PEMServerPublicKey, RsaKeyFormat.Pem, rsaHashAlgorithm))
+                    if (!RsaProvider.Validate(_encoding.GetBytes(dataToVerify), signature, string.IsNullOrEmpty(ClientSide.PEMServerPublicKey) ? ServerSide.PEMPublicKey : ClientSide.PEMServerPublicKey, RsaKeyFormat.Pem, GetRsaHashAlgorithm(algorithm)))
                         return false;
                 }
                 else
                 {
-                    if (!HmacProvider.Validate(_encoding.GetBytes(dataToVerify), NetworkManager.SecretKey, signature, GetHmacAlgorithm(alg)))
+                    if (!HmacProvider.Validate(_encoding.GetBytes(dataToVerify), SharedKey, signature, GetHmacAlgorithm(algorithm)))
                         return false;
                 }
 
@@ -232,13 +214,24 @@ namespace Omni.Core.Cryptography
             }
         }
 
-        private static HmacAlgorithm GetHmacAlgorithm(string algorithm)
+        private static RsaHashAlgorithm GetRsaHashAlgorithm(JwtAlgorithm algorithm)
         {
             return algorithm switch
             {
-                "HS256" => HmacAlgorithm.SHA256,
-                "HS384" => HmacAlgorithm.SHA384,
-                "HS512" => HmacAlgorithm.SHA512,
+                JwtAlgorithm.RS256 => RsaHashAlgorithm.SHA256,
+                JwtAlgorithm.RS384 => RsaHashAlgorithm.SHA384,
+                JwtAlgorithm.RS512 => RsaHashAlgorithm.SHA512,
+                _ => throw new ArgumentException("Unsupported JWT algorithm.")
+            };
+        }
+
+        private static HmacAlgorithm GetHmacAlgorithm(JwtAlgorithm algorithm)
+        {
+            return algorithm switch
+            {
+                JwtAlgorithm.HS256 => HmacAlgorithm.SHA256,
+                JwtAlgorithm.HS384 => HmacAlgorithm.SHA384,
+                JwtAlgorithm.HS512 => HmacAlgorithm.SHA512,
                 _ => throw new ArgumentOutOfRangeException(nameof(algorithm), "Unsupported JWT algorithm.")
             };
         }
