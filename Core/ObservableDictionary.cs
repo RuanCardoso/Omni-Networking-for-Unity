@@ -46,34 +46,10 @@ namespace Omni.Collections
         private bool _detectInspectorChanges = false;
         public ObservableDictionary() : this(false) { }
 
+        // TKey and TValue must implement the Serializable attribute and have public fields to be used as a value in ObservableDictionary.
         public ObservableDictionary(bool detectInspectorChanges)
         {
             _detectInspectorChanges = detectInspectorChanges;
-#if OMNI_DEBUG
-            var tKey = typeof(TKey);
-            var tValue = typeof(TValue);
-            bool ignoreCheck = false;
-            if (tKey.Namespace?.StartsWith("UnityEngine") == true || tValue.Namespace?.StartsWith("UnityEngine") == true)
-            {
-                if (tKey.IsValueType || tValue.IsValueType)
-                    ignoreCheck = true;
-            }
-
-            if (!ignoreCheck)
-            {
-                if (!tValue.IsSerializable)
-                {
-                    throw new InvalidOperationException(
-                        $"Type '{tValue.FullName}' must implement the Serializable attribute and have public fields to be used as a value in ObservableDictionary.");
-                }
-
-                if (!tKey.IsSerializable)
-                {
-                    throw new InvalidOperationException(
-                        $"Type '{tValue.FullName}' must implement the Serializable attribute and have public fields to be used as a value in ObservableDictionary.");
-                }
-            }
-#endif
             _internalReference = this;
 #if UNITY_EDITOR
             OnItemAdded = (key, value) =>
@@ -221,7 +197,6 @@ namespace Omni.Collections
 
                         _internalReference[key] = value;
                         OnItemUpdated?.Invoke(key, value);
-                        UnityEngine.Debug.Log($"Updated: {key} = {value}");
                     }
                 }
 
