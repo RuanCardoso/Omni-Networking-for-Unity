@@ -36,6 +36,12 @@ namespace Omni.Core
         {
             OnReferenceChanged?.Invoke(componentName);
         }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Reset()
+        {
+            OnReferenceChanged = null;
+        }
     }
 
     public static partial class NetworkService
@@ -124,6 +130,12 @@ namespace Omni.Core
     /// </summary>
     public static partial class NetworkService
     {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Reset()
+        {
+            m_Services.Clear();
+        }
+
         // (Service Name, Service Instance)
         private static readonly Dictionary<string, object> m_Services = new();
 
