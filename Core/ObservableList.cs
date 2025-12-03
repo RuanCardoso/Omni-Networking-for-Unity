@@ -30,13 +30,6 @@ namespace Omni.Collections
 
         public ObservableList()
         {
-#if OMNI_DEBUG
-            if (!typeof(T).IsSerializable)
-            {
-                throw new InvalidOperationException(
-                    $"The value type '{typeof(T).FullName}' must be serializable.");
-            }
-#endif
             _internalReference = this;
         }
 
