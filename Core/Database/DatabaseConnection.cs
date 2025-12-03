@@ -120,6 +120,30 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Recreates a new <see cref="Query"/> instance for the last table used by <see cref="GetBuilder(string)"/>.
+        /// This method is useful when you need to start a new query on the same table without retaining any previous conditions or state.
+        /// </summary>
+        /// <returns>
+        /// A fresh <see cref="Query"/> object configured for the last table specified in <see cref="GetBuilder(string)"/>.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// Use this method when performing multiple operations on the same table but requiring independent query contexts.  
+        /// It prevents the accumulation of <c>WHERE</c>, <c>JOIN</c>, or other clauses from previous operations.
+        /// </para>
+        /// <para>
+        /// Throws an exception if no previous table name is stored (i.e., <see cref="GetBuilder(string)"/> has not been called yet).
+        /// </para>
+        /// </remarks>
+        public Query RebuildLast()
+        {
+            if (string.IsNullOrEmpty(tableName))
+                throw new InvalidOperationException("No table name provided. Please call GetBuilder(string) first.");
+
+            return GetBuilder(tableName);
+        }
+
+        /// <summary>
         /// Initializes the Database Management System with the provided DbConnection, Compiler, table name, and timeout value.
         /// </summary>
         /// <param name="DbConnection">The DbConnection to be used by the database.</param>
