@@ -536,6 +536,51 @@ namespace Omni.Core
         }
 
         /// <summary>
+        /// Creates a new <see cref="NetworkGroup"/> that includes all peers from the current group
+        /// except the ones provided in <paramref name="excludedPeers"/>.
+        /// The original group remains unchanged.
+        /// </summary>
+        /// <param name="excludedPeers">Peers to exclude from the new group.</param>
+        /// <returns>
+        /// A new <see cref="NetworkGroup"/> containing all peers except the excluded ones,
+        /// or <see cref="NetworkGroup.None"/> if no peers remain.
+        /// </returns>
+        public NetworkGroup ExceptPeers(params NetworkPeer[] excludedPeers)
+        {
+            EnsureServerActive();
+
+            if (_peersById.Count == 0)
+                return None;
+
+            if (excludedPeers == null || excludedPeers.Length == 0)
+                return this;
+
+            var excludedIds = new HashSet<int>(excludedPeers
+                .Where(p => p != null)
+                .Select(p => p.Id));
+
+            var remainingPeers = _peersById.Values
+                .Where(p => !excludedIds.Contains(p.Id))
+                .ToList();
+
+            if (remainingPeers.Count == 0)
+                return None;
+
+            string groupName = $"{Guid.NewGuid()}";
+            int uniqueId = NetworkHelper.GetSafeHashCode();
+
+            var newGroup = new NetworkGroup(uniqueId, groupName, isServer: true)
+            {
+                DestroyWhenEmpty = false
+            };
+
+            foreach (var peer in remainingPeers)
+                newGroup._peersById[peer.Id] = peer;
+
+            return newGroup;
+        }
+
+        /// <summary>
         /// Merges multiple groups into a single virtual group, combining all peers without duplicates.
         /// Useful when you want to send RPCs or events to players from different groups at once.
         /// </summary>
