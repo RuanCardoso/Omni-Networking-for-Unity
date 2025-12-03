@@ -1,16 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.IO;
-using System.Text;
-using System.Web;
-using Omni.Core.Web;
 using UnityEngine;
-using Cookie = Omni.Core.Web.Net.Cookie;
 using Omni.Shared;
 using Newtonsoft.Json.Linq;
 using Omni.Collections;
-using System.Collections.Concurrent;
 #if OMNI_RELEASE
 using System.Runtime.CompilerServices;
 #endif
@@ -159,7 +152,7 @@ namespace Omni.Core
         /// </remarks>
         public static Vector3 ScaleDelta(this Vector3 input, float multiplier)
         {
-            return input * multiplier * Time.deltaTime;
+            return multiplier * Time.deltaTime * input;
         }
 
         /// <summary>
@@ -173,7 +166,7 @@ namespace Omni.Core
         /// </remarks>
         public static Vector2 ScaleDelta(this Vector2 input, float multiplier)
         {
-            return input * multiplier * Time.deltaTime;
+            return multiplier * Time.deltaTime * input;
         }
 
         /// <summary>
@@ -187,7 +180,7 @@ namespace Omni.Core
         /// </remarks>
         public static Vector4 ScaleDelta(this Vector4 input, float multiplier)
         {
-            return input * multiplier * Time.deltaTime;
+            return multiplier * Time.deltaTime * input;
         }
 
         /// <summary>
