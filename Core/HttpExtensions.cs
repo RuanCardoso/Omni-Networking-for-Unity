@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Text;
 using Omni.Core.Web.Net;
+using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Omni.Core.Web
@@ -20,6 +21,12 @@ namespace Omni.Core.Web
     public static class HttpExtensions
     {
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, object>> _sessions = new();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Reset()
+        {
+            _sessions.Clear();
+        }
 
         /// <summary>
         /// Sends the specified text as a response to the HTTP request.
