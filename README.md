@@ -45,33 +45,6 @@
 
 ---
 
-### 📦 Install via Package Manager (Recommended)
-
-1. Open `Window > Package Manager`
-2. Click the `+` button → `Add package from git URL`
-3. Paste the following:
-   ```
-   https://github.com/RuanCardoso/Omni-Networking-for-Unity.git
-   ```
-
----
-
-### 🛠️ Manual Installation
-
-1. Install required packages via Package Manager:
-   ```
-   com.unity.localization@1.5.4  
-   com.unity.nuget.newtonsoft-json@3.2.1
-   ```
-2. Download the latest version from GitHub and copy the contents to your project’s `Assets` folder.
-
----
-
-### ✅ Verify Installation
-
-- No errors in the Console
-- "Omni Networking" appears in Unity’s top menu
-
 ## ⚙️ Setup
 
 Omni provides automatic setup to streamline your development process.
