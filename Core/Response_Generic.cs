@@ -15,9 +15,6 @@ namespace Omni.Core
         /// <summary>
         /// Gets or sets the payload of the response.
         /// </summary>
-#if OMNI_RELEASE
-        [JsonProperty("t")]
-#endif
         public T Result { get; set; }
     }
 }
