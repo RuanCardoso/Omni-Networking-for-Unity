@@ -5,8 +5,7 @@
         "Unity.TextMeshPro",
         "Unity.ResourceManager",
         "Unity.Addressables",
-        "ParrelSync",
-        "Unity.Multiplayer.Playmode"
+        "ParrelSync"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -63,7 +62,7 @@
         },
         {
             "name": "Unity",
-            "expression": "2021.2",
+            "expression": "19000.3",
             "define": "UNITASK_DOTWEEN_SUPPORT"
         },
         {
