@@ -240,9 +240,16 @@ namespace Omni.Core
             Rpc(msgId, message);
         }
 
-        public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int channel = 0)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte channel = 0)
         {
-            m_NetworkMessage.__ClientRpcHandler.SetRpcParameters(rpcId, deliveryMode, Target.Auto, (byte)channel);
+            m_NetworkMessage.__ClientRpcHandler.SetRpcParameters(rpcId, deliveryMode, Target.Auto, channel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void GetRpcParameters(byte rpcId, out DeliveryMode deliveryMode, out byte seqChannel)
+        {
+            m_NetworkMessage.__ClientRpcHandler.GetRpcParameters(rpcId, out deliveryMode, out _, out seqChannel);
         }
     }
 
@@ -525,9 +532,16 @@ namespace Omni.Core
             Rpc(msgId, peer, message, group);
         }
 
-        public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, Target target = Target.Auto, int channel = 0)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, Target target = Target.Auto, byte channel = 0)
         {
-            m_NetworkMessage.__ServerRpcHandler.SetRpcParameters(rpcId, deliveryMode, target, (byte)channel);
+            m_NetworkMessage.__ServerRpcHandler.SetRpcParameters(rpcId, deliveryMode, target, channel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void GetRpcParameters(byte rpcId, out DeliveryMode deliveryMode, out Target target, out byte seqChannel)
+        {
+            m_NetworkMessage.__ServerRpcHandler.GetRpcParameters(rpcId, out deliveryMode, out target, out seqChannel);
         }
     }
 }
