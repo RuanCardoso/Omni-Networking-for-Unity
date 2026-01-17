@@ -285,9 +285,16 @@ namespace Omni.Core
                 Rpc(rpcId, message);
             }
 
-            public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, int channel = 0)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte channel = 0)
             {
-                m_NetworkBehaviour.__ClientRpcHandler.SetRpcParameters(rpcId, deliveryMode, Target.Auto, (byte)channel);
+                m_NetworkBehaviour.__ClientRpcHandler.SetRpcParameters(rpcId, deliveryMode, Target.Auto, channel);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void GetRpcParameters(byte rpcId, out DeliveryMode deliveryMode, out byte seqChannel)
+            {
+                m_NetworkBehaviour.__ClientRpcHandler.GetRpcParameters(rpcId, out deliveryMode, out _, out seqChannel);
             }
         }
 
@@ -624,9 +631,16 @@ namespace Omni.Core
                 Rpc(rpcId, message, group);
             }
 
-            public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, Target target = Target.Auto, int channel = 0)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void SetRpcParameters(byte rpcId, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, Target target = Target.Auto, byte channel = 0)
             {
-                m_NetworkBehaviour.__ServerRpcHandler.SetRpcParameters(rpcId, deliveryMode, target, (byte)channel);
+                m_NetworkBehaviour.__ServerRpcHandler.SetRpcParameters(rpcId, deliveryMode, target, channel);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public void GetRpcParameters(byte rpcId, out DeliveryMode deliveryMode, out Target target, out byte seqChannel)
+            {
+                m_NetworkBehaviour.__ServerRpcHandler.GetRpcParameters(rpcId, out deliveryMode, out target, out seqChannel);
             }
         }
 
@@ -680,6 +694,7 @@ namespace Omni.Core
         {
             get
             {
+#if OMNI_DEBUG // Micro-optimization
                 if (_identity != null)
                     return _identity;
 
@@ -688,6 +703,9 @@ namespace Omni.Core
                     $"NetworkIdentity is missing on object '{transform.root.name}'. " +
                     "Make sure the object is instantiated and registered through the network system before accessing Identity."
                 );
+#else
+                return _identity;
+#endif
             }
             internal set => _identity = value;
         }
