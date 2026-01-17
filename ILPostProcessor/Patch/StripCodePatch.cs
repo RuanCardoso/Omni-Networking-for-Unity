@@ -37,7 +37,7 @@ namespace Omni.ILPatch
                 .Where(m => m.Body.Instructions.Any(i =>
                     i.OpCode == OpCodes.Stfld &&
                     i.Operand is FieldReference fr &&
-                    (fr.Resolve().HasAttribute(AttributeName) || backfields.Any(name => fr.Name.Contains(name))))); // Optimized search
+                    (fr.Resolve().HasAttribute(AttributeName) || backfields.Any(name => fr.Name == $"<{name}>k__BackingField")))); // Optimized search
 
             var handlers = new Dictionary<Code, Func<Instruction, TypeDefinition, ILProcessor, bool>>
             {
