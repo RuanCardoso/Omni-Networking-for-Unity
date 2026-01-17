@@ -27,7 +27,13 @@ namespace Omni.Core
         private const string randomString =
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{};:,.<>/?`~";
 
-        private static int d_UniqueId = 1; // 0 - is reserved for server
+        internal static int UniqueIdentityId = 1;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Reset()
+        {
+            UniqueIdentityId = 1;
+        }
 
         internal static async Task<bool> OpenPortAsync(int port, Protocol protocol)
         {
@@ -84,12 +90,12 @@ namespace Omni.Core
         // The chances of collision is zero(0) because each ID is unique(incremental).
         internal static int GenerateDynamicUniqueId()
         {
-            if (d_UniqueId == 0)
+            if (UniqueIdentityId == 0)
             {
-                d_UniqueId = 1;
+                UniqueIdentityId = 1;
             }
 
-            return d_UniqueId++;
+            return UniqueIdentityId++;
         }
 
         /// <summary>
