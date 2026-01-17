@@ -211,7 +211,6 @@ namespace Omni.Core
         {
             NetworkManager.OnClientConnected += OnClientConnected;
             NetworkManager.OnClientDisconnected += OnClientDisconnected;
-            NetworkManager.OnClientIdentitySpawned += OnClientIdentitySpawned;
             NetworkManager.OnPeerSharedDataChanged += OnPeerSharedDataChanged;
             ClientSide.OnMessage += OnMessage;
         }
@@ -220,7 +219,6 @@ namespace Omni.Core
         {
             NetworkManager.OnClientConnected -= OnClientConnected;
             NetworkManager.OnClientDisconnected -= OnClientDisconnected;
-            NetworkManager.OnClientIdentitySpawned -= OnClientIdentitySpawned;
             NetworkManager.OnPeerSharedDataChanged -= OnPeerSharedDataChanged;
             ClientSide.OnMessage -= OnMessage;
 
@@ -243,10 +241,6 @@ namespace Omni.Core
         }
 
         protected virtual void OnPeerSharedDataChanged(NetworkPeer peer, string key)
-        {
-        }
-
-        protected virtual void OnClientIdentitySpawned(NetworkIdentity identity)
         {
         }
 
