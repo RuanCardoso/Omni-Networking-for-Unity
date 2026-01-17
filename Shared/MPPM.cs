@@ -1,6 +1,7 @@
-#if OMNI_VIRTUAL_PLAYER_ENABLED
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_6000_3_OR_NEWER && UNITY_EDITOR
+using System.Collections.Generic;
 using System.Linq;
-using Unity.Multiplayer.Playmode;
+using Unity.Multiplayer.PlayMode;
 
 namespace Omni.Core
 {
@@ -70,11 +71,11 @@ namespace Omni.Core
         /// <returns>
         /// An array of strings containing the player's tags.
         /// </returns>
-        public static string[] Tags
+        public static IReadOnlyList<string> Tags
         {
             get
             {
-                return CurrentPlayer.ReadOnlyTags();
+                return CurrentPlayer.Tags;
             }
         }
 
