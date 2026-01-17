@@ -1,7 +1,6 @@
 using Omni.Core.Cryptography;
 using Omni.Core.Interfaces;
 using Omni.Shared;
-using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,6 +19,16 @@ namespace Omni.Core
         private const string k_PublicKeyFile = "PinnedPublicKey.txt";
         public static partial class ClientSide
         {
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            static void _Reset()
+            {
+                Groups.Clear();
+                StaticRpcHandlers.Clear();
+                LocalRpcHandlers.Clear();
+                Identities.Clear();
+                Peers.Clear();
+            }
+
             internal const DeliveryMode Default_DeliveryMode = DeliveryMode.ReliableOrdered;
             internal const byte Default_SequenceChannel = 0;
 
@@ -153,6 +162,16 @@ namespace Omni.Core
 
         public static partial class ServerSide
         {
+            [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+            static void _Reset()
+            {
+                Groups.Clear();
+                StaticRpcHandlers.Clear();
+                LocalRpcHandlers.Clear();
+                Identities.Clear();
+                Peers.Clear();
+            }
+
             internal const DeliveryMode Default_DeliveryMode = DeliveryMode.ReliableOrdered;
             internal const Target Default_Target = Target.Auto;
             internal const byte Default_SequenceChannel = 0;
@@ -522,25 +541,31 @@ namespace Omni.Core
                 }
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SetDeliveryMode(DeliveryMode deliveryMode)
             {
                 DeliveryMode = deliveryMode;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SetTarget(Target target)
             {
                 Target = target;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SetGroup(NetworkGroup group)
             {
                 Group = group;
             }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SetSequenceChannel(byte sequenceChannel)
             {
                 SequenceChannel = sequenceChannel;
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static void SetDefaultNetworkConfiguration(DeliveryMode deliveryMode, Target target, NetworkGroup group, byte sequenceChannel)
             {
                 SetDeliveryMode(deliveryMode);
@@ -549,6 +574,7 @@ namespace Omni.Core
                 SetSequenceChannel(sequenceChannel);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal static void RestoreDefaultNetworkConfiguration()
             {
                 DeliveryMode = Default_DeliveryMode;
