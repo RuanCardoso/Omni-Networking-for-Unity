@@ -43,8 +43,8 @@ namespace Omni.Core
             {
                 isClone = true;
             }
-#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
-            if (MPPM.IsVirtualPlayer)
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_6000_3_OR_NEWER && UNITY_EDITOR
+			if (MPPM.IsVirtualPlayer)
             {
                 isClone = true;
             }
