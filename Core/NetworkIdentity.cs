@@ -590,9 +590,7 @@ namespace Omni.Core
         public void Despawn(bool destroyInServer = true, Target target = Target.Auto, NetworkGroup group = null, NetworkPeer peer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
         {
             if (!IsServer)
-            {
                 throw new NotSupportedException("Despawn() can only be called on the server.");
-            }
 
             RequestActionToClient(NetworkConstants.k_DestroyEntityId, null, target, group, peer, deliveryMode, seqChannel);
             if (destroyInServer)
@@ -622,7 +620,6 @@ namespace Omni.Core
             return NetworkHelper.SpawnAndRegister(this, NetworkManager.ServerSide.Peers[peerId], identityId, isServer: true, isLocalPlayer: false);
         }
 
-
         /// <summary>
         /// Instantiates a network identity on the client.
         /// </summary>
@@ -648,6 +645,29 @@ namespace Omni.Core
             // Notify the server that this identity has been spawned on the client side.
             @obj.RequestActionToServer(NetworkConstants.k_SpawnNotificationId);
             return @obj;
+        }
+
+        /// <summary>
+        /// Requests the server to spawn this network identity on a remote client.
+        /// </summary>
+        /// <exception cref="NotSupportedException">
+        /// Thrown if called on a non-server instance.
+        /// </exception>
+        public void RequestSpawnToClient(Target target = Target.Auto, NetworkGroup group = null, NetworkPeer peer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
+        {
+            if (!IsServer)
+                throw new NotSupportedException("RequestSpawnToClient() can only be called on the server.");
+
+            using var message = NetworkManager.Pool.Rent(enableTracking: false);
+            message.Write(Owner.Id);
+            message.Write(m_Id);
+            message.WriteString(_prefabName);
+
+            if (target == Target.Auto && peer != null && peer.Id != 0 && group == null)
+                target = Target.Self;
+
+            NetworkManager.ServerSide.SetDefaultNetworkConfiguration(deliveryMode, target, group, seqChannel);
+            NetworkManager.ServerSide.SendMessage(NetworkPacketType.k_RequestSpawnToClient, peer ?? Owner, message);
         }
 
         public bool IsPlayerObject()
@@ -745,6 +765,10 @@ namespace Omni.Core
             }
         }
 
+        /// <summary>
+        /// Sends a request to the server to perform an action.
+        /// This method is similar to calling a Remote Procedure Call (RPC), but it is used to request actions to the server.
+        /// </summary>
         public void RequestActionToServer(byte actionId, DataBuffer data = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
         {
             if (IsServer)
@@ -763,6 +787,10 @@ namespace Omni.Core
             NetworkManager.ClientSide.SendMessage(NetworkPacketType.k_RequestEntityAction, message);
         }
 
+        /// <summary>
+        /// Sends a request to the client to perform an action.
+        /// This method is similar to calling a Remote Procedure Call (RPC), but it is used to request actions to the client.
+        /// </summary>
         public void RequestActionToClient(byte actionId, DataBuffer data = null, Target target = Target.Auto, NetworkGroup group = null, NetworkPeer peer = null, DeliveryMode deliveryMode = DeliveryMode.ReliableOrdered, byte seqChannel = 0)
         {
             try
@@ -777,6 +805,9 @@ namespace Omni.Core
                 message.Write(m_Id);
                 message.Write(actionId);
                 message.Internal_CopyFrom(data);
+
+                if (target == Target.Auto && peer != null && peer.Id != 0 && group == null)
+                    target = Target.Self;
 
                 NetworkManager.ServerSide.SetDefaultNetworkConfiguration(deliveryMode, target, group, seqChannel);
                 NetworkManager.ServerSide.SendMessage(NetworkPacketType.k_RequestEntityAction, peer ?? Owner, message);
