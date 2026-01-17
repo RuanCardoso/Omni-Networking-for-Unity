@@ -72,7 +72,6 @@ namespace Omni.Core
             OnServerPeerDisconnected = null;
             OnClientConnected = null;
             OnClientDisconnected = null;
-            OnClientIdentitySpawned = null;
             OnGroupSharedDataChanged = null;
             OnPeerSharedDataChanged = null;
             OnClientCustomMessage = null;
@@ -97,6 +96,7 @@ namespace Omni.Core
             160, 191, 177, 135, 193, 252, 17, 24, 146, 137, 73, 186, 20, 235, 202, 48
         };
 
+        // It cannot be used to validate JWT, as this key is only available on the server, making client-side validation impossible.
         internal static byte[] SecretKey = new byte[]
         {
             248, 70, 170, 87, 200, 85, 189, 137, 186, 225, 99, 15, 153, 109, 118, 176,
@@ -201,11 +201,6 @@ namespace Omni.Core
         public static event Action<string> OnClientDisconnected;
 
         /// <summary>
-        /// Event triggered when an identity is successfully spawned on the client. 
-        /// </summary>
-        public static event Action<NetworkIdentity> OnClientIdentitySpawned;
-
-        /// <summary>
         /// Event triggered on the client when the server modifies a specific key 
         /// in the shared data of a network peer.
         /// </summary>
@@ -229,7 +224,7 @@ namespace Omni.Core
         internal static event Action<NetworkGroup, NetworkPeer, Phase, string> OnPlayerLeftGroup; // for server
         internal static event Action<NetworkPeer, string> OnPlayerFailedLeaveGroup;
 
-        private static int UniquePeerId = 1; // 0 - Reserved for server
+        private static int UniquePeerId = 1; // 0 - Reserved for server peer.
         private static NetworkManager _manager;
         private static NetworkManager Manager
         {
@@ -499,7 +494,7 @@ namespace Omni.Core
                 );
             }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_6000_3_OR_NEWER && UNITY_EDITOR
             if (MPPM.Player == VirtualPlayer.None)
             {
                 NetworkLogger.__Log__("To use virtual player mode, you need to: Configure appropriate tags (Main, Player2, Player3, or Player4) and verify that Unity Multiplayer Playmode is correctly configured. Refer to the documentation for more information on setting up virtual players.", NetworkLogger.LogType.Warning);
@@ -829,7 +824,7 @@ namespace Omni.Core
                                 isClone = true;
                             }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_6000_3_OR_NEWER && UNITY_EDITOR
                             if (MPPM.IsVirtualPlayer)
                             {
                                 isClone = true;
@@ -959,7 +954,7 @@ namespace Omni.Core
             ServerSide.Groups.Clear();
 
             // Clear RPC references
-            ServerSide.StaticRpcHandlers.Clear();
+            // Static handlers should not be cleared while the process is still alive.
             ServerSide.LocalRpcHandlers.Clear();
 
             // Clear other references
@@ -979,7 +974,7 @@ namespace Omni.Core
             ClientSide.Groups.Clear();
 
             // Clear RPC references
-            ClientSide.StaticRpcHandlers.Clear();
+            // Static handlers should not be cleared while the process is still alive.
             ClientSide.LocalRpcHandlers.Clear();
 
             // Clear other references
@@ -998,6 +993,8 @@ namespace Omni.Core
         {
             if (IsServerActive)
             {
+                UniquePeerId = 1; // Reset unique peer id - 0 is reserved for server
+                NetworkHelper.UniqueIdentityId = 1;
                 ClearServerState();
                 // Stop server: Shutdown and release all server resources.
                 Connection.Server.Stop();
@@ -1265,8 +1262,8 @@ namespace Omni.Core
                             if (isExplicitGroup)
                             {
                                 NetworkLogger.__Log__(
-                                    $"Cannot use Target.Group with an explicit group (Id={toGroup.Id}, Name={toGroup.Name}). " +
-                                    "Target.Group always sends to the sender’s MainGroup. " +
+                                    $"Cannot use Target.Group* with an explicit group (Id={toGroup.Id}, Name={toGroup.Name}). " +
+                                    "Target.Group* always sends to the sender’s MainGroup. " +
                                     "To send to a SubGroup, pass the SubGroup instance explicitly instead, with Target.Everyone",
                                     NetworkLogger.LogType.Error
                                 );
@@ -1277,7 +1274,7 @@ namespace Omni.Core
                             if (sender.Id == 0)
                             {
                                 NetworkLogger.__Log__(
-                                    "The server cannot use Target.Group because it does not belong to any group. " +
+                                    "The server cannot use Target.Group* because it does not belong to any group. " +
                                     "When sending from the server, you must always specify the target group explicitly as a parameter.",
                                     NetworkLogger.LogType.Error
                                 );
@@ -1909,6 +1906,20 @@ namespace Omni.Core
                                 }
                             }
                             break;
+                        case NetworkPacketType.k_RequestSpawnToClient:
+                            {
+                                int peerId = header.Read<int>();
+                                int identityId = header.Read<int>();
+                                string prefabName = header.ReadString();
+                                using var message = EndOfHeader();
+
+                                if (!isServer)
+                                {
+                                    var prefab = GetPrefab(prefabName);
+                                    prefab.SpawnOnClient(peerId, identityId);
+                                }
+                            }
+                            break;
                         case NetworkPacketType.k_RequestEntityAction:
                             {
                                 int identityId = header.Read<int>();
@@ -2195,7 +2206,7 @@ namespace Omni.Core
                 isClone = true;
             }
 
-#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_EDITOR
+#if OMNI_VIRTUAL_PLAYER_ENABLED && UNITY_6000_3_OR_NEWER && UNITY_EDITOR
             if (MPPM.IsVirtualPlayer)
             {
                 isClone = true;
