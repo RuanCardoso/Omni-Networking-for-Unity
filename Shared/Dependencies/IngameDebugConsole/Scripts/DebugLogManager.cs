@@ -56,6 +56,10 @@ namespace IngameDebugConsole
 		private bool singleton = true;
 
 		[SerializeField]
+		[Tooltip("If enabled, console window will be visible in release builds")]
+		private bool showInReleaseBuilds = false;
+
+		[SerializeField]
 		[HideInInspector]
 		[Tooltip("Minimum height of the console window")]
 		private float minimumHeight = 200f;
@@ -754,7 +758,8 @@ namespace IngameDebugConsole
 		private void Start()
 		{
 #if OMNI_RELEASE
-			Destroy(gameObject);
+			if (!showInReleaseBuilds)
+				Destroy(gameObject);
 #endif
 			if (startMinimized)
 				HideLogWindow();
