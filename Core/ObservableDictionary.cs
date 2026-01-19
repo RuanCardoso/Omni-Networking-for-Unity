@@ -8,224 +8,239 @@ using Omni.Inspector;
 using Omni.Shared;
 using UnityEngine;
 
+/// Specialized implementation designed to support advanced serialization scenarios
+/// in Unity environments where standard dictionary behavior is insufficient.
+/// 
+/// This class contains non-standard implementation details required to ensure
+/// compatibility with IL2CPP and WebGL builds, particularly in the presence of
+/// code stripping, AOT constraints, and Unity's serialization limitations.
+/// 
+/// The internal design intentionally prioritizes runtime safety and cross-platform
+/// determinism over architectural purity. As a result, certain patterns used here
+/// may differ from conventional C# best practices.
+/// 
+/// Verified to function correctly under:
+/// - IL2CPP
+/// - WebGL
+
 #pragma warning disable
 
 namespace Omni.Collections
 {
-    /// <summary>
-    /// A serializable dictionary collection that provides events for item additions, removals, and updates.
-    /// </summary>
-    /// <typeparam name="TKey">The type of the keys in the dictionary.</typeparam>
-    /// <typeparam name="TValue">The type of the values in the dictionary.</typeparam>
-    [MemoryPackable(GenerateType.Collection)]
-    [Serializable, DeclareHorizontalGroup("Key/Value"), DeclareHorizontalGroup("HorizontalGroup")]
-    [Nested]
-    public partial class ObservableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
-        where TKey : notnull
-    {
-        [ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
-        [Group("Key/Value"), DisableInPlayMode, SerializeField]
-        [MemoryPackIgnore]
-        [JsonIgnore]
-        private List<TKey> _keys = new List<TKey>();
+	/// <summary>
+	/// A serializable dictionary collection that provides events for item additions, removals, and updates.
+	/// </summary>
+	/// <typeparam name="TKey">The type of the keys in the dictionary.</typeparam>
+	/// <typeparam name="TValue">The type of the values in the dictionary.</typeparam>
+	[MemoryPackable(GenerateType.Collection)]
+	[Serializable, DeclareHorizontalGroup("Key/Value"), DeclareHorizontalGroup("HorizontalGroup")]
+	[Nested]
+	public partial class ObservableDictionary<TKey, TValue> : Dictionary<TKey, TValue>, ISerializationCallbackReceiver
+		where TKey : notnull
+	{
+		[ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
+		[Group("Key/Value"), DisableInPlayMode, SerializeField]
+		[MemoryPackIgnore]
+		[JsonIgnore]
+		private List<TKey> _keys = new List<TKey>();
 
-        [ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
-        [Group("Key/Value"), OnValueChanged(nameof(OnCollectionChanged)), SerializeField]
-        [MemoryPackIgnore]
-        [JsonIgnore]
-        private List<TValue> _values = new List<TValue>();
+		[ListDrawerSettings(AlwaysExpanded = true, HideAddButton = true, HideRemoveButton = true)]
+		[Group("Key/Value"), OnValueChanged(nameof(OnCollectionChanged)), SerializeField]
+		[MemoryPackIgnore]
+		[JsonIgnore]
+		private List<TValue> _values = new List<TValue>();
 
-        [JsonProperty("KvP"), MemoryPackInclude]
-        private readonly Dictionary<TKey, TValue> _internalReference = new Dictionary<TKey, TValue>();
+		[JsonProperty("KvP"), MemoryPackInclude]
+		private readonly Dictionary<TKey, TValue> _internalReference = new Dictionary<TKey, TValue>();
 
-        public event Action<TKey, TValue> OnItemAdded;
-        public event Action<TKey, TValue> OnItemRemoved;
-        public event Action<TKey, TValue> OnItemUpdated;
-        public Action<bool> OnUpdate;
+		public event Action<TKey, TValue> OnItemAdded;
+		public event Action<TKey, TValue> OnItemRemoved;
+		public event Action<TKey, TValue> OnItemUpdated;
+		public Action<bool> OnUpdate;
 
-        private bool _detectInspectorChanges = false;
-        public ObservableDictionary() : this(false) { }
+		private bool _detectInspectorChanges = false;
+		public ObservableDictionary() : this(false) { }
 
-        // TKey and TValue must implement the Serializable attribute and have public fields to be used as a value in ObservableDictionary.
-        public ObservableDictionary(bool detectInspectorChanges)
-        {
-            _detectInspectorChanges = detectInspectorChanges;
-            _internalReference = this;
-#if UNITY_EDITOR
-            OnItemAdded = (key, value) =>
-            {
-                _keys.Add(key);
-                _values.Add(value);
-            };
+		// TKey and TValue must implement the Serializable attribute and have public fields to be used as a value in ObservableDictionary.
+		public ObservableDictionary(bool detectInspectorChanges)
+		{
+			_detectInspectorChanges = detectInspectorChanges;
+			_internalReference = this;
+#if UNITY_EDITOR // EDITOR because it's visual only!!!
+			OnItemAdded = (key, value) =>
+			{
+				_keys.Add(key);
+				_values.Add(value);
+			};
 
-            OnItemRemoved = (key, value) =>
-            {
-                _keys.Remove(key);
-                _values.Remove(value);
-            };
+			OnItemRemoved = (key, value) =>
+			{
+				_keys.Remove(key);
+				_values.Remove(value);
+			};
 
-            OnItemUpdated = (key, value) =>
-            {
-                if (!_keys.Contains(key))
-                {
-                    if (_internalReference.ContainsKey(key))
-                    {
-                        _keys.Add(key);
-                        _values.Add(value);
-                    }
-                }
-            };
+			OnItemUpdated = (key, value) =>
+			{
+				if (!_keys.Contains(key))
+				{
+					if (_internalReference.ContainsKey(key))
+					{
+						_keys.Add(key);
+						_values.Add(value);
+					}
+				}
+			};
 
-            OnUpdate = (_) =>
-            {
-                _keys = _internalReference.Keys.ToList();
-                _values = _internalReference.Values.ToList();
-            };
+			OnUpdate = (_) =>
+			{
+				_keys = _internalReference.Keys.ToList();
+				_values = _internalReference.Values.ToList();
+			};
 #endif
-        }
+		}
 
-        public new TValue this[TKey key]
-        {
-            get { return base[key]; }
-            set
-            {
-                if (typeof(TValue).IsValueType)
-                {
-                    if (base.TryGetValue(key, out TValue currentValue))
-                    {
-                        if (currentValue.Equals(value))
-                            return;
-                    }
-                }
+		public new TValue this[TKey key]
+		{
+			get { return base[key]; }
+			set
+			{
+				if (typeof(TValue).IsValueType)
+				{
+					if (base.TryGetValue(key, out TValue currentValue))
+					{
+						if (currentValue.Equals(value))
+							return;
+					}
+				}
 
-                base[key] = value;
-                OnItemUpdated?.Invoke(key, value);
-            }
-        }
+				base[key] = value;
+				OnItemUpdated?.Invoke(key, value);
+			}
+		}
 
-        public new void Add(TKey key, TValue value)
-        {
-            base.Add(key, value);
-            OnItemAdded?.Invoke(key, value);
-        }
+		public new void Add(TKey key, TValue value)
+		{
+			base.Add(key, value);
+			OnItemAdded?.Invoke(key, value);
+		}
 
-        public new bool Remove(TKey key)
-        {
-            bool success = base.Remove(key, out TValue value);
-            if (success)
-                OnItemRemoved?.Invoke(key, value);
-            return success;
-        }
+		public new bool Remove(TKey key)
+		{
+			bool success = base.Remove(key, out TValue value);
+			if (success)
+				OnItemRemoved?.Invoke(key, value);
+			return success;
+		}
 
-        public new bool Remove(TKey key, out TValue value)
-        {
-            bool success = base.Remove(key, out value);
-            if (success)
-                OnItemRemoved?.Invoke(key, value);
-            return success;
-        }
+		public new bool Remove(TKey key, out TValue value)
+		{
+			bool success = base.Remove(key, out value);
+			if (success)
+				OnItemRemoved?.Invoke(key, value);
+			return success;
+		}
 
-        public new bool TryAdd(TKey key, TValue value)
-        {
-            bool success = base.TryAdd(key, value);
-            if (success)
-                OnItemAdded?.Invoke(key, value);
-            return success;
-        }
+		public new bool TryAdd(TKey key, TValue value)
+		{
+			bool success = base.TryAdd(key, value);
+			if (success)
+				OnItemAdded?.Invoke(key, value);
+			return success;
+		}
 
-        public new void Clear()
-        {
-            foreach (KeyValuePair<TKey, TValue> pair in _internalReference)
-                OnItemRemoved?.Invoke(pair.Key, pair.Value);
+		public new void Clear()
+		{
+			foreach (KeyValuePair<TKey, TValue> pair in _internalReference)
+				OnItemRemoved?.Invoke(pair.Key, pair.Value);
 
-            base.Clear();
-            OnUpdate?.Invoke(true);
-        }
+			base.Clear();
+			OnUpdate?.Invoke(true);
+		}
 
-        [Group("HorizontalGroup")]
-        [Button("Add Key")]
-        [DisableInPlayMode]
-        private void AddKeyValuePair()
-        {
-            try
-            {
-                int index = _keys.Count;
-                TKey key = (TKey)Convert.ChangeType(index, typeof(TKey));
+		[Group("HorizontalGroup")]
+		[Button("Add Key")]
+		[DisableInPlayMode]
+		private void AddKeyValuePair()
+		{
+			try
+			{
+				int index = _keys.Count;
+				TKey key = (TKey)Convert.ChangeType(index, typeof(TKey));
 
-                _keys.Add(key);
-                _values.Add(default);
-            }
-            catch
-            {
-                _keys.Add(default);
-                _values.Add(default);
-            }
-        }
+				_keys.Add(key);
+				_values.Add(default);
+			}
+			catch
+			{
+				_keys.Add(default);
+				_values.Add(default);
+			}
+		}
 
-        [Group("HorizontalGroup")]
-        [Button("Remove Key")]
-        [DisableInPlayMode]
-        private void RemoveKeyValuePair()
-        {
-            if (_keys.Count > 0)
-                _keys.RemoveAt(_keys.Count - 1);
+		[Group("HorizontalGroup")]
+		[Button("Remove Key")]
+		[DisableInPlayMode]
+		private void RemoveKeyValuePair()
+		{
+			if (_keys.Count > 0)
+				_keys.RemoveAt(_keys.Count - 1);
 
-            if (_values.Count > 0)
-                _values.RemoveAt(_values.Count - 1);
-        }
+			if (_values.Count > 0)
+				_values.RemoveAt(_values.Count - 1);
+		}
 
-        [Conditional("UNITY_EDITOR")]
-        private void OnCollectionChanged()
-        {
-            try
-            {
-                if (!Application.isPlaying)
-                    return;
-            }
-            catch { }
+		[Conditional("UNITY_EDITOR")]
+		private void OnCollectionChanged()
+		{
+			try
+			{
+				if (!Application.isPlaying)
+					return;
+			}
+			catch { }
 
-            if (!_values.SequenceEqual(_internalReference.Values))
-            {
-                for (int i = 0; i < _keys.Count; i++)
-                {
-                    var key = _keys[i];
-                    if (_internalReference.ContainsKey(key))
-                    {
-                        var value = _values[i];
-                        if (_internalReference[key].Equals(value))
-                            continue;
+			if (!_values.SequenceEqual(_internalReference.Values))
+			{
+				for (int i = 0; i < _keys.Count; i++)
+				{
+					var key = _keys[i];
+					if (_internalReference.ContainsKey(key))
+					{
+						var value = _values[i];
+						if (_internalReference[key].Equals(value))
+							continue;
 
-                        _internalReference[key] = value;
-                        OnItemUpdated?.Invoke(key, value);
-                    }
-                }
+						_internalReference[key] = value;
+						OnItemUpdated?.Invoke(key, value);
+					}
+				}
 
-                _keys = _internalReference.Keys.ToList();
-                _values = _internalReference.Values.ToList();
-            }
-        }
+				_keys = _internalReference.Keys.ToList();
+				_values = _internalReference.Values.ToList();
+			}
+		}
 
-        public void OnBeforeSerialize()
-        {
-            OnCollectionChanged();
-        }
+		public void OnBeforeSerialize()
+		{
+			OnCollectionChanged();
+		}
 
-        public void OnAfterDeserialize()
-        {
-            if (_detectInspectorChanges)
-            {
-                OnCollectionChanged();
-            }
+		public void OnAfterDeserialize()
+		{
+			if (_detectInspectorChanges)
+			{
+				OnCollectionChanged();
+			}
 
-            _internalReference.Clear();
-            if (_keys.Count != _values.Count)
-                return;
+			_internalReference.Clear();
+			if (_keys.Count != _values.Count)
+				return;
 
-            for (int i = 0; i < _keys.Count; i++)
-            {
-                if (!_internalReference.TryAdd(_keys[i], _values[i]))
-                    NetworkLogger.Print($"Deserialization error: Duplicate key '{_keys[i]}' found in ObservableDictionary<{typeof(TKey).Name}, {typeof(TValue).Name}>.", NetworkLogger.LogType.Warning);
-            }
-        }
-    }
+			for (int i = 0; i < _keys.Count; i++)
+			{
+				if (!_internalReference.TryAdd(_keys[i], _values[i]))
+					NetworkLogger.Print($"Deserialization error: Duplicate key '{_keys[i]}' found in ObservableDictionary<{typeof(TKey).Name}, {typeof(TValue).Name}>.", NetworkLogger.LogType.Warning);
+			}
+		}
+	}
 }
