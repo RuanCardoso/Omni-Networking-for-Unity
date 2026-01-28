@@ -11,7 +11,12 @@ namespace Omni.Core.Web
     [DefaultExecutionOrder(-1000)]
     public class HttpRouteManager : WebCommunicationManager
     {
-        public CorsOptions Cors => HttpServer.Cors;
+        public CorsOptions Cors
+        {
+            get => HttpServer.Cors;
+            set => HttpServer.Cors = value;
+        }
+
         public event Action<kHttpRequest, kHttpResponse, string> OnRequestHandled
         {
             add

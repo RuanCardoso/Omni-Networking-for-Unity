@@ -154,7 +154,7 @@ namespace Omni.Core.Modules.Connection
         internal bool EnableHttpServer { get; set; } = false;
         internal bool EnableHttpServerSsl { get; set; } = false;
         internal string HttpServerDocumentRootPath { get; set; } = "";
-        internal CorsOptions Cors { get; } = new();
+        internal CorsOptions Cors { get; set; } = new();
 
         public void Initialize(ITransporterReceive IManager, bool isServer)
         {
