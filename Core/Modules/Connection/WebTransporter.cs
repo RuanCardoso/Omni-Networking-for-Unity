@@ -154,6 +154,7 @@ namespace Omni.Core.Modules.Connection
         internal bool EnableHttpServer { get; set; } = false;
         internal bool EnableHttpServerSsl { get; set; } = false;
         internal string HttpServerDocumentRootPath { get; set; } = "";
+        internal CorsOptions Cors { get; } = new();
 
         public void Initialize(ITransporterReceive IManager, bool isServer)
         {
@@ -176,8 +177,30 @@ namespace Omni.Core.Modules.Connection
                     httpServer.AddWebSocketService<HttpService>("/");
                     httpServer.DocumentRootPath = HttpServerDocumentRootPath;
 
-                    httpServer.OnGet += (sender, e) => OnGetRequest?.Invoke(new kHttpRequest(e.Request), new kHttpResponse(e.Response));
-                    httpServer.OnPost += (sender, e) => OnPostRequest?.Invoke(new kHttpRequest(e.Request), new kHttpResponse(e.Response));
+                    // pre-flight request
+                    httpServer.OnOptions += (sender, e) =>
+                    {
+                        var res = new kHttpResponse(e.Response);
+                        ApplyDefaultCors(res);
+                        res.StatusCode = 204;
+                        res.Close();
+                    };
+
+                    httpServer.OnGet += (sender, e) =>
+                    {
+                        var req = new kHttpRequest(e.Request);
+                        var res = new kHttpResponse(e.Response);
+                        ApplyDefaultCors(res);
+                        OnGetRequest?.Invoke(req, res);
+                    };
+
+                    httpServer.OnPost += (sender, e) =>
+                    {
+                        var req = new kHttpRequest(e.Request);
+                        var res = new kHttpResponse(e.Response);
+                        ApplyDefaultCors(res);
+                        OnPostRequest?.Invoke(req, res);
+                    };
                 }
 
                 webSocketServer =
@@ -472,6 +495,22 @@ namespace Omni.Core.Modules.Connection
             httpServer.AddWebSocketService<T>(serviceName, initializer);
         }
 
+        private void ApplyDefaultCors(kHttpResponse res)
+        {
+            res.SetHeader("Access-Control-Allow-Origin", Cors.AllowOrigin);
+            res.SetHeader("Access-Control-Allow-Methods", Cors.AllowMethods);
+            res.SetHeader("Access-Control-Allow-Headers", Cors.AllowHeaders);
+
+            if (!string.IsNullOrEmpty(Cors.ExposeHeaders))
+                res.SetHeader("Access-Control-Expose-Headers", Cors.ExposeHeaders);
+
+            if (Cors.AllowCredentials)
+                res.SetHeader("Access-Control-Allow-Credentials", "true");
+
+            if (Cors.MaxAge > 0)
+                res.SetHeader("Access-Control-Max-Age", Cors.MaxAge.ToString());
+        }
+
         internal void Internal_OnStringDataReceived(string data, IPEndPoint source, bool isServer)
         {
             OnStringDataReceived?.Invoke(data, source, isServer);
@@ -506,6 +545,11 @@ namespace Omni.Core.Modules.Connection
             {
                 webTransporter.EnableWebSocketSsl = EnableWebSocketSsl;
             }
+        }
+
+        private void ApplyCors()
+        {
+
         }
     }
 }

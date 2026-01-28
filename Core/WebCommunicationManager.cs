@@ -263,6 +263,7 @@ namespace Omni.Core.Web
 
         public class HttpServerConfiguration : SocketConfiguration
         {
+            public CorsOptions Cors => serverTransporter.Cors;
             public bool Enabled { get; set; } = true;
             public bool EnableSsl { get; set; } = false;
 
