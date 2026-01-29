@@ -34,7 +34,7 @@ namespace Omni.Shared
     {
         // Omni Networking Version, change this value to the current version of the package.json(Open UPM)
         // _LTS = Long Term Support
-        public const string Version = "3.2.1 LTS";
+        public const string Version = "3.2.2 LTS";
         public static StreamWriter fileStream = null;
         public static string LogPath = "OmniDefaultLog.log";
 
