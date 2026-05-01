@@ -10,8 +10,20 @@ using UnityEngine.Networking;
 
 namespace Omni.Core.Web
 {
+    /// <summary>
+    /// Certificate handler that disables SSL certificate validation for internal HTTPS routes.
+    /// </summary>
+    /// <remarks>
+    /// This handler is used to bypass SSL certificate validation when connecting to internal hosts, eg: service-to-service communication.
+    /// such as localhost or 127.0.0.1 in production environments where the server has HTTPS configured.
+    /// </remarks>
     internal class DisableSslValidationHandler : CertificateHandler
     {
+        /// <summary>
+        /// Always validates certificates as valid by returning true.
+        /// </summary>
+        /// <param name="certificateData">The certificate data to validate.</param>
+        /// <returns>Always returns true, bypassing SSL validation.</returns>
         protected override bool ValidateCertificate(byte[] certificateData)
         {
             return true;
@@ -20,6 +32,13 @@ namespace Omni.Core.Web
 
     public static class HttpExtensions
     {
+        /// <summary>
+        /// Thread-safe dictionary that stores HTTP session data keyed by session ID.
+        /// </summary>
+        /// <remarks>
+        /// This dictionary maintains session state across multiple HTTP requests, allowing for persistent user data storage.
+        /// The outer dictionary uses session IDs as keys, while the inner dictionary stores session key-value pairs.
+        /// </remarks>
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, object>> _sessions = new();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -33,8 +52,10 @@ namespace Omni.Core.Web
         /// </summary>
         /// <param name="response">The HTTP response to write to.</param>
         /// <param name="plainText">The text to send as the response body.</param>
+        /// <param name="statusCode">The HTTP status code to send. Defaults to 200 (OK).</param>
         /// <remarks>
         /// This extension method provides a convenient way to send text-based responses.
+        /// Automatically sets content type to "text/plain" and encoding to UTF-8.
         /// </remarks>
         public static void SendAsText(this kHttpResponse response, string plainText, int statusCode = 200)
         {
@@ -52,8 +73,11 @@ namespace Omni.Core.Web
         /// </summary>
         /// <param name="response">The HTTP response to write to.</param>
         /// <param name="result">The object to serialize to JSON for the response body.</param>
+        /// <param name="statusCode">The HTTP status code to send. Defaults to 200 (OK).</param>
         /// <remarks>
         /// This extension method provides a convenient way to send JSON-formatted responses.
+        /// Automatically sets content type to "application/json" and encoding to UTF-8.
+        /// Uses the NetworkManager's JSON serialization for consistent object handling.
         /// </remarks>
         public static void SendAsJson(this kHttpResponse response, object result, int statusCode = 200)
         {
@@ -71,9 +95,10 @@ namespace Omni.Core.Web
         /// Sends an HTTP 403 Forbidden response to the client, with an optional message.
         /// </summary>
         /// <param name="response">The HTTP response to write to.</param>
-        /// <param name="message">Optional message to include in the response body.</param>
+        /// <param name="message">Optional message to include in the response body. Defaults to "Server rejected the request."</param>
         /// <remarks>
-        /// This extension method provides a convenient way to reject an HTTP request.
+        /// This extension method provides a convenient way to reject an HTTP request with a 403 status code.
+        /// The message is sent as plain text with UTF-8 encoding.
         /// </remarks>
         public static void Reject(this kHttpResponse response, string message = "Server rejected the request.")
         {
@@ -84,9 +109,10 @@ namespace Omni.Core.Web
         /// Sends an HTTP 403 Forbidden response to the client, with an optional JSON-serializable object.
         /// </summary>
         /// <param name="response">The HTTP response to write to.</param>
-        /// <param name="result">Optional JSON-serializable object to include in the response body.</param>
+        /// <param name="result">JSON-serializable object to include in the response body.</param>
         /// <remarks>
-        /// This extension method provides a convenient way to reject an HTTP request.
+        /// This extension method provides a convenient way to reject an HTTP request with a 403 status code.
+        /// The object is automatically serialized to JSON using the NetworkManager's JSON serialization.
         /// </remarks>
         public static void Reject(this kHttpResponse response, object result)
         {
@@ -167,6 +193,12 @@ namespace Omni.Core.Web
         /// <exception cref="NotSupportedException">
         /// Thrown if the request method/content type is not supported.
         /// </exception>
+        /// <remarks>
+        /// For GET requests, parses the query string parameters.
+        /// For POST requests, only supports "application/x-www-form-urlencoded" content type.
+        /// Use <see cref="ParseJsonToDictionary"/> for JSON requests or <see cref="ParseMultipart"/> for multipart form data.
+        /// Parameter names are compared case-insensitively.
+        /// </remarks>
         public static Dictionary<string, string> ParseForm(this kHttpRequest request)
         {
             try
@@ -183,7 +215,7 @@ namespace Omni.Core.Web
                         return ParseQueryStringToDictionary(queryString);
                     }
                     else if (request.ContentType.StartsWith("application/json"))
-                        throw new NotSupportedException($"JSON requests are not supported. Use {nameof(ParseJson)} instead.");
+                        throw new NotSupportedException($"JSON requests are not supported. Use {nameof(ParseJsonToDictionary)} or {nameof(ParseJsonToObject)} instead.");
                     else if (request.ContentType.StartsWith("multipart/form-data"))
                         throw new NotSupportedException($"Multipart/form-data requests are not supported. Use {nameof(ParseMultipart)} instead.");
                     else
@@ -199,15 +231,19 @@ namespace Omni.Core.Web
         }
 
         /// <summary>
-        /// Parses parameters from a JSON POST request (<c>application/json</c>).
+        /// Parses parameters from a JSON POST request (<c>application/json</c>) into a dictionary.
         /// </summary>
         /// <param name="request">The HTTP request.</param>
-        /// <param name="TValue">The type of the values in the dictionary.</param>
         /// <returns>A dictionary of key-value pairs representing the JSON request body.</returns>
         /// <exception cref="NotSupportedException">
         /// Thrown if the request method/content type is not supported.
         /// </exception>
-        public static Dictionary<string, TValue> ParseJson<TValue>(this kHttpRequest request)
+        /// <remarks>
+        /// Only supports POST requests with "application/json" content type.
+        /// Use <see cref="ParseForm"/> for URL-encoded requests or <see cref="ParseMultipart"/> for multipart form data.
+        /// Dictionary keys are compared case-insensitively for flexible access.
+        /// </remarks>
+        public static Dictionary<string, object> ParseJsonToDictionary(this kHttpRequest request)
         {
             try
             {
@@ -217,8 +253,8 @@ namespace Omni.Core.Web
                 if (request.ContentType.StartsWith("application/json"))
                 {
                     using StreamReader parameters = new(request.InputStream, request.ContentEncoding);
-                    var rawDictionary = NetworkManager.FromJson<Dictionary<string, TValue>>(parameters.ReadToEnd());
-                    return new Dictionary<string, TValue>(rawDictionary, StringComparer.OrdinalIgnoreCase);
+                    var rawDictionary = NetworkManager.FromJson<Dictionary<string, object>>(parameters.ReadToEnd());
+                    return new Dictionary<string, object>(rawDictionary, StringComparer.OrdinalIgnoreCase);
                 }
                 else if (request.ContentType.StartsWith("multipart/form-data"))
                     throw new NotSupportedException($"Multipart/form-data requests are not supported. Use {nameof(ParseMultipart)} instead.");
@@ -229,7 +265,49 @@ namespace Omni.Core.Web
             }
             catch (Exception ex)
             {
-                throw new Exception($"{nameof(ParseJson)} -> " + ex.Message, ex);
+                throw new Exception($"{nameof(ParseJsonToDictionary)} -> " + ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// Parses the JSON request body (<c>application/json</c>) into a strongly typed object.
+        /// </summary>
+        /// <typeparam name="T">The type of object to deserialize the JSON into.</typeparam>
+        /// <param name="request">The HTTP request.</param>
+        /// <returns>The deserialized object of type T.</returns>
+        /// <exception cref="NotSupportedException">
+        /// Thrown if the request method/content type is not supported.
+        /// </exception>
+        /// <exception cref="JsonException">
+        /// Thrown if the JSON cannot be deserialized to the specified type.
+        /// </exception>
+        /// <remarks>
+        /// Only supports POST requests with "application/json" content type.
+        /// Use <see cref="ParseForm"/> for URL-encoded requests or <see cref="ParseMultipart"/> for multipart form data.
+        /// The target type T must be compatible with the JSON structure.
+        /// </remarks>
+        public static T ParseJsonToObject<T>(this kHttpRequest request)
+        {
+            try
+            {
+                if (request.HttpMethod != "POST")
+                    throw new NotSupportedException("JSON parsing only supports POST requests.");
+
+                if (request.ContentType.StartsWith("application/json"))
+                {
+                    using StreamReader parameters = new(request.InputStream, request.ContentEncoding);
+                    return NetworkManager.FromJson<T>(parameters.ReadToEnd());
+                }
+                else if (request.ContentType.StartsWith("multipart/form-data"))
+                    throw new NotSupportedException($"Multipart/form-data requests are not supported. Use {nameof(ParseMultipart)} instead.");
+                else if (request.ContentType.StartsWith("application/x-www-form-urlencoded"))
+                    throw new NotSupportedException($"URL encoded requests are not supported. Use {nameof(ParseForm)} instead.");
+                else
+                    throw new NotSupportedException("Unsupported content type: " + request.ContentType);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"{nameof(ParseJsonToObject)} -> " + ex.Message, ex);
             }
         }
 
@@ -238,7 +316,16 @@ namespace Omni.Core.Web
         /// </summary>
         /// <param name="response">The HTTP response to which the session cookie will be added.</param>
         /// <param name="request">The HTTP request used to determine security settings.</param>
-        /// <param name="expires">Optional expiration time for the session cookie. Defaults to a non-persistent session if null.</param>
+        /// <param name="expires">Optional expiration time for the session cookie. If null, creates a non-persistent session that expires when the browser closes.</param>
+        /// <returns>A thread-safe dictionary for storing session data.</returns>
+        /// <remarks>
+        /// Creates a secure session cookie with the following settings:
+        /// - HttpOnly: Prevents client-side JavaScript access
+        /// - Secure: Only sent over HTTPS connections
+        /// - SameSite=Strict: Prevents CSRF attacks
+        /// - Path=/: Available across the entire domain
+        /// The returned dictionary can be used to store session data that persists across requests.
+        /// </remarks>
         public static ConcurrentDictionary<string, object> StartSession(this kHttpResponse response, kHttpRequest request, DateTime? expires = null)
         {
             if (expires == null)
@@ -301,8 +388,13 @@ namespace Omni.Core.Web
         /// Attempts to retrieve the session data associated with the current HTTP request without throwing exceptions.
         /// </summary>
         /// <param name="request">The HTTP request containing the session cookie.</param>
-        /// <param name="session">The session data as a dictionary of key-value pairs, if found.</param>
+        /// <param name="session">When this method returns, contains the session data if found; otherwise, null.</param>
         /// <returns><c>true</c> if the session data is successfully retrieved; otherwise, <c>false</c>.</returns>
+        /// <remarks>
+        /// This is the safe version of <see cref="GetSession"/> that doesn't throw exceptions.
+        /// Returns false if the session cookie is missing, expired, or invalid.
+        /// Use this method when you want to handle session absence gracefully.
+        /// </remarks>
         public static bool TryGetSession(this kHttpRequest request, out ConcurrentDictionary<string, object> session)
         {
             session = null;
@@ -342,6 +434,15 @@ namespace Omni.Core.Web
             return _sessions.TryRemove(sessionId, out _);
         }
 
+        /// <summary>
+        /// Converts a query string collection to a dictionary with case-insensitive string keys.
+        /// </summary>
+        /// <param name="queryString">The query string collection to convert.</param>
+        /// <returns>A dictionary with case-insensitive keys and string values.</returns>
+        /// <remarks>
+        /// This is an internal helper method used by form parsing methods.
+        /// Empty or null keys are ignored during conversion.
+        /// </remarks>
         internal static Dictionary<string, string> ParseQueryStringToDictionary(NameValueCollection queryString)
         {
             string[] allKeys = queryString.AllKeys;
@@ -386,6 +487,11 @@ namespace Omni.Core.Web
         /// <param name="request">
         /// The <see cref="UnityWebRequest"/> instance to configure.
         /// </param>
+        /// <remarks>
+        /// This method is useful for development and testing environments where self-signed certificates
+        /// are commonly used for internal services. It should only be used with trusted internal hosts.
+        /// Uses <see cref="DisableSslValidationHandler"/> to bypass SSL validation for internal hosts.
+        /// </remarks>
         public static void TrustInternalHosts(this UnityWebRequest request)
         {
             var uri = new Uri(request.url);

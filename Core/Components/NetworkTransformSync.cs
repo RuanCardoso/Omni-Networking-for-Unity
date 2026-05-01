@@ -1452,7 +1452,7 @@ namespace Omni.Core.Components
             {
                 using var writer = NetworkManager.Pool.Rent();
                 sendingTempState.Serialize(writer);
-                OnServerStateReceivedRpc(writer.AsReadOnlyDataBuffer());
+                OnServerStateReceivedRpc(writer.AsReadOnlyDataBuffer(), DeliveryMode.Unreliable);
             }
         }
 
@@ -1997,11 +1997,11 @@ namespace Omni.Core.Components
             latestTeleportedFromRotation = GetRotation();
             if (IsServer)
             {
-                TeleportClientRpc(GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime);
+                TeleportClientRpc(GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime, mode: DeliveryMode.Unreliable);
             }
             else if (IsMine)
             {
-                TeleportServerRpc(GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime);
+                TeleportServerRpc(GetPosition(), GetRotation().eulerAngles, GetScale(), LocalTime, mode: DeliveryMode.Unreliable);
             }
         }
 
@@ -2016,7 +2016,7 @@ namespace Omni.Core.Components
             }
             else if (IsServer)
             {
-                NonServerOwnedTeleportFromServerClientRpc(newPosition, newRotation.eulerAngles, newScale);
+                NonServerOwnedTeleportFromServerClientRpc(newPosition, newRotation.eulerAngles, newScale, mode: DeliveryMode.Unreliable);
             }
             else
             {
@@ -2197,10 +2197,10 @@ namespace Omni.Core.Components
             switch (authorityMode)
             {
                 case AuthorityMode.Server:
-                    OnClientStateReceivedRpc(message.AsReadOnlyDataBuffer(), target: Target.Auto);
+                    OnClientStateReceivedRpc(message.AsReadOnlyDataBuffer(), target: Target.Auto, mode: DeliveryMode.Unreliable);
                     break;
                 default:
-                    OnClientStateReceivedRpc(message.AsReadOnlyDataBuffer(), target: Target.Others);
+                    OnClientStateReceivedRpc(message.AsReadOnlyDataBuffer(), target: Target.Others, mode: DeliveryMode.Unreliable);
                     break;
             }
         }

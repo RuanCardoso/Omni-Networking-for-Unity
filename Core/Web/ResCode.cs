@@ -3,7 +3,7 @@ namespace Omni.Core
     /// <summary>
     /// Enum representing various response status codes.
     /// </summary>
-    public sealed class StatusCode
+    public sealed class ResCode
     {
         /// <summary>
         /// The request was successful.
